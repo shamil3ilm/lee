@@ -1,5 +1,5 @@
 import { and, eq, sql } from 'drizzle-orm'
-import { db } from '@/lib/db/client'
+import { db, type DbClient } from '@/lib/db/client'
 import { interviewStages } from '@/lib/db/schema'
 
 export type InterviewStage = typeof interviewStages.$inferSelect
@@ -9,8 +9,9 @@ export async function create(
   userId: string,
   applicationId: string,
   data: Omit<NewInterviewStage, 'userId' | 'applicationId' | 'id' | 'createdAt' | 'updatedAt'>,
+  client: DbClient = db,
 ): Promise<InterviewStage> {
-  const [row] = await db
+  const [row] = await client
     .insert(interviewStages)
     .values({ ...data, userId, applicationId })
     .returning()
