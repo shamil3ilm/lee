@@ -1,3 +1,5 @@
+import { AddStageDialog } from '@/components/add-stage-dialog'
+
 interface StageRow {
   id: string
   kind: string
@@ -12,10 +14,12 @@ interface StageListProps {
 }
 
 export function StageList({ applicationId, stages }: StageListProps) {
-  void applicationId
   return (
     <section>
-      <h2 className="mb-2 font-medium">Interview stages</h2>
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="font-medium">Interview stages</h2>
+        <AddStageDialog applicationId={applicationId} />
+      </div>
       {stages.length === 0 ? (
         <p className="text-sm text-neutral-500">None yet.</p>
       ) : (
