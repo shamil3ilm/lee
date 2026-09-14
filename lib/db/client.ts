@@ -47,3 +47,7 @@ export const closeDb = instance.close
 export const isPglite = instance.isPglite
 export const pgliteClient = instance.pglite
 export type Db = typeof db
+// Transaction argument type — the value passed into a `db.transaction(async (tx) => ...)` callback.
+// Query functions accept `Db | Tx` so they can be composed inside a transaction.
+export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0]
+export type DbClient = Db | Tx
