@@ -1,0 +1,33 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: pglite:memory://
+      AUTH_SECRET: '00000000000000000000000000000000'
+      AUTH_GOOGLE_ID: dummy
+      AUTH_GOOGLE_SECRET: dummy
+      NEXTAUTH_URL: http://localhost:3000
+      ALLOWED_EMAIL: test@example.com
+      AI_PROVIDER: gemini
+      GEMINI_API_KEY: dummy
+      CRON_SECRET: '00000000000000000000000000000000'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      # DB migrations are applied automatically by the integration test setup
+      # against an in-memory pglite instance; no separate `pnpm db:migrate` step.
+      - run: pnpm test
+      - run: pnpm playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - run: pnpm build
