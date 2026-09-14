@@ -60,17 +60,25 @@ export async function updateStatus(
   })
 }
 
+export type ApplicationWithJob = Application & {
+  job: (typeof import('@/lib/db/schema').jobs)['$inferSelect'] & {
+    company: (typeof import('@/lib/db/schema').companies)['$inferSelect'] | null
+  }
+}
+
 export async function list(
   userId: string,
   filters: { status?: ApplicationStatus } = {},
-): Promise<Application[]> {
+): Promise<ApplicationWithJob[]> {
   const where = filters.status
     ? and(eq(applications.userId, userId), eq(applications.status, filters.status))
     : eq(applications.userId, userId)
-  return db.query.applications.findMany({
+  const rows = await db.query.applications.findMany({
     where,
+    with: { job: { with: { company: true } } },
     orderBy: (a, { desc }) => desc(a.updatedAt),
   })
+  return rows as never
 }
 
 export async function getById(
