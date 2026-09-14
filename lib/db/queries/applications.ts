@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm'
-import { db } from '@/lib/db/client'
+import { db, type DbClient } from '@/lib/db/client'
 import { activities, applications } from '@/lib/db/schema'
 
 export type Application = typeof applications.$inferSelect
@@ -16,8 +16,9 @@ export type ApplicationStatus =
 export async function create(
   userId: string,
   data: Omit<NewApplication, 'userId' | 'id' | 'createdAt' | 'updatedAt'>,
+  client: DbClient = db,
 ): Promise<Application> {
-  const [row] = await db
+  const [row] = await client
     .insert(applications)
     .values({ ...data, userId })
     .returning()
@@ -84,6 +85,7 @@ export async function list(
 export async function getById(
   userId: string,
   id: string,
+  client: DbClient = db,
 ): Promise<
   | (Application & {
       job: (typeof import('@/lib/db/schema').jobs)['$inferSelect'] & {
@@ -92,7 +94,7 @@ export async function getById(
     })
   | undefined
 > {
-  const row = await db.query.applications.findFirst({
+  const row = await client.query.applications.findFirst({
     where: and(eq(applications.userId, userId), eq(applications.id, id)),
     with: { job: { with: { company: true } } },
   })
@@ -103,8 +105,9 @@ export async function setNextAction(
   userId: string,
   id: string,
   when: Date | null,
+  client: DbClient = db,
 ): Promise<void> {
-  await db
+  await client
     .update(applications)
     .set({ nextActionAt: when, updatedAt: new Date() })
     .where(and(eq(applications.userId, userId), eq(applications.id, id)))

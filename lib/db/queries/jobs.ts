@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm'
-import { db } from '@/lib/db/client'
+import { db, type DbClient } from '@/lib/db/client'
 import { jobs } from '@/lib/db/schema'
 
 export type Job = typeof jobs.$inferSelect
@@ -9,8 +9,9 @@ export async function upsertBySourceUrl(
   userId: string,
   companyId: string | null,
   data: Omit<NewJob, 'userId' | 'companyId' | 'id' | 'createdAt' | 'updatedAt'>,
+  client: DbClient = db,
 ): Promise<Job> {
-  const [row] = await db
+  const [row] = await client
     .insert(jobs)
     .values({ ...data, userId, companyId: companyId ?? undefined })
     .onConflictDoUpdate({

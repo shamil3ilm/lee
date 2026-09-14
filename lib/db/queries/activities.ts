@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm'
-import { db } from '@/lib/db/client'
+import { db, type DbClient } from '@/lib/db/client'
 import { activities } from '@/lib/db/schema'
 
 export type Activity = typeof activities.$inferSelect
@@ -10,8 +10,9 @@ export async function log(
   applicationId: string,
   kind: string,
   payload: Record<string, unknown>,
+  client: DbClient = db,
 ): Promise<Activity> {
-  const [row] = await db
+  const [row] = await client
     .insert(activities)
     .values({ userId, applicationId, kind, payload })
     .returning()
@@ -23,8 +24,9 @@ export async function list(
   userId: string,
   applicationId: string,
   opts: { limit?: number } = {},
+  client: DbClient = db,
 ): Promise<Activity[]> {
-  return db.query.activities.findMany({
+  return client.query.activities.findMany({
     where: and(
       eq(activities.userId, userId),
       eq(activities.applicationId, applicationId),
