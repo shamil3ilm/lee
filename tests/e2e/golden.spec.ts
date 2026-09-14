@@ -1,0 +1,14 @@
+import { test, expect } from '@playwright/test'
+
+test('unauthenticated user is redirected to signin', async ({ page }) => {
+  await page.goto('/')
+  await expect(page).toHaveURL(/\/signin/)
+  await expect(page.getByText('Sign in to Employ')).toBeVisible()
+})
+
+test('health endpoint returns ok', async ({ request }) => {
+  const r = await request.get('/api/health')
+  expect(r.status()).toBe(200)
+  const body = await r.json()
+  expect(body.ok).toBe(true)
+})
