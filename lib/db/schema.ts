@@ -11,6 +11,7 @@ import {
   index,
   uniqueIndex,
 } from 'drizzle-orm/pg-core'
+import { relations } from 'drizzle-orm'
 
 // ---------------------------------------------------------------------------
 // Auth.js schema (compatible with @auth/drizzle-adapter)
@@ -355,6 +356,69 @@ export const companyDiscoveries = pgTable(
     ),
   }),
 )
+
+// ---------------------------------------------------------------------------
+// Relations (needed for Drizzle's `with:` query API)
+// ---------------------------------------------------------------------------
+
+export const companiesRelations = relations(companies, ({ many }) => ({
+  jobs: many(jobs),
+  contacts: many(contacts),
+}))
+
+export const contactsRelations = relations(contacts, ({ one }) => ({
+  company: one(companies, {
+    fields: [contacts.companyId],
+    references: [companies.id],
+  }),
+}))
+
+export const jobsRelations = relations(jobs, ({ one, many }) => ({
+  company: one(companies, {
+    fields: [jobs.companyId],
+    references: [companies.id],
+  }),
+  applications: many(applications),
+}))
+
+export const applicationsRelations = relations(applications, ({ one, many }) => ({
+  job: one(jobs, {
+    fields: [applications.jobId],
+    references: [jobs.id],
+  }),
+  referredByContact: one(contacts, {
+    fields: [applications.referredByContactId],
+    references: [contacts.id],
+  }),
+  stages: many(interviewStages),
+  activities: many(activities),
+  applicationContacts: many(applicationContacts),
+}))
+
+export const applicationContactsRelations = relations(applicationContacts, ({ one }) => ({
+  application: one(applications, {
+    fields: [applicationContacts.applicationId],
+    references: [applications.id],
+  }),
+  contact: one(contacts, {
+    fields: [applicationContacts.contactId],
+    references: [contacts.id],
+  }),
+}))
+
+export const interviewStagesRelations = relations(interviewStages, ({ one }) => ({
+  application: one(applications, {
+    fields: [interviewStages.applicationId],
+    references: [applications.id],
+  }),
+}))
+
+export const activitiesRelations = relations(activities, ({ one }) => ({
+  application: one(applications, {
+    fields: [activities.applicationId],
+    references: [applications.id],
+  }),
+}))
 
 export const aiCallLogs = pgTable('ai_call_logs', {
   id: uuid('id').defaultRandom().primaryKey(),
