@@ -234,3 +234,137 @@ export const activities = pgTable(
     appCreatedIx: index('activities_app_created_idx').on(t.applicationId, t.createdAt),
   }),
 )
+
+// ---------------------------------------------------------------------------
+// Discovery hooks (empty in v1, populated in v1.5)
+// ---------------------------------------------------------------------------
+
+export const userProfile = pgTable('user_profile', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  headline: text('headline'),
+  summaryMd: text('summary_md'),
+  careerNarrativeMd: text('career_narrative_md'),
+  skills: text('skills').array().notNull().default([]),
+  industries: text('industries').array().notNull().default([]),
+  roleTypes: text('role_types').array().notNull().default([]),
+  seniority: text('seniority'),
+  yearsExperience: integer('years_experience'),
+  employmentTypes: text('employment_types').array().notNull().default([]),
+  remotePref: text('remote_pref').notNull().default('any'),
+  locationPrefs: jsonb('location_prefs').notNull().default([]),
+  acceptRelocation: boolean('accept_relocation').notNull().default(false),
+  willingToRelocateTo: text('willing_to_relocate_to').array().notNull().default([]),
+  compFloorAnnual: integer('comp_floor_annual'),
+  compCurrency: text('comp_currency'),
+  stackWeights: jsonb('stack_weights').notNull().default({}),
+  companySizeWeights: jsonb('company_size_weights').notNull().default({}),
+  benefitPrefs: jsonb('benefit_prefs').notNull().default({}),
+  mustHaves: text('must_haves').array().notNull().default([]),
+  dealbreakers: text('dealbreakers').array().notNull().default([]),
+  keywords: text('keywords').array().notNull().default([]),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const sources = pgTable(
+  'sources',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    kind: text('kind').notNull(),
+    config: jsonb('config').notNull().default({}),
+    enabled: boolean('enabled').notNull().default(true),
+    lastPolledAt: timestamp('last_polled_at', { withTimezone: true }),
+    lastError: text('last_error'),
+    errorCount: integer('error_count').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ userEnabledIx: index('sources_user_enabled_idx').on(t.userId, t.enabled) }),
+)
+
+export const discoveries = pgTable(
+  'discoveries',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    sourceId: uuid('source_id')
+      .notNull()
+      .references(() => sources.id, { onDelete: 'cascade' }),
+    sourceJobId: text('source_job_id').notNull(),
+    raw: jsonb('raw').notNull(),
+    normalized: jsonb('normalized').notNull(),
+    matchScore: smallint('match_score'),
+    benefitsScore: smallint('benefits_score'),
+    matchReasoning: jsonb('match_reasoning'),
+    status: text('status').notNull().default('new'),
+    savedApplicationId: uuid('saved_application_id').references(() => applications.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    srcJobUq: uniqueIndex('discoveries_source_job_uq').on(t.sourceId, t.sourceJobId),
+    userStatusScoreIx: index('discoveries_user_status_score_idx').on(
+      t.userId,
+      t.status,
+      t.matchScore,
+    ),
+  }),
+)
+
+export const companyDiscoveries = pgTable(
+  'company_discoveries',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    sourceId: uuid('source_id')
+      .notNull()
+      .references(() => sources.id, { onDelete: 'cascade' }),
+    sourceCompanyId: text('source_company_id').notNull(),
+    raw: jsonb('raw').notNull(),
+    normalized: jsonb('normalized').notNull(),
+    matchScore: smallint('match_score'),
+    matchReasoning: jsonb('match_reasoning'),
+    status: text('status').notNull().default('new'),
+    addedCompanyId: uuid('added_company_id').references(() => companies.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    srcCompanyUq: uniqueIndex('company_discoveries_source_company_uq').on(
+      t.sourceId,
+      t.sourceCompanyId,
+    ),
+    userStatusScoreIx: index('company_discoveries_user_status_score_idx').on(
+      t.userId,
+      t.status,
+      t.matchScore,
+    ),
+  }),
+)
+
+export const aiCallLogs = pgTable('ai_call_logs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  provider: text('provider').notNull(),
+  kind: text('kind').notNull(),
+  promptTokens: integer('prompt_tokens'),
+  completionTokens: integer('completion_tokens'),
+  latencyMs: integer('latency_ms'),
+  status: text('status').notNull(),
+  error: text('error'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
