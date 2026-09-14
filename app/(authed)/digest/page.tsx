@@ -1,41 +1,15 @@
 import Link from 'next/link'
-import { and, eq, gte, lte, isNotNull, desc } from 'drizzle-orm'
 import { requireUserId } from '@/lib/auth/require-session'
-import { db } from '@/lib/db/client'
-import { applications, activities } from '@/lib/db/schema'
+import { getUpcomingActions, getRecentActivity } from '@/lib/digest/service'
 
 export const dynamic = 'force-dynamic'
 
-const DAY_MS = 24 * 60 * 60 * 1000
-
 export default async function DigestPage() {
   const userId = await requireUserId()
-  const now = new Date()
-  const sevenDaysAhead = new Date(now.getTime() + 7 * DAY_MS)
-  const sevenDaysAgo = new Date(now.getTime() - 7 * DAY_MS)
-
-  const upcoming = await db.query.applications.findMany({
-    where: and(
-      eq(applications.userId, userId),
-      isNotNull(applications.nextActionAt),
-      lte(applications.nextActionAt, sevenDaysAhead),
-    ),
-    with: { job: { with: { company: true } } },
-    orderBy: (a, { asc }) => asc(a.nextActionAt),
-  })
-
-  const recentActivities = await db
-    .select({
-      id: activities.id,
-      createdAt: activities.createdAt,
-      kind: activities.kind,
-      payload: activities.payload,
-      applicationId: activities.applicationId,
-    })
-    .from(activities)
-    .where(and(eq(activities.userId, userId), gte(activities.createdAt, sevenDaysAgo)))
-    .orderBy(desc(activities.createdAt))
-    .limit(100)
+  const [upcoming, recentActivities] = await Promise.all([
+    getUpcomingActions(userId, 7),
+    getRecentActivity(userId, 7),
+  ])
 
   return (
     <div className="max-w-3xl space-y-8">
