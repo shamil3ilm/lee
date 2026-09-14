@@ -3,6 +3,7 @@ import { requireUserId } from '@/lib/auth/require-session'
 import * as appsQ from '@/lib/db/queries/applications'
 import * as actQ from '@/lib/db/queries/activities'
 import * as stagesQ from '@/lib/db/queries/stages'
+import * as applicationContactsQ from '@/lib/db/queries/applicationContacts'
 import { StatusPicker } from '@/components/status-picker'
 import { StageList } from '@/components/stage-list'
 
@@ -19,6 +20,7 @@ export default async function ApplicationDetail({
   if (!app) notFound()
   const stages = await stagesQ.list(userId, id)
   const activities = await actQ.list(userId, id, { limit: 50 })
+  const contacts = await applicationContactsQ.listForApplication(userId, id)
   return (
     <div className="space-y-6">
       <header className="flex items-baseline justify-between">
@@ -38,6 +40,22 @@ export default async function ApplicationDetail({
           status: s.status,
         }))}
       />
+      <section>
+        <h2 className="mb-2 font-medium">People (POCs)</h2>
+        {contacts.length === 0 ? (
+          <p className="text-sm text-muted-foreground">None linked yet.</p>
+        ) : (
+          <ul className="space-y-1 text-sm">
+            {contacts.map((c) => (
+              <li key={`${c.id}-${c.role}`} className="rounded border px-3 py-2">
+                <span className="font-medium">{c.name}</span>
+                <span className="ml-2 text-muted-foreground">{c.role}</span>
+                {c.email ? <span className="ml-2 text-muted-foreground">· {c.email}</span> : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       <section>
         <h2 className="mb-2 font-medium">Activity</h2>
         {activities.length === 0 ? (
