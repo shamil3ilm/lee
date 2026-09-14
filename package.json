@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.3",
+    "@electric-sql/pglite": "^0.5.8",
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.9.1",
     "@neondatabase/serverless": "^1.1.0",

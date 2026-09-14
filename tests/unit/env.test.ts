@@ -32,6 +32,37 @@ describe('env schema', () => {
     ).toThrow(/GEMINI_API_KEY/)
   })
 
+  it('accepts a pglite: DATABASE_URL', () => {
+    const env = parseEnv({
+      DATABASE_URL: 'pglite:memory://',
+      AUTH_SECRET: 'x'.repeat(32),
+      AUTH_GOOGLE_ID: 'gid',
+      AUTH_GOOGLE_SECRET: 'gsec',
+      NEXTAUTH_URL: 'https://example.com',
+      ALLOWED_EMAIL: 'a@b.com',
+      AI_PROVIDER: 'gemini',
+      GEMINI_API_KEY: 'k',
+      CRON_SECRET: 'x'.repeat(32),
+    })
+    expect(env.DATABASE_URL).toBe('pglite:memory://')
+  })
+
+  it('rejects an invalid DATABASE_URL scheme', () => {
+    expect(() =>
+      parseEnv({
+        DATABASE_URL: 'mysql://u:p@h/d',
+        AUTH_SECRET: 'x'.repeat(32),
+        AUTH_GOOGLE_ID: 'gid',
+        AUTH_GOOGLE_SECRET: 'gsec',
+        NEXTAUTH_URL: 'https://example.com',
+        ALLOWED_EMAIL: 'a@b.com',
+        AI_PROVIDER: 'gemini',
+        GEMINI_API_KEY: 'k',
+        CRON_SECRET: 'x'.repeat(32),
+      }),
+    ).toThrow()
+  })
+
   it('rejects a non-email ALLOWED_EMAIL', () => {
     expect(() =>
       parseEnv({

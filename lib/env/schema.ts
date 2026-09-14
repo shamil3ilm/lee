@@ -3,7 +3,15 @@ import { z } from 'zod'
 export const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-    DATABASE_URL: z.string().url().or(z.string().startsWith('postgres://')),
+    DATABASE_URL: z
+      .string()
+      .refine(
+        (v) =>
+          v.startsWith('postgres://') ||
+          v.startsWith('postgresql://') ||
+          v.startsWith('pglite:'),
+        { message: 'DATABASE_URL must be postgres://, postgresql:// or pglite:' },
+      ),
     AUTH_SECRET: z.string().min(32),
     AUTH_GOOGLE_ID: z.string().min(1),
     AUTH_GOOGLE_SECRET: z.string().min(1),
