@@ -1,12 +1,12 @@
-import { auth } from '@/lib/auth'
+import { requireUserId } from '@/lib/auth/require-session'
 import * as companiesQ from '@/lib/db/queries/companies'
 import { AddCompanyDialog } from '@/components/add-company-dialog'
 
 export const dynamic = 'force-dynamic'
 
 export default async function CompaniesPage() {
-  const session = await auth()
-  const rows = await companiesQ.listWatched(session!.user!.id)
+  const userId = await requireUserId()
+  const rows = await companiesQ.listWatched(userId)
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">

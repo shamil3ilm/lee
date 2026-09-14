@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireUserId } from '@/lib/auth/require-session'
 import * as contactsQ from '@/lib/db/queries/contacts'
 import * as companiesQ from '@/lib/db/queries/companies'
 import { addContact } from './actions'
@@ -28,8 +28,7 @@ function groupByCompany(
 }
 
 export default async function ContactsPage() {
-  const session = await auth()
-  const userId = session!.user!.id
+  const userId = await requireUserId()
   const [contacts, companies] = await Promise.all([
     contactsQ.list(userId),
     companiesQ.listWatched(userId),

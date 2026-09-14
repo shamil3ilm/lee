@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireUserId } from '@/lib/auth/require-session'
 import * as appsQ from '@/lib/db/queries/applications'
 import { Kanban, type KanbanCard } from '@/components/kanban'
 
@@ -15,8 +15,7 @@ const STATUSES = [
 ] as const
 
 export default async function DashboardPage() {
-  const session = await auth()
-  const userId = session!.user!.id
+  const userId = await requireUserId()
   const rows = await appsQ.list(userId, {})
 
   const grouped: Record<string, KanbanCard[]> = {}

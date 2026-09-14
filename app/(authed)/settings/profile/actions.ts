@@ -1,7 +1,7 @@
 'use server'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
-import { auth } from '@/lib/auth'
+import { requireUserId } from '@/lib/auth/require-session'
 import { saveProfile } from '@/lib/profile/service'
 import { importProfile } from '@/lib/profile/importer'
 import { getAIProvider } from '@/lib/ai'
@@ -37,8 +37,7 @@ const scalarSchema = z.object({
 })
 
 export async function saveProfileAction(formData: FormData): Promise<void> {
-  const session = await auth()
-  const userId = session!.user!.id
+  const userId = await requireUserId()
 
   const scalars = scalarSchema.parse({
     headline: formData.get('headline') ?? undefined,
@@ -109,8 +108,7 @@ async function extractTextFromFile(file: File): Promise<string> {
 }
 
 export async function importProfileAction(formData: FormData): Promise<void> {
-  const session = await auth()
-  const userId = session!.user!.id
+  const userId = await requireUserId()
 
   const cvFile = formData.get('cv')
   const mdFile = formData.get('profile_md')

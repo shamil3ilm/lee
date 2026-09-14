@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { requireUserId } from '@/lib/auth/require-session'
 import * as appsQ from '@/lib/db/queries/applications'
 import * as actQ from '@/lib/db/queries/activities'
 import * as stagesQ from '@/lib/db/queries/stages'
@@ -14,8 +14,7 @@ export default async function ApplicationDetail({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const session = await auth()
-  const userId = session!.user!.id
+  const userId = await requireUserId()
   const app = await appsQ.getById(userId, id)
   if (!app) notFound()
   const stages = await stagesQ.list(userId, id)

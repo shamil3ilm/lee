@@ -1,7 +1,7 @@
 'use server'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
-import { auth } from '@/lib/auth'
+import { requireUserId } from '@/lib/auth/require-session'
 import { createContact } from '@/lib/contacts/service'
 
 const schema = z.object({
@@ -15,8 +15,7 @@ const schema = z.object({
 })
 
 export async function addContact(formData: FormData): Promise<void> {
-  const session = await auth()
-  const userId = session!.user!.id
+  const userId = await requireUserId()
   const raw = Object.fromEntries(formData)
   const data = schema.parse(raw)
   await createContact({

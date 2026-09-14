@@ -1,7 +1,7 @@
 'use server'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
-import { auth } from '@/lib/auth'
+import { requireUserId } from '@/lib/auth/require-session'
 import { addWatchedCompany } from '@/lib/companies/service'
 
 const schema = z.object({
@@ -13,11 +13,11 @@ const schema = z.object({
 })
 
 export async function addCompany(formData: FormData) {
-  const session = await auth()
+  const userId = await requireUserId()
   const raw = Object.fromEntries(formData)
   const data = schema.parse(raw)
   await addWatchedCompany({
-    userId: session!.user!.id,
+    userId,
     name: data.name,
     domain: data.domain,
     headquartersCountry: data.headquartersCountry ? data.headquartersCountry : undefined,

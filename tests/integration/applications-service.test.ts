@@ -71,7 +71,7 @@ describe('createApplicationFromUrl firecrawl fallback', () => {
     const prev = envMod.env.FIRECRAWL_API_KEY
     ;(envMod.env as { FIRECRAWL_API_KEY?: string }).FIRECRAWL_API_KEY = 'test-key'
 
-    const parseSpy = vi.fn(() => ({
+    const parseSpy = vi.fn((_text: string) => ({
       title: 'Senior Platform Engineer',
       company_name: 'Zeta',
       company_domain: 'zeta.com',
@@ -97,7 +97,7 @@ describe('createApplicationFromUrl firecrawl fallback', () => {
       })
       expect(vi.mocked(firecrawlFetch)).toHaveBeenCalledWith('https://spa.example.com/jobs/42')
       expect(parseSpy).toHaveBeenCalledTimes(1)
-      const passed = parseSpy.mock.calls[0]![0] as string
+      const passed = parseSpy.mock.calls[0]![0]
       expect(passed).toContain('Senior Platform Engineer at Zeta')
       expect(passed.length).toBeGreaterThan(500)
     } finally {

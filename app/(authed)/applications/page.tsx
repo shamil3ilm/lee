@@ -1,13 +1,13 @@
 import Link from 'next/link'
-import { auth } from '@/lib/auth'
+import { requireUserId } from '@/lib/auth/require-session'
 import * as appsQ from '@/lib/db/queries/applications'
 import { ApplicationsTable } from '@/components/applications-table'
 
 export const dynamic = 'force-dynamic'
 
 export default async function ApplicationsPage() {
-  const session = await auth()
-  const rows = await appsQ.list(session!.user!.id, {})
+  const userId = await requireUserId()
+  const rows = await appsQ.list(userId, {})
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">

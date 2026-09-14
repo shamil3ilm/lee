@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireUserId } from '@/lib/auth/require-session'
 import { getProfile } from '@/lib/profile/service'
 import { ProfileForm } from '@/components/profile-form'
 import { ProfileImport } from '@/components/profile-import'
@@ -6,8 +6,7 @@ import { ProfileImport } from '@/components/profile-import'
 export const dynamic = 'force-dynamic'
 
 export default async function ProfileSettingsPage() {
-  const session = await auth()
-  const userId = session!.user!.id
+  const userId = await requireUserId()
   const profile = await getProfile(userId)
   return (
     <div className="max-w-3xl space-y-6">

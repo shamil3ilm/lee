@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { and, eq, gte, lte, isNotNull, desc } from 'drizzle-orm'
-import { auth } from '@/lib/auth'
+import { requireUserId } from '@/lib/auth/require-session'
 import { db } from '@/lib/db/client'
 import { applications, activities } from '@/lib/db/schema'
 
@@ -9,8 +9,7 @@ export const dynamic = 'force-dynamic'
 const DAY_MS = 24 * 60 * 60 * 1000
 
 export default async function DigestPage() {
-  const session = await auth()
-  const userId = session!.user!.id
+  const userId = await requireUserId()
   const now = new Date()
   const sevenDaysAhead = new Date(now.getTime() + 7 * DAY_MS)
   const sevenDaysAgo = new Date(now.getTime() - 7 * DAY_MS)

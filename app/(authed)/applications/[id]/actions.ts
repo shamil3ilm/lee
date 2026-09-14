@@ -1,13 +1,13 @@
 'use server'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
-import { auth } from '@/lib/auth'
+import { requireUserId } from '@/lib/auth/require-session'
 import { updateStatus } from '@/lib/applications/service'
 import { createStage } from '@/lib/stages/service'
 
 export async function changeStatus(applicationId: string, newStatus: string) {
-  const session = await auth()
-  await updateStatus({ userId: session!.user!.id, applicationId, newStatus })
+  const userId = await requireUserId()
+  await updateStatus({ userId, applicationId, newStatus })
   revalidatePath(`/applications/${applicationId}`)
   revalidatePath('/applications')
 }
@@ -22,8 +22,7 @@ const addStageSchema = z.object({
 })
 
 export async function addStage(formData: FormData) {
-  const session = await auth()
-  const userId = session!.user!.id
+  const userId = await requireUserId()
   const raw = Object.fromEntries(formData)
   // Strip empty string values so zod optional() works cleanly
   const cleaned: Record<string, unknown> = {}
