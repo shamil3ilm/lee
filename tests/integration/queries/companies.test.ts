@@ -1,0 +1,49 @@
+import { describe, it, expect } from 'vitest'
+import * as q from '@/lib/db/queries/companies'
+import { makeUser } from '@/tests/factories'
+
+describe('companies queries', () => {
+  it('findOrCreateByDomain creates once, returns existing on second call', async () => {
+    const u = await makeUser()
+    const a = await q.findOrCreateByDomain(u.id, 'stripe.com', 'Stripe')
+    const b = await q.findOrCreateByDomain(u.id, 'stripe.com', 'Stripe Inc.')
+    expect(a.id).toBe(b.id)
+    expect(a.name).toBe('Stripe')
+  })
+
+  it('scopes strictly by userId', async () => {
+    const u1 = await makeUser('a@x.com')
+    const u2 = await makeUser('b@x.com')
+    await q.findOrCreateByDomain(u1.id, 'stripe.com', 'Stripe')
+    const list2 = await q.listWatched(u2.id)
+    expect(list2).toEqual([])
+  })
+
+  it('listWatched returns only watched companies for the user', async () => {
+    const u = await makeUser()
+    const s = await q.findOrCreateByDomain(u.id, 'stripe.com', 'Stripe')
+    await q.setWatched(u.id, s.id, true)
+    await q.findOrCreateByDomain(u.id, 'notion.so', 'Notion')
+    const watched = await q.listWatched(u.id)
+    expect(watched.map((c) => c.domain)).toEqual(['stripe.com'])
+  })
+
+  it('getById returns row for owner, undefined for another user', async () => {
+    const u1 = await makeUser('a@x.com')
+    const u2 = await makeUser('b@x.com')
+    const c = await q.findOrCreateByDomain(u1.id, 'stripe.com', 'Stripe')
+    expect(await q.getById(u1.id, c.id)).toBeDefined()
+    expect(await q.getById(u2.id, c.id)).toBeUndefined()
+  })
+
+  it('update patches fields and enforces userId scope', async () => {
+    const u1 = await makeUser('a@x.com')
+    const u2 = await makeUser('b@x.com')
+    const c = await q.findOrCreateByDomain(u1.id, 'stripe.com', 'Stripe')
+    const updated = await q.update(u1.id, c.id, { stance: 'target' })
+    expect(updated?.stance).toBe('target')
+    // wrong user cannot update
+    const nope = await q.update(u2.id, c.id, { stance: 'passive' })
+    expect(nope).toBeUndefined()
+  })
+})
