@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm'
-import { db } from '@/lib/db/client'
+import { db, type DbClient } from '@/lib/db/client'
 import { applicationContacts, applications, contacts } from '@/lib/db/schema'
 
 export type ApplicationContact = typeof applicationContacts.$inferSelect
@@ -16,19 +16,20 @@ export async function link(
   applicationId: string,
   contactId: string,
   role: string,
+  client: DbClient = db,
 ): Promise<void> {
   // Verify both application and contact belong to the caller before linking.
   const [app, contact] = await Promise.all([
-    db.query.applications.findFirst({
+    client.query.applications.findFirst({
       where: and(eq(applications.userId, userId), eq(applications.id, applicationId)),
     }),
-    db.query.contacts.findFirst({
+    client.query.contacts.findFirst({
       where: and(eq(contacts.userId, userId), eq(contacts.id, contactId)),
     }),
   ])
   if (!app || !contact) return
 
-  await db
+  await client
     .insert(applicationContacts)
     .values({ applicationId, contactId, role })
     .onConflictDoNothing({
@@ -45,13 +46,14 @@ export async function unlink(
   applicationId: string,
   contactId: string,
   role: string,
+  client: DbClient = db,
 ): Promise<void> {
-  const app = await db.query.applications.findFirst({
+  const app = await client.query.applications.findFirst({
     where: and(eq(applications.userId, userId), eq(applications.id, applicationId)),
   })
   if (!app) return
 
-  await db
+  await client
     .delete(applicationContacts)
     .where(
       and(

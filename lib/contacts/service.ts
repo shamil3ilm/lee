@@ -1,3 +1,4 @@
+import { db } from '@/lib/db/client'
 import * as contactsQ from '@/lib/db/queries/contacts'
 import * as appsQ from '@/lib/db/queries/applications'
 import * as appContactsQ from '@/lib/db/queries/applicationContacts'
@@ -30,12 +31,16 @@ export async function linkContactToApplication(args: LinkArgs): Promise<void> {
   if (!app) throw new Error('application not found')
   if (!contact) throw new Error('contact not found')
 
-  await appContactsQ.link(userId, applicationId, contactId, role)
-  await actQ.log(userId, applicationId, 'contact_added', { contactId, role })
+  await db.transaction(async (tx) => {
+    await appContactsQ.link(userId, applicationId, contactId, role, tx)
+    await actQ.log(userId, applicationId, 'contact_added', { contactId, role }, tx)
+  })
 }
 
 export async function unlinkContactFromApplication(args: LinkArgs): Promise<void> {
   const { userId, applicationId, contactId, role } = args
-  await appContactsQ.unlink(userId, applicationId, contactId, role)
-  await actQ.log(userId, applicationId, 'contact_removed', { contactId, role })
+  await db.transaction(async (tx) => {
+    await appContactsQ.unlink(userId, applicationId, contactId, role, tx)
+    await actQ.log(userId, applicationId, 'contact_removed', { contactId, role }, tx)
+  })
 }
