@@ -51,3 +51,17 @@ export async function createApplicationFromUrl(args: {
   const activities = await actQ.list(userId, application.id, { limit: 10 })
   return { application, job, company, activities }
 }
+
+export async function updateStatus(args: {
+  userId: string
+  applicationId: string
+  newStatus: string
+}): Promise<void> {
+  const { userId, applicationId, newStatus } = args
+  const before = await appsQ.getById(userId, applicationId)
+  if (!before) throw new Error('application not found')
+  const patch: Record<string, unknown> = { status: newStatus }
+  if (newStatus === 'applied' && !before.appliedAt) patch.appliedAt = new Date()
+  await appsQ.update(userId, applicationId, patch)
+  await actQ.log(userId, applicationId, 'status_change', { from: before.status, to: newStatus })
+}
