@@ -68,10 +68,10 @@ export async function updateStatus(args: {
   newStatus: string
 }): Promise<void> {
   const { userId, applicationId, newStatus } = args
-  const before = await appsQ.getById(userId, applicationId)
-  if (!before) throw new Error('application not found')
-  const patch: Record<string, unknown> = { status: newStatus }
-  if (newStatus === 'applied' && !before.appliedAt) patch.appliedAt = new Date()
-  await appsQ.update(userId, applicationId, patch)
-  await actQ.log(userId, applicationId, 'status_change', { from: before.status, to: newStatus })
+  const updated = await appsQ.updateStatus(
+    userId,
+    applicationId,
+    newStatus as Parameters<typeof appsQ.updateStatus>[2],
+  )
+  if (!updated) throw new Error('application not found')
 }
