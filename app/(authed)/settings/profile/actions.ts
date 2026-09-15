@@ -103,11 +103,12 @@ async function extractTextFromFile(file: File): Promise<string> {
   const bytes = new Uint8Array(await file.arrayBuffer())
 
   if (name.endsWith('.pdf')) {
-    const mod = await import('pdf-parse')
-    const pdfParse = (mod as unknown as { default: (b: Buffer | Uint8Array) => Promise<{ text: string }> })
-      .default
-    const result = await pdfParse(Buffer.from(bytes))
-    return result.text
+    // unpdf is designed for serverless / edge — no fs, no worker file, no
+    // module-load-time file reads (pdf-parse's failure mode on Vercel).
+    const { extractText, getDocumentProxy } = await import('unpdf')
+    const doc = await getDocumentProxy(bytes)
+    const { text } = await extractText(doc, { mergePages: true })
+    return Array.isArray(text) ? text.join('\n') : (text as string)
   }
   if (name.endsWith('.docx')) {
     const mod = await import('mammoth')

@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   // ("h.instantiateWasm is not a function"). Mark it (and postgres-js,
   // which also has native bindings) as external so Node loads them from
   // node_modules at runtime.
-  serverExternalPackages: ['@electric-sql/pglite', 'postgres'],
+  serverExternalPackages: ['@electric-sql/pglite', 'postgres', 'unpdf', 'mammoth'],
 };
 
 export default nextConfig;
