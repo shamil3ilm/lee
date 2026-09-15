@@ -14,25 +14,65 @@ export class GeminiProvider implements AIProvider {
     this.client = new GoogleGenerativeAI(apiKey)
   }
 
+  private async generateOnce(modelName: string, prompt: string): Promise<{
+    text: string
+    promptTokens: number
+    completionTokens: number
+  }> {
+    const m = this.client.getGenerativeModel({
+      model: modelName,
+      generationConfig: { responseMimeType: 'application/json' },
+    })
+    const res = await m.generateContent(prompt)
+    return {
+      text: res.response.text(),
+      promptTokens: res.response.usageMetadata?.promptTokenCount ?? 0,
+      completionTokens: res.response.usageMetadata?.candidatesTokenCount ?? 0,
+    }
+  }
+
   private async generate(prompt: string): Promise<string> {
     const start = Date.now()
-    let promptTokens = 0
-    let completionTokens = 0
-    try {
-      const m = this.client.getGenerativeModel({
-        model: this.model,
-        generationConfig: { responseMimeType: 'application/json' },
-      })
-      const res = await m.generateContent(prompt)
-      const text = res.response.text()
-      promptTokens = res.response.usageMetadata?.promptTokenCount ?? 0
-      completionTokens = res.response.usageMetadata?.candidatesTokenCount ?? 0
-      await this.logCall({ status: 'ok', latency: Date.now() - start, promptTokens, completionTokens })
-      return text
-    } catch (e) {
-      await this.logCall({ status: 'error', latency: Date.now() - start, error: (e as Error).message })
-      throw e
+    // Fallback chain: primary → flash-lite (usually less loaded) → last resort
+    // is bubbling the error so the caller can toast it.
+    const models = [this.model, 'gemini-3.6-flash-lite'].filter(
+      (v, i, arr) => arr.indexOf(v) === i,
+    )
+    const backoffs = [0, 1_000, 3_000] // three attempts, exponential-ish
+
+    let lastError: unknown
+    for (const modelName of models) {
+      for (const wait of backoffs) {
+        if (wait > 0) await new Promise((r) => setTimeout(r, wait))
+        try {
+          const { text, promptTokens, completionTokens } = await this.generateOnce(
+            modelName,
+            prompt,
+          )
+          await this.logCall({
+            status: 'ok',
+            latency: Date.now() - start,
+            promptTokens,
+            completionTokens,
+          })
+          return text
+        } catch (e) {
+          lastError = e
+          const msg = (e as Error).message ?? ''
+          // Only retry on transient errors: 503 overload, 429 rate limit, 500.
+          // Fatal errors (404 model not found, 400 bad request) bail immediately.
+          if (!/\b(503|500|429|Service Unavailable|overloaded|rate)\b/i.test(msg)) {
+            break // break inner backoff loop → try next model
+          }
+        }
+      }
     }
+    await this.logCall({
+      status: 'error',
+      latency: Date.now() - start,
+      error: lastError instanceof Error ? lastError.message : String(lastError),
+    })
+    throw lastError
   }
 
   private async logCall(x: {
