@@ -1,4 +1,5 @@
 'use client'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -50,9 +51,20 @@ const SECTIONS: NavSection[] = [
 interface SidebarProps {
   className?: string
   onNavigate?: () => void
+  email?: string | null
+  name?: string | null
+  image?: string | null
 }
 
-export function Sidebar({ className, onNavigate }: SidebarProps) {
+function initials(email: string, name?: string | null): string {
+  const base = name?.trim() || email
+  const parts = base.split(/[\s@.]+/).filter(Boolean)
+  const first = parts[0]?.[0] ?? '?'
+  const second = parts[1]?.[0] ?? ''
+  return (first + second).toUpperCase()
+}
+
+export function Sidebar({ className, onNavigate, email, name, image }: SidebarProps) {
   const pathname = usePathname()
 
   const isActive = (href: string): boolean => {
@@ -101,6 +113,32 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
           </div>
         ))}
       </nav>
+      {email ? (
+        <footer className="mt-auto border-t p-3">
+          <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm">
+            {image ? (
+              <Image
+                src={image}
+                alt=""
+                width={28}
+                height={28}
+                className="h-7 w-7 rounded-full object-cover ring-1 ring-border"
+                unoptimized
+              />
+            ) : (
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary text-[11px] font-medium text-secondary-foreground">
+                {initials(email, name)}
+              </span>
+            )}
+            <div className="min-w-0 flex-1">
+              {name ? (
+                <div className="truncate text-xs font-medium">{name}</div>
+              ) : null}
+              <div className="truncate text-xs text-muted-foreground">{email}</div>
+            </div>
+          </div>
+        </footer>
+      ) : null}
     </aside>
   )
 }

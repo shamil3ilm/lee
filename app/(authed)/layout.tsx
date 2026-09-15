@@ -18,7 +18,7 @@ export default async function AuthedLayout({ children }: { children: React.React
     <div className="flex min-h-screen">
       <aside className="hidden w-[240px] shrink-0 md:block">
         <div className="fixed inset-y-0 left-0 z-30 w-[240px]">
-          <Sidebar />
+          <Sidebar email={email} name={name} image={image} />
         </div>
       </aside>
       <div className="flex min-h-screen flex-1 flex-col">
@@ -31,7 +31,9 @@ export default async function AuthedLayout({ children }: { children: React.React
             <UserMenu email={email} name={name} image={image} />
           </div>
         </header>
-        <main className="flex-1 px-4 py-6 md:px-8 md:py-8">{children}</main>
+        <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
+          <div className="mx-auto w-full max-w-[1600px]">{children}</div>
+        </main>
       </div>
     </div>
   )
