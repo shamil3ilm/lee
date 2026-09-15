@@ -15,7 +15,10 @@ export class GroqProvider implements AIProvider {
   constructor(
     private readonly apiKey: string,
     // Env-overridable so we can move to newer models without a code change.
-    private readonly model = process.env.GROQ_MODEL ?? 'llama-3.3-70b-versatile',
+    // llama-3.1-8b-instant is universally available on free tier; upgrade
+    // to a bigger model (e.g. llama-3.3-70b-versatile or openai/gpt-oss-120b)
+    // via GROQ_MODEL env var if quota allows.
+    private readonly model = process.env.GROQ_MODEL ?? 'llama-3.1-8b-instant',
   ) {}
 
   private async generateOnce(prompt: string): Promise<{
