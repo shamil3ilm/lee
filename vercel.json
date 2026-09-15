@@ -2,6 +2,6 @@
   "crons": [
     { "path": "/api/cron/reminders", "schedule": "0 8 * * *" }
   ],
-  "buildCommand": "DATABASE_URL=$DATABASE_URL_UNPOOLED pnpm db:migrate && pnpm build",
+  "buildCommand": "pnpm db:migrate && pnpm build",
   "installCommand": "pnpm install --frozen-lockfile"
 }

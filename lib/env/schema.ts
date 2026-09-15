@@ -39,5 +39,13 @@ export const envSchema = z
 export type Env = z.infer<typeof envSchema>
 
 export function parseEnv(raw: Record<string, string | undefined>): Env {
-  return envSchema.parse(raw)
+  // Vercel's Neon integration injects DATABASE_URL_UNPOOLED (and PG* vars) but,
+  // depending on the integration version, may omit DATABASE_URL itself. Fall
+  // back so the app never boots with a missing primary URL when a valid one
+  // exists under the unpooled name.
+  const withFallback: Record<string, string | undefined> = { ...raw }
+  if (!withFallback.DATABASE_URL && withFallback.DATABASE_URL_UNPOOLED) {
+    withFallback.DATABASE_URL = withFallback.DATABASE_URL_UNPOOLED
+  }
+  return envSchema.parse(withFallback)
 }
