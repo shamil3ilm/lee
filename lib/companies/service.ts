@@ -2,7 +2,7 @@ import * as companiesQ from '@/lib/db/queries/companies'
 import { db } from '@/lib/db/client'
 import { sources } from '@/lib/db/schema'
 import { detectATSFromDomain, type DetectedATS } from './ats-detect'
-import type { Company } from '@/lib/db/queries/companies'
+import type { Company, NewCompany } from '@/lib/db/queries/companies'
 
 export interface AddWatchedCompanyArgs {
   userId: string
@@ -59,4 +59,50 @@ export async function addWatchedCompany(
   })
 
   return { company, detectedSource: detected }
+}
+
+// ---------------------------------------------------------------------------
+// Detail-page mutations (thin service wrappers so callers don't touch queries
+// directly and revalidation stays route-local in the action layer).
+// ---------------------------------------------------------------------------
+
+export async function updateCompanyDetails(
+  userId: string,
+  id: string,
+  patch: Partial<NewCompany>,
+): Promise<Company | undefined> {
+  return companiesQ.update(userId, id, patch)
+}
+
+export async function setInterestLevel(
+  userId: string,
+  id: string,
+  level: number,
+): Promise<Company | undefined> {
+  const clamped = Math.max(0, Math.min(5, Math.round(level)))
+  return companiesQ.update(userId, id, {
+    interestLevel: clamped === 0 ? null : clamped,
+  })
+}
+
+const ALLOWED_STANCES = new Set(['watching', 'target', 'passive', 'not_interested'])
+
+export async function setStance(
+  userId: string,
+  id: string,
+  stance: string,
+): Promise<Company | undefined> {
+  if (!ALLOWED_STANCES.has(stance)) throw new Error('invalid stance')
+  return companiesQ.update(userId, id, { stance })
+}
+
+export async function removeFromWatchlist(
+  userId: string,
+  id: string,
+): Promise<Company | undefined> {
+  return companiesQ.update(userId, id, { isWatched: false })
+}
+
+export async function deleteCompany(userId: string, id: string): Promise<boolean> {
+  return companiesQ.remove(userId, id)
 }

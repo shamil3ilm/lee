@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import * as q from '@/lib/db/queries/companies'
-import { makeUser } from '@/tests/factories'
+import { makeApplication, makeContact, makeJob, makeUser } from '@/tests/factories'
 
 describe('companies queries', () => {
   it('findOrCreateByDomain creates once, returns existing on second call', async () => {
@@ -45,5 +45,40 @@ describe('companies queries', () => {
     // wrong user cannot update
     const nope = await q.update(u2.id, c.id, { stance: 'passive' })
     expect(nope).toBeUndefined()
+  })
+
+  it('getWithApplicationsAndContacts bundles apps, jobs, and contacts', async () => {
+    const u1 = await makeUser('owner@x.com')
+    const u2 = await makeUser('other@x.com')
+    const c = await q.findOrCreateByDomain(u1.id, 'stripe.com', 'Stripe')
+    const j1 = await makeJob(u1.id, c.id, { title: 'Staff Engineer' })
+    const j2 = await makeJob(u1.id, c.id, { title: 'Product Designer' })
+    await makeApplication(u1.id, j1.id, { status: 'interview' })
+    await makeContact(u1.id, { name: 'Alex', companyId: c.id, role: 'Recruiter' })
+
+    const detail = await q.getWithApplicationsAndContacts(u1.id, c.id)
+    expect(detail).toBeDefined()
+    expect(detail!.company.id).toBe(c.id)
+    expect(detail!.applications).toHaveLength(1)
+    expect(detail!.applications[0]?.jobTitle).toBe('Staff Engineer')
+    expect(detail!.jobs.map((j) => j.id).sort()).toEqual([j1.id, j2.id].sort())
+    const j1Row = detail!.jobs.find((j) => j.id === j1.id)!
+    const j2Row = detail!.jobs.find((j) => j.id === j2.id)!
+    expect(j1Row.hasApplication).toBe(true)
+    expect(j2Row.hasApplication).toBe(false)
+    expect(detail!.contacts).toHaveLength(1)
+    expect(detail!.contacts[0]?.name).toBe('Alex')
+
+    // Wrong user cannot read.
+    const fromOther = await q.getWithApplicationsAndContacts(u2.id, c.id)
+    expect(fromOther).toBeUndefined()
+  })
+
+  it('remove deletes the company and returns true, false when not found', async () => {
+    const u = await makeUser()
+    const c = await q.findOrCreateByDomain(u.id, 'stripe.com', 'Stripe')
+    expect(await q.remove(u.id, c.id)).toBe(true)
+    expect(await q.getById(u.id, c.id)).toBeUndefined()
+    expect(await q.remove(u.id, c.id)).toBe(false)
   })
 })
