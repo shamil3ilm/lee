@@ -23,11 +23,13 @@ export default async function AuthedLayout({ children }: { children: React.React
       </aside>
       <div className="flex min-h-screen flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:px-6">
-          <MobileNav />
+          <MobileNav email={email} name={name} image={image} />
           <div className="flex-1" />
-          <CommandMenuButton />
-          <ModeToggle />
-          <UserMenu email={email} name={name} image={image} />
+          <div className="flex items-center gap-2">
+            <CommandMenuButton />
+            <ModeToggle />
+            <UserMenu email={email} name={name} image={image} />
+          </div>
         </header>
         <main className="flex-1 px-4 py-6 md:px-8 md:py-8">{children}</main>
       </div>
