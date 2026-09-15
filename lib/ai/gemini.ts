@@ -5,7 +5,12 @@ import { parsedJobSchema, parsedProfileSchema, type AIProvider, type ParsedJob, 
 
 export class GeminiProvider implements AIProvider {
   private client: GoogleGenerativeAI
-  constructor(apiKey: string, private readonly model = 'gemini-2.5-flash') {
+  // gemini-2.5-flash was retired for new users; 3.6-flash is the current
+  // free-tier default. Env override supported for future migration.
+  constructor(
+    apiKey: string,
+    private readonly model = process.env.GEMINI_MODEL ?? 'gemini-3.6-flash',
+  ) {
     this.client = new GoogleGenerativeAI(apiKey)
   }
 
