@@ -79,8 +79,10 @@ async function runPgliteMigrations(url: string): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  const url = process.env.DATABASE_URL
-  if (!url) throw new Error('DATABASE_URL required')
+  // Match parseEnv's fallback so this script works on Vercel where the Neon
+  // integration may inject only DATABASE_URL_UNPOOLED.
+  const url = process.env.DATABASE_URL || process.env.DATABASE_URL_UNPOOLED
+  if (!url) throw new Error('DATABASE_URL or DATABASE_URL_UNPOOLED required')
 
   if (url.startsWith('pglite:')) {
     await runPgliteMigrations(url)
