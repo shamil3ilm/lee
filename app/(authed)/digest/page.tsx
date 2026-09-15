@@ -1,67 +1,119 @@
 import Link from 'next/link'
+import { Activity as ActivityIcon, CalendarClock } from 'lucide-react'
 import { requireUserId } from '@/lib/auth/require-session'
 import { getUpcomingActions, getRecentActivity } from '@/lib/digest/service'
+import { PageHeader } from '@/components/page-header'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { relativeFromNow, shortDateTime } from '@/lib/ui/date'
+import {
+  APPLICATION_STATUSES,
+  STATUS_BADGE,
+  STATUS_LABELS,
+  type ApplicationStatus,
+} from '@/lib/ui/status'
 
 export const dynamic = 'force-dynamic'
 
+function narrow(s: string): ApplicationStatus {
+  return (APPLICATION_STATUSES as readonly string[]).includes(s)
+    ? (s as ApplicationStatus)
+    : 'saved'
+}
+
 export default async function DigestPage() {
   const userId = await requireUserId()
-  const [upcoming, recentActivities] = await Promise.all([
+  const [upcoming, recent] = await Promise.all([
     getUpcomingActions(userId, 7),
     getRecentActivity(userId, 7),
   ])
 
   return (
-    <div className="max-w-3xl space-y-8">
-      <h1 className="text-xl font-semibold">Weekly digest</h1>
+    <div className="mx-auto max-w-3xl space-y-6">
+      <PageHeader
+        title="Weekly digest"
+        description="What's happening in the next 7 days."
+      />
 
-      <section>
-        <h2 className="mb-2 font-medium">Actions due in the next 7 days</h2>
-        {upcoming.length === 0 ? (
-          <p className="text-sm text-neutral-500">Nothing scheduled.</p>
-        ) : (
-          <ul className="space-y-2 text-sm">
-            {upcoming.map((a) => (
-              <li key={a.id} className="rounded border p-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Link href={`/applications/${a.id}`} className="font-medium underline">
-                      {a.job.title}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+          <div className="flex items-center gap-2">
+            <CalendarClock className="size-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-semibold">Actions due (7 days)</CardTitle>
+          </div>
+          <Badge variant="secondary">{upcoming.length}</Badge>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {upcoming.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Nothing scheduled.</p>
+          ) : (
+            <ul className="divide-y">
+              {upcoming.map((a) => {
+                const status = narrow(a.status)
+                return (
+                  <li key={a.id}>
+                    <Link
+                      href={`/applications/${a.id}`}
+                      className="flex items-center justify-between gap-3 py-2 hover:bg-accent/40 sm:px-2"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium">
+                          {a.job.company?.name ?? 'Unknown'}
+                        </div>
+                        <div className="truncate text-xs text-muted-foreground">
+                          {a.job.title}
+                        </div>
+                      </div>
+                      <div className="hidden text-right text-xs text-muted-foreground sm:block">
+                        {a.nextActionAt ? (
+                          <>
+                            <div className="font-medium text-foreground">
+                              {relativeFromNow(a.nextActionAt)}
+                            </div>
+                            <div>{shortDateTime(a.nextActionAt)}</div>
+                          </>
+                        ) : null}
+                      </div>
+                      <Badge variant={STATUS_BADGE[status]}>{STATUS_LABELS[status]}</Badge>
                     </Link>
-                    <div className="text-neutral-500">
-                      {a.job.company?.name ?? '—'} · {a.status}
-                    </div>
-                  </div>
-                  <div className="text-xs text-neutral-500">
-                    {a.nextActionAt ? new Date(a.nextActionAt).toLocaleString() : '—'}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
-      <section>
-        <h2 className="mb-2 font-medium">Recent activity (last 7 days)</h2>
-        {recentActivities.length === 0 ? (
-          <p className="text-sm text-neutral-500">Nothing yet.</p>
-        ) : (
-          <ul className="space-y-1 text-sm">
-            {recentActivities.map((a) => (
-              <li key={a.id} className="border-l pl-3">
-                <span className="text-neutral-500">
-                  {new Date(a.createdAt).toLocaleString()}
-                </span>{' '}
-                — <Link href={`/applications/${a.applicationId}`} className="underline">
-                  {a.kind}
-                </Link>{' '}
-                {JSON.stringify(a.payload)}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+          <div className="flex items-center gap-2">
+            <ActivityIcon className="size-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-semibold">Recent activity (7 days)</CardTitle>
+          </div>
+          <Badge variant="secondary">{recent.length}</Badge>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {recent.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Nothing yet.</p>
+          ) : (
+            <ul className="space-y-1 text-sm">
+              {recent.map((a) => (
+                <li key={a.id} className="flex items-center gap-2 py-1">
+                  <span className="w-32 shrink-0 text-xs text-muted-foreground">
+                    {shortDateTime(a.createdAt)}
+                  </span>
+                  <Link
+                    href={`/applications/${a.applicationId}`}
+                    className="text-xs capitalize hover:underline"
+                  >
+                    {a.kind.replace(/_/g, ' ')}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

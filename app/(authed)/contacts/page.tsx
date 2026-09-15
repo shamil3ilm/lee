@@ -1,7 +1,11 @@
+import { Users } from 'lucide-react'
 import { requireUserId } from '@/lib/auth/require-session'
 import * as contactsQ from '@/lib/db/queries/contacts'
 import * as companiesQ from '@/lib/db/queries/companies'
-import { addContact } from './actions'
+import { AddContactDialog } from '@/components/add-contact-dialog'
+import { PageHeader } from '@/components/page-header'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,17 +14,25 @@ interface CompanyOption {
   name: string
 }
 
+interface ContactRow {
+  id: string
+  name: string
+  role: string | null
+  email: string | null
+  companyId: string | null
+}
+
 function groupByCompany(
-  contacts: { id: string; name: string; role: string | null; email: string | null; companyId: string | null }[],
+  contacts: ContactRow[],
   companies: CompanyOption[],
-): { key: string; label: string; rows: typeof contacts }[] {
+): { key: string; label: string; rows: ContactRow[] }[] {
   const byId = new Map<string, string>()
   for (const c of companies) byId.set(c.id, c.name)
-  const groups = new Map<string, { key: string; label: string; rows: typeof contacts }>()
+  const groups = new Map<string, { key: string; label: string; rows: ContactRow[] }>()
   const NONE = '__none__'
   for (const c of contacts) {
     const key = c.companyId ?? NONE
-    const label = c.companyId ? byId.get(c.companyId) ?? '(unknown company)' : '(no company)'
+    const label = c.companyId ? byId.get(c.companyId) ?? '(unknown company)' : 'No company'
     if (!groups.has(key)) groups.set(key, { key, label, rows: [] })
     groups.get(key)!.rows.push(c)
   }
@@ -37,54 +49,46 @@ export default async function ContactsPage() {
   const groups = groupByCompany(contacts, companyOptions)
 
   return (
-    <div className="max-w-3xl space-y-6">
-      <h1 className="text-xl font-semibold">Contacts</h1>
+    <div>
+      <PageHeader
+        title="Contacts"
+        description={`${contacts.length} in your rolodex`}
+        actions={<AddContactDialog companies={companyOptions} />}
+      />
 
-      <form action={addContact} className="grid gap-2 rounded border p-4 md:grid-cols-2">
-        <h2 className="col-span-full font-medium">Add contact</h2>
-        <input name="name" placeholder="Name" required className="rounded border px-2 py-1" />
-        <input name="role" placeholder="Role" className="rounded border px-2 py-1" />
-        <input name="email" type="email" placeholder="Email" className="rounded border px-2 py-1" />
-        <input name="phone" placeholder="Phone" className="rounded border px-2 py-1" />
-        <input
-          name="linkedinUrl"
-          type="url"
-          placeholder="LinkedIn URL"
-          className="rounded border px-2 py-1"
-        />
-        <select name="companyId" className="rounded border px-2 py-1">
-          <option value="">(no company)</option>
-          {companyOptions.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <textarea
-          name="notes"
-          rows={2}
-          placeholder="Notes"
-          className="col-span-full rounded border px-2 py-1"
-        />
-        <button className="col-span-full rounded bg-black px-3 py-2 text-white" type="submit">
-          Add contact
-        </button>
-      </form>
-
-      {groups.length === 0 ? (
-        <p className="text-neutral-500">No contacts yet.</p>
+      {contacts.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-16 text-center">
+          <Users className="size-6 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">No contacts yet.</p>
+          <AddContactDialog companies={companyOptions} />
+        </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {groups.map((g) => (
             <section key={g.key}>
-              <h2 className="mb-2 font-medium">{g.label}</h2>
-              <ul className="space-y-1 text-sm">
+              <div className="mb-2 flex items-center gap-2">
+                <h2 className="text-sm font-semibold">{g.label}</h2>
+                <Badge variant="secondary">{g.rows.length}</Badge>
+              </div>
+              <ul className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
                 {g.rows.map((c) => (
-                  <li key={c.id} className="rounded border p-2">
-                    <div className="font-medium">{c.name}</div>
-                    <div className="text-neutral-500">
-                      {c.role ?? '—'} · {c.email ?? '—'}
-                    </div>
+                  <li key={c.id}>
+                    <Card>
+                      <CardContent className="py-3">
+                        <div className="font-medium">{c.name}</div>
+                        <div className="mt-0.5 text-xs text-muted-foreground">
+                          {c.role ?? 'No role'}
+                          {c.email ? (
+                            <>
+                              {' · '}
+                              <a className="hover:underline" href={`mailto:${c.email}`}>
+                                {c.email}
+                              </a>
+                            </>
+                          ) : null}
+                        </div>
+                      </CardContent>
+                    </Card>
                   </li>
                 ))}
               </ul>

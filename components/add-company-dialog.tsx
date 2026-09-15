@@ -1,71 +1,113 @@
 'use client'
 import { useState } from 'react'
+import { toast } from 'sonner'
+import { Plus } from 'lucide-react'
 import { addCompany } from '@/app/(authed)/companies/actions'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+
+const SIZES = ['1-10', '11-50', '51-200', '201-1k', '1k-5k', '5k+'] as const
+const STAGES = ['pre_seed', 'seed', 'series_a', 'series_b', 'series_c_plus', 'public'] as const
 
 export function AddCompanyDialog() {
   const [open, setOpen] = useState(false)
 
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="rounded bg-black px-3 py-2 text-white"
-        type="button"
-      >
-        + Add company
-      </button>
-    )
+  async function handleSubmit(fd: FormData): Promise<void> {
+    const result = await addCompany(fd)
+    if ('success' in result) {
+      toast.success('Company added')
+      setOpen(false)
+    } else {
+      toast.error(result.error)
+    }
   }
 
   return (
-    <div className="fixed inset-0 z-40 grid place-items-center bg-black/50">
-      <form
-        action={async (fd) => {
-          await addCompany(fd)
-          setOpen(false)
-        }}
-        className="w-96 space-y-2 rounded bg-white p-4 dark:bg-neutral-900"
-      >
-        <h3 className="text-lg font-semibold">Add company</h3>
-        <input
-          name="name"
-          placeholder="Name"
-          className="w-full rounded border px-2 py-1"
-          required
-        />
-        <input
-          name="domain"
-          placeholder="Domain (e.g. stripe.com)"
-          className="w-full rounded border px-2 py-1"
-          required
-        />
-        <input
-          name="headquartersCountry"
-          placeholder="Country (ISO-2, e.g. AE)"
-          className="w-full rounded border px-2 py-1"
-        />
-        <select name="size" className="w-full rounded border px-2 py-1">
-          <option value="">Size (optional)</option>
-          <option>1-10</option>
-          <option>11-50</option>
-          <option>51-200</option>
-          <option>201-1k</option>
-          <option>1k-5k</option>
-          <option>5k+</option>
-        </select>
-        <div className="flex gap-2 pt-2">
-          <button className="rounded bg-black px-3 py-1 text-white" type="submit">
-            Save
-          </button>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            className="rounded border px-3 py-1"
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
-    </div>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm">
+          <Plus className="size-4" />
+          Add company
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add company to watchlist</DialogTitle>
+        </DialogHeader>
+        <form action={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2 space-y-1.5">
+              <Label htmlFor="name">Name *</Label>
+              <Input id="name" name="name" required autoFocus />
+            </div>
+            <div className="col-span-2 space-y-1.5">
+              <Label htmlFor="domain">Domain *</Label>
+              <Input id="domain" name="domain" placeholder="stripe.com" required />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="headquartersCountry">Country (ISO-2)</Label>
+              <Input
+                id="headquartersCountry"
+                name="headquartersCountry"
+                placeholder="AE"
+                maxLength={2}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="size">Size</Label>
+              <Select name="size">
+                <SelectTrigger id="size">
+                  <SelectValue placeholder="—" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SIZES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2 space-y-1.5">
+              <Label htmlFor="stage">Funding stage</Label>
+              <Select name="stage">
+                <SelectTrigger id="stage">
+                  <SelectValue placeholder="—" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STAGES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s.replace(/_/g, ' ')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit">Save</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
