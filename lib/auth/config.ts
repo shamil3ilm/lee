@@ -7,9 +7,12 @@ import type { NextAuthConfig } from 'next-auth'
 import { db } from '@/lib/db/client'
 import { edgeAuthConfig } from './edge-config'
 
+// Full Node-runtime config. Inherits JWT session strategy from
+// `edgeAuthConfig` (see note there). The adapter is still needed so Auth.js
+// can persist users + OAuth accounts at signin time; only session lookups on
+// each request are avoided.
 export const authConfig = {
   ...edgeAuthConfig,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   adapter: DrizzleAdapter(db as any),
-  session: { strategy: 'database' },
 } satisfies NextAuthConfig
