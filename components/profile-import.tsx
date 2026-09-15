@@ -22,20 +22,13 @@ function SubmitButton() {
   )
 }
 
-async function runImport(
-  _prev: ActionResult | null,
-  formData: FormData,
-): Promise<ActionResult | null> {
-  return importProfileAction(formData)
-}
-
 export function ProfileImport() {
-  // useActionState is React 19's pattern for server actions that need to
-  // report results back to the client. It preserves multipart file uploads
-  // intact — unlike wrapping the action in a client callback (which triggers
-  // Next's closure encoding and strips file bytes).
+  // Pass the server action DIRECTLY to useActionState. Wrapping it in a
+  // client-side function (even a plain arrow) causes Next.js to encode the
+  // FormData with the closure protocol, which strips file bytes and prefixes
+  // field names (`_1_cv`). Direct import = files intact.
   const [state, action] = useActionState<ActionResult | null, FormData>(
-    runImport,
+    importProfileAction,
     null,
   )
 

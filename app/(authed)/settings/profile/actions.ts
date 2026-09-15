@@ -119,7 +119,10 @@ async function extractTextFromFile(file: File): Promise<string> {
   return new TextDecoder('utf-8').decode(bytes)
 }
 
-export async function importProfileAction(formData: FormData): Promise<ActionResult> {
+export async function importProfileAction(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
   try {
     const userId = await requireUserId()
 
