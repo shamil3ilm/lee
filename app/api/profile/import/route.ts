@@ -64,9 +64,14 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     return NextResponse.json({ success: true })
   } catch (err) {
-    logger.error('importProfile route failed', {
-      err: err instanceof Error ? err.message : String(err),
-    })
-    return NextResponse.json({ error: 'Could not import profile.' }, { status: 500 })
+    const message = err instanceof Error ? err.message : String(err)
+    const stack = err instanceof Error ? err.stack : undefined
+    logger.error('importProfile route failed', { err: message, stack })
+    // Surface the message temporarily so we can diagnose from browser response.
+    // Revert to generic message after root cause is fixed.
+    return NextResponse.json(
+      { error: `Import failed: ${message}` },
+      { status: 500 },
+    )
   }
 }
