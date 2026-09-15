@@ -12,6 +12,8 @@ jobs:
       AUTH_GOOGLE_ID: dummy
       AUTH_GOOGLE_SECRET: dummy
       NEXTAUTH_URL: http://localhost:3000
+      AUTH_URL: http://localhost:3000
+      AUTH_TRUST_HOST: 'true'
       ALLOWED_EMAIL: test@example.com
       AI_PROVIDER: gemini
       GEMINI_API_KEY: dummy
