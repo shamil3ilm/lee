@@ -1,42 +1,45 @@
 'use client'
-import { useActionState, useEffect } from 'react'
-import { useFormStatus } from 'react-dom'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Loader2, Upload } from 'lucide-react'
-import {
-  importProfileAction,
-  type ActionResult,
-} from '@/app/(authed)/settings/profile/actions'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 
-function SubmitButton() {
-  const { pending } = useFormStatus()
-  return (
-    <Button type="submit" size="sm" variant="outline" disabled={pending}>
-      {pending ? <Loader2 className="size-4 animate-spin" /> : null}
-      {pending ? 'Parsing…' : 'Parse and save'}
-    </Button>
-  )
-}
+// Uses a plain POST to /api/profile/import — Server Actions strip file bytes
+// through their closure encoding. A native multipart POST works correctly.
 
 export function ProfileImport() {
-  // Pass the server action DIRECTLY to useActionState. Wrapping it in a
-  // client-side function (even a plain arrow) causes Next.js to encode the
-  // FormData with the closure protocol, which strips file bytes and prefixes
-  // field names (`_1_cv`). Direct import = files intact.
-  const [state, action] = useActionState<ActionResult | null, FormData>(
-    importProfileAction,
-    null,
-  )
+  const [pending, setPending] = useState(false)
+  const router = useRouter()
 
-  useEffect(() => {
-    if (state === null) return
-    if ('success' in state) toast.success('Profile imported')
-    else toast.error(state.error)
-  }, [state])
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault()
+    const form = event.currentTarget
+    const formData = new FormData(form)
+
+    setPending(true)
+    try {
+      const res = await fetch('/api/profile/import', {
+        method: 'POST',
+        body: formData,
+      })
+      const json = (await res.json()) as { success?: true; error?: string }
+      if (res.ok && json.success) {
+        toast.success('Profile imported')
+        form.reset()
+        router.refresh()
+      } else {
+        toast.error(json.error ?? 'Could not import profile.')
+      }
+    } catch {
+      toast.error('Network error — could not import profile.')
+    } finally {
+      setPending(false)
+    }
+  }
 
   return (
     <Card>
@@ -47,7 +50,7 @@ export function ProfileImport() {
         </div>
       </CardHeader>
       <CardContent>
-        <form action={action} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <p className="text-xs text-muted-foreground">
             Upload a PDF/DOCX CV and/or a markdown profile. The AI provider parses them
             and pre-fills the form below.
@@ -75,7 +78,10 @@ export function ProfileImport() {
             </div>
           </div>
           <div className="flex justify-end">
-            <SubmitButton />
+            <Button type="submit" size="sm" variant="outline" disabled={pending}>
+              {pending ? <Loader2 className="size-4 animate-spin" /> : null}
+              {pending ? 'Parsing…' : 'Parse and save'}
+            </Button>
           </div>
         </form>
       </CardContent>
