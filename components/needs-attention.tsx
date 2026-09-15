@@ -36,14 +36,14 @@ export function NeedsAttention({ items, totalApplications }: NeedsAttentionProps
       </CardHeader>
       <CardContent className="pt-0">
         {items.length === 0 ? (
-          <EmptyBlock isBrandNew={totalApplications === 0} />
+          <EmptyBlock isBrandNew={totalApplications === 0} totalApplications={totalApplications} />
         ) : (
-          <ul className="divide-y">
+          <ul className="max-h-96 divide-y overflow-y-auto">
             {items.map((it) => (
               <li key={it.id}>
                 <Link
                   href={`/applications/${it.id}`}
-                  className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-md py-2 text-sm transition-colors hover:bg-accent/60 sm:grid-cols-[1fr_120px_auto] sm:px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors hover:bg-accent/60 sm:grid-cols-[1fr_120px_auto] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
                   <div className="min-w-0">
                     <div className="truncate font-medium">{it.companyName ?? 'Unknown'}</div>
@@ -72,12 +72,17 @@ export function NeedsAttention({ items, totalApplications }: NeedsAttentionProps
   )
 }
 
-function EmptyBlock({ isBrandNew }: { isBrandNew: boolean }) {
+interface EmptyBlockProps {
+  isBrandNew: boolean
+  totalApplications: number
+}
+
+function EmptyBlock({ isBrandNew, totalApplications }: EmptyBlockProps) {
   if (isBrandNew) {
     return (
-      <div className="flex flex-col items-center gap-3 py-8 text-center">
-        <Sparkles className="size-6 text-primary" />
-        <div className="space-y-1">
+      <div className="flex items-center gap-3 p-1">
+        <Sparkles className="size-5 shrink-0 text-primary" />
+        <div className="min-w-0 flex-1">
           <p className="text-sm font-medium">Get started</p>
           <p className="text-xs text-muted-foreground">
             Track your first application to see it here.
@@ -90,11 +95,14 @@ function EmptyBlock({ isBrandNew }: { isBrandNew: boolean }) {
     )
   }
   return (
-    <div className="flex flex-col items-center gap-2 py-8 text-center">
-      <CheckCircle2 className="size-6 text-emerald-500" />
-      <p className="text-sm font-medium">You&apos;re all caught up.</p>
-      <p className="text-xs text-muted-foreground">
-        Nothing urgent in the next 3 days.
+    <div className="flex items-center gap-2 p-1">
+      <CheckCircle2 className="size-5 shrink-0 text-emerald-500" />
+      <p className="text-sm">
+        <span className="font-medium">You&apos;re all caught up</span>
+        <span className="text-muted-foreground">
+          {' '}
+          — {totalApplications} active application{totalApplications === 1 ? '' : 's'}
+        </span>
       </p>
     </div>
   )

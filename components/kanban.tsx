@@ -141,7 +141,19 @@ export function Kanban({ columns }: KanbanProps) {
 
   return (
     <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-      <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2">
+      {/*
+        Responsive layout:
+        - <md (mobile): horizontal snap scroll, columns 85vw wide
+        - md 2 cols wrap, lg 4 cols wrap, xl+ 7 cols evenly
+      */}
+      <div
+        className={cn(
+          'flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2',
+          'md:grid md:snap-none md:overflow-visible md:grid-cols-2 md:pb-0',
+          'lg:grid-cols-4',
+          'xl:grid-cols-7',
+        )}
+      >
         {APPLICATION_STATUSES.map((status) => (
           <KanbanColumnView key={status} status={status} cards={grouped[status]} />
         ))}
@@ -164,11 +176,14 @@ function KanbanColumnView({ status, cards }: KanbanColumnViewProps) {
     <div
       ref={setNodeRef}
       className={cn(
-        'flex w-72 shrink-0 snap-start flex-col rounded-lg border bg-muted/30 transition-colors',
+        // Mobile: fixed-width snap child. md+ (grid parent): auto width, min-height for uniformity.
+        'flex flex-col rounded-lg border bg-muted/30 transition-colors',
+        'w-[85vw] shrink-0 snap-start',
+        'md:w-auto md:shrink md:snap-align-none',
         isOver && 'border-primary/60 bg-accent/60',
       )}
     >
-      <div className="flex items-center justify-between border-b px-3 py-2">
+      <div className="sticky top-0 z-[1] flex items-center justify-between rounded-t-lg border-b bg-muted/60 px-3 py-2 backdrop-blur">
         <div
           className={cn(
             'text-xs font-semibold uppercase tracking-wide',
@@ -186,9 +201,9 @@ function KanbanColumnView({ status, cards }: KanbanColumnViewProps) {
         items={cards.map((c) => c.id)}
         strategy={verticalListSortingStrategy}
       >
-        <div className="flex-1 space-y-2 p-2">
+        <div className="flex min-h-[120px] flex-1 flex-col gap-2 p-2">
           {cards.length === 0 ? (
-            <div className="py-6 text-center text-xs text-muted-foreground">
+            <div className="flex flex-1 items-center justify-center text-xs text-muted-foreground">
               Drop here
             </div>
           ) : (
