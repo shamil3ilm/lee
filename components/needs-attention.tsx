@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Bell, Sparkles } from 'lucide-react'
+import { Bell, CheckCircle2, Sparkles } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,9 +20,11 @@ export interface AttentionItem {
 
 interface NeedsAttentionProps {
   items: AttentionItem[]
+  /** Total applications the user has, used to distinguish "brand new" from "all caught up". */
+  totalApplications: number
 }
 
-export function NeedsAttention({ items }: NeedsAttentionProps) {
+export function NeedsAttention({ items, totalApplications }: NeedsAttentionProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
@@ -34,22 +36,14 @@ export function NeedsAttention({ items }: NeedsAttentionProps) {
       </CardHeader>
       <CardContent className="pt-0">
         {items.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-8 text-center">
-            <Sparkles className="size-5 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
-              Nothing urgent. Focus on new applications.
-            </p>
-            <Button asChild variant="outline" size="sm">
-              <Link href="/applications/new">Add application</Link>
-            </Button>
-          </div>
+          <EmptyBlock isBrandNew={totalApplications === 0} />
         ) : (
           <ul className="divide-y">
             {items.map((it) => (
               <li key={it.id}>
                 <Link
                   href={`/applications/${it.id}`}
-                  className="grid grid-cols-[1fr_auto] items-center gap-3 py-2 text-sm hover:bg-accent/40 sm:grid-cols-[1fr_120px_auto] sm:px-2"
+                  className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-md py-2 text-sm transition-colors hover:bg-accent/60 sm:grid-cols-[1fr_120px_auto] sm:px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
                   <div className="min-w-0">
                     <div className="truncate font-medium">{it.companyName ?? 'Unknown'}</div>
@@ -75,5 +69,33 @@ export function NeedsAttention({ items }: NeedsAttentionProps) {
         )}
       </CardContent>
     </Card>
+  )
+}
+
+function EmptyBlock({ isBrandNew }: { isBrandNew: boolean }) {
+  if (isBrandNew) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-8 text-center">
+        <Sparkles className="size-6 text-primary" />
+        <div className="space-y-1">
+          <p className="text-sm font-medium">Get started</p>
+          <p className="text-xs text-muted-foreground">
+            Track your first application to see it here.
+          </p>
+        </div>
+        <Button asChild size="sm">
+          <Link href="/applications/new">Add application</Link>
+        </Button>
+      </div>
+    )
+  }
+  return (
+    <div className="flex flex-col items-center gap-2 py-8 text-center">
+      <CheckCircle2 className="size-6 text-emerald-500" />
+      <p className="text-sm font-medium">You&apos;re all caught up.</p>
+      <p className="text-xs text-muted-foreground">
+        Nothing urgent in the next 3 days.
+      </p>
+    </div>
   )
 }

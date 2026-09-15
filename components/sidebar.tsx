@@ -86,10 +86,10 @@ export function Sidebar({ className, onNavigate }: SidebarProps) {
                     href={href}
                     onClick={onNavigate}
                     className={cn(
-                      'flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors',
+                      'flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                       active
-                        ? 'bg-accent font-medium text-accent-foreground'
-                        : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground',
+                        ? 'bg-accent font-semibold text-accent-foreground shadow-sm'
+                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
                     )}
                   >
                     <Icon className="size-4" />

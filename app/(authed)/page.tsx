@@ -87,7 +87,7 @@ export default async function DashboardPage() {
           </Button>
         }
       />
-      <NeedsAttention items={attention} />
+      <NeedsAttention items={attention} totalApplications={rows.length} />
       <section className="space-y-3">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           Pipeline

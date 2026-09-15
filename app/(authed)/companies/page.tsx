@@ -3,6 +3,7 @@ import { Building2, Globe, MapPin } from 'lucide-react'
 import { requireUserId } from '@/lib/auth/require-session'
 import * as companiesQ from '@/lib/db/queries/companies'
 import { AddCompanyDialog } from '@/components/add-company-dialog'
+import { EmptyState } from '@/components/empty-state'
 import { PageHeader } from '@/components/page-header'
 import { InterestStars } from '@/components/interest-stars'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
@@ -34,30 +35,34 @@ export default async function CompaniesPage() {
         actions={<AddCompanyDialog />}
       />
       {rows.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-16 text-center">
-          <Building2 className="size-6 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">No watched companies yet.</p>
-          <AddCompanyDialog />
-        </div>
+        <EmptyState
+          icon={Building2}
+          title="No watched companies yet."
+          description="Add companies you're targeting to keep them in view."
+          action={<AddCompanyDialog />}
+        />
       ) : (
         <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {rows.map((c) => (
             <li key={c.id}>
-              <Link href={`/companies/${c.id}`} className="block">
-                <Card className="h-full transition-colors hover:border-foreground/30">
+              <Link
+                href={`/companies/${c.id}`}
+                className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                <Card className="h-full transition-all hover:border-primary/50 hover:bg-accent/30 hover:shadow-md">
                   <CardContent className="space-y-3 py-4">
                     <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="font-semibold leading-tight">{c.name}</div>
+                      <div className="min-w-0">
+                        <div className="truncate font-semibold leading-tight">{c.name}</div>
                         {c.domain ? (
                           <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
                             <Globe className="size-3" />
-                            {c.domain}
+                            <span className="truncate">{c.domain}</span>
                           </div>
                         ) : null}
                       </div>
                       {c.stance ? (
-                        <Badge variant={stanceVariant(c.stance)} className="capitalize">
+                        <Badge variant={stanceVariant(c.stance)} className="shrink-0 capitalize">
                           {c.stance}
                         </Badge>
                       ) : null}
@@ -87,4 +92,3 @@ export default async function CompaniesPage() {
     </div>
   )
 }
-

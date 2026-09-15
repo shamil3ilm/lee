@@ -1,9 +1,11 @@
 'use client'
 import * as React from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ArrowDown, ArrowUp, ArrowUpDown, Briefcase } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/empty-state'
 import { InterestStars } from '@/components/interest-stars'
 import { cn } from '@/lib/utils'
 import { relativeFromNow, shortDate } from '@/lib/ui/date'
@@ -45,6 +47,7 @@ function compare(a: string | number | null, b: string | number | null, dir: Sort
 }
 
 export function ApplicationsTable({ rows }: ApplicationsTableProps) {
+  const router = useRouter()
   const [filter, setFilter] = React.useState<'all' | ApplicationStatus>('all')
   const [sortKey, setSortKey] = React.useState<SortKey>('nextActionAt')
   const [sortDir, setSortDir] = React.useState<SortDir>('asc')
@@ -97,10 +100,10 @@ export function ApplicationsTable({ rows }: ApplicationsTableProps) {
             key={f.value}
             onClick={() => setFilter(f.value)}
             className={cn(
-              'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+              'rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
               filter === f.value
-                ? 'border-foreground bg-foreground text-background'
-                : 'border-border text-muted-foreground hover:border-foreground/50 hover:text-foreground',
+                ? 'border-foreground bg-foreground text-background shadow-sm'
+                : 'border-border text-muted-foreground hover:border-foreground/50 hover:bg-accent/60 hover:text-foreground',
             )}
             type="button"
           >
@@ -115,13 +118,16 @@ export function ApplicationsTable({ rows }: ApplicationsTableProps) {
       </div>
 
       {sorted.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-16 text-center">
-          <Briefcase className="size-6 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">No applications match this filter.</p>
-          <Button asChild size="sm" variant="outline">
-            <Link href="/applications/new">Add application</Link>
-          </Button>
-        </div>
+        <EmptyState
+          icon={Briefcase}
+          title="No applications match this filter."
+          description={filter === 'all' ? 'Add your first application to get started.' : 'Try a different status filter.'}
+          action={
+            <Button asChild size="sm" variant="outline">
+              <Link href="/applications/new">Add application</Link>
+            </Button>
+          }
+        />
       ) : (
         <div className="overflow-hidden rounded-lg border">
           <table className="w-full text-sm">
@@ -155,15 +161,24 @@ export function ApplicationsTable({ rows }: ApplicationsTableProps) {
                   ? (r.status as ApplicationStatus)
                   : 'saved'
                 return (
-                  <tr key={r.id} className="border-t transition-colors hover:bg-accent/30">
+                  <tr
+                    key={r.id}
+                    onClick={() => router.push(`/applications/${r.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        router.push(`/applications/${r.id}`)
+                      }
+                    }}
+                    tabIndex={0}
+                    role="link"
+                    aria-label={`Open ${r.job.title} at ${r.job.company?.name ?? 'Unknown'}`}
+                    className="cursor-pointer border-t transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:bg-accent/60"
+                  >
                     <td className="px-3 py-2 font-medium">
                       {r.job.company?.name ?? '—'}
                     </td>
-                    <td className="px-3 py-2">
-                      <Link className="hover:underline" href={`/applications/${r.id}`}>
-                        {r.job.title}
-                      </Link>
-                    </td>
+                    <td className="px-3 py-2 text-foreground/90">{r.job.title}</td>
                     <td className="px-3 py-2">
                       <Badge variant={STATUS_BADGE[s]}>{STATUS_LABELS[s]}</Badge>
                     </td>
@@ -209,7 +224,7 @@ function Th({ onClick, active, dir, children }: ThProps) {
       <button
         type="button"
         onClick={onClick}
-        className="inline-flex items-center gap-1 hover:text-foreground"
+        className="inline-flex cursor-pointer items-center gap-1 rounded transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {children}
         {!active ? (

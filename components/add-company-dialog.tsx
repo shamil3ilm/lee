@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { Plus } from 'lucide-react'
 import { addCompany } from '@/app/(authed)/companies/actions'
 import { Button } from '@/components/ui/button'
+import { SubmitButton } from '@/components/ui/submit-button'
 import {
   Dialog,
   DialogContent,
@@ -104,7 +105,7 @@ export function AddCompanyDialog() {
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit">Save</Button>
+            <SubmitButton pendingLabel="Saving…">Save</SubmitButton>
           </DialogFooter>
         </form>
       </DialogContent>

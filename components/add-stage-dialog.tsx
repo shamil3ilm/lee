@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { Plus } from 'lucide-react'
 import { addStage } from '@/app/(authed)/applications/[id]/actions'
 import { Button } from '@/components/ui/button'
+import { SubmitButton } from '@/components/ui/submit-button'
 import {
   Dialog,
   DialogContent,
@@ -99,7 +100,7 @@ export function AddStageDialog({ applicationId }: AddStageDialogProps) {
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit">Add stage</Button>
+            <SubmitButton pendingLabel="Adding…">Add stage</SubmitButton>
           </DialogFooter>
         </form>
       </DialogContent>

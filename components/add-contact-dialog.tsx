@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { Plus } from 'lucide-react'
 import { addContact } from '@/app/(authed)/contacts/actions'
 import { Button } from '@/components/ui/button'
+import { SubmitButton } from '@/components/ui/submit-button'
 import {
   Dialog,
   DialogContent,
@@ -108,7 +109,7 @@ export function AddContactDialog({ companies }: AddContactDialogProps) {
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit">Add contact</Button>
+            <SubmitButton pendingLabel="Adding…">Add contact</SubmitButton>
           </DialogFooter>
         </form>
       </DialogContent>
