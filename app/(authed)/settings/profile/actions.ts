@@ -5,7 +5,10 @@ import { requireUserId } from '@/lib/auth/require-session'
 import { saveProfile } from '@/lib/profile/service'
 import { importProfile } from '@/lib/profile/importer'
 import { getAIProvider } from '@/lib/ai'
+import { logger } from '@/lib/logger'
 import type { NewUserProfile } from '@/lib/db/queries/profile'
+
+export type ActionResult = { success: true } | { error: string }
 
 function csvToArray(value: FormDataEntryValue | null): string[] {
   if (typeof value !== 'string') return []
@@ -36,7 +39,8 @@ const scalarSchema = z.object({
   compCurrency: z.string().optional(),
 })
 
-export async function saveProfileAction(formData: FormData): Promise<void> {
+export async function saveProfileAction(formData: FormData): Promise<ActionResult> {
+  try {
   const userId = await requireUserId()
 
   const scalars = scalarSchema.parse({
@@ -85,6 +89,13 @@ export async function saveProfileAction(formData: FormData): Promise<void> {
 
   await saveProfile(userId, patch)
   revalidatePath('/settings/profile')
+  return { success: true }
+  } catch (err) {
+    logger.error('saveProfile failed', {
+      err: err instanceof Error ? err.message : String(err),
+    })
+    return { error: 'Could not save profile.' }
+  }
 }
 
 async function extractTextFromFile(file: File): Promise<string> {
@@ -107,26 +118,34 @@ async function extractTextFromFile(file: File): Promise<string> {
   return new TextDecoder('utf-8').decode(bytes)
 }
 
-export async function importProfileAction(formData: FormData): Promise<void> {
-  const userId = await requireUserId()
+export async function importProfileAction(formData: FormData): Promise<ActionResult> {
+  try {
+    const userId = await requireUserId()
 
-  const cvFile = formData.get('cv')
-  const mdFile = formData.get('profile_md')
+    const cvFile = formData.get('cv')
+    const mdFile = formData.get('profile_md')
 
-  let cvText: string | undefined
-  let profileMd: string | undefined
+    let cvText: string | undefined
+    let profileMd: string | undefined
 
-  if (cvFile instanceof File && cvFile.size > 0) {
-    cvText = await extractTextFromFile(cvFile)
+    if (cvFile instanceof File && cvFile.size > 0) {
+      cvText = await extractTextFromFile(cvFile)
+    }
+    if (mdFile instanceof File && mdFile.size > 0) {
+      profileMd = await extractTextFromFile(mdFile)
+    }
+
+    if (!cvText && !profileMd) {
+      return { error: 'Provide a CV or profile markdown file to import.' }
+    }
+
+    await importProfile({ userId, cvText, profileMd, ai: getAIProvider() })
+    revalidatePath('/settings/profile')
+    return { success: true }
+  } catch (err) {
+    logger.error('importProfile failed', {
+      err: err instanceof Error ? err.message : String(err),
+    })
+    return { error: 'Could not import profile.' }
   }
-  if (mdFile instanceof File && mdFile.size > 0) {
-    profileMd = await extractTextFromFile(mdFile)
-  }
-
-  if (!cvText && !profileMd) {
-    throw new Error('Provide a CV or profile markdown file to import.')
-  }
-
-  await importProfile({ userId, cvText, profileMd, ai: getAIProvider() })
-  revalidatePath('/settings/profile')
 }
