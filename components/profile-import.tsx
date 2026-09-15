@@ -1,23 +1,49 @@
 'use client'
-import { useTransition } from 'react'
+import { useActionState, useEffect } from 'react'
+import { useFormStatus } from 'react-dom'
 import { toast } from 'sonner'
 import { Loader2, Upload } from 'lucide-react'
-import { importProfileAction } from '@/app/(authed)/settings/profile/actions'
+import {
+  importProfileAction,
+  type ActionResult,
+} from '@/app/(authed)/settings/profile/actions'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 
-export function ProfileImport() {
-  const [pending, start] = useTransition()
+function SubmitButton() {
+  const { pending } = useFormStatus()
+  return (
+    <Button type="submit" size="sm" variant="outline" disabled={pending}>
+      {pending ? <Loader2 className="size-4 animate-spin" /> : null}
+      {pending ? 'Parsing…' : 'Parse and save'}
+    </Button>
+  )
+}
 
-  function handleSubmit(fd: FormData): void {
-    start(async () => {
-      const result = await importProfileAction(fd)
-      if ('success' in result) toast.success('Profile imported')
-      else toast.error(result.error)
-    })
-  }
+async function runImport(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult | null> {
+  return importProfileAction(formData)
+}
+
+export function ProfileImport() {
+  // useActionState is React 19's pattern for server actions that need to
+  // report results back to the client. It preserves multipart file uploads
+  // intact — unlike wrapping the action in a client callback (which triggers
+  // Next's closure encoding and strips file bytes).
+  const [state, action] = useActionState<ActionResult | null, FormData>(
+    runImport,
+    null,
+  )
+
+  useEffect(() => {
+    if (state === null) return
+    if ('success' in state) toast.success('Profile imported')
+    else toast.error(state.error)
+  }, [state])
 
   return (
     <Card>
@@ -28,7 +54,7 @@ export function ProfileImport() {
         </div>
       </CardHeader>
       <CardContent>
-        <form action={handleSubmit} className="space-y-4">
+        <form action={action} className="space-y-4">
           <p className="text-xs text-muted-foreground">
             Upload a PDF/DOCX CV and/or a markdown profile. The AI provider parses them
             and pre-fills the form below.
@@ -56,10 +82,7 @@ export function ProfileImport() {
             </div>
           </div>
           <div className="flex justify-end">
-            <Button type="submit" size="sm" variant="outline" disabled={pending}>
-              {pending ? <Loader2 className="size-4 animate-spin" /> : null}
-              {pending ? 'Parsing…' : 'Parse and save'}
-            </Button>
+            <SubmitButton />
           </div>
         </form>
       </CardContent>
