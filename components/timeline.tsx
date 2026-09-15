@@ -2,7 +2,6 @@ import {
   Activity as ActivityIcon,
   ArrowRightLeft,
   Calendar,
-  CheckCircle2,
   Clock,
   FileText,
   MessageSquare,
@@ -10,7 +9,6 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
 import { relativeFromNow, shortDateTime } from '@/lib/ui/date'
 import { STATUS_BADGE, STATUS_LABELS, type ApplicationStatus } from '@/lib/ui/status'
 

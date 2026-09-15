@@ -16,9 +16,24 @@ export const dynamic = 'force-dynamic'
 
 const ATTENTION_HORIZON_MS = 3 * 24 * 60 * 60 * 1000
 
+type Row = Awaited<ReturnType<typeof appsQ.list>>[number]
+
+function filterAttention(rows: Row[], cutoff: number): Row[] {
+  return rows
+    .filter(
+      (r) =>
+        isActiveStatus(r.status) &&
+        r.nextActionAt !== null &&
+        r.nextActionAt.getTime() <= cutoff,
+    )
+    .sort((a, b) => a.nextActionAt!.getTime() - b.nextActionAt!.getTime())
+    .slice(0, 10)
+}
+
 export default async function DashboardPage() {
   const userId = await requireUserId()
   const rows = await appsQ.list(userId, {})
+  const now = new Date()
 
   const grouped: Record<ApplicationStatus, KanbanCard[]> = {
     saved: [],
@@ -47,23 +62,16 @@ export default async function DashboardPage() {
     cards: grouped[status],
   }))
 
-  const attentionCutoff = Date.now() + ATTENTION_HORIZON_MS
-  const attention: AttentionItem[] = rows
-    .filter(
-      (r) =>
-        isActiveStatus(r.status) &&
-        r.nextActionAt !== null &&
-        r.nextActionAt.getTime() <= attentionCutoff,
-    )
-    .sort((a, b) => (a.nextActionAt!.getTime() - b.nextActionAt!.getTime()))
-    .slice(0, 10)
-    .map((r) => ({
-      id: r.id,
-      title: r.job.title,
-      companyName: r.job.company?.name ?? null,
-      status: r.status as ApplicationStatus,
-      nextActionAt: r.nextActionAt ? r.nextActionAt.toISOString() : null,
-    }))
+  const attention: AttentionItem[] = filterAttention(
+    rows,
+    now.getTime() + ATTENTION_HORIZON_MS,
+  ).map((r) => ({
+    id: r.id,
+    title: r.job.title,
+    companyName: r.job.company?.name ?? null,
+    status: r.status as ApplicationStatus,
+    nextActionAt: r.nextActionAt ? r.nextActionAt.toISOString() : null,
+  }))
 
   return (
     <div className="space-y-6">
