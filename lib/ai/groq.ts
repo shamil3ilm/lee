@@ -14,11 +14,12 @@ import {
 export class GroqProvider implements AIProvider {
   constructor(
     private readonly apiKey: string,
-    // Env-overridable so we can move to newer models without a code change.
-    // llama-3.1-8b-instant is universally available on free tier; upgrade
-    // to a bigger model (e.g. llama-3.3-70b-versatile or openai/gpt-oss-120b)
-    // via GROQ_MODEL env var if quota allows.
-    private readonly model = process.env.GROQ_MODEL ?? 'llama-3.1-8b-instant',
+    // Env-overridable so we can swap models without a code change.
+    // openai/gpt-oss-20b is on Groq's Developer (free) tier — 1000 tok/sec,
+    // 250K TPM, 1K RPM, 131K context. Excellent for structured JSON parsing.
+    // Bump to openai/gpt-oss-120b via GROQ_MODEL for higher quality (still
+    // free tier, ~500 tok/sec). Meta Llama models are gated to Enterprise.
+    private readonly model = process.env.GROQ_MODEL ?? 'openai/gpt-oss-20b',
   ) {}
 
   private async generateOnce(prompt: string): Promise<{
