@@ -1,0 +1,40 @@
+{
+  "jobs": [
+    {
+      "id": "10a3b8f1-1234-4c56-8bcd-ef0123456789",
+      "shortcode": "ABCDEF1234",
+      "title": "Staff Software Engineer",
+      "full_title": "Staff Software Engineer — Platform",
+      "url": "https://apply.workable.com/example/j/ABCDEF1234/",
+      "location": {
+        "city": "London",
+        "region": "England",
+        "country": "United Kingdom",
+        "countryCode": "GB"
+      },
+      "published_on": "2026-08-20",
+      "created_at": "2026-08-15T10:22:00Z",
+      "department": "Engineering",
+      "employment_type": "Full-time",
+      "workplace": "hybrid",
+      "description": "Own our platform reliability, DX, and infra as code."
+    },
+    {
+      "id": "20b4c9e2-2345-4d67-9cde-f01234567890",
+      "shortcode": "GHIJKL5678",
+      "title": "Senior Frontend Engineer",
+      "url": "https://apply.workable.com/example/j/GHIJKL5678/",
+      "location": {
+        "city": "Berlin",
+        "country": "Germany",
+        "countryCode": "DE"
+      },
+      "published_on": "2026-08-22",
+      "created_at": "2026-08-21T14:00:00Z",
+      "department": "Engineering",
+      "employment_type": "Full-time",
+      "workplace": "remote",
+      "description": "Build our next-gen dashboards in React and TypeScript."
+    }
+  ]
+}
