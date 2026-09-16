@@ -9,6 +9,8 @@ import {
   Users,
   Settings,
   FileText,
+  Sparkles,
+  Rss,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -30,6 +32,7 @@ const SECTIONS: NavSection[] = [
     items: [
       { href: '/', label: 'Dashboard', icon: Home },
       { href: '/applications', label: 'Applications', icon: Briefcase },
+      { href: '/discoveries', label: 'Discovery', icon: Sparkles },
     ],
   },
   {
@@ -43,6 +46,7 @@ const SECTIONS: NavSection[] = [
     label: 'Personal',
     items: [
       { href: '/settings/profile', label: 'Profile', icon: Settings },
+      { href: '/settings/sources', label: 'Sources', icon: Rss },
       { href: '/digest', label: 'Digest', icon: FileText },
     ],
   },
