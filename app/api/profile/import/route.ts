@@ -68,11 +68,6 @@ export async function POST(req: Request): Promise<NextResponse> {
       err: err instanceof Error ? err.message : String(err),
       stack: err instanceof Error ? err.stack : undefined,
     })
-    return NextResponse.json(
-      {
-        error: `Import failed: ${err instanceof Error ? err.message : String(err)}`,
-      },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: 'Could not import profile.' }, { status: 500 })
   }
 }
