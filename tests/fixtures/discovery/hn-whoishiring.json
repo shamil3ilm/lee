@@ -1,0 +1,38 @@
+{
+  "search": {
+    "hits": [
+      { "objectID": "40000000", "title": "Ask HN: Who is hiring? (September 2026)" }
+    ]
+  },
+  "thread": {
+    "id": 40000000,
+    "text": "Please read the rules...",
+    "kids": [40000001, 40000002, 40000003, 40000004]
+  },
+  "comments": {
+    "40000001": {
+      "id": 40000001,
+      "by": "acmehiring",
+      "time": 1756713600,
+      "text": "<p>Acme | Senior Backend Engineer | Remote (worldwide) | Full-time<p>We build a distributed payments platform. Go, Postgres, Kafka. <a href=\"https://acme.com/jobs\">acme.com/jobs</a>"
+    },
+    "40000002": {
+      "id": 40000002,
+      "by": "betarecruit",
+      "time": 1756720000,
+      "text": "<p>Beta Inc | Staff Frontend Engineer | London, UK | Hybrid | Visa sponsorship<p>React, TypeScript, Next.js. Contact us at jobs@beta.io"
+    },
+    "40000003": {
+      "id": 40000003,
+      "by": "not_a_job",
+      "time": 1756730000,
+      "text": "<p>Congrats on the launch!"
+    },
+    "40000004": {
+      "id": 40000004,
+      "by": "charlie",
+      "time": 1756740000,
+      "text": "<p>Charlie · SRE · Berlin · Onsite<p>Kubernetes, Terraform."
+    }
+  }
+}

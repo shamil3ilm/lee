@@ -3,6 +3,10 @@ import { GreenhouseAdapter } from './greenhouse'
 import { LeverAdapter } from './lever'
 import { AshbyAdapter } from './ashby'
 import { WorkableAdapter } from './workable'
+import { RemoteOkAdapter } from './remoteok'
+import { HnWhoIsHiringAdapter } from './hn-whoishiring'
+import { RssAdapter } from './rss'
+import { JsonLdAdapter } from './jsonld'
 
 // Registry is a plain object so tests can iterate keys and mock a single
 // adapter without touching the others. New adapter kinds must be added here
@@ -12,6 +16,10 @@ const registry: Record<string, DiscoveryAdapter> = {
   lever: new LeverAdapter(),
   ashby: new AshbyAdapter(),
   workable: new WorkableAdapter(),
+  remoteok: new RemoteOkAdapter(),
+  hn_whoishiring: new HnWhoIsHiringAdapter(),
+  rss: new RssAdapter(),
+  jsonld: new JsonLdAdapter(),
 }
 
 export function getAdapter(kind: string): DiscoveryAdapter | null {

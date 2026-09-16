@@ -1,0 +1,43 @@
+[
+  {
+    "legal": "See our terms of service at https://remoteok.com/terms",
+    "disclaimer": "By using this API you agree to attribute RemoteOK"
+  },
+  {
+    "id": "1000001",
+    "slug": "senior-backend-engineer-acme",
+    "position": "Senior Backend Engineer",
+    "company": "Acme",
+    "url": "https://remoteok.com/l/1000001",
+    "apply_url": "https://acme.com/careers/apply/1000001",
+    "description": "Build our distributed backend in Go. Fully remote worldwide.",
+    "tags": ["go", "postgres", "aws", "kubernetes"],
+    "location": "Worldwide",
+    "date": "2026-09-01T10:00:00Z",
+    "epoch": 1756713600
+  },
+  {
+    "id": "1000002",
+    "slug": "principal-frontend-engineer-beta",
+    "position": "Principal Frontend Engineer",
+    "company": "Beta",
+    "url": "https://remoteok.com/l/1000002",
+    "description": "Own our React design system.",
+    "tags": ["react", "typescript", "nextjs"],
+    "location": "Remote Europe",
+    "date": "2026-09-02T09:00:00Z",
+    "epoch": 1756800000
+  },
+  {
+    "id": "1000003",
+    "slug": "sre-charlie",
+    "position": "Site Reliability Engineer",
+    "company": "Charlie",
+    "url": "https://remoteok.com/l/1000003",
+    "description": "Keep the pipes running.",
+    "tags": ["kubernetes", "terraform"],
+    "location": "Remote Americas",
+    "date": "2026-09-03T08:00:00Z",
+    "epoch": 1756886400
+  }
+]

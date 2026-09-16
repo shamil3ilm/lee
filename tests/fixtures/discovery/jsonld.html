@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Example Job</title>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org/",
+    "@type": "JobPosting",
+    "identifier": { "value": "jd-98765" },
+    "title": "Senior Platform Engineer",
+    "description": "Own the runtime powering our SaaS.",
+    "datePosted": "2026-09-01",
+    "employmentType": "FULL_TIME",
+    "hiringOrganization": {
+      "@type": "Organization",
+      "name": "Delta",
+      "sameAs": "https://delta.example.com"
+    },
+    "jobLocation": {
+      "@type": "Place",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Dublin",
+        "addressCountry": "Ireland"
+      }
+    },
+    "jobLocationType": "TELECOMMUTE",
+    "url": "https://delta.example.com/jobs/98765",
+    "baseSalary": {
+      "@type": "MonetaryAmount",
+      "currency": "EUR",
+      "value": { "minValue": 90000, "maxValue": 130000, "unitText": "YEAR" }
+    },
+    "skills": ["Go", "Kubernetes", "Terraform"]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org/",
+    "@type": "BreadcrumbList",
+    "itemListElement": []
+  }
+  </script>
+</head>
+<body>Job listing</body>
+</html>
