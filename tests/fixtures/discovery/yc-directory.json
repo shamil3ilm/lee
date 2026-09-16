@@ -1,0 +1,43 @@
+{
+  "companies": [
+    {
+      "id": 123,
+      "name": "Stripe",
+      "website": "https://stripe.com",
+      "one_liner": "Payments infrastructure for the internet",
+      "batch": "S09",
+      "industry": "Fintech",
+      "industries": ["Fintech", "Payments"],
+      "stage": "Public",
+      "status": "Active",
+      "team_size": 8000,
+      "all_locations": "San Francisco, CA; Dublin, Ireland",
+      "country": "United States",
+      "city": "San Francisco"
+    },
+    {
+      "id": 456,
+      "name": "Segment",
+      "website": "https://segment.com",
+      "one_liner": "Customer data platform",
+      "batch": "S11",
+      "industry": "B2B",
+      "industries": ["B2B", "Analytics"],
+      "stage": "Acquired",
+      "team_size": 550,
+      "all_locations": "San Francisco, CA",
+      "country": "United States"
+    },
+    {
+      "id": 789,
+      "name": "Retool",
+      "website": "https://retool.com",
+      "one_liner": "Internal tool builder",
+      "batch": "W17",
+      "industry": "B2B",
+      "stage": "Series C",
+      "team_size": 400,
+      "all_locations": "San Francisco, CA; New York, NY; London, UK"
+    }
+  ]
+}

@@ -7,6 +7,7 @@ import { RemoteOkAdapter } from './remoteok'
 import { HnWhoIsHiringAdapter } from './hn-whoishiring'
 import { RssAdapter } from './rss'
 import { JsonLdAdapter } from './jsonld'
+import { YcDirectoryAdapter } from './yc-directory'
 
 // Registry is a plain object so tests can iterate keys and mock a single
 // adapter without touching the others. New adapter kinds must be added here
@@ -20,6 +21,7 @@ const registry: Record<string, DiscoveryAdapter> = {
   hn_whoishiring: new HnWhoIsHiringAdapter(),
   rss: new RssAdapter(),
   jsonld: new JsonLdAdapter(),
+  yc_directory: new YcDirectoryAdapter(),
 }
 
 export function getAdapter(kind: string): DiscoveryAdapter | null {
