@@ -23,6 +23,7 @@ export const envSchema = z
     ANTHROPIC_API_KEY: z.string().optional(),
     OPENAI_API_KEY: z.string().optional(),
     FIRECRAWL_API_KEY: z.string().optional(),
+    GITHUB_TOKEN: z.string().optional(),
     CRON_SECRET: z.string().min(32),
   })
   .superRefine((data, ctx) => {
