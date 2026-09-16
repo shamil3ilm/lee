@@ -3,6 +3,9 @@ import { buildParseJobPrompt } from './prompts/parse-job'
 import { buildParseProfilePrompt } from './prompts/parse-profile'
 import { buildScoreJobPrompt } from './prompts/score-job'
 import { buildScoreCompanyPrompt } from './prompts/score-company'
+import { buildTailorCVPrompt } from './prompts/tailor-cv'
+import { buildCoverLetterPrompt } from './prompts/cover-letter'
+import { buildDistillGithubPrompt } from './prompts/distill-github'
 import {
   companyMatchResultSchema,
   jobMatchResultSchema,
@@ -14,8 +17,19 @@ import {
   type ParsedJob,
   type ParsedProfile,
 } from './types'
+import {
+  coverLetterSchema,
+  cvProjectsArraySchema,
+  tailoredCvSchema,
+  type CoverLetter,
+  type CvProjects,
+  type GitHubRepo,
+  type MasterCV,
+  type TailoredCV,
+} from '@/lib/documents/types'
 import type { NormalizedCompany, NormalizedJob } from '@/lib/discovery/adapters/types'
 import type { UserProfile } from '@/lib/db/queries/profile'
+import type { ApplicationWithJob } from '@/lib/db/queries/applications'
 
 export class GeminiProvider implements AIProvider {
   private client: GoogleGenerativeAI
@@ -131,5 +145,36 @@ export class GeminiProvider implements AIProvider {
   async scoreCompany(company: NormalizedCompany, profile: UserProfile): Promise<CompanyMatchResult> {
     const raw = await this.generate(buildScoreCompanyPrompt(company, profile))
     return companyMatchResultSchema.parse(JSON.parse(raw))
+  }
+
+  async tailorCV(input: {
+    master: MasterCV
+    application: ApplicationWithJob
+  }): Promise<TailoredCV> {
+    const raw = await this.generate(buildTailorCVPrompt(input))
+    return tailoredCvSchema.parse(JSON.parse(raw))
+  }
+
+  async draftCoverLetter(input: {
+    master: MasterCV
+    application: ApplicationWithJob
+  }): Promise<CoverLetter> {
+    const raw = await this.generate(buildCoverLetterPrompt(input))
+    return coverLetterSchema.parse(JSON.parse(raw))
+  }
+
+  async distillGithubProjects(input: { repos: GitHubRepo[] }): Promise<CvProjects> {
+    const raw = await this.generate(buildDistillGithubPrompt(input))
+    // The prompt asks for a JSON ARRAY, but Gemini's JSON mode may wrap it in
+    // an object. Accept either: unwrap common patterns before schema-parsing.
+    const parsed = JSON.parse(raw)
+    const array = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray(parsed?.projects)
+        ? parsed.projects
+        : Array.isArray(parsed?.items)
+          ? parsed.items
+          : []
+    return cvProjectsArraySchema.parse(array)
   }
 }

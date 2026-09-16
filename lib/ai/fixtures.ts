@@ -7,6 +7,14 @@ import type {
 } from './types'
 import type { NormalizedCompany, NormalizedJob } from '@/lib/discovery/adapters/types'
 import type { UserProfile } from '@/lib/db/queries/profile'
+import type { ApplicationWithJob } from '@/lib/db/queries/applications'
+import type {
+  CoverLetter,
+  CvProjects,
+  GitHubRepo,
+  MasterCV,
+  TailoredCV,
+} from '@/lib/documents/types'
 
 export class FixtureAIProvider implements AIProvider {
   constructor(
@@ -18,6 +26,12 @@ export class FixtureAIProvider implements AIProvider {
         company: NormalizedCompany,
         profile: UserProfile,
       ) => CompanyMatchResult
+      tailorCV?: (input: { master: MasterCV; application: ApplicationWithJob }) => TailoredCV
+      draftCoverLetter?: (input: {
+        master: MasterCV
+        application: ApplicationWithJob
+      }) => CoverLetter
+      distillGithubProjects?: (input: { repos: GitHubRepo[] }) => CvProjects
     } = {},
   ) {}
 
@@ -59,6 +73,27 @@ export class FixtureAIProvider implements AIProvider {
   ): Promise<CompanyMatchResult> {
     if (this.fixtures.scoreCompany) return this.fixtures.scoreCompany(company, profile)
     return pseudoScoreCompany(company, profile)
+  }
+
+  async tailorCV(input: {
+    master: MasterCV
+    application: ApplicationWithJob
+  }): Promise<TailoredCV> {
+    if (this.fixtures.tailorCV) return this.fixtures.tailorCV(input)
+    return pseudoTailor(input)
+  }
+
+  async draftCoverLetter(input: {
+    master: MasterCV
+    application: ApplicationWithJob
+  }): Promise<CoverLetter> {
+    if (this.fixtures.draftCoverLetter) return this.fixtures.draftCoverLetter(input)
+    return pseudoCoverLetter(input)
+  }
+
+  async distillGithubProjects(input: { repos: GitHubRepo[] }): Promise<CvProjects> {
+    if (this.fixtures.distillGithubProjects) return this.fixtures.distillGithubProjects(input)
+    return pseudoDistill(input)
   }
 }
 
@@ -107,4 +142,55 @@ function pseudoScoreCompany(
     industry_match: industryMatch,
     size_match: 'match',
   }
+}
+
+// ---------------------------------------------------------------------------
+// v2 stubs — return valid shapes so services can round-trip in tests.
+// ---------------------------------------------------------------------------
+
+function pseudoTailor(input: {
+  master: MasterCV
+  application: ApplicationWithJob
+}): TailoredCV {
+  const { master, application } = input
+  const primary = master.skills.primary.slice(0, 7)
+  return {
+    ...master,
+    _tailoring: {
+      applicationId: application.id,
+      reasoning: `pseudo-tailored for ${application.job.title}`,
+      highlighted_skills: primary,
+      reordered_experience_indices: master.experience.map((_, i) => i),
+      summary_rewrite: false,
+    },
+  }
+}
+
+function pseudoCoverLetter(input: {
+  master: MasterCV
+  application: ApplicationWithJob
+}): CoverLetter {
+  const { master, application } = input
+  const company = application.job.company?.name ?? 'your company'
+  return {
+    applicationId: application.id,
+    greeting: 'Dear Hiring Manager,',
+    paragraphs: [
+      `I am writing to apply for the ${application.job.title} role at ${company}.`,
+      `Recent work: ${master.experience[0]?.bullets[0] ?? 'various engineering projects'}.`,
+      'I would welcome the chance to discuss how my background aligns with your team.',
+    ],
+    closing: `Sincerely,\n${master.basics.name}`,
+    senderName: master.basics.name,
+  }
+}
+
+function pseudoDistill(input: { repos: GitHubRepo[] }): CvProjects {
+  return input.repos.slice(0, 3).map((r) => ({
+    name: r.name,
+    url: r.url,
+    description: r.description ?? `${r.name} — open-source project.`,
+    tech: r.primaryLanguage ? [r.primaryLanguage.toLowerCase()] : [],
+    highlights: r.stargazers > 10 ? [`${r.stargazers} GitHub stars`] : undefined,
+  }))
 }

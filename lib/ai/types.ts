@@ -1,6 +1,14 @@
 import { z } from 'zod'
 import type { NormalizedCompany, NormalizedJob } from '@/lib/discovery/adapters/types'
 import type { UserProfile } from '@/lib/db/queries/profile'
+import type { ApplicationWithJob } from '@/lib/db/queries/applications'
+import type {
+  CoverLetter,
+  CvProjects,
+  GitHubRepo,
+  MasterCV,
+  TailoredCV,
+} from '@/lib/documents/types'
 
 export const parsedJobSchema = z.object({
   title: z.string(),
@@ -72,4 +80,11 @@ export interface AIProvider {
   parseProfile(input: { cvText?: string; profileMd?: string }): Promise<ParsedProfile>
   scoreJob(job: NormalizedJob, profile: UserProfile): Promise<JobMatchResult>
   scoreCompany(company: NormalizedCompany, profile: UserProfile): Promise<CompanyMatchResult>
+  // v2 additions — CV & document generation.
+  tailorCV(input: { master: MasterCV; application: ApplicationWithJob }): Promise<TailoredCV>
+  draftCoverLetter(input: {
+    master: MasterCV
+    application: ApplicationWithJob
+  }): Promise<CoverLetter>
+  distillGithubProjects(input: { repos: GitHubRepo[] }): Promise<CvProjects>
 }
