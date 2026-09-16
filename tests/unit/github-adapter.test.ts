@@ -39,7 +39,9 @@ describe('github adapter', () => {
       stargazers: 42,
       updatedAt: '2026-09-01T10:00:00Z',
     })
-    const call = fake.mock.calls[0]?.[0] as string
+    const firstCall = fake.mock.calls[0]
+    expect(firstCall).toBeDefined()
+    const call = (firstCall as unknown as [string])[0]
     expect(call).toContain('/users/shamil/repos')
   })
 
@@ -47,7 +49,9 @@ describe('github adapter', () => {
     const fake = vi.fn(async () => new Response('[]', { status: 200 }))
     ;(globalThis as { fetch: typeof fetch }).fetch = fake as unknown as typeof fetch
     await fetchPublicRepos('u', 'tok')
-    const opts = fake.mock.calls[0]?.[1] as RequestInit
+    const firstCall = fake.mock.calls[0]
+    expect(firstCall).toBeDefined()
+    const opts = (firstCall as unknown as [string, RequestInit])[1]
     const headers = opts.headers as Record<string, string>
     expect(headers.authorization).toBe('Bearer tok')
   })

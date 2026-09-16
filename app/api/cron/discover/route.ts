@@ -3,7 +3,7 @@ import { env } from '@/lib/env'
 import { db } from '@/lib/db/client'
 import { users } from '@/lib/db/schema'
 import { runDiscoveryCycleForUser } from '@/lib/discovery/service'
-import { getAIProvider } from '@/lib/ai'
+import { getAIProviderForUser } from '@/lib/ai'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -26,7 +26,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return new NextResponse('unauthorized', { status: 401 })
   }
 
-  const ai = getAIProvider()
   const allUsers = await db.select().from(users)
   const totals: CycleTotals = {
     users: 0,
@@ -37,6 +36,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   for (const user of allUsers) {
     try {
+      const ai = await getAIProviderForUser(user.id)
       const result = await runDiscoveryCycleForUser({ userId: user.id, ai })
       totals.users += 1
       totals.sources_polled += result.sourcesPolled

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { importProfile } from '@/lib/profile/importer'
-import { getAIProvider } from '@/lib/ai'
+import { getAIProviderForUser } from '@/lib/ai'
 import { logger } from '@/lib/logger'
 
 // Regular route handler for file uploads. Server Actions re-encode FormData
@@ -60,7 +60,8 @@ export async function POST(req: Request): Promise<NextResponse> {
       )
     }
 
-    await importProfile({ userId, cvText, profileMd, ai: getAIProvider() })
+    const ai = await getAIProviderForUser(userId)
+    await importProfile({ userId, cvText, profileMd, ai })
 
     return NextResponse.json({ success: true })
   } catch (err) {

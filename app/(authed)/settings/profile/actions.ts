@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { requireUserId } from '@/lib/auth/require-session'
 import { saveProfile } from '@/lib/profile/service'
 import { importProfile } from '@/lib/profile/importer'
-import { getAIProvider } from '@/lib/ai'
+import { getAIProviderForUser, findModel } from '@/lib/ai'
 import { logger } from '@/lib/logger'
 import type { NewUserProfile } from '@/lib/db/queries/profile'
 
@@ -143,7 +143,8 @@ export async function importProfileAction(
       return { error: 'Provide a CV or profile markdown file to import.' }
     }
 
-    await importProfile({ userId, cvText, profileMd, ai: getAIProvider() })
+    const ai = await getAIProviderForUser(userId)
+    await importProfile({ userId, cvText, profileMd, ai })
     revalidatePath('/settings/profile')
     return { success: true }
   } catch (err) {
@@ -151,5 +152,28 @@ export async function importProfileAction(
       err: err instanceof Error ? err.message : String(err),
     })
     return { error: 'Could not import profile.' }
+  }
+}
+
+export async function saveAiModelAction(formData: FormData): Promise<ActionResult> {
+  try {
+    const userId = await requireUserId()
+    const id = formData.get('modelId')
+    if (typeof id !== 'string') return { error: 'Model id is required.' }
+    // Empty string clears the pref and falls back to env default.
+    if (id === '') {
+      await saveProfile(userId, { aiProvider: null, aiModel: null })
+    } else {
+      const choice = findModel(id)
+      if (!choice) return { error: 'Unknown model.' }
+      await saveProfile(userId, { aiProvider: choice.provider, aiModel: choice.model })
+    }
+    revalidatePath('/settings/profile')
+    return { success: true }
+  } catch (err) {
+    logger.error('saveAiModel failed', {
+      err: err instanceof Error ? err.message : String(err),
+    })
+    return { error: 'Could not save model preference.' }
   }
 }

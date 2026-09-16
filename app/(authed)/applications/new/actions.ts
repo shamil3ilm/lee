@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { requireUserId } from '@/lib/auth/require-session'
 import { createApplicationFromUrl } from '@/lib/applications/service'
-import { getAIProvider } from '@/lib/ai'
+import { getAIProviderForUser } from '@/lib/ai'
 import { db } from '@/lib/db/client'
 import * as companiesQ from '@/lib/db/queries/companies'
 import * as jobsQ from '@/lib/db/queries/jobs'
@@ -22,10 +22,11 @@ export async function addFromUrl(formData: FormData): Promise<ActionResult> {
     const userId = await requireUserId()
     const parsed = urlSchema.safeParse({ url: formData.get('url') })
     if (!parsed.success) return { error: 'Please enter a valid URL.' }
+    const ai = await getAIProviderForUser(userId)
     const result = await createApplicationFromUrl({
       userId,
       url: parsed.data.url,
-      ai: getAIProvider(),
+      ai,
     })
     revalidatePath('/applications')
     return { success: true, applicationId: result.application.id }

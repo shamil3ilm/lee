@@ -267,6 +267,10 @@ export const userProfile = pgTable('user_profile', {
   mustHaves: text('must_haves').array().notNull().default([]),
   dealbreakers: text('dealbreakers').array().notNull().default([]),
   keywords: text('keywords').array().notNull().default([]),
+  // AI provider selection: null = use env default. Persisted here so users
+  // can flip models at runtime via the UI without redeploying.
+  aiProvider: text('ai_provider'),
+  aiModel: text('ai_model'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
