@@ -420,6 +420,49 @@ export const activitiesRelations = relations(activities, ({ one }) => ({
   }),
 }))
 
+// ---------------------------------------------------------------------------
+// Documents (v2: CV + cover letter storage, versioned per application)
+// ---------------------------------------------------------------------------
+
+export const documents = pgTable(
+  'documents',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    // Nullable: the master CV has no application; tailored CVs and cover
+    // letters always do. `set null` preserves the document row when the
+    // application is deleted so history survives.
+    applicationId: uuid('application_id').references(() => applications.id, {
+      onDelete: 'set null',
+    }),
+    // 'master_cv' | 'tailored_cv' | 'cover_letter'
+    kind: text('kind').notNull(),
+    version: integer('version').notNull().default(1),
+    title: text('title').notNull(),
+    // Structured JSON — shape depends on `kind`; validated at write time via
+    // Zod schemas in lib/documents/types.ts.
+    content: jsonb('content').notNull(),
+    aiPromptHash: text('ai_prompt_hash'),
+    // {provider, model, tokens, latencyMs}
+    aiGenerationMeta: jsonb('ai_generation_meta').notNull().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    userAppIdx: index('documents_user_app_idx').on(t.userId, t.applicationId, t.createdAt),
+    userKindIdx: index('documents_user_kind_idx').on(t.userId, t.kind),
+  }),
+)
+
+export const documentsRelations = relations(documents, ({ one }) => ({
+  application: one(applications, {
+    fields: [documents.applicationId],
+    references: [applications.id],
+  }),
+}))
+
 export const aiCallLogs = pgTable('ai_call_logs', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
