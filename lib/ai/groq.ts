@@ -1,12 +1,20 @@
 import { buildParseJobPrompt } from './prompts/parse-job'
 import { buildParseProfilePrompt } from './prompts/parse-profile'
+import { buildScoreJobPrompt } from './prompts/score-job'
+import { buildScoreCompanyPrompt } from './prompts/score-company'
 import {
+  companyMatchResultSchema,
+  jobMatchResultSchema,
   parsedJobSchema,
   parsedProfileSchema,
   type AIProvider,
+  type CompanyMatchResult,
+  type JobMatchResult,
   type ParsedJob,
   type ParsedProfile,
 } from './types'
+import type { NormalizedCompany, NormalizedJob } from '@/lib/discovery/adapters/types'
+import type { UserProfile } from '@/lib/db/queries/profile'
 
 // Groq hosts open-source Llama models with OpenAI-compatible API and JSON
 // response mode. Free tier is 30 req/min on Llama 3.3 70B — plenty for a
@@ -121,5 +129,15 @@ export class GroqProvider implements AIProvider {
   async parseProfile(input: { cvText?: string; profileMd?: string }): Promise<ParsedProfile> {
     const raw = await this.generate(buildParseProfilePrompt(input))
     return parsedProfileSchema.parse(JSON.parse(raw))
+  }
+
+  async scoreJob(job: NormalizedJob, profile: UserProfile): Promise<JobMatchResult> {
+    const raw = await this.generate(buildScoreJobPrompt(job, profile))
+    return jobMatchResultSchema.parse(JSON.parse(raw))
+  }
+
+  async scoreCompany(company: NormalizedCompany, profile: UserProfile): Promise<CompanyMatchResult> {
+    const raw = await this.generate(buildScoreCompanyPrompt(company, profile))
+    return companyMatchResultSchema.parse(JSON.parse(raw))
   }
 }

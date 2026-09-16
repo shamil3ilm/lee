@@ -1,4 +1,6 @@
 import { z } from 'zod'
+import type { NormalizedCompany, NormalizedJob } from '@/lib/discovery/adapters/types'
+import type { UserProfile } from '@/lib/db/queries/profile'
 
 export const parsedJobSchema = z.object({
   title: z.string(),
@@ -32,7 +34,42 @@ export const parsedProfileSchema = z.object({
 
 export type ParsedProfile = z.infer<typeof parsedProfileSchema>
 
+// ---------------------------------------------------------------------------
+// Scoring (v1.5 discovery)
+// ---------------------------------------------------------------------------
+
+export const jobMatchResultSchema = z.object({
+  match_score: z.number().min(0).max(100),
+  strengths: z.array(z.string()).default([]),
+  red_flags: z.array(z.string()).default([]),
+  reasoning: z.string().default(''),
+  location_match: z
+    .enum(['priority_1', 'priority_2', 'priority_3', 'remote', 'mismatch'])
+    .default('mismatch'),
+  seniority_match: z
+    .enum(['match', 'stretch_up', 'stretch_down', 'mismatch'])
+    .default('mismatch'),
+  stack_overlap: z.array(z.string()).default([]),
+  stack_gaps: z.array(z.string()).default([]),
+  industry_match: z.enum(['strong', 'adjacent', 'weak', 'mismatch']).default('weak'),
+})
+
+export type JobMatchResult = z.infer<typeof jobMatchResultSchema>
+
+export const companyMatchResultSchema = z.object({
+  match_score: z.number().min(0).max(100),
+  strengths: z.array(z.string()).default([]),
+  red_flags: z.array(z.string()).default([]),
+  reasoning: z.string().default(''),
+  industry_match: z.enum(['strong', 'adjacent', 'weak', 'mismatch']).default('weak'),
+  size_match: z.enum(['match', 'small', 'large']).default('match'),
+})
+
+export type CompanyMatchResult = z.infer<typeof companyMatchResultSchema>
+
 export interface AIProvider {
   parseJob(text: string): Promise<ParsedJob>
   parseProfile(input: { cvText?: string; profileMd?: string }): Promise<ParsedProfile>
+  scoreJob(job: NormalizedJob, profile: UserProfile): Promise<JobMatchResult>
+  scoreCompany(company: NormalizedCompany, profile: UserProfile): Promise<CompanyMatchResult>
 }
