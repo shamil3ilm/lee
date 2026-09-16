@@ -1,9 +1,13 @@
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
+import { and, eq, gte } from 'drizzle-orm'
 import { requireUserId } from '@/lib/auth/require-session'
 import * as appsQ from '@/lib/db/queries/applications'
+import { db } from '@/lib/db/client'
+import { discoveries } from '@/lib/db/schema'
 import { Kanban, type KanbanCard } from '@/components/kanban'
 import { NeedsAttention, type AttentionItem } from '@/components/needs-attention'
+import { FreshDiscoveries, type FreshDiscoveryItem } from '@/components/fresh-discoveries'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import {
@@ -11,6 +15,7 @@ import {
   isActiveStatus,
   type ApplicationStatus,
 } from '@/lib/ui/status'
+import type { NormalizedJob } from '@/lib/discovery/adapters/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,10 +35,31 @@ function filterAttention(rows: Row[], cutoff: number): Row[] {
     .slice(0, 10)
 }
 
+const FRESH_WINDOW_MS = 24 * 60 * 60 * 1000
+
 export default async function DashboardPage() {
   const userId = await requireUserId()
   const rows = await appsQ.list(userId, {})
   const now = new Date()
+
+  const freshRows = await db.query.discoveries.findMany({
+    where: and(
+      eq(discoveries.userId, userId),
+      eq(discoveries.status, 'new'),
+      gte(discoveries.createdAt, new Date(now.getTime() - FRESH_WINDOW_MS)),
+    ),
+    orderBy: (d, { desc }) => [desc(d.matchScore), desc(d.createdAt)],
+    limit: 5,
+  })
+  const fresh: FreshDiscoveryItem[] = freshRows.map((r) => {
+    const n = r.normalized as unknown as NormalizedJob
+    return {
+      id: r.id,
+      title: n.title ?? 'Untitled',
+      companyName: n.companyName ?? 'Unknown',
+      matchScore: r.matchScore,
+    }
+  })
 
   const grouped: Record<ApplicationStatus, KanbanCard[]> = {
     saved: [],
@@ -88,6 +114,7 @@ export default async function DashboardPage() {
         }
       />
       <NeedsAttention items={attention} totalApplications={rows.length} />
+      <FreshDiscoveries items={fresh} />
       <section className="space-y-3">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           Pipeline
