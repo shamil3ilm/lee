@@ -99,6 +99,7 @@ export default async function ApplicationDetail({
         outcome: s.outcome,
         prepNotesMd: s.prepNotesMd,
         debriefNotesMd: s.debriefNotesMd,
+        googleEventId: s.googleEventId,
       }),
     ),
   )
