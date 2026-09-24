@@ -209,12 +209,39 @@ export const interviewStages = pgTable(
     outcome: text('outcome'),
     prepNotesMd: text('prep_notes_md'),
     debriefNotesMd: text('debrief_notes_md'),
+    // v3: id of the Google Calendar event created for this stage (nullable
+    // when the stage was never pushed, when push failed, or when the stage
+    // was created before Calendar integration existed).
+    googleEventId: text('google_event_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
     appScheduledIx: index('interview_stages_app_scheduled_idx').on(t.applicationId, t.scheduledAt),
   }),
+)
+
+// ---------------------------------------------------------------------------
+// v3: Gmail sync dedup — one row per processed thread id per user. Insert on
+// every processing pass regardless of match so subsequent sync runs skip the
+// thread. Nullable matched_application_id keeps the row when the application
+// is later deleted (dedup should survive) while still surfacing links for
+// analytics.
+// ---------------------------------------------------------------------------
+
+export const processedGmailThreads = pgTable(
+  'processed_gmail_threads',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    threadId: text('thread_id').notNull(),
+    matchedApplicationId: uuid('matched_application_id').references(() => applications.id, {
+      onDelete: 'set null',
+    }),
+    processedAt: timestamp('processed_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.userId, t.threadId] }) }),
 )
 
 export const activities = pgTable(
@@ -271,6 +298,11 @@ export const userProfile = pgTable('user_profile', {
   // can flip models at runtime via the UI without redeploying.
   aiProvider: text('ai_provider'),
   aiModel: text('ai_model'),
+  // v3 sync timestamps — updated at the end of each successful sync. Null
+  // means the user has never run that sync (or has never connected the
+  // corresponding Google scope).
+  syncedGmailAt: timestamp('synced_gmail_at', { withTimezone: true }),
+  syncedCalendarAt: timestamp('synced_calendar_at', { withTimezone: true }),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 

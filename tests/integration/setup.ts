@@ -9,6 +9,7 @@ import { db, isPglite, pgliteClient } from '@/lib/db/client'
 const TABLES = [
   'documents',
   'activities',
+  'processed_gmail_threads',
   'interview_stages',
   'application_contacts',
   'applications',
