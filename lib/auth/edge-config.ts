@@ -17,6 +17,14 @@ export const edgeAuthConfig = {
     Google({
       clientId: env.AUTH_GOOGLE_ID,
       clientSecret: env.AUTH_GOOGLE_SECRET,
+      // Safe here because we have exactly one provider (Google) and one
+      // ALLOWED_EMAIL gate — the security concern the flag protects against
+      // (a hostile IdP linking to an existing password account) can't happen.
+      // Without this, Auth.js throws OAuthAccountNotLinked when an existing
+      // users row has this email but no matching accounts row (e.g. after a
+      // schema reset, adapter mid-migration, or scope-change re-consent that
+      // orphaned the previous account row).
+      allowDangerousEmailAccountLinking: true,
       authorization: {
         params: {
           scope: [
