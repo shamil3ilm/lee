@@ -13,6 +13,7 @@ import {
   Sparkles,
   Rss,
   Plug,
+  Bell,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -50,6 +51,7 @@ const SECTIONS: NavSection[] = [
     items: [
       { href: '/settings/profile', label: 'Profile', icon: Settings },
       { href: '/settings/integrations', label: 'Integrations', icon: Plug },
+      { href: '/settings/notifications', label: 'Notifications', icon: Bell },
       { href: '/settings/cv', label: 'CV', icon: FileText },
       { href: '/settings/sources', label: 'Sources', icon: Rss },
       { href: '/digest', label: 'Digest', icon: FileText },
