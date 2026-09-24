@@ -32,6 +32,10 @@ export const edgeAuthConfig = {
             'email',
             'profile',
             'https://www.googleapis.com/auth/gmail.readonly',
+            // v4: needed to send the weekly digest from the user's own mailbox
+            // via lib/gmail/send.ts. Existing users must re-consent on next
+            // sign-in — the `prompt=consent` below already forces that.
+            'https://www.googleapis.com/auth/gmail.send',
             'https://www.googleapis.com/auth/calendar.events',
           ].join(' '),
           // `offline` + `consent` are required for Google to return a durable
