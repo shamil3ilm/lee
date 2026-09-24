@@ -6,8 +6,10 @@ import * as appsQ from '@/lib/db/queries/applications'
 import * as actQ from '@/lib/db/queries/activities'
 import * as stagesQ from '@/lib/db/queries/stages'
 import * as applicationContactsQ from '@/lib/db/queries/applicationContacts'
+import * as documentsQ from '@/lib/db/queries/documents'
 import { StatusPicker } from '@/components/status-picker'
 import { AddStageDialog } from '@/components/add-stage-dialog'
+import { DocumentsCard } from '@/components/documents-card'
 import { PageHeader } from '@/components/page-header'
 import { Timeline, mergeTimeline, type TimelineActivity, type TimelineStage } from '@/components/timeline'
 import { Badge } from '@/components/ui/badge'
@@ -63,10 +65,11 @@ export default async function ApplicationDetail({
   const app = await appsQ.getById(userId, id)
   if (!app) notFound()
 
-  const [stages, activities, contacts] = await Promise.all([
+  const [stages, activities, contacts, documents] = await Promise.all([
     stagesQ.list(userId, id),
     actQ.list(userId, id, { limit: 50 }),
     applicationContactsQ.listForApplication(userId, id),
+    documentsQ.list(userId, { applicationId: id }),
   ])
 
   const status = narrowStatus(app.status)
@@ -221,6 +224,8 @@ export default async function ApplicationDetail({
               <Timeline items={timelineItems} />
             </CardContent>
           </Card>
+
+          <DocumentsCard applicationId={app.id} documents={documents} />
 
           <Card>
             <CardHeader>
