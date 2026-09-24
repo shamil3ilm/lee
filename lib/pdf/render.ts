@@ -2,7 +2,13 @@ import { renderToBuffer } from '@react-pdf/renderer'
 import { createElement, type ReactElement } from 'react'
 import { CvPdfDocument } from './cv-template'
 import { CoverLetterPdfDocument, type CoverLetterSender } from './cover-letter-template'
-import type { CoverLetter, MasterCV, TailoredCV } from '@/lib/documents/types'
+import { PrepPackPdfDocument } from './prep-pack-template'
+import type {
+  CoverLetter,
+  InterviewPrepPack,
+  MasterCV,
+  TailoredCV,
+} from '@/lib/documents/types'
 
 // @react-pdf's renderToBuffer types the arg as its own DocumentProps element,
 // but at runtime any component whose root is <Document> works. Cast the
@@ -24,6 +30,18 @@ export async function renderCoverLetterPdf(
   const el = createElement(CoverLetterPdfDocument, {
     letter,
     sender,
+  }) as unknown as ReactElement as unknown as PdfElement
+  return renderToBuffer(el)
+}
+
+export async function renderPrepPackPdf(
+  pack: InterviewPrepPack,
+  meta?: { jobTitle?: string; companyName?: string },
+): Promise<Buffer> {
+  const el = createElement(PrepPackPdfDocument, {
+    pack,
+    jobTitle: meta?.jobTitle,
+    companyName: meta?.companyName,
   }) as unknown as ReactElement as unknown as PdfElement
   return renderToBuffer(el)
 }

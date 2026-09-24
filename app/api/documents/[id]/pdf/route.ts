@@ -1,13 +1,17 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import * as documentsQ from '@/lib/db/queries/documents'
-import { renderCvPdf, renderCoverLetterPdf } from '@/lib/pdf/render'
+import { renderCvPdf, renderCoverLetterPdf, renderPrepPackPdf } from '@/lib/pdf/render'
 import {
   coverLetterSchema,
+  interviewPrepPackSchema,
   masterCvSchema,
+  outreachDraftSchema,
   tailoredCvSchema,
   type CoverLetter,
+  type InterviewPrepPack,
   type MasterCV,
+  type OutreachDraft,
   type TailoredCV,
 } from '@/lib/documents/types'
 import { getMasterCV } from '@/lib/documents/master'
@@ -36,6 +40,25 @@ export async function GET(
     const doc = await documentsQ.getById(userId, id)
     if (!doc) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
 
+    // Outreach kinds are short-form text — serve as .txt (no PDF template).
+    if (
+      doc.kind === 'outreach_linkedin_connection' ||
+      doc.kind === 'outreach_linkedin_message' ||
+      doc.kind === 'outreach_recruiter_reply'
+    ) {
+      const draft: OutreachDraft = outreachDraftSchema.parse(doc.content)
+      const body = draft.subject ? `Subject: ${draft.subject}\n\n${draft.body}` : draft.body
+      const filename = `${safeFilename(doc.title)}.txt`
+      return new Response(body, {
+        status: 200,
+        headers: {
+          'content-type': 'text/plain; charset=utf-8',
+          'content-disposition': `attachment; filename="${filename}"`,
+          'cache-control': 'private, no-store',
+        },
+      })
+    }
+
     let buffer: Buffer
     if (doc.kind === 'master_cv') {
       const cv: MasterCV = masterCvSchema.parse(doc.content)
@@ -52,6 +75,9 @@ export async function GET(
         letter,
         master ? { ...master.basics } : { name: letter.senderName },
       )
+    } else if (doc.kind === 'interview_prep_pack') {
+      const pack: InterviewPrepPack = interviewPrepPackSchema.parse(doc.content)
+      buffer = await renderPrepPackPdf(pack)
     } else {
       return NextResponse.json({ error: `Unsupported document kind: ${doc.kind}` }, { status: 400 })
     }
