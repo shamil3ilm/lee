@@ -1,66 +1,14 @@
 import { describe, it, expect, vi } from 'vitest'
 
-// Deterministic Gemini stub returning valid JSON for each call.
+// Deterministic Gemini stub. Uses prompt-content dispatch (instead of a
+// per-call counter) so this mock coexists with other test files' vi.mock of
+// the same module under vitest isolate:false — see ai-outreach.test.ts.
 vi.mock('@google/generative-ai', () => {
-  let call = 0
   class GoogleGenerativeAI {
     getGenerativeModel() {
       return {
-        generateContent: async () => {
-          call += 1
-          const responses = [
-            // tailorCV
-            JSON.stringify({
-              basics: { name: 'Ada', headline: 'Engineer' },
-              summary: 'A rewritten summary.',
-              experience: [
-                {
-                  company: 'Acme',
-                  role: 'Eng',
-                  start: '2020-01',
-                  end: 'present',
-                  bullets: ['built things'],
-                },
-              ],
-              skills: { primary: ['ts'] },
-              _tailoring: {
-                applicationId: 'app-1',
-                reasoning: 'r',
-                highlighted_skills: ['ts'],
-                reordered_experience_indices: [0],
-                summary_rewrite: true,
-              },
-            }),
-            // coverLetter
-            JSON.stringify({
-              applicationId: 'app-1',
-              greeting: 'Dear Hiring Manager,',
-              paragraphs: ['p1', 'p2', 'p3'],
-              closing: 'Sincerely, Ada',
-              senderName: 'Ada',
-            }),
-            // distillGithub — array shape
-            JSON.stringify([
-              {
-                name: 'repo',
-                url: 'https://github.com/x/repo',
-                description: 'thing',
-                tech: ['ts'],
-              },
-            ]),
-            // distillGithub — wrapped shape
-            JSON.stringify({
-              projects: [
-                {
-                  name: 'r2',
-                  url: 'https://github.com/x/r2',
-                  description: 'other',
-                  tech: [],
-                },
-              ],
-            }),
-          ]
-          const text = responses[(call - 1) % responses.length] ?? '{}'
+        generateContent: async (prompt: string) => {
+          const text = pickResponseByPrompt(String(prompt))
           return {
             response: {
               text: () => text,
@@ -80,6 +28,140 @@ vi.mock('@/lib/db/schema', () => ({ aiCallLogs: {} }))
 import { GeminiProvider } from '@/lib/ai/gemini'
 import type { MasterCV } from '@/lib/documents/types'
 import type { ApplicationWithJob } from '@/lib/db/queries/applications'
+
+// Cross-file shared toggle (see comment in the mock above). Vitest with
+// isolate:false shares module state across test files, so `let` at module
+// scope here would ONLY be seen by this file's mock — but this file's mock
+// may not be the winning factory. Use globalThis for cross-file signaling.
+function setDistillShape(s: 'array' | 'wrapped') {
+  ;(globalThis as { __distillShape?: 'array' | 'wrapped' }).__distillShape = s
+}
+
+function pickResponseByPrompt(prompt: string): string {
+  if (prompt.includes('You tailor a master CV JSON')) {
+    return JSON.stringify({
+      basics: { name: 'Ada', headline: 'Engineer' },
+      summary: 'A rewritten summary.',
+      experience: [
+        {
+          company: 'Acme',
+          role: 'Eng',
+          start: '2020-01',
+          end: 'present',
+          bullets: ['built things'],
+        },
+      ],
+      skills: { primary: ['ts'] },
+      _tailoring: {
+        applicationId: 'app-1',
+        reasoning: 'r',
+        highlighted_skills: ['ts'],
+        reordered_experience_indices: [0],
+        summary_rewrite: true,
+      },
+    })
+  }
+  if (prompt.includes('You draft a role-specific cover letter')) {
+    return JSON.stringify({
+      applicationId: 'app-1',
+      greeting: 'Dear Hiring Manager,',
+      paragraphs: ['p1', 'p2', 'p3'],
+      closing: 'Sincerely, Ada',
+      senderName: 'Ada',
+    })
+  }
+  if (prompt.includes('You distill a list of GitHub public repos')) {
+    // Test cases toggle __distillShape on globalThis to exercise both
+    // wrapping styles across possibly-shared mock instances.
+    const shape =
+      (globalThis as { __distillShape?: 'array' | 'wrapped' }).__distillShape ?? 'array'
+    if (shape === 'wrapped') {
+      return JSON.stringify({
+        projects: [
+          {
+            name: 'r2',
+            url: 'https://github.com/x/r2',
+            description: 'other',
+            tech: [],
+          },
+        ],
+      })
+    }
+    return JSON.stringify([
+      {
+        name: 'repo',
+        url: 'https://github.com/x/repo',
+        description: 'thing',
+        tech: ['ts'],
+      },
+    ])
+  }
+  // Outreach + prep pack prompts — return a valid shape so cross-file mock
+  // sharing does not blow up if another test file's request hits this mock.
+  if (prompt.includes('You draft a short LinkedIn connection request')) {
+    return JSON.stringify({
+      kind: 'linkedin_connection',
+      applicationId: 'app-1',
+      body: 'test connection',
+      tone: 'friendly',
+      wordCount: 2,
+    })
+  }
+  if (prompt.includes('You draft a follow-up LinkedIn message')) {
+    return JSON.stringify({
+      kind: 'linkedin_message',
+      applicationId: 'app-1',
+      body: 'test message',
+      tone: 'friendly',
+      wordCount: 2,
+    })
+  }
+  if (prompt.includes('You draft an email reply to an INBOUND recruiter')) {
+    return JSON.stringify({
+      kind: 'recruiter_reply',
+      applicationId: 'app-1',
+      subject: 'Re: role',
+      body: 'test reply',
+      tone: 'friendly',
+      wordCount: 2,
+    })
+  }
+  if (prompt.includes('You produce an interview prep pack')) {
+    // Return a pack with at least one behavioral question so ai-outreach's
+    // assertion (behavioral question has star_answer) still passes when this
+    // file's mock is the winning factory under isolate:false.
+    return JSON.stringify({
+      applicationId: 'app-1',
+      stageId: null,
+      stageKind: 'tech_screen',
+      companyResearch: {
+        summary: 'Stripe builds payments infra.',
+        industry: ['fintech'],
+        notable_facts: [],
+        tech_stack: ['go', 'ruby'],
+        culture_signals: [],
+      },
+      likelyQuestions: [
+        {
+          question: 'Tell me about a time you improved reliability.',
+          category: 'behavioral',
+          difficulty: 'medium',
+          star_answer: {
+            situation: 'S',
+            task: 'T',
+            action: 'A',
+            result: 'R',
+            cv_bullet_ref: 'built ledger',
+          },
+        },
+      ],
+      talkingPoints: ['ledger experience'],
+      redFlags: ['on-call rota'],
+      yourQuestions: ['first-90-days success', 'team split'],
+    })
+  }
+  return '{}'
+}
 
 function makeMaster(): MasterCV {
   return {
@@ -170,6 +252,7 @@ describe('GeminiProvider v2 CV methods', () => {
   })
 
   it('distillGithubProjects accepts a bare array', async () => {
+    setDistillShape('array')
     const p = new GeminiProvider('key')
     const r = await p.distillGithubProjects({
       repos: [
@@ -188,6 +271,7 @@ describe('GeminiProvider v2 CV methods', () => {
   })
 
   it('distillGithubProjects unwraps a {projects:[...]} object', async () => {
+    setDistillShape('wrapped')
     const p = new GeminiProvider('key')
     const r = await p.distillGithubProjects({ repos: [] })
     expect(r).toHaveLength(1)

@@ -1,4 +1,3 @@
-import { renderToStaticMarkup } from 'react-dom/server'
 import type { CSSProperties, ReactElement } from 'react'
 import type { PipelineSnapshot } from './weekly'
 
@@ -187,11 +186,19 @@ export function WeeklyDigestEmail({
  * Render the weekly digest React component to a static HTML string suitable
  * for use as the `htmlBody` of a Gmail send request. Includes a minimal
  * <!doctype html> wrapper so email clients apply their standard rendering.
+ *
+ * Uses a runtime require of react-dom/server so Next.js doesn't warn about
+ * server-only APIs being imported through a route module: the require only
+ * executes on the server at render time.
  */
 export function renderWeeklyDigestHtml(
   snapshot: PipelineSnapshot,
   appBaseUrl?: string,
 ): string {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { renderToStaticMarkup } = require('react-dom/server') as {
+    renderToStaticMarkup: (el: ReactElement) => string
+  }
   const body = renderToStaticMarkup(
     <WeeklyDigestEmail snapshot={snapshot} appBaseUrl={appBaseUrl} />,
   )

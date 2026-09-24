@@ -1,79 +1,13 @@
 import { describe, it, expect, vi } from 'vitest'
 
-// Deterministic Gemini stub returning valid JSON for each call.
+// Deterministic Gemini stub dispatched by prompt content — safe under
+// vitest isolate:false (multiple test files sharing the mocked module).
 vi.mock('@google/generative-ai', () => {
-  let call = 0
   class GoogleGenerativeAI {
     getGenerativeModel() {
       return {
-        generateContent: async () => {
-          call += 1
-          const responses = [
-            // draftOutreach — linkedin_connection
-            JSON.stringify({
-              kind: 'linkedin_connection',
-              applicationId: 'app-1',
-              body: 'Hi Jamie — saw the Stripe billing infra post; I have been building Go/Kafka ledgers and would love to connect.',
-              tone: 'friendly',
-              wordCount: 20,
-              notes: 'concrete ledger overlap',
-            }),
-            // draftOutreach — linkedin_message
-            JSON.stringify({
-              kind: 'linkedin_message',
-              applicationId: 'app-1',
-              body: 'Hi Jamie — thanks for connecting.\n\nAbout the Staff Payments role: I have been running an event-sourced ledger in Go/Kafka for the past two years and last year cut daily settle errors from ~40 to under 3.\n\nHappy to chat about the design.\nAda',
-              tone: 'friendly',
-              wordCount: 45,
-              notes: 'anchors on concrete result',
-            }),
-            // draftOutreach — recruiter_reply
-            JSON.stringify({
-              kind: 'recruiter_reply',
-              applicationId: 'app-1',
-              subject: 'Re: Staff Payments Engineer at Stripe',
-              body: 'Hi Jamie,\n\nThanks for reaching out — very interested. Recent context: Staff Eng at Fintech Corp, own the Kafka ledger clearing ~$X/day.\n\n1. Team split between platform and product enablement?\n2. Comp band for this level in EMEA?\n\nCan jump on 30 min Tuesday afternoon or Wed–Thurs next week.\n\nThanks,\nAda',
-              tone: 'friendly',
-              wordCount: 60,
-            }),
-            // generateInterviewPrepPack
-            JSON.stringify({
-              applicationId: 'app-1',
-              stageId: null,
-              stageKind: 'tech_screen',
-              companyResearch: {
-                summary: 'Stripe builds payments infra.',
-                industry: ['fintech'],
-                notable_facts: [],
-                tech_stack: ['go', 'ruby'],
-                culture_signals: ['remote-friendly'],
-              },
-              likelyQuestions: [
-                {
-                  question: 'Design a rate limiter.',
-                  category: 'system_design',
-                  difficulty: 'medium',
-                  technical_notes: 'Token bucket vs sliding window.',
-                },
-                {
-                  question: 'Tell me about a time you improved reliability.',
-                  category: 'behavioral',
-                  difficulty: 'medium',
-                  star_answer: {
-                    situation: 'S',
-                    task: 'T',
-                    action: 'A',
-                    result: 'R',
-                    cv_bullet_ref: 'built ledger',
-                  },
-                },
-              ],
-              talkingPoints: ['ledger experience'],
-              redFlags: ['on-call rota'],
-              yourQuestions: ['first-90-days success', 'team split'],
-            }),
-          ]
-          const text = responses[(call - 1) % responses.length] ?? '{}'
+        generateContent: async (prompt: string) => {
+          const text = pickResponseByPrompt(String(prompt))
           return {
             response: {
               text: () => text,
@@ -94,6 +28,138 @@ import { GeminiProvider } from '@/lib/ai/gemini'
 import { FixtureAIProvider } from '@/lib/ai/fixtures'
 import type { MasterCV } from '@/lib/documents/types'
 import type { ApplicationWithJob } from '@/lib/db/queries/applications'
+
+function pickResponseByPrompt(prompt: string): string {
+  if (prompt.includes('You draft a short LinkedIn connection request')) {
+    return JSON.stringify({
+      kind: 'linkedin_connection',
+      applicationId: 'app-1',
+      body: 'Hi Jamie — saw the Stripe billing infra post; I have been building Go/Kafka ledgers and would love to connect.',
+      tone: 'friendly',
+      wordCount: 20,
+      notes: 'concrete ledger overlap',
+    })
+  }
+  if (prompt.includes('You draft a follow-up LinkedIn message')) {
+    return JSON.stringify({
+      kind: 'linkedin_message',
+      applicationId: 'app-1',
+      body: 'Hi Jamie — thanks for connecting.\n\nAbout the Staff Payments role: I have been running an event-sourced ledger in Go/Kafka for the past two years and last year cut daily settle errors from ~40 to under 3.\n\nHappy to chat about the design.\nAda',
+      tone: 'friendly',
+      wordCount: 45,
+      notes: 'anchors on concrete result',
+    })
+  }
+  if (prompt.includes('You draft an email reply to an INBOUND recruiter')) {
+    return JSON.stringify({
+      kind: 'recruiter_reply',
+      applicationId: 'app-1',
+      subject: 'Re: Staff Payments Engineer at Stripe',
+      body: 'Hi Jamie,\n\nThanks for reaching out — very interested. Recent context: Staff Eng at Fintech Corp, own the Kafka ledger clearing ~$X/day.\n\n1. Team split between platform and product enablement?\n2. Comp band for this level in EMEA?\n\nCan jump on 30 min Tuesday afternoon or Wed–Thurs next week.\n\nThanks,\nAda',
+      tone: 'friendly',
+      wordCount: 60,
+    })
+  }
+  if (prompt.includes('You produce an interview prep pack')) {
+    return JSON.stringify({
+      applicationId: 'app-1',
+      stageId: null,
+      stageKind: 'tech_screen',
+      companyResearch: {
+        summary: 'Stripe builds payments infra.',
+        industry: ['fintech'],
+        notable_facts: [],
+        tech_stack: ['go', 'ruby'],
+        culture_signals: ['remote-friendly'],
+      },
+      likelyQuestions: [
+        {
+          question: 'Design a rate limiter.',
+          category: 'system_design',
+          difficulty: 'medium',
+          technical_notes: 'Token bucket vs sliding window.',
+        },
+        {
+          question: 'Tell me about a time you improved reliability.',
+          category: 'behavioral',
+          difficulty: 'medium',
+          star_answer: {
+            situation: 'S',
+            task: 'T',
+            action: 'A',
+            result: 'R',
+            cv_bullet_ref: 'built ledger',
+          },
+        },
+      ],
+      talkingPoints: ['ledger experience'],
+      redFlags: ['on-call rota'],
+      yourQuestions: ['first-90-days success', 'team split'],
+    })
+  }
+  // v2-era prompts — kept for cross-file compatibility (isolate:false shares
+  // this mocked module across ai-gemini-v2.test.ts and this file).
+  if (prompt.includes('You tailor a master CV JSON')) {
+    return JSON.stringify({
+      basics: { name: 'Ada', headline: 'Engineer' },
+      summary: 'A rewritten summary.',
+      experience: [
+        {
+          company: 'Acme',
+          role: 'Eng',
+          start: '2020-01',
+          end: 'present',
+          bullets: ['built things'],
+        },
+      ],
+      skills: { primary: ['ts'] },
+      _tailoring: {
+        applicationId: 'app-1',
+        reasoning: 'r',
+        highlighted_skills: ['ts'],
+        reordered_experience_indices: [0],
+        summary_rewrite: true,
+      },
+    })
+  }
+  if (prompt.includes('You draft a role-specific cover letter')) {
+    return JSON.stringify({
+      applicationId: 'app-1',
+      greeting: 'Dear Hiring Manager,',
+      paragraphs: ['p1', 'p2', 'p3'],
+      closing: 'Sincerely, Ada',
+      senderName: 'Ada',
+    })
+  }
+  if (prompt.includes('You distill a list of GitHub public repos')) {
+    // Cross-file toggle via globalThis so this mock and the v2 test file's
+    // mock stay consistent regardless of which vi.mock factory wins under
+    // isolate:false.
+    const shape =
+      (globalThis as { __distillShape?: 'array' | 'wrapped' }).__distillShape ?? 'array'
+    if (shape === 'wrapped') {
+      return JSON.stringify({
+        projects: [
+          {
+            name: 'r2',
+            url: 'https://github.com/x/r2',
+            description: 'other',
+            tech: [],
+          },
+        ],
+      })
+    }
+    return JSON.stringify([
+      {
+        name: 'repo',
+        url: 'https://github.com/x/repo',
+        description: 'thing',
+        tech: ['ts'],
+      },
+    ])
+  }
+  return '{}'
+}
 
 function makeMaster(): MasterCV {
   return {

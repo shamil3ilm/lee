@@ -129,7 +129,8 @@ describe('sendWeeklyDigest', () => {
     const j = await makeJob(u.id, c.id)
     await makeApplication(u.id, j.id, { status: 'applied' })
 
-    const send = vi.fn(async () => ({ messageId: 'msg-abc' }))
+    type SendArgs = { userId: string; to: string; subject: string; htmlBody: string }
+    const send = vi.fn(async (_args: SendArgs) => ({ messageId: 'msg-abc' }))
     const before = new Date()
     const { messageId, snapshot } = await sendWeeklyDigest({
       userId: u.id,
@@ -137,7 +138,7 @@ describe('sendWeeklyDigest', () => {
     })
     expect(messageId).toBe('msg-abc')
     expect(send).toHaveBeenCalledTimes(1)
-    const arg = send.mock.calls[0]?.[0]
+    const arg = send.mock.calls[0]?.[0] as SendArgs | undefined
     expect(arg?.to).toBe('digest-send@x.com')
     expect(arg?.subject).toContain('Employ')
     expect(arg?.htmlBody).toContain('Your Employ week')

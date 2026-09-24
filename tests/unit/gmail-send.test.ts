@@ -1,16 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-
-// Mock the token accessor so the send call is fully self-contained.
-vi.mock('@/lib/google/tokens', () => ({
-  getGoogleTokens: vi.fn(async () => ({
-    accessToken: 'access-token-abc',
-    refreshToken: 'refresh-token',
-    expiresAt: Math.floor(Date.now() / 1000) + 3600,
-  })),
-  NoGoogleAccountError: class NoGoogleAccountError extends Error {},
-}))
-
 import { sendEmail, buildRawMessage } from '@/lib/gmail/send'
+import { db } from '@/lib/db/client'
+import { accounts, users } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 
 describe('buildRawMessage', () => {
   it('emits multipart/alternative with text + html parts', () => {
@@ -39,6 +31,33 @@ describe('buildRawMessage', () => {
   })
 })
 
+/**
+ * Seed a Google account row with a still-fresh access token so
+ * `getGoogleTokens` returns without contacting the refresh endpoint. Using
+ * a real DB row here (rather than vi.mock) is more resilient under vitest
+ * isolate:false where module mocks can leak or lose across files.
+ */
+async function seedFreshGoogleUser(email: string): Promise<string> {
+  const [u] = await db.insert(users).values({ email, name: 'Send Test' }).returning()
+  if (!u) throw new Error('failed to seed user')
+  await db.insert(accounts).values({
+    userId: u.id,
+    type: 'oauth',
+    provider: 'google',
+    providerAccountId: `google-${u.id}`,
+    access_token: 'stored-access-token',
+    refresh_token: 'stored-refresh-token',
+    expires_at: Math.floor(Date.now() / 1000) + 3600,
+    token_type: 'Bearer',
+    scope: 'openid email https://www.googleapis.com/auth/gmail.send',
+  })
+  return u.id
+}
+
+async function cleanupUser(userId: string): Promise<void> {
+  await db.delete(users).where(eq(users.id, userId))
+}
+
 describe('sendEmail', () => {
   const originalFetch = globalThis.fetch
 
@@ -65,25 +84,35 @@ describe('sendEmail', () => {
   })
 
   it('sends via Gmail API and returns the message id', async () => {
-    const r = await sendEmail({
-      userId: 'u-1',
-      to: 'me@example.com',
-      subject: 'Test',
-      htmlBody: '<p>hi</p>',
-    })
-    expect(r.messageId).toBe('msg-123')
+    const uid = await seedFreshGoogleUser('gmail-send-ok@x.com')
+    try {
+      const r = await sendEmail({
+        userId: uid,
+        to: 'me@example.com',
+        subject: 'Test',
+        htmlBody: '<p>hi</p>',
+      })
+      expect(r.messageId).toBe('msg-123')
+    } finally {
+      await cleanupUser(uid)
+    }
   })
 
   it('throws on non-2xx Gmail response', async () => {
-    globalThis.fetch = vi.fn(
-      async () =>
-        new Response('quota exceeded', {
-          status: 429,
-          headers: { 'content-type': 'text/plain' },
-        }),
-    ) as unknown as typeof fetch
-    await expect(
-      sendEmail({ userId: 'u-1', to: 'me@example.com', subject: 'x', htmlBody: '<p>y</p>' }),
-    ).rejects.toThrow(/gmail send 429/)
+    const uid = await seedFreshGoogleUser('gmail-send-fail@x.com')
+    try {
+      globalThis.fetch = vi.fn(
+        async () =>
+          new Response('quota exceeded', {
+            status: 429,
+            headers: { 'content-type': 'text/plain' },
+          }),
+      ) as unknown as typeof fetch
+      await expect(
+        sendEmail({ userId: uid, to: 'me@example.com', subject: 'x', htmlBody: '<p>y</p>' }),
+      ).rejects.toThrow(/gmail send 429/)
+    } finally {
+      await cleanupUser(uid)
+    }
   })
 })
