@@ -12,6 +12,7 @@ import {
   FileCheck2,
   Sparkles,
   Rss,
+  Plug,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -48,6 +49,7 @@ const SECTIONS: NavSection[] = [
     label: 'Personal',
     items: [
       { href: '/settings/profile', label: 'Profile', icon: Settings },
+      { href: '/settings/integrations', label: 'Integrations', icon: Plug },
       { href: '/settings/cv', label: 'CV', icon: FileText },
       { href: '/settings/sources', label: 'Sources', icon: Rss },
       { href: '/digest', label: 'Digest', icon: FileText },
