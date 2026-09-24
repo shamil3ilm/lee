@@ -7,6 +7,12 @@ import { runDiscoveryCycleForUser } from '@/lib/discovery/service'
 import { getAIProviderForUser } from '@/lib/ai'
 import { syncGmail } from '@/lib/gmail/sync'
 import { NoGoogleAccountError } from '@/lib/google/tokens'
+import * as profileQ from '@/lib/db/queries/profile'
+import {
+  alreadySentThisWeek,
+  isMondayUtc,
+  sendWeeklyDigest,
+} from '@/lib/digest/weekly'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -23,6 +29,7 @@ interface CycleTotals {
   gmail_checked: number
   gmail_matched: number
   reminders_added: number
+  digests_sent: number
   errors: string[]
 }
 
@@ -62,6 +69,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     gmail_checked: 0,
     gmail_matched: 0,
     reminders_added: 0,
+    digests_sent: 0,
     errors: [],
   }
 
@@ -93,6 +101,26 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       } else {
         const message = e instanceof Error ? e.message : String(e)
         totals.errors.push(`user ${user.id} gmail: ${message}`)
+      }
+    }
+
+    // Weekly digest — Monday only, guarded by digestLastSentAt so an
+    // accidental re-run does not double-send. Same NoGoogleAccountError
+    // silently-skipped pattern as Gmail sync.
+    if (isMondayUtc()) {
+      try {
+        const profile = await profileQ.get(user.id)
+        if (profile?.weeklyDigestEnabled && !alreadySentThisWeek(profile)) {
+          await sendWeeklyDigest({ userId: user.id })
+          totals.digests_sent += 1
+        }
+      } catch (e) {
+        if (e instanceof NoGoogleAccountError) {
+          // Expected: no Gmail scope → cannot send. Skip silently.
+        } else {
+          const message = e instanceof Error ? e.message : String(e)
+          totals.errors.push(`user ${user.id} digest: ${message}`)
+        }
       }
     }
   }

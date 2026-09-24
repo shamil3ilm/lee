@@ -1,0 +1,2 @@
+ALTER TABLE "user_profile" ADD COLUMN "weekly_digest_enabled" boolean DEFAULT true NOT NULL;--> statement-breakpoint
+ALTER TABLE "user_profile" ADD COLUMN "digest_last_sent_at" timestamp with time zone;

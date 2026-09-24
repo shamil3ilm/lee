@@ -303,6 +303,11 @@ export const userProfile = pgTable('user_profile', {
   // corresponding Google scope).
   syncedGmailAt: timestamp('synced_gmail_at', { withTimezone: true }),
   syncedCalendarAt: timestamp('synced_calendar_at', { withTimezone: true }),
+  // v4 weekly digest — set to true by default so all users receive the
+  // Monday email until they explicitly opt out. digestLastSentAt is null
+  // until the first send; used as a same-week idempotency guard.
+  weeklyDigestEnabled: boolean('weekly_digest_enabled').notNull().default(true),
+  digestLastSentAt: timestamp('digest_last_sent_at', { withTimezone: true }),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
