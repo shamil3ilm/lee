@@ -1,13 +1,15 @@
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
-import { and, eq, gte } from 'drizzle-orm'
+import { and, count, eq, gte } from 'drizzle-orm'
 import { requireUserId } from '@/lib/auth/require-session'
 import * as appsQ from '@/lib/db/queries/applications'
 import { db } from '@/lib/db/client'
-import { discoveries } from '@/lib/db/schema'
+import { accounts, activities, discoveries } from '@/lib/db/schema'
+import { getProfile } from '@/lib/profile/service'
 import { Kanban, type KanbanCard } from '@/components/kanban'
 import { NeedsAttention, type AttentionItem } from '@/components/needs-attention'
 import { FreshDiscoveries, type FreshDiscoveryItem } from '@/components/fresh-discoveries'
+import { SyncStatus } from '@/components/sync-status'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import {
@@ -37,10 +39,37 @@ function filterAttention(rows: Row[], cutoff: number): Row[] {
 
 const FRESH_WINDOW_MS = 24 * 60 * 60 * 1000
 
+const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly'
+const DAY_MS = 24 * 60 * 60 * 1000
+
 export default async function DashboardPage() {
   const userId = await requireUserId()
   const rows = await appsQ.list(userId, {})
   const now = new Date()
+
+  // Sync-status widget inputs — one round-trip per input, all keyed by
+  // userId so this stays cheap. Executed in parallel with the discovery
+  // query and dashboard aggregations below.
+  const [googleAccount, profile, emailCountRow] = await Promise.all([
+    db.query.accounts.findFirst({
+      where: and(eq(accounts.userId, userId), eq(accounts.provider, 'google')),
+      columns: { scope: true },
+    }),
+    getProfile(userId),
+    db
+      .select({ c: count() })
+      .from(activities)
+      .where(
+        and(
+          eq(activities.userId, userId),
+          eq(activities.kind, 'email'),
+          gte(activities.createdAt, new Date(now.getTime() - DAY_MS)),
+        ),
+      ),
+  ])
+  const grantedScopes = googleAccount?.scope?.split(' ').filter(Boolean) ?? []
+  const gmailConnected = grantedScopes.includes(GMAIL_SCOPE)
+  const emailsToday = emailCountRow[0]?.c ?? 0
 
   const freshRows = await db.query.discoveries.findMany({
     where: and(
@@ -114,6 +143,12 @@ export default async function DashboardPage() {
         }
       />
       <NeedsAttention items={attention} totalApplications={rows.length} />
+      <SyncStatus
+        connected={gmailConnected}
+        syncedGmailAt={profile?.syncedGmailAt?.toISOString() ?? null}
+        emailsToday={emailsToday}
+        needsFollowUp={attention.length}
+      />
       <FreshDiscoveries items={fresh} />
       <section className="space-y-3">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
