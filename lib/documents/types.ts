@@ -123,3 +123,83 @@ export type GitHubRepo = z.infer<typeof githubRepoSchema>
 // Distilled projects from GitHub → subset of MasterCV['projects']
 export const cvProjectsArraySchema = z.array(cvProjectSchema)
 export type CvProjects = z.infer<typeof cvProjectsArraySchema>
+
+// ---------------------------------------------------------------------------
+// Outreach drafts (v4 spec §4)
+// ---------------------------------------------------------------------------
+
+export const outreachKindSchema = z.enum([
+  'linkedin_connection',
+  'linkedin_message',
+  'recruiter_reply',
+])
+export type OutreachKind = z.infer<typeof outreachKindSchema>
+
+export const outreachToneSchema = z.enum(['formal', 'friendly', 'enthusiastic'])
+export type OutreachTone = z.infer<typeof outreachToneSchema>
+
+export const outreachDraftSchema = z.object({
+  kind: outreachKindSchema,
+  applicationId: z.string(),
+  subject: z.string().optional(),
+  body: z.string().min(1),
+  tone: outreachToneSchema,
+  wordCount: z.number().int().nonnegative(),
+  notes: z.string().optional(),
+})
+
+export type OutreachDraft = z.infer<typeof outreachDraftSchema>
+
+// ---------------------------------------------------------------------------
+// Interview prep pack (v4 spec §4)
+// ---------------------------------------------------------------------------
+
+export const companyResearchSchema = z.object({
+  summary: z.string().default(''),
+  industry: z.array(z.string()).default([]),
+  notable_facts: z.array(z.string()).default([]),
+  tech_stack: z.array(z.string()).default([]),
+  culture_signals: z.array(z.string()).default([]),
+})
+
+export const starAnswerSchema = z.object({
+  situation: z.string(),
+  task: z.string(),
+  action: z.string(),
+  result: z.string(),
+  cv_bullet_ref: z.string().optional(),
+})
+
+export const likelyQuestionCategorySchema = z.enum([
+  'technical',
+  'behavioral',
+  'system_design',
+  'take_home',
+  'culture',
+  'salary',
+])
+
+export const likelyQuestionDifficultySchema = z.enum(['easy', 'medium', 'hard'])
+
+export const likelyQuestionSchema = z.object({
+  question: z.string().min(1),
+  category: likelyQuestionCategorySchema,
+  difficulty: likelyQuestionDifficultySchema,
+  star_answer: starAnswerSchema.optional(),
+  technical_notes: z.string().optional(),
+})
+
+export const interviewPrepPackSchema = z.object({
+  applicationId: z.string(),
+  stageId: z.string().nullable().optional(),
+  stageKind: z.string(),
+  companyResearch: companyResearchSchema,
+  likelyQuestions: z.array(likelyQuestionSchema).default([]),
+  talkingPoints: z.array(z.string()).default([]),
+  redFlags: z.array(z.string()).default([]),
+  yourQuestions: z.array(z.string()).default([]),
+})
+
+export type InterviewPrepPack = z.infer<typeof interviewPrepPackSchema>
+export type CompanyResearch = z.infer<typeof companyResearchSchema>
+export type LikelyQuestion = z.infer<typeof likelyQuestionSchema>

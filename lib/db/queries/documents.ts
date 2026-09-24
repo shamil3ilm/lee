@@ -4,7 +4,14 @@ import { documents } from '@/lib/db/schema'
 
 export type Document = typeof documents.$inferSelect
 export type NewDocument = typeof documents.$inferInsert
-export type DocumentKind = 'master_cv' | 'tailored_cv' | 'cover_letter'
+export type DocumentKind =
+  | 'master_cv'
+  | 'tailored_cv'
+  | 'cover_letter'
+  | 'outreach_linkedin_connection'
+  | 'outreach_linkedin_message'
+  | 'outreach_recruiter_reply'
+  | 'interview_prep_pack'
 
 export interface ListOptions {
   applicationId?: string
