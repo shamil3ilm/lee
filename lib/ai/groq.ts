@@ -5,6 +5,10 @@ import { buildScoreCompanyPrompt } from './prompts/score-company'
 import { buildTailorCVPrompt } from './prompts/tailor-cv'
 import { buildCoverLetterPrompt } from './prompts/cover-letter'
 import { buildDistillGithubPrompt } from './prompts/distill-github'
+import { buildOutreachLinkedInConnectionPrompt } from './prompts/outreach-linkedin-connection'
+import { buildOutreachLinkedInMessagePrompt } from './prompts/outreach-linkedin-message'
+import { buildOutreachRecruiterReplyPrompt } from './prompts/outreach-recruiter-reply'
+import { buildInterviewPrepPrompt } from './prompts/interview-prep'
 import {
   companyMatchResultSchema,
   jobMatchResultSchema,
@@ -19,11 +23,17 @@ import {
 import {
   coverLetterSchema,
   cvProjectsArraySchema,
+  interviewPrepPackSchema,
+  outreachDraftSchema,
   tailoredCvSchema,
   type CoverLetter,
   type CvProjects,
   type GitHubRepo,
+  type InterviewPrepPack,
   type MasterCV,
+  type OutreachDraft,
+  type OutreachKind,
+  type OutreachTone,
   type TailoredCV,
 } from '@/lib/documents/types'
 import type { NormalizedCompany, NormalizedJob } from '@/lib/discovery/adapters/types'
@@ -184,5 +194,42 @@ export class GroqProvider implements AIProvider {
           ? parsed.items
           : []
     return cvProjectsArraySchema.parse(array)
+  }
+
+  async draftOutreach(input: {
+    master: MasterCV
+    application: ApplicationWithJob
+    kind: OutreachKind
+    tone: OutreachTone
+  }): Promise<OutreachDraft> {
+    const prompt = buildOutreachPromptGroq(input)
+    const raw = await this.generate(prompt)
+    return outreachDraftSchema.parse(JSON.parse(raw))
+  }
+
+  async generateInterviewPrepPack(input: {
+    master: MasterCV
+    application: ApplicationWithJob
+    stageKind: string
+    stageId?: string
+  }): Promise<InterviewPrepPack> {
+    const raw = await this.generate(buildInterviewPrepPrompt(input))
+    return interviewPrepPackSchema.parse(JSON.parse(raw))
+  }
+}
+
+function buildOutreachPromptGroq(input: {
+  master: MasterCV
+  application: ApplicationWithJob
+  kind: OutreachKind
+  tone: OutreachTone
+}): string {
+  switch (input.kind) {
+    case 'linkedin_connection':
+      return buildOutreachLinkedInConnectionPrompt(input)
+    case 'linkedin_message':
+      return buildOutreachLinkedInMessagePrompt(input)
+    case 'recruiter_reply':
+      return buildOutreachRecruiterReplyPrompt(input)
   }
 }

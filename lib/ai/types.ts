@@ -6,7 +6,11 @@ import type {
   CoverLetter,
   CvProjects,
   GitHubRepo,
+  InterviewPrepPack,
   MasterCV,
+  OutreachDraft,
+  OutreachKind,
+  OutreachTone,
   TailoredCV,
 } from '@/lib/documents/types'
 
@@ -87,4 +91,17 @@ export interface AIProvider {
     application: ApplicationWithJob
   }): Promise<CoverLetter>
   distillGithubProjects(input: { repos: GitHubRepo[] }): Promise<CvProjects>
+  // v4 additions — outreach + interview prep.
+  draftOutreach(input: {
+    master: MasterCV
+    application: ApplicationWithJob
+    kind: OutreachKind
+    tone: OutreachTone
+  }): Promise<OutreachDraft>
+  generateInterviewPrepPack(input: {
+    master: MasterCV
+    application: ApplicationWithJob
+    stageKind: string
+    stageId?: string
+  }): Promise<InterviewPrepPack>
 }
