@@ -10,6 +10,8 @@ import * as documentsQ from '@/lib/db/queries/documents'
 import { StatusPicker } from '@/components/status-picker'
 import { AddStageDialog } from '@/components/add-stage-dialog'
 import { DocumentsCard } from '@/components/documents-card'
+import { OutreachCard } from '@/components/outreach-card'
+import { PrepPackCard } from '@/components/prep-pack-card'
 import { PageHeader } from '@/components/page-header'
 import { Timeline, mergeTimeline, type TimelineActivity, type TimelineStage } from '@/components/timeline'
 import { Badge } from '@/components/ui/badge'
@@ -65,12 +67,19 @@ export default async function ApplicationDetail({
   const app = await appsQ.getById(userId, id)
   if (!app) notFound()
 
-  const [stages, activities, contacts, documents] = await Promise.all([
+  const [stages, activities, contacts, allDocs] = await Promise.all([
     stagesQ.list(userId, id),
     actQ.list(userId, id, { limit: 50 }),
     applicationContactsQ.listForApplication(userId, id),
     documentsQ.list(userId, { applicationId: id }),
   ])
+
+  // Split the app's documents so each card only sees the shapes it renders.
+  const cvDocs = allDocs.filter((d) =>
+    ['tailored_cv', 'cover_letter', 'master_cv'].includes(d.kind),
+  )
+  const outreachDocs = allDocs.filter((d) => d.kind.startsWith('outreach_'))
+  const prepDocs = allDocs.filter((d) => d.kind === 'interview_prep_pack')
 
   const status = narrowStatus(app.status)
   const meta = asParsedMeta(app.job.parsedMeta)
@@ -226,7 +235,15 @@ export default async function ApplicationDetail({
             </CardContent>
           </Card>
 
-          <DocumentsCard applicationId={app.id} documents={documents} />
+          <DocumentsCard applicationId={app.id} documents={cvDocs} />
+
+          <OutreachCard applicationId={app.id} outreachDocs={outreachDocs} />
+
+          <PrepPackCard
+            applicationId={app.id}
+            stages={stages}
+            prepDocs={prepDocs}
+          />
 
           <Card>
             <CardHeader>
