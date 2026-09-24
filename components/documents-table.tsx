@@ -19,39 +19,70 @@ import {
 import { cn } from '@/lib/utils'
 import { relativeFromNow } from '@/lib/ui/date'
 
-type DocumentKind = 'master_cv' | 'tailored_cv' | 'cover_letter'
+type DocumentKind =
+  | 'master_cv'
+  | 'tailored_cv'
+  | 'cover_letter'
+  | 'outreach_linkedin_connection'
+  | 'outreach_linkedin_message'
+  | 'outreach_recruiter_reply'
+  | 'interview_prep_pack'
+
+// The filter chip value maps to the URL `?kind=` param. The bespoke `outreach`
+// and `interview_prep` values are prefix-matched server-side in the page (the
+// backend query filters by exact kind, so grouping is done at the page level).
+type FilterValue =
+  | 'all'
+  | 'master_cv'
+  | 'tailored_cv'
+  | 'cover_letter'
+  | 'outreach'
+  | 'interview_prep'
 
 interface DocumentsTableProps {
   documents: Document[]
-  currentKind: DocumentKind | null
+  currentFilter: FilterValue
 }
 
 const KIND_LABELS: Record<DocumentKind, string> = {
   master_cv: 'Master CV',
   tailored_cv: 'Tailored CV',
   cover_letter: 'Cover letter',
+  outreach_linkedin_connection: 'LinkedIn Connect',
+  outreach_linkedin_message: 'LinkedIn Message',
+  outreach_recruiter_reply: 'Recruiter Reply',
+  interview_prep_pack: 'Interview Prep',
 }
 
-const KIND_BADGE: Record<DocumentKind, 'blue' | 'violet' | 'neutral'> = {
+const KIND_BADGE: Record<
+  DocumentKind,
+  'blue' | 'violet' | 'neutral' | 'emerald'
+> = {
   master_cv: 'neutral',
   tailored_cv: 'violet',
   cover_letter: 'blue',
+  outreach_linkedin_connection: 'violet',
+  outreach_linkedin_message: 'violet',
+  outreach_recruiter_reply: 'violet',
+  interview_prep_pack: 'emerald',
 }
 
-const FILTER_CHIPS: ReadonlyArray<{ label: string; value: DocumentKind | 'all' }> = [
+const FILTER_CHIPS: ReadonlyArray<{ label: string; value: FilterValue }> = [
   { label: 'All', value: 'all' },
   { label: 'Master CV', value: 'master_cv' },
   { label: 'Tailored CV', value: 'tailored_cv' },
   { label: 'Cover Letter', value: 'cover_letter' },
+  { label: 'Outreach', value: 'outreach' },
+  { label: 'Interview Prep', value: 'interview_prep' },
 ]
 
-export function DocumentsTable({ documents, currentKind }: DocumentsTableProps) {
+export function DocumentsTable({ documents, currentFilter }: DocumentsTableProps) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [confirmDelete, setConfirmDelete] = useState<Document | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  function setFilter(v: DocumentKind | 'all'): void {
+  function setFilter(v: FilterValue): void {
     startTransition(() => {
       if (v === 'all') router.push('/documents')
       else router.push(`/documents?kind=${v}`)
@@ -77,7 +108,7 @@ export function DocumentsTable({ documents, currentKind }: DocumentsTableProps) 
     }
   }
 
-  const activeValue: DocumentKind | 'all' = currentKind ?? 'all'
+  const activeValue: FilterValue = currentFilter
 
   return (
     <div className="space-y-4">
