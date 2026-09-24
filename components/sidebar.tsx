@@ -46,6 +46,7 @@ const SECTIONS: NavSection[] = [
     label: 'Personal',
     items: [
       { href: '/settings/profile', label: 'Profile', icon: Settings },
+      { href: '/settings/cv', label: 'CV', icon: FileText },
       { href: '/settings/sources', label: 'Sources', icon: Rss },
       { href: '/digest', label: 'Digest', icon: FileText },
     ],
