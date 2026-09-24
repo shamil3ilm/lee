@@ -6,6 +6,11 @@ import { runDiscoveryCycleForUser } from '@/lib/discovery/service'
 import { getAIProviderForUser } from '@/lib/ai'
 import { logger } from '@/lib/logger'
 
+// NOTE (v3): this endpoint is NO LONGER scheduled by vercel.json — the daily
+// cron now hits `/api/cron/sync-all`, which fans out to discovery + gmail +
+// reminders. This route is retained as a callable endpoint for manual runs
+// and one-off debugging.
+
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 // Vercel Hobby crons get up to 60s; API routes cap at 10s otherwise. On Hobby

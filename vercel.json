@@ -1,6 +1,6 @@
 {
   "crons": [
-    { "path": "/api/cron/discover", "schedule": "0 9 * * *" }
+    { "path": "/api/cron/sync-all", "schedule": "0 9 * * *" }
   ],
   "buildCommand": "pnpm db:migrate && pnpm build",
   "installCommand": "pnpm install --frozen-lockfile"
