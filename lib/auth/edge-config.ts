@@ -14,7 +14,27 @@ import { isAllowedEmail } from './allowed-email'
 // in `./config.ts` is still used at signin time to persist users + accounts.
 export const edgeAuthConfig = {
   providers: [
-    Google({ clientId: env.AUTH_GOOGLE_ID, clientSecret: env.AUTH_GOOGLE_SECRET }),
+    Google({
+      clientId: env.AUTH_GOOGLE_ID,
+      clientSecret: env.AUTH_GOOGLE_SECRET,
+      authorization: {
+        params: {
+          scope: [
+            'openid',
+            'email',
+            'profile',
+            'https://www.googleapis.com/auth/gmail.readonly',
+            'https://www.googleapis.com/auth/calendar.events',
+          ].join(' '),
+          // `offline` + `consent` are required for Google to return a durable
+          // refresh_token. Without `prompt=consent`, subsequent authorizations
+          // silently drop the refresh_token when the user has already granted
+          // scope, and background sync stops working after ~1h.
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      },
+    }),
   ],
   trustHost: true,
   session: { strategy: 'jwt' },
