@@ -9,6 +9,7 @@ import {
   Users,
   Settings,
   FileText,
+  FileCheck2,
   Sparkles,
   Rss,
   type LucideIcon,
@@ -32,6 +33,7 @@ const SECTIONS: NavSection[] = [
     items: [
       { href: '/', label: 'Dashboard', icon: Home },
       { href: '/applications', label: 'Applications', icon: Briefcase },
+      { href: '/documents', label: 'Documents', icon: FileCheck2 },
       { href: '/discoveries', label: 'Discovery', icon: Sparkles },
     ],
   },
