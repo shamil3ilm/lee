@@ -47,18 +47,6 @@ export const edgeAuthConfig = {
   trustHost: true,
   session: { strategy: 'jwt' },
   pages: { signIn: '/signin' },
-  debug: true,
-  logger: {
-    error(error) {
-      console.error('[auth][error]', error)
-    },
-    warn(code) {
-      console.warn('[auth][warn]', code)
-    },
-    debug(message, metadata) {
-      console.log('[auth][debug]', message, metadata)
-    },
-  },
   callbacks: {
     async signIn({ user }) {
       return isAllowedEmail(user.email)
