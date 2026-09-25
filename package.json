@@ -26,6 +26,7 @@
     "@electric-sql/pglite": "^0.5.8",
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.9.1",
+    "@monaco-editor/react": "^4.7.0",
     "@neondatabase/serverless": "^1.1.0",
     "@radix-ui/react-dialog": "^1.1.23",
     "@radix-ui/react-dropdown-menu": "^2.1.24",
