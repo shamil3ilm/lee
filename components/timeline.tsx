@@ -1,5 +1,6 @@
 'use client'
-import { useTransition } from 'react'
+import { useState, useTransition } from 'react'
+import Link from 'next/link'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import {
@@ -10,15 +11,19 @@ import {
   CalendarX,
   CheckCircle2,
   Clock,
+  Download,
   FileText,
   Loader2,
   Mail,
   MessageSquare,
+  Sparkles,
   StickyNote,
   type LucideIcon,
 } from 'lucide-react'
+import { setStageStatus } from '@/app/(authed)/applications/[id]/actions'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { DebriefDialog } from '@/components/debrief-dialog'
 import { relativeFromNow, shortDateTime } from '@/lib/ui/date'
 import { STATUS_BADGE, STATUS_LABELS, type ApplicationStatus } from '@/lib/ui/status'
 import type { TimelineActivity, TimelineItem, TimelineStage } from '@/lib/ui/timeline'
@@ -73,9 +78,13 @@ export function Timeline({ items }: TimelineProps) {
 function StageItem({ item }: { item: TimelineStage }) {
   const router = useRouter()
   const [pending, start] = useTransition()
+  const [debriefOpen, setDebriefOpen] = useState(false)
   const label = item.title || STAGE_KIND_LABELS[item.stageKind] || item.stageKind
   const inCalendar = Boolean(item.googleEventId)
   const canPush = !inCalendar && Boolean(item.scheduledAt)
+  const isCompleted = item.status === 'completed'
+  const hasDebriefNotes = Boolean(item.debriefNotesMd && item.debriefNotesMd.trim().length > 0)
+  const hasAIDebrief = Boolean(item.debriefDocId)
 
   function pushToCalendar(): void {
     start(async () => {
@@ -160,6 +169,102 @@ function StageItem({ item }: { item: TimelineStage }) {
               <span className="font-medium text-foreground">Debrief: </span>
               {item.debriefNotesMd}
             </p>
+          ) : null}
+
+          {/* Mark-complete: shown for stages that haven't reached a terminal
+              status yet so the user can flip to 'completed' and unlock the
+              debrief affordance. Kept separate from calendar controls because
+              cancelling/no-showing is out of scope for this button. */}
+          {!isCompleted && item.status !== 'cancelled' && item.status !== 'no_show' ? (
+            <div className="mt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() =>
+                  start(async () => {
+                    const res = await setStageStatus(item.id, 'completed')
+                    if ('success' in res) {
+                      toast.success('Stage marked complete')
+                      router.refresh()
+                    } else {
+                      toast.error(res.error)
+                    }
+                  })
+                }
+                disabled={pending}
+              >
+                {pending ? <Loader2 className="size-3 animate-spin" /> : <CheckCircle2 className="size-3" />}
+                Mark complete
+              </Button>
+            </div>
+          ) : null}
+
+          {/* v4.3 — post-stage debrief. Only offered on completed stages so
+              the affordance doesn't nag before the interview happens. The
+              modal is controlled from here so the chip and the trigger can
+              live in the same row without duplicating the button visual. */}
+          {isCompleted ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {hasDebriefNotes ? (
+                <>
+                  <Badge variant="emerald" className="text-[10px]">
+                    <CheckCircle2 className="mr-1 size-3" /> Debrief added
+                  </Badge>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setDebriefOpen(true)}
+                  >
+                    Edit
+                  </Button>
+                  {hasAIDebrief ? (
+                    <Button
+                      asChild
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                    >
+                      <Link
+                        href={`/api/documents/${item.debriefDocId}/pdf`}
+                        target="_blank"
+                      >
+                        <Download className="size-3" />
+                        AI summary
+                      </Link>
+                    </Button>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                      <Sparkles className="size-3" />
+                      AI summary not yet generated
+                    </span>
+                  )}
+                </>
+              ) : (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => setDebriefOpen(true)}
+                >
+                  + Add debrief
+                </Button>
+              )}
+              <DebriefDialog
+                stageId={item.id}
+                stageLabel={label}
+                initialNotes={item.debriefNotesMd}
+                existingDebriefDocId={item.debriefDocId ?? null}
+                triggerVariant={hasDebriefNotes ? 'edit' : 'add'}
+                open={debriefOpen}
+                onOpenChange={setDebriefOpen}
+              />
+            </div>
           ) : null}
 
           {/* Calendar push controls — only meaningful when the stage has a

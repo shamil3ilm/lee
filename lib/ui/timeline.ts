@@ -25,6 +25,12 @@ export interface TimelineStage {
   debriefNotesMd: string | null
   /** Google Calendar event id if the stage has been pushed; null otherwise. */
   googleEventId: string | null
+  /**
+   * v4.3 — id of the latest `interview_debrief` document linked to this stage
+   * (matched by content.stageId on the server), if any. Null when the user
+   * has captured quick notes but not yet generated the AI summary.
+   */
+  debriefDocId?: string | null
 }
 
 export type TimelineItem = TimelineActivity | TimelineStage

@@ -83,6 +83,19 @@ export default async function ApplicationDetail({
   )
   const outreachDocs = allDocs.filter((d) => d.kind.startsWith('outreach_'))
   const prepDocs = allDocs.filter((d) => d.kind === 'interview_prep_pack')
+  const debriefDocs = allDocs.filter((d) => d.kind === 'interview_debrief')
+
+  // Map each stage → latest debrief document id (matched via content.stageId).
+  // documentsQ.list returns rows ordered by createdAt desc, so the first hit
+  // per stage wins — which is the latest version we want to expose to the UI.
+  const latestDebriefByStage = new Map<string, string>()
+  for (const d of debriefDocs) {
+    const content = d.content as { stageId?: string }
+    const sid = content?.stageId
+    if (typeof sid === 'string' && !latestDebriefByStage.has(sid)) {
+      latestDebriefByStage.set(sid, d.id)
+    }
+  }
 
   const status = narrowStatus(app.status)
   const meta = asParsedMeta(app.job.parsedMeta)
@@ -112,6 +125,7 @@ export default async function ApplicationDetail({
         prepNotesMd: s.prepNotesMd,
         debriefNotesMd: s.debriefNotesMd,
         googleEventId: s.googleEventId,
+        debriefDocId: latestDebriefByStage.get(s.id) ?? null,
       }),
     ),
   )
