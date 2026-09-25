@@ -112,6 +112,17 @@ export function DebriefDialog({
         documentId?: string
         downloadUrl?: string
         error?: string
+        skipped?: boolean
+        message?: string
+        fixHint?: string
+      }
+      if (json.skipped) {
+        toast.warning(
+          json.message
+            ? `${json.message}${json.fixHint ? ` — ${json.fixHint}` : ''}`
+            : 'AI summary skipped.',
+        )
+        return
       }
       if (!res.ok || !json.documentId) {
         toast.error(json.error ?? 'Could not generate AI summary.')

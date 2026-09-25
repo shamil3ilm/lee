@@ -121,8 +121,17 @@ export function PrepPackCard({ applicationId, stages, prepDocs }: PrepPackCardPr
       const json = (await res.json().catch(() => ({}))) as {
         documentId?: string
         error?: string
+        skipped?: boolean
+        message?: string
+        fixHint?: string
       }
-      if (res.ok && json.documentId) {
+      if (json.skipped) {
+        toast.warning(
+          json.message
+            ? `${json.message}${json.fixHint ? ` — ${json.fixHint}` : ''}`
+            : 'Prep pack skipped.',
+        )
+      } else if (res.ok && json.documentId) {
         toast.success('Prep pack generated')
         // Auto-expand the new one.
         setExpandedDocIds((prev) => new Set(prev).add(json.documentId!))

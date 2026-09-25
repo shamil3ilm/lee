@@ -78,8 +78,17 @@ export function ExpenseForm({
         category?: string
         confidence?: number
         error?: string
+        skipped?: boolean
+        message?: string
+        fixHint?: string
       }
-      if (res.ok && typeof json.category === 'string' && isExpenseCategory(json.category)) {
+      if (json.skipped) {
+        toast.warning(
+          json.message
+            ? `${json.message}${json.fixHint ? ` — ${json.fixHint}` : ''}`
+            : 'Classification skipped.',
+        )
+      } else if (res.ok && typeof json.category === 'string' && isExpenseCategory(json.category)) {
         setCategory(json.category)
         toast.success(
           `Category set to ${json.category}${

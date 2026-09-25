@@ -158,8 +158,18 @@ export function OutreachCard({
       const json = (await res.json().catch(() => ({}))) as {
         documentId?: string
         error?: string
+        skipped?: boolean
+        message?: string
+        fixHint?: string
       }
-      if (res.ok && json.documentId) {
+      if (json.skipped) {
+        // Signal-check refused — surface the hint, don't treat as failure.
+        toast.warning(
+          json.message
+            ? `${json.message}${json.fixHint ? ` — ${json.fixHint}` : ''}`
+            : 'Draft skipped.',
+        )
+      } else if (res.ok && json.documentId) {
         toast.success(`${TAB_LABEL[tab]} drafted`)
         setDrafts((prev) => {
           const next = { ...prev }
@@ -191,8 +201,17 @@ export function OutreachCard({
       const json = (await res.json().catch(() => ({}))) as {
         documentId?: string
         error?: string
+        skipped?: boolean
+        message?: string
+        fixHint?: string
       }
-      if (res.ok && json.documentId) {
+      if (json.skipped) {
+        toast.warning(
+          json.message
+            ? `${json.message}${json.fixHint ? ` — ${json.fixHint}` : ''}`
+            : 'Follow-up skipped.',
+        )
+      } else if (res.ok && json.documentId) {
         toast.success(`Day ${days} follow-up drafted`)
         setFollowupDrafts((prev) => {
           const next = { ...prev }

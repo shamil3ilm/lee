@@ -138,8 +138,17 @@ function FollowupRow({ nudge }: { nudge: FollowupNudge }): React.ReactElement {
       const json = (await res.json().catch(() => ({}))) as {
         documentId?: string
         error?: string
+        skipped?: boolean
+        message?: string
+        fixHint?: string
       }
-      if (res.ok && json.documentId) {
+      if (json.skipped) {
+        toast.warning(
+          json.message
+            ? `${json.message}${json.fixHint ? ` — ${json.fixHint}` : ''}`
+            : 'Follow-up skipped.',
+        )
+      } else if (res.ok && json.documentId) {
         toast.success(`Day ${nudge.suggestedInterval} follow-up drafted`)
         router.refresh()
       } else {

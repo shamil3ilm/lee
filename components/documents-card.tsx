@@ -97,8 +97,20 @@ export function DocumentsCard({ applicationId, documents }: DocumentsCardProps) 
           ? `/api/applications/${applicationId}/documents/generate-tailored`
           : `/api/applications/${applicationId}/documents/generate-cover-letter`
       const res = await fetch(endpoint, { method: 'POST' })
-      const json = (await res.json()) as { documentId?: string; error?: string }
-      if (res.ok && json.documentId) {
+      const json = (await res.json()) as {
+        documentId?: string
+        error?: string
+        skipped?: boolean
+        message?: string
+        fixHint?: string
+      }
+      if (json.skipped) {
+        toast.warning(
+          json.message
+            ? `${json.message}${json.fixHint ? ` — ${json.fixHint}` : ''}`
+            : 'Generation skipped.',
+        )
+      } else if (res.ok && json.documentId) {
         toast.success(kind === 'tailored' ? 'Tailored CV generated' : 'Cover letter drafted')
         router.refresh()
       } else {
