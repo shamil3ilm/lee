@@ -14,6 +14,7 @@ import {
   Rss,
   Plug,
   Bell,
+  BarChart3,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -34,6 +35,7 @@ const SECTIONS: NavSection[] = [
     label: 'Pipeline',
     items: [
       { href: '/', label: 'Dashboard', icon: Home },
+      { href: '/analytics', label: 'Analytics', icon: BarChart3 },
       { href: '/applications', label: 'Applications', icon: Briefcase },
       { href: '/documents', label: 'Documents', icon: FileCheck2 },
       { href: '/discoveries', label: 'Discovery', icon: Sparkles },
