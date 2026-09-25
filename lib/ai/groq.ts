@@ -9,9 +9,11 @@ import { buildOutreachLinkedInConnectionPrompt } from './prompts/outreach-linked
 import { buildOutreachLinkedInMessagePrompt } from './prompts/outreach-linkedin-message'
 import { buildOutreachRecruiterReplyPrompt } from './prompts/outreach-recruiter-reply'
 import { buildInterviewPrepPrompt } from './prompts/interview-prep'
+import { buildGenerateLatexCVPrompt } from './prompts/generate-latex-cv'
 import {
   companyMatchResultSchema,
   jobMatchResultSchema,
+  latexCVResultSchema,
   parsedJobSchema,
   parsedProfileSchema,
   type AIProvider,
@@ -20,6 +22,7 @@ import {
   type ParsedJob,
   type ParsedProfile,
 } from './types'
+import { stripLatexFencing } from './utils/latex'
 import {
   coverLetterSchema,
   cvProjectsArraySchema,
@@ -215,6 +218,25 @@ export class GroqProvider implements AIProvider {
   }): Promise<InterviewPrepPack> {
     const raw = await this.generate(buildInterviewPrepPrompt(input))
     return interviewPrepPackSchema.parse(JSON.parse(raw))
+  }
+
+  async generateLatexCV(input: {
+    master: MasterCV
+    templateId: string
+  }): Promise<{ source: string }> {
+    const raw = await this.generate(buildGenerateLatexCVPrompt(input))
+    let source: string
+    try {
+      const parsed = latexCVResultSchema.parse(JSON.parse(raw))
+      source = parsed.source
+    } catch {
+      source = raw
+    }
+    const cleaned = stripLatexFencing(source)
+    if (!cleaned.trimStart().startsWith('\\documentclass')) {
+      throw new Error('generateLatexCV: response does not start with \\documentclass')
+    }
+    return { source: cleaned }
   }
 }
 

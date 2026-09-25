@@ -48,6 +48,10 @@ export class FixtureAIProvider implements AIProvider {
         stageKind: string
         stageId?: string
       }) => InterviewPrepPack
+      generateLatexCV?: (input: {
+        master: MasterCV
+        templateId: string
+      }) => { source: string }
     } = {},
   ) {}
 
@@ -131,6 +135,16 @@ export class FixtureAIProvider implements AIProvider {
     if (this.fixtures.generateInterviewPrepPack)
       return this.fixtures.generateInterviewPrepPack(input)
     return pseudoPrepPack(input)
+  }
+
+  async generateLatexCV(input: {
+    master: MasterCV
+    templateId: string
+  }): Promise<{ source: string }> {
+    if (this.fixtures.generateLatexCV) return this.fixtures.generateLatexCV(input)
+    return {
+      source: '\\documentclass{article}\n\\begin{document}\nTest\n\\end{document}\n',
+    }
   }
 }
 

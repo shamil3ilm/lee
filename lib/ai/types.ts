@@ -104,4 +104,12 @@ export interface AIProvider {
     stageKind: string
     stageId?: string
   }): Promise<InterviewPrepPack>
+  // v5 addition — LaTeX CV generation for the Overleaf-like editor.
+  generateLatexCV(input: {
+    master: MasterCV
+    templateId: string
+  }): Promise<{ source: string }>
 }
+
+export const latexCVResultSchema = z.object({ source: z.string().min(1) })
+export type LatexCVResult = z.infer<typeof latexCVResultSchema>
