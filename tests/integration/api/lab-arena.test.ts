@@ -161,7 +161,7 @@ describe('POST /api/lab/arena/run', () => {
     expect(byModel['good-a']?.metrics?.outputTokens).toBe(6)
     expect(byModel['limited']?.error).toMatch(/Rate limited/)
     expect(byModel['limited']?.metrics?.errorKind).toBe('rate_limited')
-    expect(byModel['no-key']?.error).toMatch(/Model Lab › Providers/)
+    expect(byModel['no-key']?.error).toMatch(/Model Playground › Providers/)
     expect(byModel['no-key']?.metrics?.errorKind).toBe('missing_key')
 
     const logs = await db.select().from(aiCallLogs).where(eq(aiCallLogs.userId, u.id))

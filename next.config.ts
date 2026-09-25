@@ -29,6 +29,14 @@ const nextConfig: NextConfig = {
     '/documents/new/latex': ['./lib/latex/templates/**/*.tex'],
     '/documents/[id]/edit': ['./lib/latex/templates/**/*.tex'],
   },
+  // v17 §0 — "Lab" became "Playground". Permanent (308) redirects keep old
+  // bookmarks working; `:path*` also matches the bare `/lab` hub.
+  async redirects() {
+    return [
+      { source: '/learn', destination: '/playground', permanent: true },
+      { source: '/lab/:path*', destination: '/playground/models/:path*', permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;

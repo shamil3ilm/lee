@@ -46,7 +46,7 @@ describe('buildEndpoint', () => {
     const ep = buildEndpoint('openrouter', 'k')
     expect(ep.baseUrl).toBe('https://openrouter.ai/api/v1')
     expect(ep.extraHeaders?.['HTTP-Referer']).toBeTruthy()
-    expect(ep.extraHeaders?.['X-Title']).toBe('Employ Model Lab')
+    expect(ep.extraHeaders?.['X-Title']).toBe('Employ Model Playground')
   })
 
   it('refuses browser-side providers', () => {

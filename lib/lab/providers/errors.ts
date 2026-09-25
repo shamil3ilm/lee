@@ -29,7 +29,7 @@ export class RateLimitedError extends ProviderError {
 
 export class MissingKeyError extends ProviderError {
   constructor(providerLabel: string) {
-    super(`No API key for ${providerLabel} — add a key in Model Lab › Providers.`, {
+    super(`No API key for ${providerLabel} — add a key in Model Playground › Providers.`, {
       code: 'missing_key',
     })
     this.name = 'MissingKeyError'

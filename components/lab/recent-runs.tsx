@@ -26,7 +26,7 @@ export function RecentRuns({ runs, now }: RecentRunsProps) {
       {runs.map((r) => (
         <li key={r.id}>
           <Link
-            href={`/lab/runs/${r.id}`}
+            href={`/playground/models/runs/${r.id}`}
             className="flex flex-col gap-1 px-3 py-2.5 transition-colors hover:bg-accent sm:flex-row sm:items-center sm:gap-3"
           >
             <span className="min-w-0 flex-1 truncate text-sm">{r.promptPreview || '(empty prompt)'}</span>

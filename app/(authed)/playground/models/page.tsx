@@ -13,7 +13,7 @@ import { WinRateTable } from '@/components/lab/win-rate-table'
 
 export const dynamic = 'force-dynamic'
 
-export default async function LabHubPage() {
+export default async function ModelPlaygroundPage() {
   const userId = await requireUserId()
   const [statuses, runs, rates] = await Promise.all([
     getProviderStatuses(userId),
@@ -24,11 +24,11 @@ export default async function LabHubPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Model Lab"
+        title="Model Playground"
         description="Try free open-source models, compare them side by side, and keep score."
         actions={
           <Button asChild size="sm">
-            <Link href="/lab/arena">
+            <Link href="/playground/models/arena">
               <Swords /> Open Arena
             </Link>
           </Button>
@@ -40,7 +40,7 @@ export default async function LabHubPage() {
           <h2 id="lab-providers" className="text-lg font-semibold">
             Providers
           </h2>
-          <Link href="/lab/providers" className="text-sm text-muted-foreground hover:text-foreground">
+          <Link href="/playground/models/providers" className="text-sm text-muted-foreground hover:text-foreground">
             Manage keys
           </Link>
         </div>

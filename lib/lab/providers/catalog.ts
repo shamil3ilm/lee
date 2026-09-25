@@ -120,6 +120,6 @@ export const RECOMMENDED: Readonly<Record<ProviderId, readonly string[]>> = {
 
 /** OpenRouter attribution headers; `HTTP-Referer` is added from NEXTAUTH_URL at call time. */
 export const OPENROUTER_APP_HEADERS: Readonly<Record<string, string>> = {
-  'X-Title': 'Employ Model Lab',
-  'X-OpenRouter-Title': 'Employ Model Lab',
+  'X-Title': 'Employ Model Playground',
+  'X-OpenRouter-Title': 'Employ Model Playground',
 }

@@ -177,7 +177,7 @@ export function Arena({ providers }: ArenaProps) {
         <CardContent className="space-y-3 p-6 text-sm">
           <p>No provider is configured yet. Add a free API key to start comparing models.</p>
           <Button asChild size="sm">
-            <Link href="/lab/providers">Add a provider key</Link>
+            <Link href="/playground/models/providers">Add a provider key</Link>
           </Button>
         </CardContent>
       </Card>
@@ -311,7 +311,7 @@ export function Arena({ providers }: ArenaProps) {
         <section aria-label="Results" className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold">Results</h2>
-            <Link href={`/lab/runs/${run.id}`} className="text-xs text-muted-foreground hover:text-foreground">
+            <Link href={`/playground/models/runs/${run.id}`} className="text-xs text-muted-foreground hover:text-foreground">
               Saved as run · open
             </Link>
           </div>

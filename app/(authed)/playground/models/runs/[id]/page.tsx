@@ -31,7 +31,7 @@ export default async function LabRunPage({ params }: { params: Promise<{ id: str
         description={`${created} · ${run.results.length} models${run.blind ? ' · blind' : ''}`}
         actions={
           <Button asChild size="sm" variant="outline">
-            <Link href="/lab/arena">New run</Link>
+            <Link href="/playground/models/arena">New run</Link>
           </Button>
         }
       />
