@@ -4,6 +4,7 @@ import { db } from '@/lib/db/client'
 import { accounts } from '@/lib/db/schema'
 import { getProfile } from '@/lib/profile/service'
 import { BrowserNotificationsToggle } from '@/components/browser-notifications-toggle'
+import { DiscoveryNotificationsPanel } from '@/components/discovery-notifications-panel'
 import { NotificationsPanel } from '@/components/notifications-panel'
 import { PageHeader } from '@/components/page-header'
 
@@ -29,11 +30,18 @@ export default async function NotificationsSettingsPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <PageHeader
         title="Notifications"
-        description="Weekly digest email delivered from your own Gmail."
+        description="Weekly digest, per-cycle match nudges, and browser pings — all delivered from your own Google account."
       />
       <NotificationsPanel
         weeklyDigestEnabled={profile?.weeklyDigestEnabled ?? true}
         lastSentAt={profile?.digestLastSentAt?.toISOString() ?? null}
+        hasGmailSendScope={hasGmailSendScope}
+      />
+      <DiscoveryNotificationsPanel
+        emailEnabled={profile?.notifyDiscoveryEmail ?? false}
+        browserEnabled={profile?.notifyDiscoveryBrowser ?? true}
+        minScore={profile?.notifyDiscoveryMinScore ?? 75}
+        lastSentAt={profile?.discoveryEmailLastSentAt?.toISOString() ?? null}
         hasGmailSendScope={hasGmailSendScope}
       />
       <BrowserNotificationsToggle />
