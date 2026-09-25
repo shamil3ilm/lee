@@ -57,6 +57,13 @@
       "when": 1790326433818,
       "tag": "0007_acoustic_bushwacker",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790329051128,
+      "tag": "0008_purple_the_fallen",
+      "breakpoints": true
     }
   ]
 }

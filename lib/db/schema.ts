@@ -635,6 +635,65 @@ export const expenseBudgets = pgTable(
   }),
 )
 
+// ---------------------------------------------------------------------------
+// v8 — Todos. General-purpose task list. Optional links to application /
+// stage / contact / company so a todo can be scoped to any pipeline entity
+// (or free-standing). All FKs use `set null` on delete: deleting the linked
+// application should not destroy the todo — the user may still want to keep
+// the reminder around after archiving. `tags[]` is a Postgres text array so
+// the UI can filter without a join table.
+// ---------------------------------------------------------------------------
+
+export const todos = pgTable(
+  'todos',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    notesMd: text('notes_md'),
+    // 'open' | 'done' | 'archived'
+    status: text('status').notNull().default('open'),
+    // 0 = none, 1 = low, 2 = med, 3 = high
+    priority: smallint('priority').notNull().default(0),
+    dueAt: timestamp('due_at', { withTimezone: true }),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    applicationId: uuid('application_id').references(() => applications.id, {
+      onDelete: 'set null',
+    }),
+    stageId: uuid('stage_id').references(() => interviewStages.id, { onDelete: 'set null' }),
+    contactId: uuid('contact_id').references(() => contacts.id, { onDelete: 'set null' }),
+    companyId: uuid('company_id').references(() => companies.id, { onDelete: 'set null' }),
+    tags: text('tags').array().notNull().default([]),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    userStatusDueIx: index('todos_user_status_due_idx').on(t.userId, t.status, t.dueAt),
+    applicationIx: index('todos_application_idx').on(t.applicationId),
+  }),
+)
+
+export const todosRelations = relations(todos, ({ one }) => ({
+  application: one(applications, {
+    fields: [todos.applicationId],
+    references: [applications.id],
+  }),
+  stage: one(interviewStages, {
+    fields: [todos.stageId],
+    references: [interviewStages.id],
+  }),
+  contact: one(contacts, {
+    fields: [todos.contactId],
+    references: [contacts.id],
+  }),
+  company: one(companies, {
+    fields: [todos.companyId],
+    references: [companies.id],
+  }),
+}))
+
 export const aiCallLogs = pgTable('ai_call_logs', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),

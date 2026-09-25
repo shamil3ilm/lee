@@ -11,6 +11,7 @@ const TABLES = [
   'expenses',
   'document_assets',
   'documents',
+  'todos',
   'activities',
   'processed_gmail_threads',
   'interview_stages',
