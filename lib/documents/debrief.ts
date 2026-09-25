@@ -9,6 +9,7 @@ import { interviewDebriefSchema } from './types'
 import { ApplicationNotFoundError, MasterCVNotFoundError } from './errors'
 import { snapshotForDebrief } from '@/lib/staleness/snapshot'
 import { AISkippedError, checkDebriefSignal } from '@/lib/ai/signal'
+import { linkLatestCallToDocument, writeSkipLog } from '@/lib/ai/log'
 import type { AIProvider } from '@/lib/ai/types'
 import type { Document } from '@/lib/db/queries/documents'
 
@@ -78,6 +79,10 @@ export async function generateAIDebrief(input: {
   // stages before we hit the model.
   const debriefSignal = checkDebriefSignal(stage, stage.debriefNotesMd)
   if (!debriefSignal.ok) {
+    await writeSkipLog(
+      { userId, provider: 'unknown', kind: 'interview_debrief' },
+      debriefSignal.code,
+    )
     throw new AISkippedError(
       debriefSignal.code,
       debriefSignal.message,
@@ -142,11 +147,13 @@ export async function generateAIDebrief(input: {
     },
   )
 
-  return documentsQ.create(userId, {
+  const doc = await documentsQ.create(userId, {
     applicationId: application.id,
     kind: 'interview_debrief',
     version,
     title,
     content: { ...validated, stateSnapshot },
   })
+  await linkLatestCallToDocument(userId, doc.id, 'interview_debrief')
+  return doc
 }

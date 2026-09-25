@@ -58,6 +58,32 @@ export class LayaHttpDecisionProvider implements DecisionProvider {
     this.apiKey = apiKey
   }
 
+  /**
+   * v10 — log every completed Laya decision call so it shows up in analytics
+   * alongside Gemini/Groq generations. Best-effort — logging must never
+   * break the call. Called from choice/yesNo/score after the SSE round-trip.
+   */
+  private async logCall(
+    kind: string,
+    status: 'ok' | 'error',
+    latency: number,
+    error?: string,
+  ): Promise<void> {
+    try {
+      const { db } = await import('@/lib/db/client')
+      const { aiCallLogs } = await import('@/lib/db/schema')
+      await db.insert(aiCallLogs).values({
+        provider: 'laya',
+        kind,
+        latencyMs: latency,
+        status,
+        error: error ?? null,
+      })
+    } catch {
+      /* logging must never break the call */
+    }
+  }
+
   async choice<T extends string>(input: ChoiceInput<T> & {
     optionDescriptions?: Partial<Record<T, string>>
   }): Promise<ChoiceResult<T>> {
@@ -74,28 +100,40 @@ export class LayaHttpDecisionProvider implements DecisionProvider {
         criteria,
       },
     }
-    const raw = await this.callPlayground(input.text, questions)
-    const answer = extractAnswer(raw)
-    // Laya's "typed choice" response puts the picked option in `choice`.
-    // Accept `pick` as legacy alias.
-    const picked = answer?.choice ?? answer?.pick
-    if (!answer || typeof picked !== 'string') {
-      throw new LayaUnavailableError(
-        'unexpected response shape: ' + safeStringify(raw).slice(0, 200),
+    const start = Date.now()
+    try {
+      const raw = await this.callPlayground(input.text, questions)
+      const answer = extractAnswer(raw)
+      // Laya's "typed choice" response puts the picked option in `choice`.
+      // Accept `pick` as legacy alias.
+      const picked = answer?.choice ?? answer?.pick
+      if (!answer || typeof picked !== 'string') {
+        throw new LayaUnavailableError(
+          'unexpected response shape: ' + safeStringify(raw).slice(0, 200),
+        )
+      }
+      const pick = picked as T
+      if (!(input.options as readonly string[]).includes(pick)) {
+        throw new LayaUnavailableError(`pick "${pick}" not in options`)
+      }
+      // Prefer the top probability from the `probabilities` map if present,
+      // otherwise fall back to `confidence`.
+      const topProb = answer.probabilities?.[picked]
+      const confidence = numberOr(
+        topProb ?? answer.confidence ?? answer.probability,
+        0.5,
       )
+      await this.logCall('decision_choice', 'ok', Date.now() - start)
+      return { pick, confidence }
+    } catch (e) {
+      await this.logCall(
+        'decision_choice',
+        'error',
+        Date.now() - start,
+        e instanceof Error ? e.message : String(e),
+      )
+      throw e
     }
-    const pick = picked as T
-    if (!(input.options as readonly string[]).includes(pick)) {
-      throw new LayaUnavailableError(`pick "${pick}" not in options`)
-    }
-    // Prefer the top probability from the `probabilities` map if present,
-    // otherwise fall back to `confidence`.
-    const topProb = answer.probabilities?.[picked]
-    const confidence = numberOr(
-      topProb ?? answer.confidence ?? answer.probability,
-      0.5,
-    )
-    return { pick, confidence }
   }
 
   async yesNo(input: YesNoInput): Promise<YesNoResult> {
@@ -105,16 +143,28 @@ export class LayaHttpDecisionProvider implements DecisionProvider {
         instructions: input.question,
       },
     }
-    const raw = await this.callPlayground(input.text, questions)
-    const a = extractAnswer(raw)
-    if (!a) throw new LayaUnavailableError('no answer in response')
-    // For noul (yes/no), Laya returns the probability the proposition is true.
-    // May be under `probability`, `confidence`, or the probabilities.true map.
-    const prob = numberOr(
-      a.probability ?? a.probabilities?.true ?? a.confidence,
-      0.5,
-    )
-    return { answer: prob >= 0.5, confidence: Math.abs(prob - 0.5) * 2 }
+    const start = Date.now()
+    try {
+      const raw = await this.callPlayground(input.text, questions)
+      const a = extractAnswer(raw)
+      if (!a) throw new LayaUnavailableError('no answer in response')
+      // For noul (yes/no), Laya returns the probability the proposition is true.
+      // May be under `probability`, `confidence`, or the probabilities.true map.
+      const prob = numberOr(
+        a.probability ?? a.probabilities?.true ?? a.confidence,
+        0.5,
+      )
+      await this.logCall('decision_yesno', 'ok', Date.now() - start)
+      return { answer: prob >= 0.5, confidence: Math.abs(prob - 0.5) * 2 }
+    } catch (e) {
+      await this.logCall(
+        'decision_yesno',
+        'error',
+        Date.now() - start,
+        e instanceof Error ? e.message : String(e),
+      )
+      throw e
+    }
   }
 
   async score(input: ScoreInput): Promise<ScoreResult> {
@@ -134,10 +184,22 @@ export class LayaHttpDecisionProvider implements DecisionProvider {
         criteria: levels,
       },
     }
-    const raw = await this.callPlayground(input.text, questions)
-    const a = extractAnswer(raw)
-    const score = numberOr(a?.value ?? a?.score, min)
-    return { score }
+    const start = Date.now()
+    try {
+      const raw = await this.callPlayground(input.text, questions)
+      const a = extractAnswer(raw)
+      const score = numberOr(a?.value ?? a?.score, min)
+      await this.logCall('decision_score', 'ok', Date.now() - start)
+      return { score }
+    } catch (e) {
+      await this.logCall(
+        'decision_score',
+        'error',
+        Date.now() - start,
+        e instanceof Error ? e.message : String(e),
+      )
+      throw e
+    }
   }
 
   private async callPlayground(stateText: string, questions: unknown): Promise<LayaRaw> {

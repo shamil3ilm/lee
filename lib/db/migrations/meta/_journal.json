@@ -78,6 +78,13 @@
       "when": 1790334110034,
       "tag": "0010_fair_talkback",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790339613698,
+      "tag": "0011_narrow_riptide",
+      "breakpoints": true
     }
   ]
 }

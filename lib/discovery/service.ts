@@ -18,6 +18,7 @@ import type {
 } from './adapters/types'
 import { applyCaps, benefitsScore } from './scoring'
 import { checkDiscoveryScoringSignal } from '@/lib/ai/signal'
+import { writeSkipLog } from '@/lib/ai/log'
 import type { Source } from '@/lib/db/queries/sources'
 import type { Discovery } from '@/lib/db/queries/discoveries'
 import type { CompanyDiscovery } from '@/lib/db/queries/companyDiscoveries'
@@ -73,6 +74,10 @@ export async function runDiscoveryCycleForUser(args: {
       code: profileSignal.code,
       message: profileSignal.message,
     }
+    await writeSkipLog(
+      { userId, provider: 'unknown', kind: 'discovery_scoring' },
+      profileSignal.code,
+    )
   }
 
   await inBatches(active, CONCURRENCY, async (source) => {

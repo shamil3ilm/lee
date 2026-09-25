@@ -8,6 +8,7 @@ import { interviewPrepPackSchema } from './types'
 import { ApplicationNotFoundError, MasterCVNotFoundError } from './errors'
 import { snapshotForPrepPack, type StageRecord } from '@/lib/staleness/snapshot'
 import { AISkippedError, checkPrepPackSignal } from '@/lib/ai/signal'
+import { linkLatestCallToDocument, writeSkipLog } from '@/lib/ai/log'
 import type { AIProvider } from '@/lib/ai/types'
 import type { Document } from '@/lib/db/queries/documents'
 
@@ -31,7 +32,13 @@ export async function generateInterviewPrepPack(input: {
   if (!application) throw new ApplicationNotFoundError(input.applicationId)
 
   const signal = checkPrepPackSignal(application, master)
-  if (!signal.ok) throw new AISkippedError(signal.code, signal.message, signal.fixHint)
+  if (!signal.ok) {
+    await writeSkipLog(
+      { userId: input.userId, provider: 'unknown', kind: 'interview_prep_pack' },
+      signal.code,
+    )
+    throw new AISkippedError(signal.code, signal.message, signal.fixHint)
+  }
 
   const pack = await input.ai.generateInterviewPrepPack({
     master,
@@ -78,13 +85,15 @@ export async function generateInterviewPrepPack(input: {
     },
   )
 
-  return documentsQ.create(input.userId, {
+  const doc = await documentsQ.create(input.userId, {
     applicationId: input.applicationId,
     kind: 'interview_prep_pack',
     version,
     title,
     content: { ...validated, stateSnapshot },
   })
+  await linkLatestCallToDocument(input.userId, doc.id, 'interview_prep_pack')
+  return doc
 }
 
 /**

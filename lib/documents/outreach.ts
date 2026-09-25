@@ -6,6 +6,7 @@ import { getMasterCV } from './master'
 import { outreachDraftSchema, type OutreachKind, type OutreachTone } from './types'
 import { ApplicationNotFoundError, MasterCVNotFoundError } from './errors'
 import { AISkippedError, checkFollowupSignal, checkOutreachSignal } from '@/lib/ai/signal'
+import { linkLatestCallToDocument, writeSkipLog } from '@/lib/ai/log'
 import {
   snapshotForFollowup,
   snapshotForOutreach,
@@ -88,7 +89,12 @@ export async function generateOutreachDraft(input: {
   const outreachSignal = checkOutreachSignal(application, master, input.kind, {
     linkedContactCount,
   })
+  const outreachLogKind = `outreach_${input.kind}`
   if (!outreachSignal.ok) {
+    await writeSkipLog(
+      { userId: input.userId, provider: 'unknown', kind: outreachLogKind },
+      outreachSignal.code,
+    )
     throw new AISkippedError(
       outreachSignal.code,
       outreachSignal.message,
@@ -98,6 +104,10 @@ export async function generateOutreachDraft(input: {
   if (input.kind === 'followup_email') {
     const followupSignal = checkFollowupSignal(application, daysSince)
     if (!followupSignal.ok) {
+      await writeSkipLog(
+        { userId: input.userId, provider: 'unknown', kind: outreachLogKind },
+        followupSignal.code,
+      )
       throw new AISkippedError(
         followupSignal.code,
         followupSignal.message,
@@ -159,11 +169,13 @@ export async function generateOutreachDraft(input: {
     stateSnapshot = snapshotForOutreach(appRecord, jobRecord, master)
   }
 
-  return documentsQ.create(input.userId, {
+  const doc = await documentsQ.create(input.userId, {
     applicationId: input.applicationId,
     kind: documentKind,
     version,
     title,
     content: { ...validated, stateSnapshot },
   })
+  await linkLatestCallToDocument(input.userId, doc.id, outreachLogKind)
+  return doc
 }

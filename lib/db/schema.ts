@@ -724,5 +724,17 @@ export const aiCallLogs = pgTable('ai_call_logs', {
   latencyMs: integer('latency_ms'),
   status: text('status').notNull(),
   error: text('error'),
+  // v10 — feedback loop. `documentId` links a generation call back to the
+  // document it produced, so ratings on the document can be routed to the
+  // right row. `userRating` is 1 (👎) or 5 (👍); `userAction` captures the
+  // implicit signal (regenerated → 👎, used → 👍, dismissed → 👎).
+  documentId: uuid('document_id').references(() => documents.id, { onDelete: 'set null' }),
+  userRating: smallint('user_rating'),
+  userAction: text('user_action'),
+  // v10 — signal-check observability. `signalCheckPassed=false` means the
+  // call was refused before hitting the model; `signalCheckCode` carries the
+  // reason so analytics can group skips by kind.
+  signalCheckPassed: boolean('signal_check_passed'),
+  signalCheckCode: text('signal_check_code'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })

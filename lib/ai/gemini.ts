@@ -25,6 +25,7 @@ import {
   type ParsedJob,
   type ParsedProfile,
 } from './types'
+import type { CallMeta } from './log'
 import { stripLatexFencing } from './utils/latex'
 import {
   coverLetterSchema,
@@ -77,7 +78,7 @@ export class GeminiProvider implements AIProvider {
     }
   }
 
-  private async generate(prompt: string): Promise<string> {
+  private async generate(prompt: string, meta: CallMeta = {}): Promise<string> {
     const start = Date.now()
     // Fallback chain: primary → flash-lite (usually less loaded) → last resort
     // is bubbling the error so the caller can toast it.
@@ -100,6 +101,7 @@ export class GeminiProvider implements AIProvider {
             latency: Date.now() - start,
             promptTokens,
             completionTokens,
+            meta,
           })
           return text
         } catch (e) {
@@ -117,6 +119,7 @@ export class GeminiProvider implements AIProvider {
       status: 'error',
       latency: Date.now() - start,
       error: lastError instanceof Error ? lastError.message : String(lastError),
+      meta,
     })
     throw lastError
   }
@@ -127,18 +130,23 @@ export class GeminiProvider implements AIProvider {
     promptTokens?: number
     completionTokens?: number
     error?: string
+    meta?: CallMeta
   }): Promise<void> {
     try {
       const { db } = await import('@/lib/db/client')
       const { aiCallLogs } = await import('@/lib/db/schema')
       await db.insert(aiCallLogs).values({
+        userId: x.meta?.userId ?? null,
         provider: 'gemini',
-        kind: 'parse',
+        kind: x.meta?.kind ?? 'parse',
         promptTokens: x.promptTokens ?? null,
         completionTokens: x.completionTokens ?? null,
         latencyMs: x.latency,
         status: x.status,
         error: x.error ?? null,
+        documentId: x.meta?.documentId ?? null,
+        signalCheckPassed: x.meta?.signalCheckPassed ?? null,
+        signalCheckCode: x.meta?.signalCheckCode ?? null,
       })
     } catch {
       /* logging must never break the call */
@@ -146,22 +154,24 @@ export class GeminiProvider implements AIProvider {
   }
 
   async parseJob(text: string): Promise<ParsedJob> {
-    const raw = await this.generate(buildParseJobPrompt(text))
+    const raw = await this.generate(buildParseJobPrompt(text), { kind: 'parse_job' })
     return parsedJobSchema.parse(JSON.parse(raw))
   }
 
   async parseProfile(input: { cvText?: string; profileMd?: string }): Promise<ParsedProfile> {
-    const raw = await this.generate(buildParseProfilePrompt(input))
+    const raw = await this.generate(buildParseProfilePrompt(input), { kind: 'parse_profile' })
     return parsedProfileSchema.parse(JSON.parse(raw))
   }
 
   async scoreJob(job: NormalizedJob, profile: UserProfile): Promise<JobMatchResult> {
-    const raw = await this.generate(buildScoreJobPrompt(job, profile))
+    const raw = await this.generate(buildScoreJobPrompt(job, profile), { kind: 'score_job' })
     return jobMatchResultSchema.parse(JSON.parse(raw))
   }
 
   async scoreCompany(company: NormalizedCompany, profile: UserProfile): Promise<CompanyMatchResult> {
-    const raw = await this.generate(buildScoreCompanyPrompt(company, profile))
+    const raw = await this.generate(buildScoreCompanyPrompt(company, profile), {
+      kind: 'score_company',
+    })
     return companyMatchResultSchema.parse(JSON.parse(raw))
   }
 
@@ -169,7 +179,7 @@ export class GeminiProvider implements AIProvider {
     master: MasterCV
     application: ApplicationWithJob
   }): Promise<TailoredCV> {
-    const raw = await this.generate(buildTailorCVPrompt(input))
+    const raw = await this.generate(buildTailorCVPrompt(input), { kind: 'tailored_cv' })
     return tailoredCvSchema.parse(JSON.parse(raw))
   }
 
@@ -177,12 +187,14 @@ export class GeminiProvider implements AIProvider {
     master: MasterCV
     application: ApplicationWithJob
   }): Promise<CoverLetter> {
-    const raw = await this.generate(buildCoverLetterPrompt(input))
+    const raw = await this.generate(buildCoverLetterPrompt(input), { kind: 'cover_letter' })
     return coverLetterSchema.parse(JSON.parse(raw))
   }
 
   async distillGithubProjects(input: { repos: GitHubRepo[] }): Promise<CvProjects> {
-    const raw = await this.generate(buildDistillGithubPrompt(input))
+    const raw = await this.generate(buildDistillGithubPrompt(input), {
+      kind: 'distill_github',
+    })
     // The prompt asks for a JSON ARRAY, but Gemini's JSON mode may wrap it in
     // an object. Accept either: unwrap common patterns before schema-parsing.
     const parsed = JSON.parse(raw)
@@ -204,7 +216,7 @@ export class GeminiProvider implements AIProvider {
     daysSince?: number
   }): Promise<OutreachDraft> {
     const prompt = buildOutreachPrompt(input)
-    const raw = await this.generate(prompt)
+    const raw = await this.generate(prompt, { kind: `outreach_${input.kind}` })
     return outreachDraftSchema.parse(JSON.parse(raw))
   }
 
@@ -214,7 +226,9 @@ export class GeminiProvider implements AIProvider {
     stageKind: string
     stageId?: string
   }): Promise<InterviewPrepPack> {
-    const raw = await this.generate(buildInterviewPrepPrompt(input))
+    const raw = await this.generate(buildInterviewPrepPrompt(input), {
+      kind: 'interview_prep_pack',
+    })
     return interviewPrepPackSchema.parse(JSON.parse(raw))
   }
 
@@ -224,7 +238,9 @@ export class GeminiProvider implements AIProvider {
     stage: Pick<InterviewStage, 'id' | 'kind' | 'title' | 'scheduledAt'>
     quickNotes: string
   }): Promise<InterviewDebrief> {
-    const raw = await this.generate(buildInterviewDebriefPrompt(input))
+    const raw = await this.generate(buildInterviewDebriefPrompt(input), {
+      kind: 'interview_debrief',
+    })
     return interviewDebriefSchema.parse(JSON.parse(raw))
   }
 
@@ -232,7 +248,9 @@ export class GeminiProvider implements AIProvider {
     master: MasterCV
     templateId: string
   }): Promise<{ source: string }> {
-    const raw = await this.generate(buildGenerateLatexCVPrompt(input))
+    const raw = await this.generate(buildGenerateLatexCVPrompt(input), {
+      kind: 'latex_cv',
+    })
     // Gemini's JSON mode should return {source: "..."} — but a stray fenced
     // response has been observed. Try JSON first, fall back to raw+strip.
     let source: string

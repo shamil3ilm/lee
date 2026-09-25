@@ -5,6 +5,7 @@ import { coverLetterSchema } from './types'
 import { ApplicationNotFoundError, MasterCVNotFoundError } from './errors'
 import { snapshotForCoverLetter } from '@/lib/staleness/snapshot'
 import { AISkippedError, checkCoverLetterSignal } from '@/lib/ai/signal'
+import { linkLatestCallToDocument, writeSkipLog } from '@/lib/ai/log'
 import type { AIProvider } from '@/lib/ai/types'
 import type { Document } from '@/lib/db/queries/documents'
 
@@ -20,7 +21,13 @@ export async function generateCoverLetter(input: {
   if (!application) throw new ApplicationNotFoundError(input.applicationId)
 
   const signal = checkCoverLetterSignal(application, master)
-  if (!signal.ok) throw new AISkippedError(signal.code, signal.message, signal.fixHint)
+  if (!signal.ok) {
+    await writeSkipLog(
+      { userId: input.userId, provider: 'unknown', kind: 'cover_letter' },
+      signal.code,
+    )
+    throw new AISkippedError(signal.code, signal.message, signal.fixHint)
+  }
 
   const letter = await input.ai.draftCoverLetter({ master, application })
   const validated = coverLetterSchema.parse(letter)
@@ -51,11 +58,13 @@ export async function generateCoverLetter(input: {
     master,
   )
 
-  return documentsQ.create(input.userId, {
+  const doc = await documentsQ.create(input.userId, {
     applicationId: input.applicationId,
     kind: 'cover_letter',
     version,
     title,
     content: { ...validated, stateSnapshot },
   })
+  await linkLatestCallToDocument(input.userId, doc.id, 'cover_letter')
+  return doc
 }

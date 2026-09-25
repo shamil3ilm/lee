@@ -5,6 +5,7 @@ import { tailoredCvSchema } from './types'
 import { ApplicationNotFoundError, MasterCVNotFoundError } from './errors'
 import { snapshotForTailoredCV } from '@/lib/staleness/snapshot'
 import { AISkippedError, checkTailorCVSignal } from '@/lib/ai/signal'
+import { linkLatestCallToDocument, writeSkipLog } from '@/lib/ai/log'
 import type { AIProvider } from '@/lib/ai/types'
 import type { Document } from '@/lib/db/queries/documents'
 
@@ -29,7 +30,13 @@ export async function generateTailoredCV(input: {
   if (!application) throw new ApplicationNotFoundError(input.applicationId)
 
   const signal = checkTailorCVSignal(application, master)
-  if (!signal.ok) throw new AISkippedError(signal.code, signal.message, signal.fixHint)
+  if (!signal.ok) {
+    await writeSkipLog(
+      { userId: input.userId, provider: 'unknown', kind: 'tailored_cv' },
+      signal.code,
+    )
+    throw new AISkippedError(signal.code, signal.message, signal.fixHint)
+  }
 
   const tailored = await input.ai.tailorCV({ master, application })
   // Belt-and-braces: providers already validate, but a caller-supplied AI
@@ -64,11 +71,15 @@ export async function generateTailoredCV(input: {
     master,
   )
 
-  return documentsQ.create(input.userId, {
+  const doc = await documentsQ.create(input.userId, {
     applicationId: input.applicationId,
     kind: 'tailored_cv',
     version,
     title,
     content: { ...validated, stateSnapshot },
   })
+  // v10 — thread the documentId back to the most recent ai_call_logs row
+  // so rating buttons on the doc can find the underlying call. Best-effort.
+  await linkLatestCallToDocument(input.userId, doc.id, 'tailored_cv')
+  return doc
 }

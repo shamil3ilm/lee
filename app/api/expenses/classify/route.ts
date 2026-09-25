@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth'
 import { getDecisionProviderForUser } from '@/lib/decisions'
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/expenses/categories'
 import { checkExpenseClassifySignal } from '@/lib/ai/signal'
+import { writeSkipLog } from '@/lib/ai/log'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -47,6 +48,10 @@ export async function POST(req: Request): Promise<NextResponse> {
     const { description, vendor } = parsed.data
     const signal = checkExpenseClassifySignal(description, vendor)
     if (!signal.ok) {
+      await writeSkipLog(
+        { userId, provider: 'unknown', kind: 'expense_classify' },
+        signal.code,
+      )
       return NextResponse.json(
         {
           skipped: true,
