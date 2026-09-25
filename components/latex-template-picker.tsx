@@ -13,6 +13,7 @@ import {
   createFromTemplate,
   type CreateLatexResult,
 } from '@/app/(authed)/documents/new/latex/actions'
+import { getTemplatePreview } from '@/lib/latex/previews'
 
 export type TemplateKind = 'cv' | 'cover_letter'
 export type TemplateCategory =
@@ -147,14 +148,34 @@ export function LatexTemplatePicker({ templates, hasMaster }: LatexTemplatePicke
     const templateBusy = pending?.kind === 'template' && pending.id === t.id
     const aiBusy = pending?.kind === 'ai' && pending.id === t.id
     const isLetter = t.kind === 'cover_letter'
+    const previewSvg = getTemplatePreview(t.id)
+    // Defense-in-depth: the previews module only produces our own <svg>
+    // strings, but the getter takes an external id — refuse to inject
+    // anything that isn't clearly SVG markup.
+    const safePreview = previewSvg.startsWith('<svg') ? previewSvg : null
     return (
       <Card
         key={t.id}
         className={cn(
-          'flex flex-col',
+          'group flex flex-col overflow-hidden transition-all',
           isBusy() && !templateBusy && !aiBusy && 'opacity-60',
         )}
       >
+        <div className="aspect-[5/7] w-full overflow-hidden border-b bg-muted">
+          {safePreview ? (
+            <div
+              aria-hidden
+              className="flex h-full w-full items-center justify-center p-3 transition-transform duration-200 group-hover:scale-[1.02]"
+              // eslint-disable-next-line react/no-danger -- SVG is authored in
+              // lib/latex/previews.ts; getter validates the prefix.
+              dangerouslySetInnerHTML={{ __html: safePreview }}
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+              No preview
+            </div>
+          )}
+        </div>
         <CardHeader>
           <div className="mb-1 flex items-center justify-between gap-2">
             <CardTitle className="flex items-center gap-2 text-base">
