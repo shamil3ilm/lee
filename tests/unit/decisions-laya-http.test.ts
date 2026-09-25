@@ -58,7 +58,36 @@ describe('LayaHttpDecisionProvider.choice', () => {
     vi.restoreAllMocks()
   })
 
-  it('returns pick + confidence for a valid Gradio SSE response', async () => {
+  it('parses the REAL Laya response shape (choice + probabilities map)', async () => {
+    // Verified via curl against the live demo Space on 2026-09-25.
+    // Laya returns `choice` (not `pick`) and a `probabilities` map keyed by option.
+    const mock = mockGradio({
+      model: 'laya',
+      answers: {
+        answer: {
+          type: 'choice',
+          choice: 'subscription',
+          probabilities: { subscription: 0.978, food: 0.008, other: 0.014 },
+          confidence: 0.891,
+        },
+      },
+      usage: { input_tokens: 29, output_tokens: 0 },
+      latency_ms: 86.8,
+    })
+    vi.spyOn(globalThis, 'fetch').mockImplementation(mock.fetch as typeof fetch)
+
+    const provider = new LayaHttpDecisionProvider('http://laya.example')
+    const res = await provider.choice<ExpenseCategory>({
+      text: 'Netflix monthly bill',
+      options: EXPENSE_CATEGORIES,
+    })
+
+    expect(res.pick).toBe('subscription')
+    // Prefer probabilities[pick] over the aggregate confidence.
+    expect(res.confidence).toBeCloseTo(0.978)
+  })
+
+  it('returns pick + confidence for a legacy Gradio SSE response (pick field)', async () => {
     const mock = mockGradio({
       answers: {
         answer: { pick: 'subscription', probability: 0.92 },

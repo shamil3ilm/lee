@@ -24,13 +24,19 @@
  */
 
 import { performance } from 'node:perf_hooks'
+import { config as loadEnv } from 'dotenv'
 
-import {
-  GroqDecisionProvider,
-  HeuristicDecisionProvider,
-  LayaHttpDecisionProvider,
-} from '@/lib/decisions'
-import type { DecisionProvider } from '@/lib/decisions'
+// Load .env.local first, then .env — same order Next.js uses. Do this BEFORE
+// importing lib/decisions/* so any transitive lib/env reads pick up the vars.
+loadEnv({ path: '.env.local' })
+loadEnv({ path: '.env' })
+
+// Import providers directly by path, avoiding lib/decisions/index → lib/env
+// which requires the full app env (DATABASE_URL etc) that a CLI doesn't need.
+import { GroqDecisionProvider } from '@/lib/decisions/groq'
+import { HeuristicDecisionProvider } from '@/lib/decisions/heuristic'
+import { LayaHttpDecisionProvider } from '@/lib/decisions/laya-http'
+import type { DecisionProvider } from '@/lib/decisions/types'
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/expenses/categories'
 
 interface Sample {

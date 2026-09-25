@@ -32,7 +32,12 @@ const DEFAULT_ENDPOINT = 'https://convaiinnovations-laya-demo.hf.space'
 const FUNCTION_NAME = 'run_playground'
 
 type LayaAnswer = {
+  // Laya's actual response uses `choice` for the picked option (matching the
+  // "typed choice" API name), not `pick`. `pick` is accepted as a legacy
+  // alias in case newer Laya versions rename it back.
+  choice?: string
   pick?: string
+  probabilities?: Record<string, number>
   probability?: number
   confidence?: number
   value?: number
@@ -71,17 +76,23 @@ export class LayaHttpDecisionProvider implements DecisionProvider {
     }
     const raw = await this.callPlayground(input.text, questions)
     const answer = extractAnswer(raw)
-    if (!answer || typeof answer.pick !== 'string') {
+    // Laya's "typed choice" response puts the picked option in `choice`.
+    // Accept `pick` as legacy alias.
+    const picked = answer?.choice ?? answer?.pick
+    if (!answer || typeof picked !== 'string') {
       throw new LayaUnavailableError(
         'unexpected response shape: ' + safeStringify(raw).slice(0, 200),
       )
     }
-    const pick = answer.pick as T
+    const pick = picked as T
     if (!(input.options as readonly string[]).includes(pick)) {
       throw new LayaUnavailableError(`pick "${pick}" not in options`)
     }
+    // Prefer the top probability from the `probabilities` map if present,
+    // otherwise fall back to `confidence`.
+    const topProb = answer.probabilities?.[picked]
     const confidence = numberOr(
-      answer.confidence ?? answer.probability,
+      topProb ?? answer.confidence ?? answer.probability,
       0.5,
     )
     return { pick, confidence }
@@ -97,7 +108,12 @@ export class LayaHttpDecisionProvider implements DecisionProvider {
     const raw = await this.callPlayground(input.text, questions)
     const a = extractAnswer(raw)
     if (!a) throw new LayaUnavailableError('no answer in response')
-    const prob = numberOr(a.probability ?? a.confidence, 0.5)
+    // For noul (yes/no), Laya returns the probability the proposition is true.
+    // May be under `probability`, `confidence`, or the probabilities.true map.
+    const prob = numberOr(
+      a.probability ?? a.probabilities?.true ?? a.confidence,
+      0.5,
+    )
     return { answer: prob >= 0.5, confidence: Math.abs(prob - 0.5) * 2 }
   }
 
