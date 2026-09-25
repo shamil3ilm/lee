@@ -13,6 +13,7 @@ import { saveLatexSource } from '@/app/(authed)/documents/[id]/edit/actions'
 import { LatexAssetsDialog } from '@/components/latex-assets-dialog'
 import type { AssetMetadata } from '@/lib/db/queries/documentAssets'
 import { defaultSnippetForAsset } from '@/lib/latex/snippets'
+import { extractLatexHint } from '@/lib/latex/errors'
 
 // Pull Monaco's JS + workers from a CDN so we don't bundle ~2MB of editor
 // assets into the client chunk for this route. This only loads when a user
@@ -46,35 +47,6 @@ interface LatexEditorProps {
 type CompileError = { message: string; log: string }
 
 const DEBOUNCE_MS = 1500
-
-// Regex → suggested action. Parsing latexonline.cc's log for a missing
-// package is best-effort; a match surfaces a one-line hint next to the
-// error panel so the fix is one edit away.
-const PACKAGE_HINT_PATTERNS: { pattern: RegExp; hint: (name: string) => string }[] = [
-  {
-    // e.g. "! LaTeX Error: File `pdfpages.sty' not found."
-    pattern: /File `([\w-]+)\.sty' not found/,
-    hint: (name) => `Add \\usepackage{${name}} to your preamble.`,
-  },
-  {
-    // e.g. "! Package graphicx Error: File `photo.jpg' not found"
-    pattern: /Package \w+ Error: File `([^']+)' not found/,
-    hint: (name) => `Missing asset "${name}" — upload it via the Assets panel.`,
-  },
-  {
-    // e.g. "Missing $ inserted." or "Undefined control sequence" — no hint
-    pattern: /Undefined control sequence[\s\S]{0,120}\\(\w+)/,
-    hint: (name) => `\\${name} is undefined — check the spelling or add the missing \\usepackage.`,
-  },
-]
-
-function extractHint(log: string): string | null {
-  for (const { pattern, hint } of PACKAGE_HINT_PATTERNS) {
-    const m = log.match(pattern)
-    if (m && m[1]) return hint(m[1])
-  }
-  return null
-}
 
 export function LatexEditor({
   documentId,
@@ -273,7 +245,7 @@ export function LatexEditor({
     URL.revokeObjectURL(url)
   }
 
-  const hint = error ? extractHint(error.log) : null
+  const hint = error ? extractLatexHint(error.log) : null
 
   return (
     <div className="flex h-[calc(100vh-6rem)] flex-col">
@@ -387,7 +359,7 @@ export function LatexEditor({
               </div>
               {hint ? (
                 <p className="mb-2 rounded border border-amber-400/40 bg-amber-100/60 px-2 py-1 font-medium text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
-                  Suggestion: {hint}
+                  Suggestion: {hint.message}
                 </p>
               ) : null}
               <pre className={cn('whitespace-pre-wrap break-words font-mono text-[11px]')}>
