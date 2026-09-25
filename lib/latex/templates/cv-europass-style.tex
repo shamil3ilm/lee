@@ -1,0 +1,69 @@
+%% cv-europass-style template — seeded by Employ v5.1.
+%% European Europass-inspired structured layout using paracol for the upper
+%% two-column personal info header. Photo slot is optional (empty by default).
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=0.8in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+\usepackage{paracol}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{lmodern}
+
+\definecolor{europass}{HTML}{003399}
+\definecolor{muted}{HTML}{555555}
+
+\titleformat{\section}
+  {\large\bfseries\color{europass}}
+  {}{0em}{}[\vspace{-4pt}\color{europass}\hrule\vspace{2pt}]
+\titlespacing*{\section}{0pt}{10pt}{4pt}
+
+\setlist[itemize]{leftmargin=1.2em,itemsep=0pt,parsep=0pt,topsep=2pt}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\columnsep}{18pt}
+
+\newcommand{\entry}[4]{%
+  \noindent\textbf{#1} \hfill \textcolor{muted}{\small #4}\\%
+  \textit{#2} \hfill \textcolor{muted}{\small #3}\vspace{2pt}}
+
+\begin{document}
+
+\columnratio{0.68}
+\begin{paracol}{2}
+% ---- left: identity ----
+{\Huge\bfseries\color{europass} {{name}}}\\[4pt]
+{\large {{headline}}}\\[6pt]
+{\small {{contact_line}}}
+\switchcolumn
+% ---- right: photo slot (empty by default) ----
+\begin{flushright}
+  \color{muted}\small\itshape (photo)
+\end{flushright}
+\end{paracol}
+
+\vspace{6pt}
+
+\section*{Personal Information}
+{{summary}}
+
+\section*{Work Experience}
+{{experience_block}}
+
+\section*{Education and Training}
+{{education_block}}
+
+\section*{Projects}
+{{projects_block}}
+
+\section*{Skills}
+{{skills_block}}
+
+\section*{Languages}
+Native and other languages listed on request.
+
+\end{document}

@@ -1,0 +1,42 @@
+%% letter-friendly template — seeded by Employ v5.1.
+%% Warmer, conversational cover letter. Less rigid formatting, single centered
+%% sender line, no color bar.
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=1.0in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[hidelinks]{hyperref}
+\usepackage{lmodern}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{8pt}
+
+\begin{document}
+
+\begin{center}
+  {\Large\textbf{{{sender_name}}}}\\[2pt]
+  {\small\itshape {{sender_contact_line}}}
+\end{center}
+
+\vspace{6pt}
+
+{{date_line}}
+
+\vspace{4pt}
+
+{{recipient_line}}
+
+\vspace{4pt}
+
+{{greeting}}
+
+{{body_paragraphs}}
+
+\vspace{2pt}
+
+{{closing}}\\[24pt]
+{{sender_name}}
+
+\end{document}

@@ -10,15 +10,31 @@ import { logger } from '@/lib/logger'
 
 export type CreateLatexResult = { documentId: string } | { error: string }
 
-async function nextTitle(userId: string): Promise<{ title: string; version: number }> {
-  const version = await documentsQ.nextVersion(userId, null, 'latex_cv')
-  return { title: `LaTeX CV v${version}`, version }
+type LatexDocKind = 'latex_cv' | 'latex_cover_letter'
+
+async function nextTitle(
+  userId: string,
+  kind: LatexDocKind,
+): Promise<{ title: string; version: number }> {
+  const version = await documentsQ.nextVersion(userId, null, kind)
+  const prefix = kind === 'latex_cv' ? 'LaTeX CV' : 'LaTeX Letter'
+  return { title: `${prefix} v${version}`, version }
+}
+
+function isRedirectError(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    'digest' in err &&
+    typeof (err as { digest?: string }).digest === 'string' &&
+    (err as { digest: string }).digest.startsWith('NEXT_REDIRECT')
+  )
 }
 
 /**
- * Seed a new LaTeX CV document from a template pre-filled with the user's
- * master CV content (if one exists — otherwise falls back to the raw
- * template with placeholder-friendly defaults so the user can edit inline).
+ * Seed a new LaTeX document from a template, pre-filled with the user's
+ * master CV content (if one exists — otherwise falls back to placeholder
+ * content). The template's `kind` determines whether the new document is a
+ * `latex_cv` or a `latex_cover_letter`.
  */
 export async function createFromTemplate(templateId: string): Promise<CreateLatexResult> {
   try {
@@ -27,8 +43,22 @@ export async function createFromTemplate(templateId: string): Promise<CreateLate
     if (!template) return { error: `Unknown template: ${templateId}` }
 
     const master = await getMasterCV(userId)
+    const docKind: LatexDocKind =
+      template.kind === 'cover_letter' ? 'latex_cover_letter' : 'latex_cv'
+
     let source: string
-    if (master) {
+    if (template.kind === 'cover_letter') {
+      // Blank-letter path: fill placeholders. If the user has a master CV we
+      // pre-fill sender_name / sender_contact_line from it; otherwise the
+      // template renders bracketed [Your Name] / [email · phone · location].
+      source = fillTemplate(templateId, master, {
+        dateLine: new Date().toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        }),
+      })
+    } else if (master) {
       source = fillTemplate(templateId, master)
     } else {
       // No master CV yet — use a placeholder shape so the editor still opens
@@ -41,10 +71,10 @@ export async function createFromTemplate(templateId: string): Promise<CreateLate
       })
     }
 
-    const { title, version } = await nextTitle(userId)
+    const { title, version } = await nextTitle(userId, docKind)
     const doc = await documentsQ.create(userId, {
       applicationId: null,
-      kind: 'latex_cv',
+      kind: docKind,
       version,
       title,
       content: { source, templateId },
@@ -53,14 +83,7 @@ export async function createFromTemplate(templateId: string): Promise<CreateLate
     redirect(`/documents/${doc.id}/edit`)
   } catch (err) {
     // redirect() throws internally; let Next handle it.
-    if (
-      err instanceof Error &&
-      'digest' in err &&
-      typeof (err as { digest?: string }).digest === 'string' &&
-      (err as { digest: string }).digest.startsWith('NEXT_REDIRECT')
-    ) {
-      throw err
-    }
+    if (isRedirectError(err)) throw err
     logger.error('createFromTemplate failed', {
       err: err instanceof Error ? err.message : String(err),
     })
@@ -69,7 +92,8 @@ export async function createFromTemplate(templateId: string): Promise<CreateLate
 }
 
 /**
- * Blank document — minimal compilable stub the user can rewrite from scratch.
+ * Blank CV document — minimal compilable stub the user can rewrite from
+ * scratch.
  */
 export async function createBlank(): Promise<CreateLatexResult> {
   try {
@@ -84,7 +108,7 @@ Start writing your CV here.
 
 \\end{document}
 `
-    const { title, version } = await nextTitle(userId)
+    const { title, version } = await nextTitle(userId, 'latex_cv')
     const doc = await documentsQ.create(userId, {
       applicationId: null,
       kind: 'latex_cv',
@@ -95,14 +119,7 @@ Start writing your CV here.
     revalidatePath('/documents')
     redirect(`/documents/${doc.id}/edit`)
   } catch (err) {
-    if (
-      err instanceof Error &&
-      'digest' in err &&
-      typeof (err as { digest?: string }).digest === 'string' &&
-      (err as { digest: string }).digest.startsWith('NEXT_REDIRECT')
-    ) {
-      throw err
-    }
+    if (isRedirectError(err)) throw err
     logger.error('createBlank failed', {
       err: err instanceof Error ? err.message : String(err),
     })
@@ -111,13 +128,78 @@ Start writing your CV here.
 }
 
 /**
+ * Blank cover letter document — minimal compilable stub with the standard
+ * letter scaffolding so the user can just fill in body paragraphs.
+ */
+export async function createBlankCoverLetter(): Promise<CreateLatexResult> {
+  try {
+    const userId = await requireUserId()
+    const source = `\\documentclass[11pt,a4paper]{article}
+\\usepackage[margin=1.0in]{geometry}
+\\usepackage[utf8]{inputenc}
+\\usepackage[T1]{fontenc}
+\\usepackage[hidelinks]{hyperref}
+\\pagestyle{empty}
+\\setlength{\\parindent}{0pt}
+\\setlength{\\parskip}{6pt}
+\\begin{document}
+
+\\begin{flushright}
+  \\textbf{Your Name}\\\\
+  {\\small email  ·  phone  ·  location}
+\\end{flushright}
+
+[Date]
+
+[Hiring Manager]\\\\
+[Company Name]
+
+Dear Hiring Manager,
+
+Write your first paragraph here.
+
+Write your second paragraph here.
+
+Sincerely,\\\\[24pt]
+Your Name
+
+\\end{document}
+`
+    const { title, version } = await nextTitle(userId, 'latex_cover_letter')
+    const doc = await documentsQ.create(userId, {
+      applicationId: null,
+      kind: 'latex_cover_letter',
+      version,
+      title,
+      content: { source },
+    })
+    revalidatePath('/documents')
+    redirect(`/documents/${doc.id}/edit`)
+  } catch (err) {
+    if (isRedirectError(err)) throw err
+    logger.error('createBlankCoverLetter failed', {
+      err: err instanceof Error ? err.message : String(err),
+    })
+    return { error: 'Could not create blank cover letter.' }
+  }
+}
+
+/**
  * Ask the AI to generate a full .tex source from the user's master CV, in the
  * style of the requested template. Retries once if the response does not
  * start with \documentclass (the AI provider throws in that case).
+ *
+ * Only applies to CV templates — cover-letter templates use the
+ * template-fill path via `createFromTemplate`.
  */
 export async function createFromMasterCV(templateId: string): Promise<CreateLatexResult> {
   try {
     const userId = await requireUserId()
+    const template = getTemplate(templateId)
+    if (!template) return { error: `Unknown template: ${templateId}` }
+    if (template.kind !== 'cv') {
+      return { error: 'AI generation is only available for CV templates.' }
+    }
     const master = await getMasterCV(userId)
     if (!master) return { error: 'You need to save a master CV first (Settings → CV).' }
 
@@ -134,7 +216,7 @@ export async function createFromMasterCV(templateId: string): Promise<CreateLate
       source = r.source
     }
 
-    const { title, version } = await nextTitle(userId)
+    const { title, version } = await nextTitle(userId, 'latex_cv')
     const doc = await documentsQ.create(userId, {
       applicationId: null,
       kind: 'latex_cv',
@@ -145,14 +227,7 @@ export async function createFromMasterCV(templateId: string): Promise<CreateLate
     revalidatePath('/documents')
     redirect(`/documents/${doc.id}/edit`)
   } catch (err) {
-    if (
-      err instanceof Error &&
-      'digest' in err &&
-      typeof (err as { digest?: string }).digest === 'string' &&
-      (err as { digest: string }).digest.startsWith('NEXT_REDIRECT')
-    ) {
-      throw err
-    }
+    if (isRedirectError(err)) throw err
     logger.error('createFromMasterCV failed', {
       err: err instanceof Error ? err.message : String(err),
     })

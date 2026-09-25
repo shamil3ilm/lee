@@ -1,0 +1,40 @@
+%% letter-classic template — seeded by Employ v5.1.
+%% Traditional business letter: sender block top-right, recipient block left,
+%% date, greeting, body paragraphs, closing + signature name.
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=1.0in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[hidelinks]{hyperref}
+\usepackage{lmodern}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+\begin{document}
+
+\begin{flushright}
+  \textbf{{{sender_name}}}\\
+  {\small {{sender_contact_line}}}
+\end{flushright}
+
+\vspace{4pt}
+
+{{date_line}}
+
+\vspace{6pt}
+
+{{recipient_line}}
+
+\vspace{6pt}
+
+{{greeting}}
+
+{{body_paragraphs}}
+
+{{closing}}\\[24pt]
+{{sender_name}}
+
+\end{document}

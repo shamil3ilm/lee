@@ -1,0 +1,51 @@
+%% cv-jake-gwinnett template — seeded by Employ v5.1.
+%% Jake Gwinnett-style single-page dense resume. No color; compact spacing.
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[margin=0.5in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[hidelinks]{hyperref}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{lmodern}
+
+\titleformat{\section}
+  {\small\bfseries\uppercase}
+  {}{0em}{}[\vspace{-6pt}\hrule\vspace{1pt}]
+\titlespacing*{\section}{0pt}{6pt}{2pt}
+
+\setlist[itemize]{leftmargin=1.0em,itemsep=0pt,parsep=0pt,topsep=1pt}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{2pt}
+
+\newcommand{\entry}[4]{%
+  \noindent\textbf{#1} \hfill {\small #4}\\%
+  \textit{#2} \hfill {\small #3}\vspace{1pt}}
+
+\begin{document}
+
+\begin{center}
+  {\Large\bfseries {{name}}}\\[2pt]
+  {\small {{headline}}}\\[2pt]
+  {\small {{contact_line}}}
+\end{center}
+
+\section*{Summary}
+{{summary}}
+
+\section*{Experience}
+{{experience_block}}
+
+\section*{Projects}
+{{projects_block}}
+
+\section*{Education}
+{{education_block}}
+
+\section*{Skills}
+{{skills_block}}
+
+\end{document}

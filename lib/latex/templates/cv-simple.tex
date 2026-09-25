@@ -1,0 +1,46 @@
+%% cv-simple template — seeded by Employ v5.1.
+%% Minimalist single-column ATS-friendly layout. Only article + geometry +
+%% hyperref so any TeX Live install can build it.
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=0.9in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[hidelinks]{hyperref}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+
+\newcommand{\heading}[1]{%
+  \vspace{6pt}\noindent\textbf{\uppercase{#1}}\\[-6pt]%
+  \noindent\rule{\linewidth}{0.4pt}\vspace{2pt}}
+
+\newcommand{\entry}[4]{%
+  \noindent\textbf{#1} \hfill {#4}\\%
+  \textit{#2} \hfill {#3}\vspace{2pt}}
+
+\begin{document}
+
+\begin{center}
+  {\LARGE\textbf{{{name}}}}\\[3pt]
+  {\normalsize {{headline}}}\\[3pt]
+  {\small {{contact_line}}}
+\end{center}
+
+\heading{Summary}
+{{summary}}
+
+\heading{Experience}
+{{experience_block}}
+
+\heading{Projects}
+{{projects_block}}
+
+\heading{Education}
+{{education_block}}
+
+\heading{Skills}
+{{skills_block}}
+
+\end{document}

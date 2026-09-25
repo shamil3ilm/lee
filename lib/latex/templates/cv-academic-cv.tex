@@ -1,0 +1,65 @@
+%% cv-academic-cv template — seeded by Employ v5.1.
+%% Long-form academic CV. Publications / Grants / Teaching / Talks sections
+%% in addition to the standard blocks.
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=1.0in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[hidelinks]{hyperref}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{lmodern}
+
+\titleformat{\section}
+  {\Large\bfseries\scshape}
+  {}{0em}{}[\vspace{-6pt}\hrule\vspace{2pt}]
+\titlespacing*{\section}{0pt}{12pt}{4pt}
+
+\setlist[itemize]{leftmargin=1.2em,itemsep=1pt,parsep=0pt,topsep=2pt}
+
+\pagestyle{plain}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3pt}
+
+\newcommand{\entry}[4]{%
+  \noindent\textbf{#1} \hfill {\small #4}\\%
+  \textit{#2} \hfill {\small #3}\vspace{2pt}}
+
+\begin{document}
+
+\begin{center}
+  {\Huge\bfseries {{name}}}\\[3pt]
+  {\normalsize\itshape {{headline}}}\\[4pt]
+  {\small {{contact_line}}}
+\end{center}
+
+\section*{Research Statement}
+{{summary}}
+
+\section*{Academic Appointments}
+{{experience_block}}
+
+\section*{Education}
+{{education_block}}
+
+\section*{Publications}
+Selected peer-reviewed publications. Please refer to Google Scholar / ORCID for
+the complete list.
+
+\section*{Grants and Awards}
+Grants, fellowships, and awards will appear here.
+
+\section*{Teaching}
+Courses taught and teaching contributions will appear here.
+
+\section*{Invited Talks}
+Invited talks and conference presentations will appear here.
+
+\section*{Projects}
+{{projects_block}}
+
+\section*{Technical Skills}
+{{skills_block}}
+
+\end{document}

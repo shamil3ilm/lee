@@ -17,7 +17,7 @@ export default async function NewLatexDocumentPage() {
     <div className="space-y-6">
       <PageHeader
         title="New LaTeX document"
-        description="Pick a template to seed a fresh LaTeX CV. You can edit the source in the Overleaf-like editor after creating it."
+        description="Pick a template to seed a fresh LaTeX CV or cover letter. You can edit the source in the Overleaf-like editor after creating it."
       />
 
       {!hasMaster ? (
@@ -41,6 +41,9 @@ export default async function NewLatexDocumentPage() {
           id: t.id,
           name: t.name,
           description: t.description,
+          kind: t.kind,
+          category: t.category,
+          packages: t.packages,
         }))}
         hasMaster={hasMaster}
       />

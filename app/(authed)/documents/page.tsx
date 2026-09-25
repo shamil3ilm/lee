@@ -51,7 +51,14 @@ export default async function DocumentsLibraryPage({
           ? all.filter((d) => d.kind === 'interview_prep_pack')
           : filter === 'latex'
             ? all.filter((d) => d.kind.startsWith('latex_'))
-            : all.filter((d) => d.kind === filter)
+            : filter === 'cover_letter'
+              ? // Include both JSON cover letters AND LaTeX cover letters so
+                // users see every cover letter under one chip regardless of
+                // authoring format.
+                all.filter(
+                  (d) => d.kind === 'cover_letter' || d.kind === 'latex_cover_letter',
+                )
+              : all.filter((d) => d.kind === filter)
 
   return (
     <div className="space-y-4">

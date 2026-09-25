@@ -1,0 +1,46 @@
+%% letter-modern-professional template — seeded by Employ v5.1.
+%% Clean modern letterhead with a colored bar under the sender block. Easy
+%% to read, works well for corporate applications.
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=0.85in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+\usepackage{lmodern}
+
+\definecolor{bar}{HTML}{2C3E50}
+\definecolor{muted}{HTML}{555555}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+\begin{document}
+
+\noindent
+{\Huge\bfseries\color{bar} {{sender_name}}}\\[2pt]
+{\small\color{muted} {{sender_contact_line}}}\\[6pt]
+\noindent\textcolor{bar}{\rule{\linewidth}{2pt}}
+
+\vspace{10pt}
+
+\begin{flushright}
+  {{date_line}}
+\end{flushright}
+
+{{recipient_line}}
+
+\vspace{6pt}
+
+{{greeting}}
+
+{{body_paragraphs}}
+
+\vspace{4pt}
+
+{{closing}}\\[24pt]
+{{sender_name}}
+
+\end{document}

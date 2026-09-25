@@ -1,0 +1,47 @@
+%% letter-awesome-cv template — seeded by Employ v5.1.
+%% Matches the awesome-cv CV template so a paired CV + letter share the same
+%% blue accent + section styling.
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=0.9in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{lmodern}
+
+\definecolor{accent}{HTML}{2E5CB8}
+\definecolor{muted}{HTML}{555555}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+\begin{document}
+
+\begin{center}
+  {\Huge\bfseries\color{accent} {{sender_name}}}\\[4pt]
+  {\small\color{muted} {{sender_contact_line}}}
+\end{center}
+
+\vspace{6pt}
+\noindent\color{accent}\hrule\color{black}
+\vspace{6pt}
+
+\begin{flushright}
+  {{date_line}}
+\end{flushright}
+
+{{recipient_line}}
+
+\vspace{6pt}
+
+{{greeting}}
+
+{{body_paragraphs}}
+
+{{closing}}\\[24pt]
+{{sender_name}}
+
+\end{document}

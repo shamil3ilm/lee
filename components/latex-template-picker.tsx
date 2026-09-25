@@ -1,21 +1,34 @@
 'use client'
-import { useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { FileText, Loader2, Sparkles } from 'lucide-react'
+import { FileText, Loader2, Mail, Sparkles } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
   createBlank,
+  createBlankCoverLetter,
   createFromMasterCV,
   createFromTemplate,
   type CreateLatexResult,
 } from '@/app/(authed)/documents/new/latex/actions'
 
-interface TemplateSummary {
+export type TemplateKind = 'cv' | 'cover_letter'
+export type TemplateCategory =
+  | 'minimalist'
+  | 'modern'
+  | 'academic'
+  | 'creative'
+  | 'classic'
+
+export interface TemplateSummary {
   id: string
   name: string
   description: string
+  kind: TemplateKind
+  category: TemplateCategory
+  packages: string[]
 }
 
 interface LatexTemplatePickerProps {
@@ -27,11 +40,64 @@ type PendingAction =
   | { kind: 'template'; id: string }
   | { kind: 'ai'; id: string }
   | { kind: 'blank' }
+  | { kind: 'blank_letter' }
   | null
+
+const CATEGORY_ORDER: TemplateCategory[] = [
+  'minimalist',
+  'modern',
+  'classic',
+  'academic',
+  'creative',
+]
+
+const CATEGORY_LABEL: Record<TemplateCategory, string> = {
+  minimalist: 'Minimalist',
+  modern: 'Modern',
+  classic: 'Classic',
+  academic: 'Academic',
+  creative: 'Creative',
+}
+
+const CATEGORY_BADGE: Record<
+  TemplateCategory,
+  'blue' | 'violet' | 'emerald' | 'neutral' | 'indigo'
+> = {
+  minimalist: 'neutral',
+  modern: 'blue',
+  classic: 'indigo',
+  academic: 'emerald',
+  creative: 'violet',
+}
+
+function groupByCategory(templates: TemplateSummary[]): Array<{
+  category: TemplateCategory
+  items: TemplateSummary[]
+}> {
+  const byCategory = new Map<TemplateCategory, TemplateSummary[]>()
+  for (const t of templates) {
+    const bucket = byCategory.get(t.category) ?? []
+    bucket.push(t)
+    byCategory.set(t.category, bucket)
+  }
+  return CATEGORY_ORDER.filter((c) => byCategory.has(c)).map((c) => ({
+    category: c,
+    items: byCategory.get(c)!,
+  }))
+}
 
 export function LatexTemplatePicker({ templates, hasMaster }: LatexTemplatePickerProps) {
   const [pending, setPending] = useState<PendingAction>(null)
   const [, startTransition] = useTransition()
+
+  const cvGroups = useMemo(
+    () => groupByCategory(templates.filter((t) => t.kind === 'cv')),
+    [templates],
+  )
+  const letterGroups = useMemo(
+    () => groupByCategory(templates.filter((t) => t.kind === 'cover_letter')),
+    [templates],
+  )
 
   function isBusy(): boolean {
     return pending !== null
@@ -61,6 +127,14 @@ export function LatexTemplatePicker({ templates, hasMaster }: LatexTemplatePicke
     })
   }
 
+  function pickBlankLetter() {
+    setPending({ kind: 'blank_letter' })
+    startTransition(async () => {
+      const result = await createBlankCoverLetter()
+      handleResult(result)
+    })
+  }
+
   function pickAI(templateId: string) {
     setPending({ kind: 'ai', id: templateId })
     startTransition(async () => {
@@ -69,86 +143,165 @@ export function LatexTemplatePicker({ templates, hasMaster }: LatexTemplatePicke
     })
   }
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          Templates
-        </h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {templates.map((t) => {
-            const templateBusy =
-              pending?.kind === 'template' && pending.id === t.id
-            const aiBusy = pending?.kind === 'ai' && pending.id === t.id
-            return (
-              <Card
-                key={t.id}
-                className={cn(
-                  'flex flex-col',
-                  isBusy() && !templateBusy && !aiBusy && 'opacity-60',
-                )}
-              >
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <FileText className="size-4" />
-                    {t.name}
-                  </CardTitle>
-                  <CardDescription>{t.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="mt-auto flex flex-col gap-2">
-                  <Button
-                    type="button"
-                    variant="default"
-                    onClick={() => pickTemplate(t.id)}
-                    disabled={isBusy()}
-                  >
-                    {templateBusy ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : null}
-                    Use template
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => pickAI(t.id)}
-                    disabled={isBusy() || !hasMaster}
-                    title={hasMaster ? undefined : 'Save a master CV first to enable AI generation.'}
-                  >
-                    {aiBusy ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <Sparkles className="size-4" />
-                    )}
-                    AI-generate from master CV
-                  </Button>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      </div>
-
-      <div>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          Or start blank
-        </h2>
-        <Card>
-          <CardContent className="flex items-center justify-between gap-3 py-5">
-            <div>
-              <p className="font-medium">Empty document</p>
-              <p className="text-xs text-muted-foreground">
-                A minimal \documentclass stub. Write from scratch.
-              </p>
-            </div>
-            <Button type="button" variant="outline" onClick={pickBlank} disabled={isBusy()}>
-              {pending?.kind === 'blank' ? (
+  function renderCard(t: TemplateSummary) {
+    const templateBusy = pending?.kind === 'template' && pending.id === t.id
+    const aiBusy = pending?.kind === 'ai' && pending.id === t.id
+    const isLetter = t.kind === 'cover_letter'
+    return (
+      <Card
+        key={t.id}
+        className={cn(
+          'flex flex-col',
+          isBusy() && !templateBusy && !aiBusy && 'opacity-60',
+        )}
+      >
+        <CardHeader>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              {isLetter ? (
+                <Mail className="size-4" />
+              ) : (
+                <FileText className="size-4" />
+              )}
+              {t.name}
+            </CardTitle>
+            <Badge variant={CATEGORY_BADGE[t.category]} className="text-[10px]">
+              {CATEGORY_LABEL[t.category]}
+            </Badge>
+          </div>
+          <CardDescription>{t.description}</CardDescription>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            <span className="font-semibold">Packages:</span>{' '}
+            {t.packages.join(', ')}
+          </p>
+        </CardHeader>
+        <CardContent className="mt-auto flex flex-col gap-2">
+          <Button
+            type="button"
+            variant="default"
+            onClick={() => pickTemplate(t.id)}
+            disabled={isBusy()}
+          >
+            {templateBusy ? <Loader2 className="size-4 animate-spin" /> : null}
+            Use template
+          </Button>
+          {isLetter ? null : (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => pickAI(t.id)}
+              disabled={isBusy() || !hasMaster}
+              title={
+                hasMaster
+                  ? undefined
+                  : 'Save a master CV first to enable AI generation.'
+              }
+            >
+              {aiBusy ? (
                 <Loader2 className="size-4 animate-spin" />
-              ) : null}
-              Blank
+              ) : (
+                <Sparkles className="size-4" />
+              )}
+              AI-generate from master CV
             </Button>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* --- CVs & Resumes --- */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">CVs &amp; Resumes</h2>
+          <p className="text-sm text-muted-foreground">
+            Pick a layout for your LaTeX CV. AI generation uses your saved master
+            CV for the source content.
+          </p>
+        </div>
+        {cvGroups.map((group) => (
+          <div key={group.category}>
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {CATEGORY_LABEL[group.category]}
+            </h3>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {group.items.map(renderCard)}
+            </div>
+          </div>
+        ))}
+      </section>
+
+      {/* --- Cover Letters --- */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">Cover Letters</h2>
+          <p className="text-sm text-muted-foreground">
+            LaTeX cover-letter templates. Placeholders are filled with sample
+            content when no application context is available.
+          </p>
+        </div>
+        {letterGroups.map((group) => (
+          <div key={group.category}>
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {CATEGORY_LABEL[group.category]}
+            </h3>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {group.items.map(renderCard)}
+            </div>
+          </div>
+        ))}
+      </section>
+
+      {/* --- Blank --- */}
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold">Or start blank</h2>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Card>
+            <CardContent className="flex items-center justify-between gap-3 py-5">
+              <div>
+                <p className="font-medium">Empty CV</p>
+                <p className="text-xs text-muted-foreground">
+                  A minimal \documentclass stub. Write from scratch.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={pickBlank}
+                disabled={isBusy()}
+              >
+                {pending?.kind === 'blank' ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : null}
+                Blank CV
+              </Button>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="flex items-center justify-between gap-3 py-5">
+              <div>
+                <p className="font-medium">Empty cover letter</p>
+                <p className="text-xs text-muted-foreground">
+                  A minimal letter stub. Fill in recipient, greeting, body.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={pickBlankLetter}
+                disabled={isBusy()}
+              >
+                {pending?.kind === 'blank_letter' ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : null}
+                Blank letter
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
     </div>
   )
 }

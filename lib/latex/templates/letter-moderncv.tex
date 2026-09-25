@@ -1,0 +1,43 @@
+%% letter-moderncv template — seeded by Employ v5.1.
+%% Uses the moderncv class in "classic" style so the letterhead matches the
+%% moderncv-classic CV template. Body is written directly (moderncv's
+%% \opening/\closing macros are optional and we prefer explicit content so the
+%% AI-filled paragraphs render exactly as authored).
+\documentclass[11pt,a4paper,sans]{moderncv}
+
+\moderncvstyle{classic}
+\moderncvcolor{blue}
+
+\usepackage[scale=0.82]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+
+\firstname{{{sender_name}}}
+\familyname{}
+\title{Cover Letter}
+
+\begin{document}
+\makecvtitle
+
+\begin{flushleft}
+  {\small {{sender_contact_line}}}
+\end{flushleft}
+
+\vspace{4pt}
+
+{{date_line}}
+
+\vspace{6pt}
+
+{{recipient_line}}
+
+\vspace{6pt}
+
+{{greeting}}
+
+{{body_paragraphs}}
+
+{{closing}}\\[24pt]
+{{sender_name}}
+
+\end{document}

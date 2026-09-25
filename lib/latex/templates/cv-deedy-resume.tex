@@ -1,0 +1,67 @@
+%% cv-deedy-resume template — seeded by Employ v5.1.
+%% Deedy-inspired two-column resume: sidebar (skills/education) + main
+%% content (experience/projects). Implemented with paracol so it compiles
+%% cleanly on latexonline.cc with only CTAN packages.
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=0.55in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+\usepackage{paracol}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{lmodern}
+
+\definecolor{primary}{HTML}{1B3A57}
+\definecolor{accent}{HTML}{C0392B}
+\definecolor{muted}{HTML}{666666}
+
+\titleformat{\section}
+  {\large\bfseries\color{primary}\uppercase}
+  {}{0em}{}[\vspace{-4pt}\color{primary}\hrule\vspace{2pt}]
+\titlespacing*{\section}{0pt}{8pt}{4pt}
+
+\setlist[itemize]{leftmargin=1.1em,itemsep=0pt,parsep=0pt,topsep=2pt}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\columnsep}{20pt}
+
+\newcommand{\entry}[4]{%
+  \noindent\textbf{#1} \hfill \textcolor{muted}{\small #4}\\%
+  \textit{\color{accent} #2} \hfill \textcolor{muted}{\small #3}\vspace{2pt}}
+
+\begin{document}
+
+\begin{center}
+  {\Huge\bfseries\color{primary} {{name}}}\\[3pt]
+  {\normalsize\color{accent} {{headline}}}\\[4pt]
+  {\small {{contact_line}}}
+\end{center}
+\vspace{4pt}
+
+\columnratio{0.34}
+\begin{paracol}{2}
+% ---- sidebar ----
+\section*{Skills}
+{{skills_block}}
+
+\section*{Education}
+{{education_block}}
+
+\switchcolumn
+% ---- main column ----
+\section*{Summary}
+{{summary}}
+
+\section*{Experience}
+{{experience_block}}
+
+\section*{Projects}
+{{projects_block}}
+
+\end{paracol}
+
+\end{document}

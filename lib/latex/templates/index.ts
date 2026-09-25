@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import type { MasterCV } from '@/lib/documents/types'
+import type { CoverLetter, MasterCV } from '@/lib/documents/types'
 
 // Templates are shipped as .tex files next to this module. Read them at module
 // init (server-only paths — this file is imported from server actions and the
@@ -13,16 +13,56 @@ function readTemplate(fileName: string): string {
   return fs.readFileSync(path.join(TEMPLATES_DIR, fileName), 'utf8')
 }
 
+// ---- CV template sources -----------------------------------------------------
 const modernCVSource = readTemplate('moderncv-classic.tex')
 const awesomeCVSource = readTemplate('awesome-cv.tex')
 const altaCVSource = readTemplate('altacv-tw.tex')
+const simpleCVSource = readTemplate('cv-simple.tex')
+const europassCVSource = readTemplate('cv-europass-style.tex')
+const academicCVSource = readTemplate('cv-academic-cv.tex')
+const deedyCVSource = readTemplate('cv-deedy-resume.tex')
+const jakeCVSource = readTemplate('cv-jake-gwinnett.tex')
+const friggeriCVSource = readTemplate('cv-friggeri.tex')
+
+// ---- Cover letter template sources ------------------------------------------
+const letterClassicSource = readTemplate('letter-classic.tex')
+const letterModerncvSource = readTemplate('letter-moderncv.tex')
+const letterAwesomeSource = readTemplate('letter-awesome-cv.tex')
+const letterModernProSource = readTemplate('letter-modern-professional.tex')
+const letterFriendlySource = readTemplate('letter-friendly.tex')
+
+export type LatexTemplateKind = 'cv' | 'cover_letter'
+export type LatexTemplateCategory =
+  | 'minimalist'
+  | 'modern'
+  | 'academic'
+  | 'creative'
+  | 'classic'
 
 export interface LatexTemplate {
   id: string
   name: string
   description: string
+  kind: LatexTemplateKind
+  category: LatexTemplateCategory
+  packages: string[]
+  preview?: string
   source: string
-  fill: (master: MasterCV) => string
+  // For CV templates only. Cover-letter templates use `fillLetter`.
+  fill?: (master: MasterCV) => string
+  fillLetter?: (master: MasterCV | null, letter: CoverLetterFillInput) => string
+}
+
+// Loose shape used to fill a cover-letter template. All fields are optional so
+// the picker can seed a "blank" letter without an application context.
+export interface CoverLetterFillInput {
+  senderName?: string
+  senderContactLine?: string
+  dateLine?: string
+  recipientLine?: string
+  greeting?: string
+  paragraphs?: string[]
+  closing?: string
 }
 
 /**
@@ -31,7 +71,7 @@ export interface LatexTemplate {
  * per-char replacements (which use braces), then restore backslashes at the
  * end so the introduced braces aren't themselves escaped.
  */
-const BS_SENTINEL = 'BS'
+const BS_SENTINEL = 'BS'
 export function escapeLatex(input: string): string {
   return input
     .replace(/\\/g, BS_SENTINEL)
@@ -187,7 +227,8 @@ function renderSkillsGeneric(cv: MasterCV): string {
 }
 
 /**
- * Sidebar-style skills list — one bullet per skill, used by altacv-tw.
+ * Sidebar-style skills list — one bullet per skill, used by altacv-tw and
+ * deedy-resume.
  */
 function renderSkillsSidebar(cv: MasterCV): string {
   const all = [
@@ -208,8 +249,22 @@ function replaceAll(source: string, values: Record<string, string>): string {
 }
 
 // ---------------------------------------------------------------------------
-// Per-template fill functions.
+// CV template fillers
 // ---------------------------------------------------------------------------
+
+/** Values shared by every generic (non-moderncv) CV template. */
+function genericCvValues(master: MasterCV): Record<string, string> {
+  return {
+    name: escapeLatex(master.basics.name),
+    headline: escapeLatex(master.basics.headline),
+    contact_line: joinContact(master),
+    summary: escapeLatex(master.summary || ''),
+    experience_block: renderExperienceGeneric(master),
+    projects_block: renderProjectsGeneric(master),
+    education_block: renderEducationGeneric(master),
+    skills_block: renderSkillsGeneric(master),
+  }
+}
 
 function fillModernCV(master: MasterCV): string {
   const { first, last } = splitName(master.basics.name)
@@ -228,37 +283,110 @@ function fillModernCV(master: MasterCV): string {
 }
 
 function fillAwesomeCV(master: MasterCV): string {
-  return replaceAll(awesomeCVSource, {
-    name: escapeLatex(master.basics.name),
-    headline: escapeLatex(master.basics.headline),
-    contact_line: joinContact(master),
-    summary: escapeLatex(master.summary || ''),
-    experience_block: renderExperienceGeneric(master),
-    projects_block: renderProjectsGeneric(master),
-    education_block: renderEducationGeneric(master),
-    skills_block: renderSkillsGeneric(master),
-  })
+  return replaceAll(awesomeCVSource, genericCvValues(master))
 }
 
 function fillAltaCV(master: MasterCV): string {
   return replaceAll(altaCVSource, {
-    name: escapeLatex(master.basics.name),
-    headline: escapeLatex(master.basics.headline),
-    contact_line: joinContact(master),
-    summary: escapeLatex(master.summary || ''),
-    experience_block: renderExperienceGeneric(master),
-    projects_block: renderProjectsGeneric(master),
-    education_block: renderEducationGeneric(master),
+    ...genericCvValues(master),
     skills_block: renderSkillsSidebar(master),
   })
 }
 
+function fillSimpleCV(master: MasterCV): string {
+  return replaceAll(simpleCVSource, genericCvValues(master))
+}
+
+function fillEuropassCV(master: MasterCV): string {
+  return replaceAll(europassCVSource, genericCvValues(master))
+}
+
+function fillAcademicCV(master: MasterCV): string {
+  return replaceAll(academicCVSource, genericCvValues(master))
+}
+
+function fillDeedyCV(master: MasterCV): string {
+  return replaceAll(deedyCVSource, {
+    ...genericCvValues(master),
+    skills_block: renderSkillsSidebar(master),
+  })
+}
+
+function fillJakeCV(master: MasterCV): string {
+  return replaceAll(jakeCVSource, genericCvValues(master))
+}
+
+function fillFriggeriCV(master: MasterCV): string {
+  return replaceAll(friggeriCVSource, genericCvValues(master))
+}
+
+// ---------------------------------------------------------------------------
+// Cover letter template fillers
+// ---------------------------------------------------------------------------
+
+/**
+ * Build the placeholder values for a cover-letter template. If `master` is
+ * provided, sender_name and sender_contact_line default from the master CV
+ * basics; otherwise fall back to bracketed placeholders the user can fill in.
+ */
+function letterValues(
+  master: MasterCV | null,
+  letter: CoverLetterFillInput,
+): Record<string, string> {
+  const senderName =
+    letter.senderName ??
+    master?.basics.name ??
+    '[Your Name]'
+  const contactPieces = master
+    ? [master.basics.email, master.basics.phone, master.basics.location].filter(
+        (v): v is string => typeof v === 'string' && v.length > 0,
+      )
+    : []
+  const senderContactLine =
+    letter.senderContactLine ??
+    (contactPieces.length ? contactPieces.map(escapeLatex).join('  ·  ') : '[email  ·  phone  ·  location]')
+
+  const paragraphs = letter.paragraphs && letter.paragraphs.length
+    ? letter.paragraphs
+    : [
+        'I am writing to express my interest in the [Position] role at [Company]. Given my background, I believe I can make an immediate contribution to your team.',
+        'Throughout my career I have delivered [key accomplishment]. I am particularly drawn to [Company] because [reason].',
+        'I would welcome the opportunity to discuss how my experience aligns with your needs. Thank you for your consideration.',
+      ]
+  const bodyParagraphs = paragraphs
+    .map((p) => escapeLatex(p))
+    .join('\n\n')
+
+  return {
+    sender_name: escapeLatex(senderName),
+    sender_contact_line: senderContactLine,
+    date_line: escapeLatex(letter.dateLine ?? '[Date]'),
+    recipient_line: escapeLatex(letter.recipientLine ?? '[Hiring Manager]\n[Company Name]'),
+    greeting: escapeLatex(letter.greeting ?? 'Dear Hiring Manager,'),
+    body_paragraphs: bodyParagraphs,
+    closing: escapeLatex(letter.closing ?? 'Sincerely,'),
+  }
+}
+
+function makeLetterFiller(source: string) {
+  return (master: MasterCV | null, letter: CoverLetterFillInput): string =>
+    replaceAll(source, letterValues(master, letter))
+}
+
+// ---------------------------------------------------------------------------
+// Template registry
+// ---------------------------------------------------------------------------
+
 export const TEMPLATES: LatexTemplate[] = [
+  // ---- CV templates ----
   {
     id: 'moderncv-classic',
     name: 'ModernCV Classic',
     description:
       'Classic academic layout using the moderncv package. Blue accents, single column.',
+    kind: 'cv',
+    category: 'classic',
+    packages: ['moderncv', 'geometry'],
     source: modernCVSource,
     fill: fillModernCV,
   },
@@ -267,6 +395,9 @@ export const TEMPLATES: LatexTemplate[] = [
     name: 'Awesome CV',
     description:
       'Popular GitHub-style layout with color accents and clean section headers.',
+    kind: 'cv',
+    category: 'modern',
+    packages: ['hyperref', 'xcolor', 'titlesec', 'enumitem', 'fontawesome5', 'lmodern'],
     source: awesomeCVSource,
     fill: fillAwesomeCV,
   },
@@ -274,8 +405,134 @@ export const TEMPLATES: LatexTemplate[] = [
     id: 'altacv-tw',
     name: 'AltaCV (two column)',
     description: 'Two-column layout with a sidebar for skills and education.',
+    kind: 'cv',
+    category: 'modern',
+    packages: ['paracol', 'xcolor', 'titlesec', 'enumitem', 'lmodern'],
     source: altaCVSource,
     fill: fillAltaCV,
+  },
+  {
+    id: 'cv-simple',
+    name: 'Simple ATS',
+    description:
+      'Clean minimalist single-column, ideal for ATS submissions. No fancy packages.',
+    kind: 'cv',
+    category: 'minimalist',
+    packages: ['geometry', 'hyperref'],
+    source: simpleCVSource,
+    fill: fillSimpleCV,
+  },
+  {
+    id: 'cv-europass-style',
+    name: 'Europass Style',
+    description:
+      'European-style CV with structured sections and a two-column header for photo-optional layout.',
+    kind: 'cv',
+    category: 'classic',
+    packages: ['paracol', 'xcolor', 'titlesec', 'enumitem', 'lmodern'],
+    source: europassCVSource,
+    fill: fillEuropassCV,
+  },
+  {
+    id: 'cv-academic-cv',
+    name: 'Academic CV',
+    description:
+      'Long-form academic CV with sections for Publications, Grants, Teaching, and Talks.',
+    kind: 'cv',
+    category: 'academic',
+    packages: ['hyperref', 'titlesec', 'enumitem', 'lmodern'],
+    source: academicCVSource,
+    fill: fillAcademicCV,
+  },
+  {
+    id: 'cv-deedy-resume',
+    name: 'Deedy Resume',
+    description:
+      'Deedy-inspired two-column resume — sidebar for skills/education, main column for experience.',
+    kind: 'cv',
+    category: 'modern',
+    packages: ['paracol', 'xcolor', 'titlesec', 'enumitem', 'lmodern'],
+    source: deedyCVSource,
+    fill: fillDeedyCV,
+  },
+  {
+    id: 'cv-jake-gwinnett',
+    name: 'Jake Gwinnett',
+    description:
+      'Dense single-page resume, popular in tech. Compact spacing, no color.',
+    kind: 'cv',
+    category: 'minimalist',
+    packages: ['titlesec', 'enumitem', 'lmodern'],
+    source: jakeCVSource,
+    fill: fillJakeCV,
+  },
+  {
+    id: 'cv-friggeri',
+    name: 'Friggeri Modern',
+    description:
+      'Modern layout with a colored accent stripe drawn via TikZ. Bold header.',
+    kind: 'cv',
+    category: 'creative',
+    packages: ['xcolor', 'titlesec', 'enumitem', 'tikz', 'lmodern'],
+    source: friggeriCVSource,
+    fill: fillFriggeriCV,
+  },
+
+  // ---- Cover letter templates ----
+  {
+    id: 'letter-classic',
+    name: 'Classic Business Letter',
+    description:
+      'Traditional business letter — sender block top-right, recipient block, date, greeting, body.',
+    kind: 'cover_letter',
+    category: 'classic',
+    packages: ['geometry', 'hyperref', 'lmodern'],
+    source: letterClassicSource,
+    fillLetter: makeLetterFiller(letterClassicSource),
+  },
+  {
+    id: 'letter-moderncv',
+    name: 'ModernCV Letter',
+    description:
+      'Matches the ModernCV Classic CV template — pair them for a consistent look.',
+    kind: 'cover_letter',
+    category: 'classic',
+    packages: ['moderncv', 'geometry'],
+    source: letterModerncvSource,
+    fillLetter: makeLetterFiller(letterModerncvSource),
+  },
+  {
+    id: 'letter-awesome-cv',
+    name: 'Awesome CV Letter',
+    description:
+      'Matches the Awesome CV template — blue accent letterhead with hairline separator.',
+    kind: 'cover_letter',
+    category: 'modern',
+    packages: ['hyperref', 'xcolor', 'titlesec', 'lmodern'],
+    source: letterAwesomeSource,
+    fillLetter: makeLetterFiller(letterAwesomeSource),
+  },
+  {
+    id: 'letter-modern-professional',
+    name: 'Modern Professional',
+    description:
+      'Clean modern letterhead with a colored bar under the sender block. Corporate-friendly.',
+    kind: 'cover_letter',
+    category: 'modern',
+    packages: ['hyperref', 'xcolor', 'lmodern'],
+    source: letterModernProSource,
+    fillLetter: makeLetterFiller(letterModernProSource),
+  },
+  {
+    id: 'letter-friendly',
+    name: 'Friendly Letter',
+    description:
+      'Warmer, conversational tone with less rigid formatting. Great for startups.',
+    kind: 'cover_letter',
+    category: 'creative',
+    packages: ['geometry', 'hyperref', 'lmodern'],
+    source: letterFriendlySource,
+    fillLetter: makeLetterFiller(letterFriendlySource),
   },
 ]
 
@@ -284,13 +541,53 @@ export function getTemplate(id: string): LatexTemplate | null {
 }
 
 /**
- * Fill a template with the given master CV. Throws if the templateId isn't
- * registered — callers should validate first if they want soft-failure.
+ * Fill a template with the given master CV (and optional CoverLetter). For a
+ * `cv` template a MasterCV is required; for a `cover_letter` template a
+ * CoverLetter-like input is required (senderName defaults from the master CV
+ * basics when both are supplied).
+ *
+ * Throws for unknown templateId, missing master CV on a `cv` template, or
+ * missing letter on a `cover_letter` template.
  */
-export function fillTemplate(templateId: string, master: MasterCV): string {
+export function fillTemplate(
+  templateId: string,
+  master: MasterCV | null,
+  letter?: CoverLetterFillInput,
+): string {
   const template = getTemplate(templateId)
   if (!template) {
     throw new Error(`Unknown LaTeX template id: ${templateId}`)
   }
-  return template.fill(master)
+  if (template.kind === 'cv') {
+    if (!master) throw new Error(`Template ${templateId} requires a master CV.`)
+    if (!template.fill) throw new Error(`Template ${templateId} is missing a fill function.`)
+    return template.fill(master)
+  }
+  // cover_letter
+  if (!template.fillLetter) {
+    throw new Error(`Template ${templateId} is missing a fillLetter function.`)
+  }
+  return template.fillLetter(master, letter ?? {})
+}
+
+/**
+ * Convenience wrapper for cover-letter templates — mirrors the CoverLetter
+ * schema in lib/documents/types so callers can pass a persisted CoverLetter
+ * directly without a manual shape conversion.
+ */
+export function fillCoverLetterTemplate(
+  templateId: string,
+  master: MasterCV | null,
+  letter: CoverLetter | CoverLetterFillInput,
+): string {
+  const input: CoverLetterFillInput =
+    'paragraphs' in letter && Array.isArray(letter.paragraphs)
+      ? {
+          senderName: 'senderName' in letter ? letter.senderName : undefined,
+          greeting: 'greeting' in letter ? letter.greeting : undefined,
+          paragraphs: letter.paragraphs,
+          closing: 'closing' in letter ? letter.closing : undefined,
+        }
+      : (letter as CoverLetterFillInput)
+  return fillTemplate(templateId, master, input)
 }

@@ -1,0 +1,66 @@
+%% cv-friggeri template — seeded by Employ v5.1.
+%% Adrian Friggeri-inspired modern layout with a color accent stripe drawn
+%% via TikZ. Only CTAN packages required.
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=0.7in,top=0.5in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{tikz}
+\usepackage{lmodern}
+
+\definecolor{stripe}{HTML}{7A1F1F}
+\definecolor{muted}{HTML}{555555}
+
+\titleformat{\section}
+  {\Large\bfseries\color{stripe}\scshape}
+  {}{0em}{}[\vspace{-4pt}\color{stripe}\hrule\vspace{2pt}]
+\titlespacing*{\section}{0pt}{10pt}{4pt}
+
+\setlist[itemize]{leftmargin=1.2em,itemsep=0pt,parsep=0pt,topsep=2pt}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3pt}
+
+\newcommand{\entry}[4]{%
+  \noindent\textbf{#1} \hfill \textcolor{muted}{\small #4}\\%
+  \textit{\color{stripe} #2} \hfill \textcolor{muted}{\small #3}\vspace{2pt}}
+
+\begin{document}
+
+\begin{tikzpicture}[remember picture,overlay]
+  \fill[stripe] (current page.north west) rectangle
+    ([yshift=-2.4cm]current page.north east);
+  \node[anchor=west, text=white, font=\Huge\bfseries]
+    at ([xshift=0.7in,yshift=-1.2cm]current page.north west) {{{name}}};
+  \node[anchor=west, text=white, font=\large\itshape]
+    at ([xshift=0.7in,yshift=-1.9cm]current page.north west) {{{headline}}};
+\end{tikzpicture}
+
+\vspace{2.2cm}
+
+\begin{center}
+  {\small {{contact_line}}}
+\end{center}
+
+\section*{Summary}
+{{summary}}
+
+\section*{Experience}
+{{experience_block}}
+
+\section*{Projects}
+{{projects_block}}
+
+\section*{Education}
+{{education_block}}
+
+\section*{Skills}
+{{skills_block}}
+
+\end{document}
