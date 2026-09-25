@@ -20,6 +20,7 @@ import {
   Upload,
   Layers,
   CheckSquare,
+  Beaker,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -72,6 +73,12 @@ const SECTIONS: NavSection[] = [
       { href: '/settings/cv', label: 'CV', icon: FileText },
       { href: '/settings/sources', label: 'Sources', icon: Rss },
       { href: '/digest', label: 'Digest', icon: FileText },
+    ],
+  },
+  {
+    label: 'Playground',
+    items: [
+      { href: '/playground/decisions', label: 'Decisions', icon: Beaker },
     ],
   },
 ]
