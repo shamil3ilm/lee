@@ -40,7 +40,7 @@ export default async function ModelPlaygroundPage() {
           <h2 id="lab-providers" className="text-lg font-semibold">
             Providers
           </h2>
-          <Link href="/playground/models/providers" className="text-sm text-muted-foreground hover:text-foreground">
+          <Link href="/settings/ai#provider-keys" className="text-sm text-muted-foreground hover:text-foreground">
             Manage keys
           </Link>
         </div>

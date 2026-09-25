@@ -169,7 +169,7 @@ export function ModelPicker({ providers, selected, onChange, max = 6 }: ModelPic
                 {p.comingSoon ? (
                   <Badge variant="slate">Coming soon</Badge>
                 ) : p.keySource === 'none' ? (
-                  <Link href="/playground/models/providers" className="text-xs text-primary underline-offset-4 hover:underline">
+                  <Link href="/settings/ai#provider-keys" className="text-xs text-primary underline-offset-4 hover:underline">
                     Add key
                   </Link>
                 ) : (

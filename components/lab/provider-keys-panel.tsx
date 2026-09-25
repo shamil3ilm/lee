@@ -14,7 +14,8 @@ import type { ProviderId } from '@/lib/lab/providers/types'
 /**
  * v14 — add / replace / remove provider API keys. Keys are sent once to the
  * server, validated there, stored encrypted, and never come back: the UI only
- * ever shows `••••last4`. Reusable — slated to move into Settings › AI.
+ * ever shows `••••last4`. Rendered only in Settings › AI (the single place
+ * keys are managed); the Model Playground links there.
  */
 
 interface ProviderKeysPanelProps {

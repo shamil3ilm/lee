@@ -177,7 +177,7 @@ export function Arena({ providers }: ArenaProps) {
         <CardContent className="space-y-3 p-6 text-sm">
           <p>No provider is configured yet. Add a free API key to start comparing models.</p>
           <Button asChild size="sm">
-            <Link href="/playground/models/providers">Add a provider key</Link>
+            <Link href="/settings/ai#provider-keys">Add a provider key</Link>
           </Button>
         </CardContent>
       </Card>

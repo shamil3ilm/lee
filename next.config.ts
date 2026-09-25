@@ -34,6 +34,8 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: '/learn', destination: '/playground', permanent: true },
+      // Provider keys moved to Settings › AI; match before the catch-all.
+      { source: '/lab/providers', destination: '/settings/ai', permanent: true },
       { source: '/lab/:path*', destination: '/playground/models/:path*', permanent: true },
     ];
   },
