@@ -3,7 +3,7 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Download, FileText, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Download, FileText, Loader2, Pencil, Trash2 } from 'lucide-react'
 import type { Document } from '@/lib/db/queries/documents'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -158,12 +158,6 @@ export function DocumentsTable({ documents, currentFilter }: DocumentsTableProps
             )
           })}
         </div>
-        <Button asChild size="sm" variant="default">
-          <Link href="/documents/new/latex">
-            <Plus className="size-4" />
-            LaTeX CV
-          </Link>
-        </Button>
       </div>
 
       {documents.length === 0 ? (

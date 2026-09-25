@@ -1,7 +1,10 @@
+import Link from 'next/link'
+import { FilePlus2, Layers } from 'lucide-react'
 import { requireUserId } from '@/lib/auth/require-session'
 import * as documentsQ from '@/lib/db/queries/documents'
 import { PageHeader } from '@/components/page-header'
 import { DocumentsTable } from '@/components/documents-table'
+import { Button } from '@/components/ui/button'
 
 export const dynamic = 'force-dynamic'
 
@@ -68,6 +71,22 @@ export default async function DocumentsLibraryPage({
       <PageHeader
         title="Documents"
         description="All generated CVs, cover letters, outreach drafts, and interview prep packs."
+        actions={
+          <>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/documents/merge">
+                <Layers className="size-4" />
+                Merge PDFs
+              </Link>
+            </Button>
+            <Button asChild size="sm">
+              <Link href="/documents/new/latex">
+                <FilePlus2 className="size-4" />
+                New LaTeX CV
+              </Link>
+            </Button>
+          </>
+        }
       />
       <DocumentsTable documents={documents} currentFilter={filter} />
     </div>

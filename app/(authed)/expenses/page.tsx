@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Download, Upload, Wallet } from 'lucide-react'
+import { Download, Wallet } from 'lucide-react'
 import { requireUserId } from '@/lib/auth/require-session'
 import * as expensesQ from '@/lib/db/queries/expenses'
 import * as budgetsQ from '@/lib/db/queries/expenseBudgets'
@@ -58,15 +58,6 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <ExpenseMonthPicker value={month} />
-            <Button asChild variant="outline" size="sm">
-              <Link href="/expenses/budgets">Budgets</Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link href="/expenses/import">
-                <Upload className="size-4" />
-                Import
-              </Link>
-            </Button>
             <Button asChild variant="ghost" size="sm">
               <Link href="/api/expenses/export" prefetch={false}>
                 <Download className="size-4" />
