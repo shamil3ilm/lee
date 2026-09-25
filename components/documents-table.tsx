@@ -3,7 +3,7 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Download, FileText, Loader2, Trash2 } from 'lucide-react'
+import { Download, FileText, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import type { Document } from '@/lib/db/queries/documents'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -27,10 +27,13 @@ type DocumentKind =
   | 'outreach_linkedin_message'
   | 'outreach_recruiter_reply'
   | 'interview_prep_pack'
+  | 'latex_cv'
+  | 'latex_cover_letter'
 
-// The filter chip value maps to the URL `?kind=` param. The bespoke `outreach`
-// and `interview_prep` values are prefix-matched server-side in the page (the
-// backend query filters by exact kind, so grouping is done at the page level).
+// The filter chip value maps to the URL `?kind=` param. The bespoke `outreach`,
+// `interview_prep`, and `latex` values are prefix-matched server-side in the
+// page (the backend query filters by exact kind, so grouping is done at the
+// page level).
 type FilterValue =
   | 'all'
   | 'master_cv'
@@ -38,6 +41,7 @@ type FilterValue =
   | 'cover_letter'
   | 'outreach'
   | 'interview_prep'
+  | 'latex'
 
 interface DocumentsTableProps {
   documents: Document[]
@@ -52,11 +56,13 @@ const KIND_LABELS: Record<DocumentKind, string> = {
   outreach_linkedin_message: 'LinkedIn Message',
   outreach_recruiter_reply: 'Recruiter Reply',
   interview_prep_pack: 'Interview Prep',
+  latex_cv: 'LaTeX CV',
+  latex_cover_letter: 'LaTeX Letter',
 }
 
 const KIND_BADGE: Record<
   DocumentKind,
-  'blue' | 'violet' | 'neutral' | 'emerald'
+  'blue' | 'violet' | 'neutral' | 'emerald' | 'indigo'
 > = {
   master_cv: 'neutral',
   tailored_cv: 'violet',
@@ -65,6 +71,8 @@ const KIND_BADGE: Record<
   outreach_linkedin_message: 'violet',
   outreach_recruiter_reply: 'violet',
   interview_prep_pack: 'emerald',
+  latex_cv: 'indigo',
+  latex_cover_letter: 'indigo',
 }
 
 const FILTER_CHIPS: ReadonlyArray<{ label: string; value: FilterValue }> = [
@@ -74,7 +82,12 @@ const FILTER_CHIPS: ReadonlyArray<{ label: string; value: FilterValue }> = [
   { label: 'Cover Letter', value: 'cover_letter' },
   { label: 'Outreach', value: 'outreach' },
   { label: 'Interview Prep', value: 'interview_prep' },
+  { label: 'LaTeX', value: 'latex' },
 ]
+
+function isLatexKind(kind: DocumentKind): boolean {
+  return kind === 'latex_cv' || kind === 'latex_cover_letter'
+}
 
 export function DocumentsTable({ documents, currentFilter }: DocumentsTableProps) {
   const router = useRouter()
@@ -112,26 +125,34 @@ export function DocumentsTable({ documents, currentFilter }: DocumentsTableProps
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        {FILTER_CHIPS.map((chip) => {
-          const active = chip.value === activeValue
-          return (
-            <button
-              key={chip.value}
-              type="button"
-              onClick={() => setFilter(chip.value)}
-              disabled={pending}
-              className={cn(
-                'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-                active
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-input bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-              )}
-            >
-              {chip.label}
-            </button>
-          )
-        })}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {FILTER_CHIPS.map((chip) => {
+            const active = chip.value === activeValue
+            return (
+              <button
+                key={chip.value}
+                type="button"
+                onClick={() => setFilter(chip.value)}
+                disabled={pending}
+                className={cn(
+                  'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                  active
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-input bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                )}
+              >
+                {chip.label}
+              </button>
+            )
+          })}
+        </div>
+        <Button asChild size="sm" variant="default">
+          <Link href="/documents/new/latex">
+            <Plus className="size-4" />
+            LaTeX CV
+          </Link>
+        </Button>
       </div>
 
       {documents.length === 0 ? (
@@ -193,6 +214,18 @@ export function DocumentsTable({ documents, currentFilter }: DocumentsTableProps
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
+                          {isLatexKind(kind) ? (
+                            <Button
+                              asChild
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Edit"
+                            >
+                              <Link href={`/documents/${doc.id}/edit`}>
+                                <Pencil className="size-4" />
+                              </Link>
+                            </Button>
+                          ) : null}
                           <Button
                             asChild
                             variant="ghost"

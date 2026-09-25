@@ -15,6 +15,7 @@ const FILTER_VALUES = [
   'cover_letter',
   'outreach',
   'interview_prep',
+  'latex',
 ] as const
 
 type FilterValue = 'all' | (typeof FILTER_VALUES)[number]
@@ -48,7 +49,9 @@ export default async function DocumentsLibraryPage({
         ? all.filter((d) => d.kind.startsWith('outreach_'))
         : filter === 'interview_prep'
           ? all.filter((d) => d.kind === 'interview_prep_pack')
-          : all.filter((d) => d.kind === filter)
+          : filter === 'latex'
+            ? all.filter((d) => d.kind.startsWith('latex_'))
+            : all.filter((d) => d.kind === filter)
 
   return (
     <div className="space-y-4">
