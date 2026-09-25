@@ -2,7 +2,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Loader2, Plus } from 'lucide-react'
+import { Loader2, Plus, Sparkles } from 'lucide-react'
 import { addExpense, updateExpense } from '@/app/(authed)/expenses/actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,7 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { EXPENSE_CATEGORIES } from '@/lib/expenses/categories'
+import { EXPENSE_CATEGORIES, isExpenseCategory } from '@/lib/expenses/categories'
+import { VoiceInputButton } from '@/components/voice-input-button'
 
 interface ExpenseFormProps {
   mode: 'create' | 'edit'
@@ -50,9 +51,52 @@ export function ExpenseForm({
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [category, setCategory] = useState(initial?.category ?? 'other')
+  const [description, setDescription] = useState(initial?.description ?? '')
+  const [vendor, setVendor] = useState(initial?.vendor ?? '')
+  const [autoBusy, setAutoBusy] = useState(false)
 
   const defaultAmount =
     initial ? (initial.amountCents / 100).toFixed(2) : ''
+
+  async function autoCategorize(): Promise<void> {
+    const seed = [description.trim(), vendor.trim()].filter(Boolean).join(' ')
+    if (!seed) {
+      toast.info('Add a description or vendor first.')
+      return
+    }
+    setAutoBusy(true)
+    try {
+      const res = await fetch('/api/expenses/classify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description: description.trim() || undefined,
+          vendor: vendor.trim() || undefined,
+        }),
+      })
+      const json = (await res.json().catch(() => ({}))) as {
+        category?: string
+        confidence?: number
+        error?: string
+      }
+      if (res.ok && typeof json.category === 'string' && isExpenseCategory(json.category)) {
+        setCategory(json.category)
+        toast.success(
+          `Category set to ${json.category}${
+            typeof json.confidence === 'number'
+              ? ` (${Math.round(json.confidence * 100)}% conf)`
+              : ''
+          }`,
+        )
+      } else {
+        toast.error(json.error ?? 'Could not auto-categorize.')
+      }
+    } catch {
+      toast.error('Network error — could not auto-categorize.')
+    } finally {
+      setAutoBusy(false)
+    }
+  }
 
   function onSubmit(fd: FormData): void {
     // Keep the controlled category value in sync with the form payload.
@@ -73,6 +117,8 @@ export function ExpenseForm({
           if (mode === 'create') {
             const form = document.getElementById('expense-form') as HTMLFormElement | null
             form?.reset()
+            setDescription('')
+            setVendor('')
           }
         }
       } else {
@@ -99,18 +145,38 @@ export function ExpenseForm({
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="category">Category</Label>
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger id="category">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {EXPENSE_CATEGORIES.map((c) => (
-                <SelectItem key={c} value={c} className="capitalize">
-                  {c}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-stretch gap-1.5">
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger id="category" className="flex-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {EXPENSE_CATEGORIES.map((c) => (
+                  <SelectItem key={c} value={c} className="capitalize">
+                    {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="shrink-0"
+              disabled={autoBusy}
+              onClick={() => {
+                void autoCategorize()
+              }}
+              title="Auto-categorize from description + vendor"
+              aria-label="Auto-categorize"
+            >
+              {autoBusy ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Sparkles className="size-4" />
+              )}
+            </Button>
+          </div>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="vendor">Vendor</Label>
@@ -118,7 +184,8 @@ export function ExpenseForm({
             id="vendor"
             name="vendor"
             placeholder="e.g. Netflix"
-            defaultValue={initial?.vendor ?? ''}
+            value={vendor}
+            onChange={(e) => setVendor(e.currentTarget.value)}
             autoComplete="off"
           />
         </div>
@@ -157,12 +224,21 @@ export function ExpenseForm({
         </div>
         <div className="space-y-1.5 sm:col-span-1">
           <Label htmlFor="description">Description</Label>
-          <Input
-            id="description"
-            name="description"
-            defaultValue={initial?.description ?? ''}
-            autoComplete="off"
-          />
+          <div className="flex items-stretch gap-1.5">
+            <Input
+              id="description"
+              name="description"
+              value={description}
+              onChange={(e) => setDescription(e.currentTarget.value)}
+              autoComplete="off"
+              className="flex-1"
+            />
+            <VoiceInputButton
+              onTranscribed={(text) => {
+                setDescription((prev) => (prev ? `${prev} ${text}` : text))
+              }}
+            />
+          </div>
         </div>
       </div>
 

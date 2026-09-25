@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
+import { VoiceInputButton } from '@/components/voice-input-button'
 import { relativeFromNow } from '@/lib/ui/date'
 
 type OutreachKind =
@@ -259,7 +260,7 @@ export function OutreachCard({
         ) : null}
         <Textarea
           key={`${latest.id}-${tab}`}
-          defaultValue={content?.body ?? ''}
+          value={currentBody}
           onChange={(e) =>
             setDrafts((prev) => ({ ...prev, [tab]: e.currentTarget.value }))
           }
@@ -275,6 +276,17 @@ export function OutreachCard({
           </span>
         </div>
         <div className="flex items-center justify-end gap-2">
+          <VoiceInputButton
+            className="h-8 w-8"
+            ariaLabel="Append voice note to draft"
+            onTranscribed={(text) => {
+              setDrafts((prev) => {
+                const existing = prev[tab] ?? content?.body ?? ''
+                const merged = existing ? `${existing} ${text}` : text
+                return { ...prev, [tab]: merged }
+              })
+            }}
+          />
           <Button
             type="button"
             variant="ghost"
@@ -386,7 +398,7 @@ export function OutreachCard({
                 ) : null}
                 <Textarea
                   key={`${doc.id}-followup-${days}`}
-                  defaultValue={content.body ?? ''}
+                  value={currentBody}
                   onChange={(e) =>
                     setFollowupDrafts((prev) => ({
                       ...prev,
@@ -398,19 +410,32 @@ export function OutreachCard({
                 />
                 <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
                   <span>{wordCount} words</span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-7"
-                    onClick={() => {
-                      void copyToClipboard(currentBody)
-                    }}
-                    disabled={currentBody.length === 0}
-                  >
-                    <Copy className="size-3" />
-                    Copy
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <VoiceInputButton
+                      className="h-7 w-7"
+                      ariaLabel="Append voice note to follow-up"
+                      onTranscribed={(text) => {
+                        setFollowupDrafts((prev) => {
+                          const existing = prev[days] ?? content.body ?? ''
+                          const merged = existing ? `${existing} ${text}` : text
+                          return { ...prev, [days]: merged }
+                        })
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7"
+                      onClick={() => {
+                        void copyToClipboard(currentBody)
+                      }}
+                      disabled={currentBody.length === 0}
+                    >
+                      <Copy className="size-3" />
+                      Copy
+                    </Button>
+                  </div>
                 </div>
               </div>
             )
