@@ -8,6 +8,7 @@ import {
   FileText,
   Loader2,
   MoreHorizontal,
+  Pencil,
   RefreshCw,
   Trash2,
 } from 'lucide-react'
@@ -31,7 +32,12 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { relativeFromNow } from '@/lib/ui/date'
 
-type DocumentKind = 'master_cv' | 'tailored_cv' | 'cover_letter'
+type DocumentKind =
+  | 'master_cv'
+  | 'tailored_cv'
+  | 'cover_letter'
+  | 'latex_cv'
+  | 'latex_cover_letter'
 
 interface DocumentsCardProps {
   applicationId: string
@@ -42,12 +48,23 @@ const KIND_LABELS: Record<DocumentKind, string> = {
   master_cv: 'Master CV',
   tailored_cv: 'Tailored CV',
   cover_letter: 'Cover letter',
+  latex_cv: 'LaTeX CV',
+  latex_cover_letter: 'LaTeX Letter',
 }
 
-const KIND_BADGE: Record<DocumentKind, 'blue' | 'violet' | 'emerald' | 'neutral'> = {
+const KIND_BADGE: Record<
+  DocumentKind,
+  'blue' | 'violet' | 'emerald' | 'neutral' | 'indigo'
+> = {
   master_cv: 'neutral',
   tailored_cv: 'violet',
   cover_letter: 'blue',
+  latex_cv: 'indigo',
+  latex_cover_letter: 'indigo',
+}
+
+function isLatexKind(kind: DocumentKind): boolean {
+  return kind === 'latex_cv' || kind === 'latex_cover_letter'
 }
 
 function generateEndpoint(applicationId: string, kind: DocumentKind): string | null {
@@ -57,6 +74,7 @@ function generateEndpoint(applicationId: string, kind: DocumentKind): string | n
   if (kind === 'cover_letter') {
     return `/api/applications/${applicationId}/documents/generate-cover-letter`
   }
+  // No "regenerate from AI" endpoint for master or LaTeX docs.
   return null
 }
 
@@ -169,6 +187,14 @@ export function DocumentsCard({ applicationId, documents }: DocumentsCardProps) 
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      {isLatexKind(kind) ? (
+                        <DropdownMenuItem asChild>
+                          <Link href={`/documents/${doc.id}/edit`}>
+                            <Pencil className="size-4" />
+                            Edit LaTeX
+                          </Link>
+                        </DropdownMenuItem>
+                      ) : null}
                       <DropdownMenuItem asChild>
                         <Link href={`/api/documents/${doc.id}/pdf`} target="_blank">
                           <Download className="size-4" />
