@@ -102,6 +102,44 @@ Each template has an SVG preview like the existing ones and fills from profile d
 - AI assist (suggest-only): rewrite selection, fix compile error, convert Markdown → LaTeX; always shows a diff.
 - Playground link: LaTeX drills (tables, math, bibliography) in the tricks domain.
 
+### 8.3 Parity with a normal LaTeX editor
+Already there (v5): asset upload (images, PDFs, other files), drop files onto the editor, insert image/photo/logo/PDF/`\input` snippets, friendly compile errors, 14 templates.
+
+Add:
+- **Language support in Monaco:** LaTeX syntax highlighting (Monarch tokenizer), autocomplete for commands, environments, `\ref`/`\label` keys and `\cite` keys from the project's `.bib`, snippet tab-stops, auto-closing `\begin{…}`/`\end{…}`, bracket and environment matching, folding by section, find/replace, go to label, word count.
+- **Images, fully:** paste an image from the clipboard, drag from the desktop, **figure wizard** (caption, label, width, placement `htbp`, subfigures side by side), live thumbnail on hover over `\includegraphics`, SVG converted to PNG in the browser (the compile service cannot render SVG), `graphicx` added to the preamble automatically when missing.
+- **Tables:** grid editor ↔ `tabular`/`tabularx`/`booktabs`; paste CSV or spreadsheet cells to get a table.
+- **Math:** visual math editor (MathLive, MIT) that emits LaTeX; KaTeX hover preview for inline/display math; symbol picker.
+- **References:** `.bib` manager; add by DOI (free doi.org content negotiation / Crossref API) or paste BibTeX; `\cite` autocomplete.
+- **Packages:** detect commands that need a package and offer to add the `\usepackage` line.
+- **Compile:** engine choice pdfLaTeX / XeLaTeX / LuaLaTeX (latexonline supports all three, free), auto-compile after typing pauses, click an error to jump to its line.
+- **Projects:** multi-file (§8.2), import an Overleaf-style ZIP, export ZIP.
+
+### 8.4 Drag-and-drop building blocks — everywhere it helps
+One shared **Blocks palette** (`components/blocks/`), built on the already-installed dnd-kit:
+- A block = `{ id, label, icon, category, insert, requires? }`; `insert` is text with tab-stops or a structured payload; `requires` lists packages or setup it needs (added automatically).
+- Three ways to use every block: **drag** it to a drop position, **click** to insert at the cursor, or type `\` / `/` / Ctrl+K to search it. Keyboard and touch sensors on, so nothing depends on a mouse.
+- Adapters: Monaco (drop at the pointer's text position), plain textarea, and dnd-kit sortable lists.
+
+LaTeX palette categories: Structure (section, subsection, paragraph), Text (bold, italic, lists, quote, footnote, hyperlink), Figures (image, figure, subfigures, wrapfigure), Tables, Math (equation, align, matrix, fraction, sum/integral, symbols), References (cite, ref, label, bibliography), Layout (columns, page break, spacing, margins), CV entries (experience, education, skill group), Letter parts (opening, closing, signature).
+
+Wherever else it applies:
+| Place | Drag-and-drop |
+|---|---|
+| Playground — coding | palette of language constructs and data-structure skeletons (starting points; evaluation still judges the result on correctness, time, complexity and quality) |
+| Playground — SQL lab | drag tables/columns from the schema browser into the query |
+| Playground — system design | drag components (load balancer, cache, queue, DB, CDN, worker) onto the canvas, connect them, run the traffic sim |
+| Playground — git | drag commits to reorder in the interactive-rebase simulator |
+| Playground — agents / decisions | drag tools into an agent spec; drag question types (`choice`/`score`/`noul`) to build a decision request |
+| CV editor | reorder sections, entries and bullets; drag skill chips; drag an accepted Playground suggestion (§5) into a section |
+| Cover letters, outreach, email templates | drag variables (`{{company}}`, `{{role}}`, `{{contact.firstName}}`) and saved paragraphs |
+| Applications | existing kanban; drag a document or contact onto an application to attach it |
+| Todos | reorder by priority; drag onto a day to schedule |
+| Dashboard | reorder and hide widgets (saved per user) |
+| Expenses | drop a CSV to import; drag an expense onto a category to recategorise |
+| Settings › AI routing (v14) | drag models into each task's fallback order |
+| Documents | drop files anywhere on the page to upload; merge order (exists) |
+
 ## 9. Platform & reliability
 
 1. **Visual QA + E2E:** screenshot pass at 390 px and 1440 px on every authed page (dev-only test login, never a copied session token); Playwright journeys: find → save → apply → interview → offer; scam quarantine; email suggestion accept.
@@ -122,7 +160,8 @@ Each template has an SVG preview like the existing ones and fills from profile d
 | 6 | Backups + export/delete, audit log & undo | v17 §9.2, §9.5 |
 | 7 | Playground core (placement, adaptive selection, coding + complexity evaluation) | v13.0–13.2 |
 | 8 | **CV suggestions from Playground** + skill-gap loop | v17 §5, §4 |
-| 9 | **LaTeX Studio** | v17 §8 |
+| 9 | **LaTeX Studio** (new kinds, standalone editor, editor parity) + shared **Blocks palette** in LaTeX, CV editor and templates | v17 §8.1–8.4 |
+| 9b | Blocks palette in the remaining places (todos, dashboard, expenses, AI routing, documents) | v17 §8.4 |
 | 10 | Goals/streaks, weekly review, energy check-ins | v12.1, v17 §7.3–7.4 |
 | 11 | Outcome learning, rejection review | v17 §3, §6.3 |
 | 12 | Ghost/duplicate detection, relocation filters, salary log | v17 §6 |
@@ -130,7 +169,7 @@ Each template has an SVG preview like the existing ones and fills from profile d
 | 14 | Offer comparison, company briefs | v12.3, v17 §6.2 |
 | 15 | Mock interview (Whisper) | v12.4 |
 | 16 | PWA + share target, Telegram bot | v12.5, v17 §7.1–7.2 |
-| 17 | Remaining Playground formats (SQL, concurrency, system design sim, incident drills, CTF, git) | v13.3–13.7 |
+| 17 | Remaining Playground formats (SQL, concurrency, system design sim, incident drills, CTF, git), each with its drag-and-drop blocks | v13.3–13.7, v17 §8.4 |
 | 18 | Model/agent Playground extras, AI budget meter, error monitoring | v14.1–14.5, v17 §9.3–9.4 |
 | 19 | GitHub + Hugging Face connections | v15 |
 | 20 | Radar, briefs, Jev provider, injection lab, cross-platform issues | v16.0–16.4 |
