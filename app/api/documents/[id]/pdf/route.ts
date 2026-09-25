@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import * as documentsQ from '@/lib/db/queries/documents'
 import * as assetsQ from '@/lib/db/queries/documentAssets'
 import { renderCvPdf, renderCoverLetterPdf, renderPrepPackPdf } from '@/lib/pdf/render'
+import { mergePdfs, type MergeSource } from '@/lib/documents/merge'
 import {
   coverLetterSchema,
   interviewPrepPackSchema,
@@ -122,6 +123,30 @@ export async function GET(
         headers: {
           'content-type': 'text/plain; charset=utf-8',
           'content-disposition': `attachment; filename="${filename}"`,
+          'cache-control': 'private, no-store',
+        },
+      })
+    }
+
+    // v7 — merged PDFs. Regenerate from the recorded source list on every
+    // request; the merged bytes are not cached in the DB.
+    if (doc.kind === 'merged_pdf') {
+      const content = doc.content as { sourceRefs?: MergeSource[] }
+      const refs = Array.isArray(content?.sourceRefs) ? content.sourceRefs : []
+      if (refs.length === 0) {
+        return NextResponse.json(
+          { error: 'Merged document has no source refs.' },
+          { status: 422 },
+        )
+      }
+      const merged = await mergePdfs({ userId, sources: refs })
+      const filename = `${safeFilename(doc.title)}.pdf`
+      return new Response(new Uint8Array(merged), {
+        status: 200,
+        headers: {
+          'content-type': 'application/pdf',
+          'content-disposition': `attachment; filename="${filename}"`,
+          'content-length': String(merged.byteLength),
           'cache-control': 'private, no-store',
         },
       })
