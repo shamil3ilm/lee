@@ -11,6 +11,7 @@ import { ExpenseRow } from '@/components/expense-row'
 import { ExpenseCategoryCard } from '@/components/expense-category-card'
 import { ExpenseMonthPicker } from '@/components/expense-month-picker'
 import { formatMoney } from '@/lib/ui/money'
+import { DEFAULT_CURRENCY } from '@/lib/money/currency'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,7 +48,7 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
   const budgetByCategory = new Map(budgets.map((b) => [b.category, b]))
   const monthTotalCents = categoryTotals.reduce((s, r) => s + r.totalCents, 0)
   const currency =
-    monthExpenses[0]?.currency ?? budgets[0]?.currency ?? 'AED'
+    monthExpenses[0]?.currency ?? budgets[0]?.currency ?? DEFAULT_CURRENCY
   const topCategories = categoryTotals.slice(0, 6)
 
   return (

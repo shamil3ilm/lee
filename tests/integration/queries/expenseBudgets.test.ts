@@ -12,7 +12,7 @@ describe('expense_budgets queries', () => {
     expect(row.userId).toBe(u.id)
     expect(row.category).toBe('food')
     expect(row.monthlyCapCents).toBe(200000)
-    expect(row.currency).toBe('AED')
+    expect(row.currency).toBe('INR')
   })
 
   it('upsert overwrites the cap on the existing (userId, category) row', async () => {

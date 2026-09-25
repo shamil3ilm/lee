@@ -1,14 +1,17 @@
+import { DEFAULT_CURRENCY, localeForCurrency } from '@/lib/money/currency'
+
+export { DEFAULT_CURRENCY } from '@/lib/money/currency'
+
 /**
- * Format an integer-minor-units amount as a currency-prefixed string.
- * Defaults to AED (Shamil's home currency) and 2 decimal places. Kept
- * ISO-4217-symbol-agnostic — we print the code, not a locale-specific
- * symbol, so budget vs actual bars always read the same regardless of
- * where the app renders.
+ * Format an integer-minor-units amount as a currency-prefixed string with
+ * 2 decimal places. Digit grouping follows the currency's locale — INR uses
+ * Indian grouping (INR 12,34,567.00). We print the ISO code rather than a
+ * symbol so budget vs actual bars read the same everywhere.
  */
-export function formatMoney(amountCents: number, currency = 'AED'): string {
+export function formatMoney(amountCents: number, currency: string = DEFAULT_CURRENCY): string {
   const absMajor = Math.abs(amountCents / 100)
   const sign = amountCents < 0 ? '-' : ''
-  const body = absMajor.toLocaleString('en-US', {
+  const body = absMajor.toLocaleString(localeForCurrency(currency), {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })
@@ -17,12 +20,12 @@ export function formatMoney(amountCents: number, currency = 'AED'): string {
 
 /**
  * Compact variant for chart axis labels — 12500 cents → "125", 1234500
- * cents → "12,345". Never renders decimals since the axis needs to stay
- * scan-friendly.
+ * cents → "12,345" (or "12,345" / "1,23,450" per currency grouping). Never
+ * renders decimals since the axis needs to stay scan-friendly.
  */
-export function formatMoneyCompact(amountCents: number): string {
+export function formatMoneyCompact(amountCents: number, currency: string = DEFAULT_CURRENCY): string {
   const major = Math.round(amountCents / 100)
-  return major.toLocaleString('en-US')
+  return major.toLocaleString(localeForCurrency(currency))
 }
 
 /**

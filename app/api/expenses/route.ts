@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import * as expensesQ from '@/lib/db/queries/expenses'
 import { logger } from '@/lib/logger'
+import { DEFAULT_CURRENCY } from '@/lib/money/currency'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -76,7 +77,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     const row = await expensesQ.create(userId, {
       date: parsed.data.date,
       amountCents: parsed.data.amountCents,
-      currency: parsed.data.currency ?? 'AED',
+      currency: parsed.data.currency ?? DEFAULT_CURRENCY,
       category: parsed.data.category,
       subcategory: parsed.data.subcategory ?? null,
       vendor: parsed.data.vendor ?? null,

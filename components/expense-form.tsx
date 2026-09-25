@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select'
 import { EXPENSE_CATEGORIES, isExpenseCategory } from '@/lib/expenses/categories'
 import { VoiceInputButton } from '@/components/voice-input-button'
+import { DEFAULT_CURRENCY } from '@/lib/money/currency'
 
 interface ExpenseFormProps {
   mode: 'create' | 'edit'
@@ -226,7 +227,7 @@ export function ExpenseForm({
           <Input
             id="currency"
             name="currency"
-            defaultValue={initial?.currency ?? 'AED'}
+            defaultValue={initial?.currency ?? DEFAULT_CURRENCY}
             maxLength={6}
             autoComplete="off"
           />

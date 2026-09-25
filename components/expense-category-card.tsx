@@ -1,6 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { colourFor, formatMoney } from '@/lib/ui/money'
+import { DEFAULT_CURRENCY } from '@/lib/money/currency'
 
 interface ExpenseCategoryCardProps {
   category: string
@@ -20,7 +21,7 @@ export function ExpenseCategoryCard({
   totalCents,
   count,
   budgetCents,
-  currency = 'AED',
+  currency = DEFAULT_CURRENCY,
 }: ExpenseCategoryCardProps) {
   const hasBudget = typeof budgetCents === 'number' && budgetCents > 0
   const pct = hasBudget ? (totalCents / budgetCents!) * 100 : 0

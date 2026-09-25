@@ -134,7 +134,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                   label="Comp currency (ISO-3)"
                   name="compCurrency"
                   defaultValue={profile?.compCurrency ?? ''}
-                  placeholder="USD, AED…"
+                  placeholder="INR, USD, AED…"
                   maxLength={3}
                 />
                 <div className="space-y-1.5 sm:col-span-2">

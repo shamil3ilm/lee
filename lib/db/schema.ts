@@ -610,7 +610,7 @@ export const documentAssetsRelations = relations(documentAssets, ({ one }) => ({
 // ---------------------------------------------------------------------------
 // v7 — Personal expense tracker. Adjacent to the job-hunt domain but standalone:
 // same user, same DB. `amount_cents` stores integer minor units (multiply by
-// currency's decimal exponent when displaying — AED / USD / EUR use 2). Two
+// currency's decimal exponent when displaying — INR / AED / USD / EUR use 2). Default currency is INR (lib/money/currency.ts). Two
 // indexes cover the hot paths on the /expenses page: (user, date) drives the
 // month filter and recent-transactions list; (user, category) drives the
 // per-category rollups and budget checks.
@@ -629,7 +629,7 @@ export const expenses = pgTable(
     // stay a lexicographic string prefix comparison.
     date: text('date').notNull(),
     amountCents: integer('amount_cents').notNull(),
-    currency: text('currency').notNull().default('AED'),
+    currency: text('currency').notNull().default('INR'),
     // Top-level category — one of the enum values documented in the spec.
     // Stored as text (not a Postgres enum) so adding a new category is a code
     // change, not a migration. Freeform subcategory allows fine-grained
@@ -658,7 +658,7 @@ export const expenseBudgets = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     category: text('category').notNull(),
     monthlyCapCents: integer('monthly_cap_cents').notNull(),
-    currency: text('currency').notNull().default('AED'),
+    currency: text('currency').notNull().default('INR'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

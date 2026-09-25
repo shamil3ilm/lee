@@ -9,6 +9,7 @@ import {
 } from '@/lib/db/schema'
 import * as expensesQ from '@/lib/db/queries/expenses'
 import * as budgetsQ from '@/lib/db/queries/expenseBudgets'
+import { DEFAULT_CURRENCY } from '@/lib/money/currency'
 
 /**
  * Normalize the row-set that a Drizzle `db.execute()` returns. postgres-js
@@ -746,7 +747,7 @@ export async function budgetVsActual(
         category: a.category,
         budgetCents: 0,
         actualCents: a.totalCents,
-        currency: 'AED',
+        currency: DEFAULT_CURRENCY,
       })
     }
   }

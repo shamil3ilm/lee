@@ -19,6 +19,7 @@ import {
 import { deleteBudget, upsertBudget } from '@/app/(authed)/expenses/actions'
 import { EXPENSE_CATEGORIES } from '@/lib/expenses/categories'
 import { formatMoney } from '@/lib/ui/money'
+import { DEFAULT_CURRENCY } from '@/lib/money/currency'
 
 interface BudgetFormProps {
   budgets: ExpenseBudget[]
@@ -90,7 +91,7 @@ export function BudgetForm({ budgets }: BudgetFormProps) {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="currency">Currency</Label>
-              <Input id="currency" name="currency" defaultValue="AED" maxLength={6} />
+              <Input id="currency" name="currency" defaultValue={DEFAULT_CURRENCY} maxLength={6} />
             </div>
             <div className="flex items-end">
               <Button type="submit" disabled={pending} className="w-full">

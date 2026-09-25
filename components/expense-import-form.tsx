@@ -15,8 +15,8 @@ interface ImportResponse {
 }
 
 const SAMPLE_CSV = `date,amount,currency,category,subcategory,vendor,description
-2026-09-15,49.99,AED,subscription,streaming,Netflix,
-2026-09-16,12,AED,transport,,Uber,Ride home
+2026-09-15,649,INR,subscription,streaming,Netflix,
+2026-09-16,250,INR,transport,,Uber,Ride home
 `
 
 /**

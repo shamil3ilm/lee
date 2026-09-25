@@ -5,6 +5,7 @@ import { requireUserId } from '@/lib/auth/require-session'
 import * as expensesQ from '@/lib/db/queries/expenses'
 import * as budgetsQ from '@/lib/db/queries/expenseBudgets'
 import { logger } from '@/lib/logger'
+import { DEFAULT_CURRENCY } from '@/lib/money/currency'
 
 export type ActionResult<T = void> =
   | { success: true; data: T }
@@ -50,7 +51,7 @@ export async function addExpense(fd: FormData): Promise<ActionResult<{ id: strin
     const vendor = String(fd.get('vendor') ?? '').trim() || null
     const subcategory = String(fd.get('subcategory') ?? '').trim() || null
     const description = String(fd.get('description') ?? '').trim() || null
-    const currency = (String(fd.get('currency') ?? '').trim() || 'AED').toUpperCase()
+    const currency = (String(fd.get('currency') ?? '').trim() || DEFAULT_CURRENCY).toUpperCase()
     const row = await expensesQ.create(userId, {
       date,
       amountCents,
@@ -134,7 +135,7 @@ export async function upsertBudget(fd: FormData): Promise<ActionResult<{ id: str
     }
     const cap = amountToCents(fd.get('monthlyCap'))
     if (cap === null || cap < 0) return { error: 'Monthly cap is required.' }
-    const currency = (String(fd.get('currency') ?? '').trim() || 'AED').toUpperCase()
+    const currency = (String(fd.get('currency') ?? '').trim() || DEFAULT_CURRENCY).toUpperCase()
     const row = await budgetsQ.upsert(userId, {
       category,
       monthlyCapCents: cap,

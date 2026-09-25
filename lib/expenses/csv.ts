@@ -3,6 +3,7 @@ import {
   isExpenseCategory,
   type ExpenseCategory,
 } from '@/lib/expenses/categories'
+import { DEFAULT_CURRENCY } from '@/lib/money/currency'
 
 /**
  * Very small RFC-4180 CSV parser — supports quoted fields with embedded
@@ -154,7 +155,7 @@ export function parseExpenseCsv(input: string): ParseResult {
     const cells = grid[i]!
     const dateRaw = (cells[idx.date] ?? '').trim()
     const amountRaw = (cells[idx.amount] ?? '').trim()
-    const currencyRaw = (cells[idx.currency] ?? '').trim() || 'AED'
+    const currencyRaw = (cells[idx.currency] ?? '').trim() || DEFAULT_CURRENCY
     const categoryRaw = (cells[idx.category] ?? '').trim().toLowerCase()
     const subcategoryRaw = (cells[idx.subcategory] ?? '').trim()
     const vendorRaw = (cells[idx.vendor] ?? '').trim()
