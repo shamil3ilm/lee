@@ -30,7 +30,24 @@ Deterministic dimensions run first (free, instant, explainable). AI dimensions r
 | **Clarity & readability** | 10 / 20 | Bullet length distribution, passive voice ratio, jargon density, repetition, tense consistency |
 | **Seniority alignment** | 5 / 15 | Years + scope signals (lead, architect, owned, mentored) vs JD seniority; without JD vs profile seniority |
 
-Output: overall `0–100`, letter grade, per-dimension score, and a list of **findings**:
+### Headline scores (what the user sees)
+
+The dimensions above are inputs. The result exposes **eight headline scores**, each `0–100` with a grade, breakdown and its own findings:
+
+| Headline score | Needs a JD | Built from |
+|---|---|---|
+| **Total Match** | — | Weighted blend of the scores below (becomes **CV Quality** without a JD) |
+| **Role Match** | yes | AI requirement fit (verified evidence) + title / responsibility alignment |
+| **Skills Match** | yes | Hard-skill coverage — matched / partial / missing, required vs nice-to-have |
+| **Experience Match** | yes | Relevant years vs required, seniority, domain/industry fit |
+| **ATS Score** | no (richer with JD) | Parseability, standard headings, contact, file type, JD keyword presence |
+| **Impact Score** | no | Quantified achievements, action verbs, weak openers |
+| **Readability Score** | no | Bullet length, passive voice, tense, repetition, pronouns |
+| **Structure Score** | no | Length vs seniority, chronology, gaps, bullets per role, section order |
+
+**Total Match weights** — with JD: Role 25 · Skills 20 · Experience 15 · ATS 20 · Impact 10 · Readability 5 · Structure 5. Without JD (CV Quality): ATS 35 · Impact 30 · Readability 20 · Structure 15. Weights renormalize when a score is skipped (e.g. AI requirement fit signal-gated), and the result states what was skipped and why. Weights are returned with the result so the UI can explain the Total.
+
+Output: headline scores, per-dimension details, and a list of **findings** (each tagged with the headline score(s) it affects):
 ```ts
 type CvFinding = {
   dimension: string
