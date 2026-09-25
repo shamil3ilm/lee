@@ -37,6 +37,9 @@ type LayaAnswer = {
   // alias in case newer Laya versions rename it back.
   choice?: string
   pick?: string
+  // Jev-compatible `noul` answers carry the probability the statement is
+  // true in a field literally named `noul` (0–1). See docs.typesafe.ai/api.
+  noul?: number
   probabilities?: Record<string, number>
   probability?: number
   confidence?: number
@@ -158,12 +161,11 @@ export class LayaHttpDecisionProvider implements DecisionProvider {
       const raw = await this.callPlayground(input.text, questions)
       const a = extractAnswer(raw)
       if (!a) throw new LayaUnavailableError('no answer in response')
-      // For noul (yes/no), Laya returns the probability the proposition is true.
-      // May be under `probability`, `confidence`, or the probabilities.true map.
-      const prob = numberOr(
-        a.probability ?? a.probabilities?.true ?? a.confidence,
-        0.5,
-      )
+      // For noul (yes/no) the Jev-compatible wire format puts the probability
+      // the proposition is true in `noul`. Older/alternate shapes may use
+      // `probability` or a probabilities.true map. `confidence` is NOT a
+      // probability of "true", so it is deliberately not used as a fallback.
+      const prob = numberOr(a.noul ?? a.probability ?? a.probabilities?.true, 0.5)
       await this.logCall('decision_yesno', 'ok', Date.now() - start)
       return { answer: prob >= 0.5, confidence: Math.abs(prob - 0.5) * 2 }
     } catch (e) {

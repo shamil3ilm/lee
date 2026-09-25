@@ -245,6 +245,28 @@ describe('LayaHttpDecisionProvider.yesNo', () => {
     expect(res.answer).toBe(false)
     expect(res.confidence).toBeCloseTo(0.6)
   })
+
+  it('reads the Jev-compatible `noul` field as the probability of true', async () => {
+    // Wire format per docs.typesafe.ai/api: noul answers return { noul: 0–1 }.
+    const mock = mockGradio({ answers: { answer: { type: 'noul', noul: 0.91 } } })
+    vi.spyOn(globalThis, 'fetch').mockImplementation(mock.fetch as typeof fetch)
+
+    const provider = new LayaHttpDecisionProvider('http://laya.example')
+    const res = await provider.yesNo({ text: 'x', question: 'is it?' })
+    expect(res.answer).toBe(true)
+    expect(res.confidence).toBeCloseTo(0.82)
+  })
+
+  it('does not treat `confidence` as the probability of true', async () => {
+    // A high confidence alone must not flip the answer to "yes".
+    const mock = mockGradio({ answers: { answer: { confidence: 0.95 } } })
+    vi.spyOn(globalThis, 'fetch').mockImplementation(mock.fetch as typeof fetch)
+
+    const provider = new LayaHttpDecisionProvider('http://laya.example')
+    const res = await provider.yesNo({ text: 'x', question: 'is it?' })
+    expect(res.answer).toBe(true) // falls back to neutral 0.5 → true at the >= 0.5 boundary
+    expect(res.confidence).toBeCloseTo(0)
+  })
 })
 
 describe('LayaHttpDecisionProvider.score', () => {
