@@ -1,5 +1,8 @@
+'use client'
+import * as React from 'react'
 import Link from 'next/link'
-import { Sparkles } from 'lucide-react'
+import { Sparkles, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/empty-state'
 import {
@@ -8,6 +11,10 @@ import {
   type DiscoveryRowJob,
   type DiscoveryRowCompany,
 } from '@/components/discovery-row'
+import {
+  dismissMultiple,
+  dismissOlderThan,
+} from '@/app/(authed)/discoveries/actions'
 
 interface JobsInboxProps {
   kind: 'jobs'
@@ -21,8 +28,68 @@ interface CompaniesInboxProps {
 
 type DiscoveryInboxProps = JobsInboxProps | CompaniesInboxProps
 
+const OLDER_THAN_DAYS = 7
+
 export function DiscoveryInbox(props: DiscoveryInboxProps) {
-  if (props.items.length === 0) {
+  const [selected, setSelected] = React.useState<Set<string>>(new Set())
+  const [isPending, startTransition] = React.useTransition()
+
+  // Bulk actions only apply to job discoveries in this pass — companies
+  // remain single-select. This keeps the server surface small; the two flows
+  // rarely need each other.
+  const isJobs = props.kind === 'jobs'
+  const items = props.items
+
+  React.useEffect(() => {
+    // If the list re-renders (e.g. after a bulk dismiss), drop selections
+    // whose id no longer exists to avoid stale checkboxes.
+    setSelected((prev) => {
+      const next = new Set<string>()
+      const ids = new Set(items.map((i) => i.id))
+      for (const id of prev) if (ids.has(id)) next.add(id)
+      return next
+    })
+  }, [items])
+
+  function toggle(id: string): void {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function handleDismissSelected(): void {
+    const ids = Array.from(selected)
+    if (ids.length === 0) return
+    startTransition(async () => {
+      const result = await dismissMultiple(ids)
+      if ('success' in result) {
+        toast.success(`Dismissed ${result.count}`)
+        setSelected(new Set())
+      } else {
+        toast.error(result.error)
+      }
+    })
+  }
+
+  function handleDismissOlder(): void {
+    startTransition(async () => {
+      const result = await dismissOlderThan(OLDER_THAN_DAYS)
+      if ('success' in result) {
+        toast.success(
+          result.count > 0
+            ? `Dismissed ${result.count} older than ${OLDER_THAN_DAYS}d`
+            : `Nothing older than ${OLDER_THAN_DAYS}d`,
+        )
+      } else {
+        toast.error(result.error)
+      }
+    })
+  }
+
+  if (items.length === 0) {
     return (
       <EmptyState
         icon={Sparkles}
@@ -36,10 +103,51 @@ export function DiscoveryInbox(props: DiscoveryInboxProps) {
       />
     )
   }
+
   return (
     <div className="space-y-2">
+      {isJobs ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2 text-xs">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            {selected.size > 0 ? (
+              <span>{selected.size} selected</span>
+            ) : (
+              <span>Select rows to bulk-dismiss.</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {selected.size > 0 ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleDismissSelected}
+                disabled={isPending}
+              >
+                <Trash2 className="size-3.5" />
+                Dismiss selected
+              </Button>
+            ) : null}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleDismissOlder}
+              disabled={isPending}
+            >
+              Dismiss older than {OLDER_THAN_DAYS}d
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       {props.kind === 'jobs'
-        ? props.items.map((it) => <JobDiscoveryRow key={it.id} item={it} />)
+        ? props.items.map((it) => (
+            <JobDiscoveryRow
+              key={it.id}
+              item={it}
+              selected={selected.has(it.id)}
+              onToggleSelect={() => toggle(it.id)}
+            />
+          ))
         : props.items.map((it) => <CompanyDiscoveryRow key={it.id} item={it} />)}
     </div>
   )

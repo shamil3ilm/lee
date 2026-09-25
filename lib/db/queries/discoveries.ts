@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, isNull, or, sql } from 'drizzle-orm'
+import { and, eq, gte, inArray, isNull, lt, or, sql } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import { discoveries } from '@/lib/db/schema'
 
@@ -135,4 +135,52 @@ export async function setStatus(
     .update(discoveries)
     .set({ status, updatedAt: new Date(), ...extra })
     .where(and(eq(discoveries.userId, userId), eq(discoveries.id, id)))
+}
+
+/**
+ * Dismiss many discoveries in a single UPDATE. Empty `ids` is a no-op.
+ * Returns the number of rows that transitioned.
+ */
+export async function dismissByIds(
+  userId: string,
+  ids: string[],
+  client: DbClient = db,
+): Promise<number> {
+  if (ids.length === 0) return 0
+  const rows = await client
+    .update(discoveries)
+    .set({ status: 'dismissed', updatedAt: new Date() })
+    .where(
+      and(
+        eq(discoveries.userId, userId),
+        inArray(discoveries.id, ids),
+        eq(discoveries.status, 'new'),
+      ),
+    )
+    .returning()
+  return rows.length
+}
+
+/**
+ * Dismiss every `new` discovery for the user that was created more than
+ * `days` days ago. Returns the number of rows affected.
+ */
+export async function dismissOlderThan(
+  userId: string,
+  days: number,
+  client: DbClient = db,
+): Promise<number> {
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+  const rows = await client
+    .update(discoveries)
+    .set({ status: 'dismissed', updatedAt: new Date() })
+    .where(
+      and(
+        eq(discoveries.userId, userId),
+        eq(discoveries.status, 'new'),
+        lt(discoveries.createdAt, cutoff),
+      ),
+    )
+    .returning()
+  return rows.length
 }

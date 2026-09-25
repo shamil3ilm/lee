@@ -69,7 +69,13 @@ function scoreLabel(score: number | null, prefix: string): string {
 
 // ---------- Job row -----------------------------------------------------
 
-export function JobDiscoveryRow({ item }: { item: DiscoveryRowJob }) {
+interface JobDiscoveryRowProps {
+  item: DiscoveryRowJob
+  selected?: boolean
+  onToggleSelect?: () => void
+}
+
+export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscoveryRowProps) {
   const [expanded, setExpanded] = useState(false)
   const [isPending, startTransition] = useTransition()
   const n = item.normalized
@@ -95,6 +101,15 @@ export function JobDiscoveryRow({ item }: { item: DiscoveryRowJob }) {
     <Card className="overflow-hidden">
       <CardContent className="p-3">
         <div className="flex items-start gap-3">
+          {isActionable && onToggleSelect ? (
+            <input
+              type="checkbox"
+              checked={selected ?? false}
+              onChange={onToggleSelect}
+              aria-label={`Select ${n.title}`}
+              className="mt-1 size-4 shrink-0 rounded border-input"
+            />
+          ) : null}
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="truncate text-sm font-semibold">{n.title}</span>
