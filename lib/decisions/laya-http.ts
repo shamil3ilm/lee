@@ -43,6 +43,10 @@ type LayaAnswer = {
   probabilities?: Record<string, number>
   probability?: number
   confidence?: number
+  // Laya: probability of the reported answer — the one calibrated number on
+  // every question type. Its `confidence` is 1 − normalised entropy, which
+  // does not match Jev's definition, so thresholds must not mix them.
+  answer_confidence?: number
   value?: number
   score?: number
 }
@@ -129,9 +133,10 @@ export class LayaHttpDecisionProvider implements DecisionProvider {
       if (!(input.options as readonly string[]).includes(pick)) {
         throw new LayaUnavailableError(`pick "${pick}" not in options`)
       }
-      // Prefer the top probability from the `probabilities` map if present,
-      // otherwise fall back to `confidence`.
-      const topProb = answer.probabilities?.[picked]
+      // Prefer the probability of the picked option (Laya's
+      // `answer_confidence`, else the `probabilities` map), otherwise fall
+      // back to `confidence`.
+      const topProb = answer.answer_confidence ?? answer.probabilities?.[picked]
       const confidence = numberOr(
         topProb ?? answer.confidence ?? answer.probability,
         0.5,

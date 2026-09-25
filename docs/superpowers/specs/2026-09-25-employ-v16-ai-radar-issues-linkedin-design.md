@@ -46,8 +46,19 @@ Citations are validated the same way CV evidence quotes are: a quoted span must 
 ## 2. Jev (TypeSafe AI) as a study subject and optional provider
 
 Verified facts recorded in the seeded brief:
-- Jev: launched **2026-09-15** by TypeSafe AI; "System One" non-autoregressive decision model. `POST https://api.typesafe.ai/v1/systemone`, bearer key, `{ model: "jev-latest", state, questions }`; question types `noul` (→ `noul` 0–1), `choice` (→ `choice`, `probabilities`, `confidence`), `score` (→ `score`, `legend`, `probabilities`, `confidence`); errors 401/422/429/529. Paid (reported $0.042/M input tokens, outputs free).
+- Jev: launched **2026-09-15** by TypeSafe AI; "System One" non-autoregressive decision model. `POST https://api.typesafe.ai/v1/systemone`, bearer key, `{ model: "jev-latest" | "jev-1.13.0", state, questions }`; question types `noul` (→ `noul` 0–1), `choice` (→ `choice`, `probabilities`, `confidence`), `score` (→ `score`, `legend`, `probabilities`, `confidence`); errors 401/422/429/529. Paid (reported $0.042/M input tokens, outputs free).
 - Laya: open-source (Apache-2.0), repo and HF checkpoints created **2026-09-18/19**, three days after Jev; its README describes compatibility with Jev's wire protocol (`laya-serve` exposes `POST /v1/systemone`).
+
+From the user-supplied references (flowtivity.ai, wavect.io, wilsonwu.me, dev.to/jamilxt; two Medium posts were not fetchable, HTTP 403) cross-checked against Laya's README:
+- **Laya architecture:** ModernBERT-large encoder (~395M, 28 bidirectional layers) + ~25M two-layer decision-head transformer = 421M; each option is preceded by a `[MASK]` marker whose hidden state is scored (temperature-scaled softmax); act-vs-escalate gate; RLCD training (strictly proper scoring rules). Checkpoints: `laya` (English, 512 ctx), `laya-multilingual` (mmBERT-base, 322M, 1024 ctx), `laya-typed-decisions` (fine-tuned, 1024 ctx). A `Router` detects script/language in <1 ms and dispatches.
+- **Running it:** `pip install laya` → `Router(preload=True).predict(state, questions)`; `laya[serve]` → `laya-serve` on `POST /v1/systemone` (schema-identical to Jev, `LAYA_API_KEY` bearer, `model` = `english|multilingual|typed-decisions`); `laya[onnx]` for ONNX Runtime. ~33 ms/question on a T4, 7.2 ms batched; CPU 193–464 ms preloaded.
+- **Porting differences from Jev:** options share a 192/256-token budget (≈20 options before trimming; 422 when they no longer fit) vs Jev's 255; every score level needs a description; Laya `confidence` = 1 − normalised entropy (not Jev's formula) — gate on `answer_confidence` instead.
+- **Accuracy reality:** zero-shot ≈0.34–0.36 on typed-decisions (below the ≈0.46 majority baseline); fine-tuned `laya-typed-decisions` 0.766 vs Jev 1.13.0's 0.727 (different prompts/samples — not a head-to-head). Jev is far stronger zero-shot (Banking77 0.870 vs 0.425), has a 64k context and fewer failure modes on long option lists; its known "jagged edges" are literal reading, counting/arithmetic and date comparison. Laya checkpoints ship over-confident (English on Bengali: 0.080 accuracy at 0.945 confidence).
+- **Already applied (v16 prep):** the Laya chain entry is confidence-gated — below 0.7 probability of the reported answer the answer is tentative and Groq is asked; the tentative answer still beats the keyword heuristic. Laya choice confidence now prefers `answer_confidence`. yes/no reads the `noul` field.
+
+### 2.0 Threshold fitting + fine-tuning lab (zero cost)
+- Model Lab (v14) gains **threshold fitting**: run labelled examples (the user's own decisions, e.g. corrected expense categories) through Laya, plot accuracy vs coverage, and save a per-question threshold in Settings › AI (replaces the 0.7 default).
+- Academy lab: **fine-tune Laya** with the upstream Kaggle notebook (free 2× T4, ~4 h) on the user's exported decisions, push to their HF account, and point Settings › AI › Laya endpoint at a `laya-serve` running it.
 
 ### 2.1 `jev-http` decision provider
 - New `DecisionProvider` implementation sharing a wire-protocol module with the Laya client (`lib/decisions/systemone-wire.ts`: request builder + answer parser for `noul`/`choice`/`score`).

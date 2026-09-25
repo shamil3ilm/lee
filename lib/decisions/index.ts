@@ -21,37 +21,87 @@ function isDecisionProviderKind(v: string | null | undefined): v is DecisionProv
 }
 
 /**
+ * One link in the fallback chain. A bare provider is shorthand for
+ * `{ provider }`.
+ *
+ * - `minAnswerProbability`: answers whose probability of the reported answer
+ *   falls below this are treated as tentative — the chain keeps them and asks
+ *   the next provider. Used for Laya, whose README reports zero-shot accuracy
+ *   below the majority-class baseline and checkpoints that ship over-confident.
+ * - `lastResort`: a provider (the heuristic) that should only answer when no
+ *   earlier provider produced even a tentative answer.
+ */
+export type ChainEntry = {
+  provider: DecisionProvider
+  minAnswerProbability?: number
+  lastResort?: boolean
+}
+
+type DecisionKind = 'choice' | 'yesNo' | 'score'
+
+/**
+ * Probability that the reported answer is right, on one scale for every
+ * decision kind. Choice confidence already is P(pick); yes/no confidence is
+ * |p − 0.5| · 2, so P(answer) = 0.5 + confidence / 2. Score answers carry no
+ * confidence and are never gated.
+ */
+function answerProbability(kind: DecisionKind, result: unknown): number | null {
+  if (kind === 'score') return null
+  const c = (result as { confidence?: unknown }).confidence
+  if (typeof c !== 'number' || !Number.isFinite(c)) return null
+  return kind === 'yesNo' ? 0.5 + c / 2 : c
+}
+
+/**
  * Compose one provider with a fallback chain. Any thrown error from the
  * primary triggers the next provider; the last provider is expected to
- * never throw (heuristic satisfies that guarantee).
+ * never throw (heuristic satisfies that guarantee). A gated provider's
+ * low-confidence answer also moves on, but is kept and preferred over a
+ * last-resort provider.
  *
  * The composition is opaque to callers — they see a single DecisionProvider
  * whose `choice/yesNo/score` never surface transient upstream failures.
  */
 class ChainedDecisionProvider implements DecisionProvider {
-  constructor(private readonly chain: DecisionProvider[]) {
+  private readonly chain: readonly ChainEntry[]
+
+  constructor(chain: ReadonlyArray<DecisionProvider | ChainEntry>) {
     if (chain.length === 0) throw new Error('ChainedDecisionProvider: empty chain')
+    this.chain = chain.map((e) => ('provider' in e ? e : { provider: e }))
   }
 
   async choice<T extends string>(input: ChoiceInput<T>): Promise<ChoiceResult<T>> {
-    return this.runChain((p) => p.choice(input))
+    return this.runChain('choice', (p) => p.choice(input))
   }
   async yesNo(input: YesNoInput): Promise<YesNoResult> {
-    return this.runChain((p) => p.yesNo(input))
+    return this.runChain('yesNo', (p) => p.yesNo(input))
   }
   async score(input: ScoreInput): Promise<ScoreResult> {
-    return this.runChain((p) => p.score(input))
+    return this.runChain('score', (p) => p.score(input))
   }
 
-  private async runChain<R>(fn: (p: DecisionProvider) => Promise<R>): Promise<R> {
+  private async runChain<R>(
+    kind: DecisionKind,
+    fn: (p: DecisionProvider) => Promise<R>,
+  ): Promise<R> {
     let lastError: unknown
-    for (const p of this.chain) {
+    let tentative: { value: R } | null = null
+    for (const entry of this.chain) {
+      if (entry.lastResort && tentative) return tentative.value
       try {
-        return await fn(p)
+        const result = await fn(entry.provider)
+        const prob = answerProbability(kind, result)
+        const gated =
+          entry.minAnswerProbability !== undefined &&
+          prob !== null &&
+          prob < entry.minAnswerProbability
+        if (!gated) return result
+        tentative ??= { value: result }
       } catch (e) {
         lastError = e
       }
     }
+    if (tentative) return tentative.value
     throw lastError instanceof Error
       ? lastError
       : new Error('decision provider chain exhausted')
@@ -69,6 +119,14 @@ class ChainedDecisionProvider implements DecisionProvider {
  * factory silently downgrades to heuristic-only rather than crashing at
  * boot; individual calls stay functional with reduced quality.
  */
+/**
+ * Below this probability of the reported answer, a Laya answer is only
+ * tentative and Groq is asked too. Laya's README says thresholds must be
+ * fitted on your own held-out data and don't transfer from Jev; until the
+ * Model Lab (v14) can fit one per question, 0.7 is a conservative default.
+ */
+const LAYA_MIN_ANSWER_PROBABILITY = 0.7
+
 function buildDecisionProvider(
   kind: DecisionProviderKind,
   layaEndpoint: string | undefined,
@@ -76,16 +134,19 @@ function buildDecisionProvider(
   const heuristic = new HeuristicDecisionProvider()
   if (kind === 'heuristic') return heuristic
 
-  const chain: DecisionProvider[] = []
+  const chain: ChainEntry[] = []
   if (kind === 'laya') {
     // LayaHttpDecisionProvider defaults to the public demo Space when no
     // endpoint is set, so we no longer gate on layaEndpoint being present.
-    chain.push(new LayaHttpDecisionProvider(layaEndpoint, env.LAYA_API_KEY))
+    chain.push({
+      provider: new LayaHttpDecisionProvider(layaEndpoint, env.LAYA_API_KEY),
+      minAnswerProbability: LAYA_MIN_ANSWER_PROBABILITY,
+    })
   }
   if (env.GROQ_API_KEY) {
-    chain.push(new GroqDecisionProvider(env.GROQ_API_KEY))
+    chain.push({ provider: new GroqDecisionProvider(env.GROQ_API_KEY) })
   }
-  chain.push(heuristic)
+  chain.push({ provider: heuristic, lastResort: true })
 
   return new ChainedDecisionProvider(chain)
 }

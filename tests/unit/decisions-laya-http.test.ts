@@ -336,3 +336,17 @@ describe('ChainedDecisionProvider — Laya failure falls through to Groq', () =>
     expect(postCount).toBe(1)
   })
 })
+
+describe('LayaHttpDecisionProvider — answer_confidence', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it('prefers answer_confidence (P of the reported answer) over entropy-based confidence', async () => {
+    const mock = mockGradio({
+      answers: { answer: { choice: 'a', answer_confidence: 0.64, confidence: 0.1 } },
+    })
+    vi.spyOn(globalThis, 'fetch').mockImplementation(mock.fetch as typeof fetch)
+    const provider = new LayaHttpDecisionProvider('http://laya.example')
+    const res = await provider.choice({ text: 'x', options: ['a', 'b'] as const })
+    expect(res.confidence).toBeCloseTo(0.64)
+  })
+})

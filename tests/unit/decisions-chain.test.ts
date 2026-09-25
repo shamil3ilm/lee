@@ -197,3 +197,80 @@ describe('GroqDecisionProvider response validation', () => {
     ).rejects.toBeInstanceOf(z.ZodError)
   })
 })
+
+describe('ChainedDecisionProvider confidence gate (Laya ships over-confident / weak zero-shot)', () => {
+  function fixed(pick: string, confidence: number, yes = true, yesConf = confidence): DecisionProvider {
+    return {
+      async choice() {
+        return { pick, confidence } as never
+      },
+      async yesNo() {
+        return { answer: yes, confidence: yesConf }
+      },
+      async score() {
+        return { score: 3 }
+      },
+    }
+  }
+
+  it('falls through a low-confidence gated answer to the next provider', async () => {
+    const chain = new ChainedDecisionProvider([
+      { provider: fixed('a', 0.4), minAnswerProbability: 0.7 },
+      fixed('b', 0.9),
+      { provider: fixed('c', 0.5), lastResort: true },
+    ])
+    const res = await chain.choice({ text: 'x', options: ['a', 'b', 'c'] as const })
+    expect(res.pick).toBe('b')
+  })
+
+  it('keeps a confident gated answer without calling the next provider', async () => {
+    const next = { ...fixed('b', 0.9), choice: vi.fn() }
+    const chain = new ChainedDecisionProvider([
+      { provider: fixed('a', 0.85), minAnswerProbability: 0.7 },
+      next as unknown as DecisionProvider,
+    ])
+    const res = await chain.choice({ text: 'x', options: ['a', 'b'] as const })
+    expect(res.pick).toBe('a')
+    expect(next.choice).not.toHaveBeenCalled()
+  })
+
+  it('prefers the tentative gated answer over a last-resort provider', async () => {
+    const failing: DecisionProvider = {
+      async choice() {
+        throw new Error('groq down')
+      },
+      async yesNo() {
+        throw new Error('groq down')
+      },
+      async score() {
+        throw new Error('groq down')
+      },
+    }
+    const chain = new ChainedDecisionProvider([
+      { provider: fixed('a', 0.4), minAnswerProbability: 0.7 },
+      failing,
+      { provider: fixed('c', 0.5), lastResort: true },
+    ])
+    const res = await chain.choice({ text: 'x', options: ['a', 'b', 'c'] as const })
+    expect(res.pick).toBe('a')
+  })
+
+  it('gates yes/no on the probability of the reported answer', async () => {
+    // yes/no confidence 0.2 → P(answer) = 0.6 < 0.7 → falls through.
+    const chain = new ChainedDecisionProvider([
+      { provider: fixed('a', 0, true, 0.2), minAnswerProbability: 0.7 },
+      fixed('a', 0, false, 0.9),
+    ])
+    const res = await chain.yesNo({ text: 'x', question: 'q' })
+    expect(res.answer).toBe(false)
+  })
+
+  it('never gates score answers (no confidence)', async () => {
+    const chain = new ChainedDecisionProvider([
+      { provider: fixed('a', 0), minAnswerProbability: 0.99 },
+      { ...fixed('a', 0), async score() { return { score: 1 } } },
+    ])
+    const res = await chain.score({ text: 'x', rubric: 'r' })
+    expect(res.score).toBe(3)
+  })
+})
