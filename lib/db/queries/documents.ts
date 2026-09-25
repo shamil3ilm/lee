@@ -15,6 +15,10 @@ export type DocumentKind =
   | 'interview_prep_pack'
   | 'latex_cv'
   | 'latex_cover_letter'
+  // v7 — merged PDFs are stored as document rows with `content` describing
+  // the sources; the actual PDF bytes are re-generated on download (no
+  // caching layer). See lib/documents/merge.ts.
+  | 'merged_pdf'
 
 export interface ListOptions {
   applicationId?: string

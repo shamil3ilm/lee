@@ -14,6 +14,10 @@ const nextConfig: NextConfig = {
     // @react-pdf/renderer ships CJS + native canvas fallbacks that Next's
     // bundler mis-resolves; loading it externally at runtime keeps it stable.
     '@react-pdf/renderer',
+    // pdf-lib is pure JS but its CJS entry re-exports internals that Next's
+    // server bundler can trip over when the module is imported in a route
+    // handler. External load matches how @react-pdf is treated.
+    'pdf-lib',
   ],
   // The LaTeX templates in lib/latex/templates/*.tex are read via fs at
   // runtime; Next's file-tracing doesn't pick them up automatically because
