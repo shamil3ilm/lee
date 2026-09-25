@@ -26,6 +26,7 @@ type DocumentKind =
   | 'outreach_linkedin_connection'
   | 'outreach_linkedin_message'
   | 'outreach_recruiter_reply'
+  | 'outreach_followup_email'
   | 'interview_prep_pack'
   | 'latex_cv'
   | 'latex_cover_letter'
@@ -55,6 +56,7 @@ const KIND_LABELS: Record<DocumentKind, string> = {
   outreach_linkedin_connection: 'LinkedIn Connect',
   outreach_linkedin_message: 'LinkedIn Message',
   outreach_recruiter_reply: 'Recruiter Reply',
+  outreach_followup_email: 'Follow-up',
   interview_prep_pack: 'Interview Prep',
   latex_cv: 'LaTeX CV',
   latex_cover_letter: 'LaTeX Letter',
@@ -70,6 +72,9 @@ const KIND_BADGE: Record<
   outreach_linkedin_connection: 'violet',
   outreach_linkedin_message: 'violet',
   outreach_recruiter_reply: 'violet',
+  // v4.2 — follow-ups sit under the same "Outreach" filter, so they share the
+  // violet badge palette with the rest of the outreach kinds.
+  outreach_followup_email: 'violet',
   interview_prep_pack: 'emerald',
   latex_cv: 'indigo',
   latex_cover_letter: 'indigo',
