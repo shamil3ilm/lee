@@ -3,6 +3,7 @@ import { requireUserId } from '@/lib/auth/require-session'
 import { db } from '@/lib/db/client'
 import { accounts } from '@/lib/db/schema'
 import { getProfile } from '@/lib/profile/service'
+import { BrowserNotificationsToggle } from '@/components/browser-notifications-toggle'
 import { NotificationsPanel } from '@/components/notifications-panel'
 import { PageHeader } from '@/components/page-header'
 
@@ -35,6 +36,7 @@ export default async function NotificationsSettingsPage() {
         lastSentAt={profile?.digestLastSentAt?.toISOString() ?? null}
         hasGmailSendScope={hasGmailSendScope}
       />
+      <BrowserNotificationsToggle />
     </div>
   )
 }

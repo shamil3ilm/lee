@@ -4,6 +4,7 @@ import { Sidebar } from '@/components/sidebar'
 import { CommandMenuButton } from '@/components/command-menu-button'
 import { MobileNav } from '@/components/mobile-nav'
 import { ModeToggle } from '@/components/mode-toggle'
+import { NotificationScheduler } from '@/components/notification-scheduler'
 import { UserMenu } from '@/components/user-menu'
 
 export const dynamic = 'force-dynamic'
@@ -35,6 +36,7 @@ export default async function AuthedLayout({ children }: { children: React.React
           <div className="mx-auto w-full max-w-[1600px]">{children}</div>
         </main>
       </div>
+      <NotificationScheduler />
     </div>
   )
 }
