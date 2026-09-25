@@ -30,7 +30,7 @@ describe('documentAssets queries', () => {
     })
     const listed = await q.list(u.id, doc.id)
     expect(listed).toHaveLength(1)
-    const [row] = listed
+    const row = listed[0]!
     expect(row.filename).toBe('photo.jpg')
     expect(row.mimeType).toBe('image/jpeg')
     expect(row.sizeBytes).toBe(3)
@@ -84,8 +84,8 @@ describe('documentAssets queries', () => {
     })
     const rows = await q.listWithBytes(u.id, doc.id)
     expect(rows).toHaveLength(2)
-    expect(rows[0].bytes.length).toBeGreaterThan(0)
-    expect(rows[1].bytes.length).toBeGreaterThan(0)
+    expect(rows[0]!.bytes.length).toBeGreaterThan(0)
+    expect(rows[1]!.bytes.length).toBeGreaterThan(0)
   })
 
   it('sanitizes filenames on create', async () => {

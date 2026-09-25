@@ -13,7 +13,7 @@ const METADATA_COLUMNS = {
   mimeType: documentAssets.mimeType,
   sizeBytes: documentAssets.sizeBytes,
   createdAt: documentAssets.createdAt,
-} as const
+}
 
 export type AssetMetadata = {
   id: string
@@ -26,6 +26,12 @@ export type AssetMetadata = {
 }
 
 export type AssetWithBytes = AssetMetadata & { bytes: Buffer }
+
+function stripBytes(row: AssetWithBytes): AssetMetadata {
+  const { bytes: _bytes, ...rest } = row
+  void _bytes
+  return rest
+}
 
 export interface CreateAssetInput {
   filename: string
@@ -89,11 +95,13 @@ export async function list(
   documentId: string,
   client: DbClient = db,
 ): Promise<AssetMetadata[]> {
-  return client
+  const rows = await client
     .select(METADATA_COLUMNS)
     .from(documentAssets)
     .where(and(eq(documentAssets.userId, userId), eq(documentAssets.documentId, documentId)))
     .orderBy(documentAssets.createdAt)
+  // Cast: METADATA_COLUMNS mirrors AssetMetadata exactly (bytes excluded).
+  return rows as AssetMetadata[]
 }
 
 /**
@@ -181,10 +189,11 @@ export async function create(
     )
   }
 
-  const [{ n }] = await client
+  const countRows = await client
     .select({ n: count() })
     .from(documentAssets)
     .where(and(eq(documentAssets.userId, userId), eq(documentAssets.documentId, documentId)))
+  const n = countRows[0]?.n ?? 0
   if (Number(n) >= MAX_ASSETS_PER_DOCUMENT) {
     throw new AssetValidationError(
       'too_many_assets',
@@ -210,9 +219,9 @@ export async function create(
       sizeBytes: input.sizeBytes,
       bytes: input.bytes,
     })
-    .returning(METADATA_COLUMNS)
+    .returning()
   if (!row) throw new Error('failed to insert document asset')
-  return row
+  return stripBytes(row)
 }
 
 /**
@@ -234,7 +243,7 @@ export async function remove(
         eq(documentAssets.filename, filename),
       ),
     )
-    .returning({ id: documentAssets.id })
+    .returning()
   return rows.length > 0
 }
 
@@ -273,6 +282,6 @@ export async function renameFile(
         eq(documentAssets.filename, oldName),
       ),
     )
-    .returning(METADATA_COLUMNS)
-  return row ?? null
+    .returning()
+  return row ? stripBytes(row) : null
 }

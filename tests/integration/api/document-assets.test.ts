@@ -18,7 +18,11 @@ async function importRoutes() {
 function makeMultipart(files: { name: string; type: string; body: Uint8Array }[]): FormData {
   const form = new FormData()
   for (const f of files) {
-    form.append('file', new Blob([f.body], { type: f.type }), f.name)
+    // Copy into a fresh ArrayBuffer to satisfy Blob's BlobPart type across
+    // TS lib versions (Uint8Array<SharedArrayBuffer> is rejected).
+    const buf = new ArrayBuffer(f.body.byteLength)
+    new Uint8Array(buf).set(f.body)
+    form.append('file', new Blob([buf], { type: f.type }), f.name)
   }
   return form
 }

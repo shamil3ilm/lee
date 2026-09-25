@@ -4,12 +4,15 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
 import { AlertTriangle, ChevronLeft, Download, Loader2, PlayCircle, Save } from 'lucide-react'
-import { loader } from '@monaco-editor/react'
+import { loader, type OnMount } from '@monaco-editor/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { saveLatexSource } from '@/app/(authed)/documents/[id]/edit/actions'
+import { LatexAssetsDialog } from '@/components/latex-assets-dialog'
+import type { AssetMetadata } from '@/lib/db/queries/documentAssets'
+import { defaultSnippetForAsset } from '@/lib/latex/snippets'
 
 // Pull Monaco's JS + workers from a CDN so we don't bundle ~2MB of editor
 // assets into the client chunk for this route. This only loads when a user
@@ -37,17 +40,48 @@ interface LatexEditorProps {
   initialTitle: string
   initialSource: string
   initialError: { message: string; log: string } | null
+  initialAssets: AssetMetadata[]
 }
 
 type CompileError = { message: string; log: string }
 
 const DEBOUNCE_MS = 1500
 
+// Regex → suggested action. Parsing latexonline.cc's log for a missing
+// package is best-effort; a match surfaces a one-line hint next to the
+// error panel so the fix is one edit away.
+const PACKAGE_HINT_PATTERNS: { pattern: RegExp; hint: (name: string) => string }[] = [
+  {
+    // e.g. "! LaTeX Error: File `pdfpages.sty' not found."
+    pattern: /File `([\w-]+)\.sty' not found/,
+    hint: (name) => `Add \\usepackage{${name}} to your preamble.`,
+  },
+  {
+    // e.g. "! Package graphicx Error: File `photo.jpg' not found"
+    pattern: /Package \w+ Error: File `([^']+)' not found/,
+    hint: (name) => `Missing asset "${name}" — upload it via the Assets panel.`,
+  },
+  {
+    // e.g. "Missing $ inserted." or "Undefined control sequence" — no hint
+    pattern: /Undefined control sequence[\s\S]{0,120}\\(\w+)/,
+    hint: (name) => `\\${name} is undefined — check the spelling or add the missing \\usepackage.`,
+  },
+]
+
+function extractHint(log: string): string | null {
+  for (const { pattern, hint } of PACKAGE_HINT_PATTERNS) {
+    const m = log.match(pattern)
+    if (m && m[1]) return hint(m[1])
+  }
+  return null
+}
+
 export function LatexEditor({
   documentId,
   initialTitle,
   initialSource,
   initialError,
+  initialAssets,
 }: LatexEditorProps) {
   const [source, setSource] = useState(initialSource)
   const [title, setTitle] = useState(initialTitle)
@@ -56,8 +90,12 @@ export function LatexEditor({
   const [error, setError] = useState<CompileError | null>(initialError)
   const [previewKey, setPreviewKey] = useState(0)
   const [showErrorPanel, setShowErrorPanel] = useState<boolean>(initialError !== null)
+  const [assets, setAssets] = useState<AssetMetadata[]>(initialAssets)
+  const [dragActive, setDragActive] = useState(false)
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestSource = useRef(initialSource)
+  const editorRef = useRef<Parameters<OnMount>[0] | null>(null)
+  const monacoRef = useRef<Parameters<OnMount>[1] | null>(null)
 
   const runCompile = useCallback(
     async (sourceToCompile: string) => {
@@ -118,6 +156,93 @@ export function LatexEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source])
 
+  /** Insert a snippet at the editor's current cursor and bring focus back. */
+  const insertAtCursor = useCallback((snippet: string): void => {
+    const editor = editorRef.current
+    if (!editor) {
+      // Fallback: append to the end of the source when Monaco isn't ready.
+      setSource((s) => (s.endsWith('\n') ? s + snippet + '\n' : s + '\n' + snippet + '\n'))
+      return
+    }
+    const monaco = monacoRef.current
+    const selection = editor.getSelection()
+    const position = editor.getPosition()
+    const range =
+      selection ??
+      (monaco && position
+        ? new monaco.Range(
+            position.lineNumber,
+            position.column,
+            position.lineNumber,
+            position.column,
+          )
+        : null)
+    if (!range) {
+      setSource((s) => (s.endsWith('\n') ? s + snippet + '\n' : s + '\n' + snippet + '\n'))
+      return
+    }
+    editor.executeEdits('assets-insert', [
+      { range, text: snippet + '\n', forceMoveMarkers: true },
+    ])
+    editor.focus()
+  }, [])
+
+  // Attach a native drop listener to the editor DOM node once Monaco mounts.
+  // The dragover/dragleave handlers control the visible drop overlay; the
+  // drop handler routes to the shared upload path exposed by the assets
+  // dialog (see `__latexAssetsUpload`).
+  const handleEditorMount: OnMount = useCallback(
+    (editor, monaco) => {
+      editorRef.current = editor
+      monacoRef.current = monaco
+      const dom = editor.getDomNode()
+      if (!dom) return
+      const onDragEnter = (e: DragEvent) => {
+        if (e.dataTransfer?.types.includes('Files')) {
+          e.preventDefault()
+          setDragActive(true)
+        }
+      }
+      const onDragOver = (e: DragEvent) => {
+        if (e.dataTransfer?.types.includes('Files')) {
+          e.preventDefault()
+          e.dataTransfer.dropEffect = 'copy'
+        }
+      }
+      const onDragLeave = (e: DragEvent) => {
+        // The relatedTarget is null when leaving the viewport entirely; use
+        // that to distinguish "moved to a child" (ignore) from "left".
+        if (!e.relatedTarget || !(dom.contains(e.relatedTarget as Node))) {
+          setDragActive(false)
+        }
+      }
+      const onDrop = async (e: DragEvent) => {
+        e.preventDefault()
+        setDragActive(false)
+        const files = e.dataTransfer?.files
+        if (!files || files.length === 0) return
+        const uploader = (window as unknown as {
+          __latexAssetsUpload?: (files: FileList | File[]) => Promise<AssetMetadata[]>
+        }).__latexAssetsUpload
+        if (!uploader) {
+          toast.error('Assets panel not ready — try again in a moment.')
+          return
+        }
+        const uploaded = await uploader(files)
+        for (const asset of uploaded) {
+          insertAtCursor(defaultSnippetForAsset(asset))
+        }
+      }
+      dom.addEventListener('dragenter', onDragEnter)
+      dom.addEventListener('dragover', onDragOver)
+      dom.addEventListener('dragleave', onDragLeave)
+      dom.addEventListener('drop', (e) => {
+        void onDrop(e)
+      })
+    },
+    [insertAtCursor],
+  )
+
   async function handleSave(): Promise<void> {
     setSaving(true)
     try {
@@ -148,6 +273,8 @@ export function LatexEditor({
     URL.revokeObjectURL(url)
   }
 
+  const hint = error ? extractHint(error.log) : null
+
   return (
     <div className="flex h-[calc(100vh-6rem)] flex-col">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-background px-3 py-2">
@@ -172,6 +299,12 @@ export function LatexEditor({
               Compiling…
             </span>
           ) : null}
+          <LatexAssetsDialog
+            documentId={documentId}
+            assets={assets}
+            onAssetsChange={setAssets}
+            onInsertSnippet={insertAtCursor}
+          />
           <Button
             type="button"
             variant="outline"
@@ -205,13 +338,14 @@ export function LatexEditor({
       </div>
 
       <div className="grid flex-1 grid-cols-1 overflow-hidden md:grid-cols-2">
-        <div className="h-full min-h-[400px] border-b md:border-b-0 md:border-r">
+        <div className="relative h-full min-h-[400px] border-b md:border-b-0 md:border-r">
           <MonacoEditor
             height="100%"
             language="latex"
             theme="vs-dark"
             value={source}
             onChange={(v) => setSource(v ?? '')}
+            onMount={handleEditorMount}
             options={{
               minimap: { enabled: false },
               wordWrap: 'on',
@@ -220,6 +354,13 @@ export function LatexEditor({
               automaticLayout: true,
             }}
           />
+          {dragActive ? (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-primary/10 backdrop-blur-sm ring-2 ring-inset ring-primary">
+              <p className="rounded-md bg-background/90 px-4 py-2 text-sm font-medium shadow">
+                Drop files to attach
+              </p>
+            </div>
+          ) : null}
         </div>
 
         <div className="relative h-full min-h-[400px] bg-muted/20">
@@ -244,6 +385,11 @@ export function LatexEditor({
                   Dismiss
                 </button>
               </div>
+              {hint ? (
+                <p className="mb-2 rounded border border-amber-400/40 bg-amber-100/60 px-2 py-1 font-medium text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
+                  Suggestion: {hint}
+                </p>
+              ) : null}
               <pre className={cn('whitespace-pre-wrap break-words font-mono text-[11px]')}>
                 {error.log.slice(0, 4000)}
                 {error.log.length > 4000 ? '\n…(truncated)' : ''}
