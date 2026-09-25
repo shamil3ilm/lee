@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { requireUserId } from '@/lib/auth/require-session'
 import { updateStatus } from '@/lib/applications/service'
 import { createStage } from '@/lib/stages/service'
+import * as appsQ from '@/lib/db/queries/applications'
 import { logger } from '@/lib/logger'
 
 export type ActionResult = { success: true } | { error: string }
@@ -35,6 +36,42 @@ const addStageSchema = z.object({
   durationMinutes: z.coerce.number().int().positive().optional().or(z.literal('')),
   meetingUrl: z.string().url().optional().or(z.literal('')),
 })
+
+/**
+ * Backfill `applied_at` on an existing application — used when an app was
+ * added to the tracker after it was actually applied. Accepts a plain
+ * YYYY-MM-DD (from the inline date input) or a full ISO string; both are
+ * normalized to the start of that UTC day so a picker-only value doesn't
+ * accidentally record 00:00 in the server's local tz.
+ */
+export async function setAppliedAt(
+  applicationId: string,
+  date: string,
+): Promise<ActionResult> {
+  try {
+    const userId = await requireUserId()
+    if (typeof applicationId !== 'string' || applicationId.length === 0) {
+      return { error: 'Application id is required.' }
+    }
+    const when = /^\d{4}-\d{2}-\d{2}$/.test(date)
+      ? new Date(`${date}T00:00:00Z`)
+      : new Date(date)
+    if (Number.isNaN(when.getTime())) {
+      return { error: 'Invalid date.' }
+    }
+    const updated = await appsQ.setAppliedAt(userId, applicationId, when)
+    if (!updated) return { error: 'Application not found.' }
+    revalidatePath(`/applications/${applicationId}`)
+    revalidatePath('/applications')
+    revalidatePath('/')
+    return { success: true }
+  } catch (err) {
+    logger.error('setAppliedAt failed', {
+      err: err instanceof Error ? err.message : String(err),
+    })
+    return { error: 'Could not set applied date.' }
+  }
+}
 
 export async function addStage(formData: FormData): Promise<ActionResult> {
   try {

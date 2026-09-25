@@ -2,6 +2,7 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { ArrowDown, ArrowUp, ArrowUpDown, Briefcase } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -15,6 +16,16 @@ import {
   STATUS_LABELS,
   type ApplicationStatus,
 } from '@/lib/ui/status'
+import { setAppliedAt } from '@/app/(authed)/applications/[id]/actions'
+
+// Statuses where applied_at is meaningful. Screen/interview/offer imply the
+// user has already applied, so the backfill affordance appears there too.
+const APPLIED_LIKE: readonly ApplicationStatus[] = [
+  'applied',
+  'screen',
+  'interview',
+  'offer',
+]
 
 export interface AppRow {
   id: string
@@ -183,7 +194,13 @@ export function ApplicationsTable({ rows }: ApplicationsTableProps) {
                       <Badge variant={STATUS_BADGE[s]}>{STATUS_LABELS[s]}</Badge>
                     </td>
                     <td className="px-3 py-2 text-muted-foreground">
-                      {r.appliedAt ? shortDate(r.appliedAt) : '—'}
+                      {r.appliedAt ? (
+                        shortDate(r.appliedAt)
+                      ) : (APPLIED_LIKE as readonly string[]).includes(r.status) ? (
+                        <AppliedAtBackfill applicationId={r.id} />
+                      ) : (
+                        '—'
+                      )}
                     </td>
                     <td className="px-3 py-2 text-muted-foreground">
                       {r.nextActionAt ? (
@@ -208,6 +225,47 @@ export function ApplicationsTable({ rows }: ApplicationsTableProps) {
         </div>
       )}
     </div>
+  )
+}
+
+interface AppliedAtBackfillProps {
+  applicationId: string
+}
+
+/**
+ * Inline date picker for backfilling `applied_at` on rows whose status implies
+ * the user applied but where the timestamp was never captured (usually because
+ * the app was added to the tracker after-the-fact). onClick + onChange stop
+ * propagation so opening the picker doesn't trigger the row-level navigation.
+ */
+function AppliedAtBackfill({ applicationId }: AppliedAtBackfillProps) {
+  const [value, setValue] = React.useState('')
+  const [pending, start] = React.useTransition()
+
+  function handleChange(next: string): void {
+    setValue(next)
+    if (!next) return
+    start(async () => {
+      const result = await setAppliedAt(applicationId, next)
+      if ('success' in result) toast.success('Applied date set')
+      else toast.error(result.error)
+    })
+  }
+
+  return (
+    <input
+      type="date"
+      value={value}
+      disabled={pending}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      onChange={(e) => {
+        e.stopPropagation()
+        handleChange(e.target.value)
+      }}
+      aria-label="Set applied date"
+      className="w-32 rounded border bg-background px-1.5 py-0.5 text-xs text-foreground disabled:opacity-60"
+    />
   )
 }
 

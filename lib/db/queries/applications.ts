@@ -113,6 +113,39 @@ export async function setNextAction(
     .where(and(eq(applications.userId, userId), eq(applications.id, id)))
 }
 
+/**
+ * Set the applied_at timestamp on an application and log an activity so the
+ * change is auditable. Returns the updated row or undefined when the row
+ * doesn't belong to this user.
+ */
+export async function setAppliedAt(
+  userId: string,
+  id: string,
+  when: Date,
+): Promise<Application | undefined> {
+  return db.transaction(async (tx) => {
+    const existing = await tx.query.applications.findFirst({
+      where: and(eq(applications.userId, userId), eq(applications.id, id)),
+    })
+    if (!existing) return undefined
+    const [updated] = await tx
+      .update(applications)
+      .set({ appliedAt: when, updatedAt: new Date() })
+      .where(and(eq(applications.userId, userId), eq(applications.id, id)))
+      .returning()
+    await tx.insert(activities).values({
+      userId,
+      applicationId: id,
+      kind: 'applied_at_set',
+      payload: {
+        from: existing.appliedAt?.toISOString() ?? null,
+        to: when.toISOString(),
+      },
+    })
+    return updated
+  })
+}
+
 export async function update(
   userId: string,
   id: string,
