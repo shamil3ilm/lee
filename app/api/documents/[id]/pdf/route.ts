@@ -2,16 +2,23 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import * as documentsQ from '@/lib/db/queries/documents'
 import * as assetsQ from '@/lib/db/queries/documentAssets'
-import { renderCvPdf, renderCoverLetterPdf, renderPrepPackPdf } from '@/lib/pdf/render'
+import {
+  renderCvPdf,
+  renderCoverLetterPdf,
+  renderDebriefPdf,
+  renderPrepPackPdf,
+} from '@/lib/pdf/render'
 import { mergePdfs, type MergeSource } from '@/lib/documents/merge'
 import {
   coverLetterSchema,
+  interviewDebriefSchema,
   interviewPrepPackSchema,
   latexDocumentContentSchema,
   masterCvSchema,
   outreachDraftSchema,
   tailoredCvSchema,
   type CoverLetter,
+  type InterviewDebrief,
   type InterviewPrepPack,
   type MasterCV,
   type OutreachDraft,
@@ -171,6 +178,9 @@ export async function GET(
     } else if (doc.kind === 'interview_prep_pack') {
       const pack: InterviewPrepPack = interviewPrepPackSchema.parse(doc.content)
       buffer = await renderPrepPackPdf(pack)
+    } else if (doc.kind === 'interview_debrief') {
+      const debrief: InterviewDebrief = interviewDebriefSchema.parse(doc.content)
+      buffer = await renderDebriefPdf(debrief)
     } else {
       return NextResponse.json({ error: `Unsupported document kind: ${doc.kind}` }, { status: 400 })
     }

@@ -3,8 +3,10 @@ import { createElement, type ReactElement } from 'react'
 import { CvPdfDocument } from './cv-template'
 import { CoverLetterPdfDocument, type CoverLetterSender } from './cover-letter-template'
 import { PrepPackPdfDocument } from './prep-pack-template'
+import { DebriefPdfDocument } from './debrief-template'
 import type {
   CoverLetter,
+  InterviewDebrief,
   InterviewPrepPack,
   MasterCV,
   TailoredCV,
@@ -40,6 +42,19 @@ export async function renderPrepPackPdf(
 ): Promise<Buffer> {
   const el = createElement(PrepPackPdfDocument, {
     pack,
+    jobTitle: meta?.jobTitle,
+    companyName: meta?.companyName,
+  }) as unknown as ReactElement as unknown as PdfElement
+  return renderToBuffer(el)
+}
+
+export async function renderDebriefPdf(
+  debrief: InterviewDebrief,
+  meta?: { stageKind?: string; jobTitle?: string; companyName?: string },
+): Promise<Buffer> {
+  const el = createElement(DebriefPdfDocument, {
+    debrief,
+    stageKind: meta?.stageKind,
     jobTitle: meta?.jobTitle,
     companyName: meta?.companyName,
   }) as unknown as ReactElement as unknown as PdfElement
