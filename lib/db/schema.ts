@@ -319,6 +319,13 @@ export const userProfile = pgTable('user_profile', {
   // can flip models at runtime via the UI without redeploying.
   aiProvider: text('ai_provider'),
   aiModel: text('ai_model'),
+  // v8.2 — decision provider selection. Same pattern as aiProvider above:
+  // null = fall back to env DECISION_PROVIDER / LAYA_ENDPOINT so users can
+  // flip the classification/discovery-decision backend without a redeploy.
+  // Kept nullable + orthogonal to `aiProvider` because decision tasks
+  // (choice / yesNo / score) are a different modality from free-form gen.
+  decisionProvider: text('decision_provider'),
+  layaEndpoint: text('laya_endpoint'),
   // v3 sync timestamps — updated at the end of each successful sync. Null
   // means the user has never run that sync (or has never connected the
   // corresponding Google scope).

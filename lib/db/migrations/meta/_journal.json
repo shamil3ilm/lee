@@ -71,6 +71,13 @@
       "when": 1790333092947,
       "tag": "0009_many_senator_kelly",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790334110034,
+      "tag": "0010_fair_talkback",
+      "breakpoints": true
     }
   ]
 }
