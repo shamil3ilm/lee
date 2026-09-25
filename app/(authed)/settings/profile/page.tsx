@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/page-header'
 import { ProfileForm } from '@/components/profile-form'
 import { ProfileImport } from '@/components/profile-import'
 import { AiModelSelector } from '@/components/ai-model-selector'
+import { DecisionProviderSelector } from '@/components/decision-provider-selector'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +25,10 @@ export default async function ProfileSettingsPage() {
         description="What Employ knows about you — used to tailor matching, discovery, and CV generation."
       />
       <AiModelSelector currentModelId={currentModelId} />
+      <DecisionProviderSelector
+        currentProvider={profile?.decisionProvider ?? null}
+        currentLayaEndpoint={profile?.layaEndpoint ?? null}
+      />
       <ProfileImport />
       <ProfileForm profile={profile} />
     </div>

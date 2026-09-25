@@ -160,6 +160,48 @@ export async function importProfileAction(
   }
 }
 
+const decisionProviderSchema = z.object({
+  provider: z.enum(['', 'groq', 'heuristic', 'laya']),
+  // Accept empty string OR a valid URL. Non-laya providers ignore this field
+  // server-side; we still validate to reject junk payloads.
+  layaEndpoint: z
+    .string()
+    .max(500)
+    .refine((v) => v === '' || /^https?:\/\//.test(v), {
+      message: 'Laya endpoint must be a http(s) URL',
+    }),
+})
+
+export async function saveDecisionProviderAction(
+  formData: FormData,
+): Promise<ActionResult> {
+  try {
+    const userId = await requireUserId()
+    const parsed = decisionProviderSchema.safeParse({
+      provider: formData.get('provider') ?? '',
+      layaEndpoint: formData.get('layaEndpoint') ?? '',
+    })
+    if (!parsed.success) {
+      return { error: parsed.error.issues[0]?.message ?? 'Invalid provider payload.' }
+    }
+    const { provider, layaEndpoint } = parsed.data
+    // Empty provider → clear both overrides so we fall through to env.
+    const decisionProvider = provider === '' ? null : provider
+    // Endpoint only meaningful when provider === 'laya'. Storing an endpoint
+    // for a non-laya row is harmless but confusing — clear it.
+    const endpointToStore =
+      provider === 'laya' ? (layaEndpoint === '' ? null : layaEndpoint) : null
+    await saveProfile(userId, { decisionProvider, layaEndpoint: endpointToStore })
+    revalidatePath('/settings/profile')
+    return { success: true }
+  } catch (err) {
+    logger.error('saveDecisionProvider failed', {
+      err: err instanceof Error ? err.message : String(err),
+    })
+    return { error: 'Could not save decision provider preference.' }
+  }
+}
+
 export async function saveAiModelAction(formData: FormData): Promise<ActionResult> {
   try {
     const userId = await requireUserId()
