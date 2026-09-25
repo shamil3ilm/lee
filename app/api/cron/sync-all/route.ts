@@ -15,6 +15,7 @@ import {
   sendWeeklyDigest,
 } from '@/lib/digest/weekly'
 import { alreadyNudgedRecently, findFollowupCandidates } from '@/lib/followups/service'
+import { sendDiscoveryEmailIfEnabled } from '@/lib/notifications/discovery'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -33,6 +34,8 @@ interface CycleTotals {
   reminders_added: number
   followups_recommended: number
   digests_sent: number
+  discovery_emails_sent: number
+  discovery_matches_notified: number
   errors: string[]
 }
 
@@ -74,6 +77,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     reminders_added: 0,
     followups_recommended: 0,
     digests_sent: 0,
+    discovery_emails_sent: 0,
+    discovery_matches_notified: 0,
     errors: [],
   }
 
@@ -92,6 +97,26 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e)
       totals.errors.push(`user ${user.id} discovery: ${message}`)
+    }
+
+    // v6.2 discovery notification email — per-cycle, opt-in. Runs after the
+    // discovery cycle so freshly-ingested rows are considered. Independent of
+    // the Monday-only weekly digest; a user can opt into either, both, or
+    // neither. NoGoogleAccountError is expected for users without a linked
+    // Gmail account and is swallowed silently.
+    try {
+      const notif = await sendDiscoveryEmailIfEnabled({ userId: user.id })
+      if (notif.sent) {
+        totals.discovery_emails_sent += 1
+        totals.discovery_matches_notified += notif.count
+      }
+    } catch (e) {
+      if (e instanceof NoGoogleAccountError) {
+        // Expected: no Gmail scope → cannot send. Skip silently.
+      } else {
+        const message = e instanceof Error ? e.message : String(e)
+        totals.errors.push(`user ${user.id} discovery_email: ${message}`)
+      }
     }
 
     // Gmail — swallow NoGoogleAccountError (user hasn't connected yet).

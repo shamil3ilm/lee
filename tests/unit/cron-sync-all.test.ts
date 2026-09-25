@@ -26,7 +26,8 @@ vi.mock('@/lib/ai', () => ({
 
 import { GET } from '@/app/api/cron/sync-all/route'
 import { db } from '@/lib/db/client'
-import { activities, accounts } from '@/lib/db/schema'
+import { activities, accounts, discoveries, sources } from '@/lib/db/schema'
+import * as profileQ from '@/lib/db/queries/profile'
 import { env } from '@/lib/env'
 import { makeApplication, makeCompany, makeJob, makeUser } from '@/tests/factories'
 
@@ -185,5 +186,74 @@ describe('GET /api/cron/sync-all', () => {
     expect(body.gmail_matched).toBe(0)
     // The gmail branch itself must not produce an error entry.
     expect(body.errors.every((e) => !e.includes('gmail'))).toBe(true)
+  })
+
+  it('surfaces discovery-email totals and swallows missing-Google errors', async () => {
+    // Two users: one opted-in with a fresh high-score discovery, one opted-in
+    // but without a Google account (must NOT count as an error).
+    const uSender = await makeUser('cron-notify-send@x.com')
+    const [src] = await db
+      .insert(sources)
+      .values({ userId: uSender.id, name: 'HN', kind: 'hn', config: {} })
+      .returning()
+    if (!src) throw new Error('failed to create source')
+    await db.insert(discoveries).values({
+      userId: uSender.id,
+      sourceId: src.id,
+      sourceJobId: 'hn-notify-1',
+      raw: {},
+      normalized: { title: 'Senior BE', companyName: 'Stripe' },
+      matchScore: 92,
+      status: 'new',
+    })
+    await profileQ.upsert(uSender.id, {
+      notifyDiscoveryEmail: true,
+      notifyDiscoveryMinScore: 75,
+    })
+    // Give this user a Google account so the send path can attempt a fetch.
+    await db.insert(accounts).values({
+      userId: uSender.id,
+      type: 'oauth',
+      provider: 'google',
+      providerAccountId: `google-${uSender.id}`,
+      access_token: 'AT',
+      refresh_token: 'RT',
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+      token_type: 'Bearer',
+      scope: 'gmail.send',
+    })
+
+    const uNoGoogle = await makeUser('cron-notify-nogoogle@x.com')
+    await profileQ.upsert(uNoGoogle.id, { notifyDiscoveryEmail: true })
+    // No accounts row for uNoGoogle — the send path throws
+    // NoGoogleAccountError which the cron catches silently. We give this user
+    // no discoveries anyway, but the profile-flag being on is enough to
+    // exercise the branch.
+
+    // Route the mocked fetch: Gmail send returns a fake id; anything else
+    // returns 500 (discovery adapters etc.).
+    ;(globalThis as { fetch: typeof fetch }).fetch = (async (input: unknown) => {
+      const url = String(input)
+      if (url.includes('gmail.googleapis.com')) {
+        return new Response(JSON.stringify({ id: 'stub-msg-id', threads: [] }), {
+          status: 200,
+        })
+      }
+      return new Response('nothing', { status: 500 })
+    }) as unknown as typeof fetch
+
+    const res = await GET(
+      buildRequest({ authorization: `Bearer ${env.CRON_SECRET}` }) as never,
+    )
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      discovery_emails_sent: number
+      discovery_matches_notified: number
+      errors: string[]
+    }
+    expect(body.discovery_emails_sent).toBe(1)
+    expect(body.discovery_matches_notified).toBe(1)
+    // NoGoogleAccountError must not surface as an error entry.
+    expect(body.errors.every((e) => !e.includes('discovery_email'))).toBe(true)
   })
 })
