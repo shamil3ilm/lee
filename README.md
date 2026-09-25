@@ -32,6 +32,23 @@ pnpm playwright install chromium
 
 On Linux CI use `pnpm playwright install --with-deps chromium` to also pull system libs.
 
+## Running evals
+
+Deterministic regression check for AI outputs. Fixture JSON lives under
+`tests/eval/fixtures/`; golden snapshots under `tests/eval/snapshots/`.
+
+```
+pnpm eval             # regress against snapshots (fails on any diff)
+pnpm eval --update    # overwrite snapshots — run after an intentional
+                      # prompt or model-version change, then commit the JSON
+pnpm eval --live      # run against a real provider (needs GROQ_API_KEY or
+                      # GEMINI_API_KEY). Never fails on diff — warn only.
+```
+
+On a fresh checkout with no snapshots yet, `pnpm eval` prints a friendly
+message and exits 0. Bump a prompt's `VERSION` constant whenever you edit
+the prompt so analytics can attribute rating deltas to the change.
+
 ## Deployment (Vercel)
 
 1. Create a Neon project (free tier). Copy the pooled + direct connection strings.

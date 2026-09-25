@@ -29,6 +29,11 @@ jobs:
       # DB migrations are applied automatically by the integration test setup
       # against an in-memory pglite instance; no separate `pnpm db:migrate` step.
       - run: pnpm test
+      # v10.1 — deterministic eval regression check against the fixture
+      # provider snapshots. Prints a friendly "no snapshots yet" message and
+      # exits 0 if no snapshots have been seeded — CI stays green until a
+      # human runs `pnpm eval --update` and commits the resulting JSON files.
+      - run: pnpm eval
       - run: pnpm playwright install --with-deps chromium
       - run: pnpm test:e2e
       - run: pnpm build
