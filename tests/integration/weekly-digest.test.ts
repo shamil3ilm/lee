@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
-import { applications, interviewStages, discoveries, sources } from '@/lib/db/schema'
+import { applications, interviewStages, discoveries, sources, todos } from '@/lib/db/schema'
 import * as profileQ from '@/lib/db/queries/profile'
 import {
   alreadySentThisWeek,
@@ -109,6 +109,32 @@ describe('gatherPipelineSnapshot', () => {
     void a1
   })
 
+  it('includes upcoming open todos within the next 7 days', async () => {
+    const u = await makeUser('digest-todos@x.com')
+    // Due tomorrow — included.
+    await db.insert(todos).values({
+      userId: u.id,
+      title: 'Send CV',
+      dueAt: new Date(Date.now() + 1 * DAY_MS),
+    })
+    // Due in 30 days — excluded.
+    await db.insert(todos).values({
+      userId: u.id,
+      title: 'Long-term',
+      dueAt: new Date(Date.now() + 30 * DAY_MS),
+    })
+    // Done — excluded.
+    await db.insert(todos).values({
+      userId: u.id,
+      title: 'Completed',
+      status: 'done',
+      dueAt: new Date(Date.now() + 2 * DAY_MS),
+    })
+    const snap = await gatherPipelineSnapshot(u.id)
+    expect(snap.upcomingTodos).toHaveLength(1)
+    expect(snap.upcomingTodos[0]?.title).toBe('Send CV')
+  })
+
   it('scopes strictly by userId', async () => {
     const u1 = await makeUser('digest-scope-1@x.com')
     const u2 = await makeUser('digest-scope-2@x.com')
@@ -176,6 +202,7 @@ describe('renderWeeklyDigestHtml', () => {
     expect(html).toContain('Upcoming interviews')
     expect(html).toContain('Top discoveries')
     expect(html).toContain('Stale follow-ups')
+    expect(html).toContain('Upcoming this week')
     expect(html).toContain('/settings/notifications')
   })
 })

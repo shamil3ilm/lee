@@ -79,15 +79,21 @@ export function WeeklyDigestEmail({
   snapshot,
   appBaseUrl = 'https://employ4me.vercel.app',
 }: WeeklyDigestEmailProps): ReactElement {
-  const { applicationsByStatus, totalApplications, upcomingInterviews, topDiscoveries, staleApplications } =
-    snapshot
+  const {
+    applicationsByStatus,
+    totalApplications,
+    upcomingInterviews,
+    topDiscoveries,
+    staleApplications,
+    upcomingTodos,
+  } = snapshot
   return (
     <div style={styles.wrapper}>
       <h1 style={styles.h1}>Your Employ week</h1>
       <p style={styles.subline}>
         This week at a glance: {totalApplications} applications ·{' '}
         {upcomingInterviews.length} interviews · {topDiscoveries.length} discoveries ·{' '}
-        {staleApplications.length} stale
+        {staleApplications.length} stale · {upcomingTodos.length} todos
       </p>
 
       <div style={styles.section}>
@@ -145,6 +151,30 @@ export function WeeklyDigestEmail({
                 {d.matchScore !== null ? (
                   <span style={styles.meta}> · score {d.matchScore}</span>
                 ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div style={styles.section}>
+        <h2 style={styles.h2}>Upcoming this week</h2>
+        {upcomingTodos.length === 0 ? (
+          <p style={styles.empty}>No todos due in the next 7 days.</p>
+        ) : (
+          <ul style={styles.list}>
+            {upcomingTodos.map((t) => (
+              <li key={t.id} style={styles.listItem}>
+                {t.title}
+                {t.priority > 0 ? (
+                  <span style={styles.meta}>
+                    {' '}· {t.priority === 3 ? 'high' : t.priority === 2 ? 'med' : 'low'}
+                  </span>
+                ) : null}
+                <br />
+                <span style={styles.meta}>
+                  {t.dueAt ? `due ${formatDateTime(t.dueAt)}` : 'no due date'}
+                </span>
               </li>
             ))}
           </ul>

@@ -1,4 +1,4 @@
-import { and, eq, gte, isNotNull, lt, notInArray, desc, sql } from 'drizzle-orm'
+import { and, asc, eq, gte, isNotNull, lt, lte, notInArray, desc, sql } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import {
   applications,
@@ -6,6 +6,7 @@ import {
   discoveries,
   interviewStages,
   jobs,
+  todos,
   users,
 } from '@/lib/db/schema'
 import * as profileQ from '@/lib/db/queries/profile'
@@ -48,6 +49,15 @@ export interface PipelineSnapshot {
     jobTitle: string
     companyName: string | null
     nextActionAt: Date
+  }[]
+  // v8 — open todos due within the next 7 days (inclusive of overdue). Sorted
+  // by dueAt ascending so the earliest items appear first in the email.
+  upcomingTodos: {
+    id: string
+    title: string
+    dueAt: Date | null
+    priority: number
+    applicationId: string | null
   }[]
 }
 
@@ -228,6 +238,37 @@ export async function gatherPipelineSnapshot(
       nextActionAt: r.nextActionAt as Date,
     }))
 
+  // v8 — upcoming todos: open, due within the next 7 days (or already
+  // overdue). Cap at 15 to avoid a wall-of-text digest.
+  const todoRows = await client
+    .select({
+      id: todos.id,
+      title: todos.title,
+      dueAt: todos.dueAt,
+      priority: todos.priority,
+      applicationId: todos.applicationId,
+    })
+    .from(todos)
+    .where(
+      and(
+        eq(todos.userId, userId),
+        eq(todos.status, 'open'),
+        isNotNull(todos.dueAt),
+        lte(todos.dueAt, in7),
+      ),
+    )
+    .orderBy(asc(todos.dueAt))
+    .limit(15)
+  const upcomingTodos = todoRows
+    .filter((r) => r.dueAt !== null)
+    .map((r) => ({
+      id: r.id,
+      title: r.title,
+      dueAt: r.dueAt as Date,
+      priority: r.priority,
+      applicationId: r.applicationId,
+    }))
+
   return {
     userId,
     userEmail: user.email,
@@ -239,6 +280,7 @@ export async function gatherPipelineSnapshot(
     upcomingInterviews,
     topDiscoveries,
     staleApplications,
+    upcomingTodos,
   }
 }
 
