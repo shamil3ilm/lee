@@ -203,3 +203,18 @@ export const interviewPrepPackSchema = z.object({
 export type InterviewPrepPack = z.infer<typeof interviewPrepPackSchema>
 export type CompanyResearch = z.infer<typeof companyResearchSchema>
 export type LikelyQuestion = z.infer<typeof likelyQuestionSchema>
+
+// ---------------------------------------------------------------------------
+// LaTeX document (v5) — Overleaf-like editor. Stored as documents.content on
+// kind='latex_cv' or 'latex_cover_letter'.
+// ---------------------------------------------------------------------------
+
+export const latexDocumentContentSchema = z.object({
+  source: z.string().default(''),
+  templateId: z.string().optional(),
+  compiledAt: z.string().optional(),
+  compileError: z.string().optional(),
+  compileLog: z.string().optional(),
+})
+
+export type LatexDocumentContent = z.infer<typeof latexDocumentContentSchema>

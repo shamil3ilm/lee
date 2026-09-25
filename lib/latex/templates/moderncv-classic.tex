@@ -1,0 +1,34 @@
+%% moderncv-classic template — seeded by Employ v5.
+%% Compiles with pdflatex. Uses the ModernCV CTAN package (classic style).
+\documentclass[11pt,a4paper,sans]{moderncv}
+
+\moderncvstyle{classic}
+\moderncvcolor{blue}
+
+\usepackage[scale=0.82]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+
+\name{{{first_name}}}{{{last_name}}}
+\title{{{headline}}}
+{{contact_line}}
+
+\begin{document}
+\makecvtitle
+
+\section{Summary}
+{{summary}}
+
+\section{Experience}
+{{experience_block}}
+
+\section{Projects}
+{{projects_block}}
+
+\section{Education}
+{{education_block}}
+
+\section{Skills}
+{{skills_block}}
+
+\end{document}

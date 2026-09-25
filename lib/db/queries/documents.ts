@@ -12,6 +12,8 @@ export type DocumentKind =
   | 'outreach_linkedin_message'
   | 'outreach_recruiter_reply'
   | 'interview_prep_pack'
+  | 'latex_cv'
+  | 'latex_cover_letter'
 
 export interface ListOptions {
   applicationId?: string

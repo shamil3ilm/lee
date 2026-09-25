@@ -15,6 +15,16 @@ const nextConfig: NextConfig = {
     // bundler mis-resolves; loading it externally at runtime keeps it stable.
     '@react-pdf/renderer',
   ],
+  // The LaTeX templates in lib/latex/templates/*.tex are read via fs at
+  // runtime; Next's file-tracing doesn't pick them up automatically because
+  // they aren't statically imported. Tell the tracer to bundle them so
+  // Vercel Lambdas ship them alongside the compiled code.
+  outputFileTracingIncludes: {
+    '/api/latex/compile': ['./lib/latex/templates/**/*.tex'],
+    '/api/documents/[id]/pdf': ['./lib/latex/templates/**/*.tex'],
+    '/documents/new/latex': ['./lib/latex/templates/**/*.tex'],
+    '/documents/[id]/edit': ['./lib/latex/templates/**/*.tex'],
+  },
 };
 
 export default nextConfig;

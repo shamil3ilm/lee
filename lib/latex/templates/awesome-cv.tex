@@ -1,0 +1,56 @@
+%% awesome-cv template — seeded by Employ v5.
+%% This is a self-contained rendition of the "awesome-cv" GitHub style using
+%% CTAN packages only (no custom .cls file needed for latexonline.cc).
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=0.9in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{fontawesome5}
+\usepackage{lmodern}
+
+\definecolor{accent}{HTML}{2E5CB8}
+\definecolor{muted}{HTML}{555555}
+
+\titleformat{\section}
+  {\Large\bfseries\color{accent}}
+  {}{0em}{}[\vspace{-4pt}\color{accent}\hrule\vspace{2pt}]
+\titlespacing*{\section}{0pt}{10pt}{4pt}
+
+\setlist[itemize]{leftmargin=1.2em,itemsep=0pt,parsep=0pt,topsep=2pt}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+
+\newcommand{\entry}[4]{%
+  \noindent\textbf{#1} \hfill \textcolor{muted}{#4}\\%
+  \textit{#2} \hfill \textcolor{muted}{#3}\vspace{2pt}}
+
+\begin{document}
+
+\begin{center}
+  {\Huge\bfseries\color{accent} {{name}}}\\[4pt]
+  {\large\color{muted} {{headline}}}\\[6pt]
+  {\small {{contact_line}}}
+\end{center}
+
+\section*{Summary}
+{{summary}}
+
+\section*{Experience}
+{{experience_block}}
+
+\section*{Projects}
+{{projects_block}}
+
+\section*{Education}
+{{education_block}}
+
+\section*{Skills}
+{{skills_block}}
+
+\end{document}
