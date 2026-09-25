@@ -25,6 +25,13 @@ export const envSchema = z
     FIRECRAWL_API_KEY: z.string().optional(),
     GITHUB_TOKEN: z.string().optional(),
     CRON_SECRET: z.string().min(32),
+    // v8 — decision provider selection. Default runs Groq (existing key)
+    // with a heuristic-on-failure fallback. `laya` activates a self-hosted
+    // Laya Space via HTTP; kept optional in v8 because the endpoint is
+    // deferred to v8.1 and the composed provider handles Laya being absent.
+    DECISION_PROVIDER: z.enum(['groq', 'heuristic', 'laya']).optional().default('groq'),
+    LAYA_ENDPOINT: z.string().url().optional(),
+    LAYA_API_KEY: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.AI_PROVIDER === 'gemini' && !data.GEMINI_API_KEY) {
