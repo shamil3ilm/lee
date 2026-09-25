@@ -230,9 +230,18 @@ export async function chat(
     signal: withTimeout(opts.signal, opts.timeoutMs ?? DEFAULT_TIMEOUT_MS),
   }
   const start = now()
+  const url = `${ep.baseUrl}/chat/completions`
   let res: Response
   try {
-    res = await fetchOnceWithNetworkRetry(f, `${ep.baseUrl}/chat/completions`, init)
+    res = await fetchOnceWithNetworkRetry(f, url, init)
+    // Compatibility fallback (not a quota retry): a few OpenAI-compatible
+    // backends reject `stream_options`. On a 400 for a streaming request,
+    // resend once without it — usage tokens may then be missing.
+    if (stream && res.status === 400) {
+      const body = buildBody(model, req, stream)
+      delete body.stream_options
+      res = await fetchOnceWithNetworkRetry(f, url, { ...init, body: JSON.stringify(body) })
+    }
   } catch (e) {
     if (isAbort(e)) throw new ProviderError(`${ep.provider} timed out.`, { code: 'timeout' })
     throw new ProviderError(`Could not reach ${ep.provider}.`, { code: 'network' })

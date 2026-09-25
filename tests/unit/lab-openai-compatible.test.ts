@@ -187,6 +187,22 @@ describe('chat (streaming)', () => {
     expect(r.metrics.inputTokens).toBe(3)
   })
 
+  it('resends once without stream_options when a backend rejects it (400)', async () => {
+    const f = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { message: 'unknown field stream_options' } }), { status: 400 }))
+      .mockResolvedValueOnce(sseResponse(['data: {"choices":[{"delta":{"content":"ok"}}]}\n\n', 'data: [DONE]\n\n']))
+    const r = await chat(ep, 'm', { messages: [{ role: 'user', content: 'x' }] }, {
+      stream: true,
+      fetchImpl: f as unknown as typeof fetch,
+    })
+    expect(r.text).toBe('ok')
+    expect(f).toHaveBeenCalledTimes(2)
+    const second = JSON.parse(String((f.mock.calls[1]?.[1] as RequestInit).body)) as Record<string, unknown>
+    expect(second.stream_options).toBeUndefined()
+    expect(second.stream).toBe(true)
+  })
+
   it('surfaces a mid-stream rate-limit error', async () => {
     const f = vi.fn(async () =>
       sseResponse(['data: {"error":{"message":"Rate limit exceeded"}}\n\n']),
