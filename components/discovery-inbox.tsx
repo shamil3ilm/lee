@@ -92,10 +92,10 @@ export function DiscoveryInbox(props: DiscoveryInboxProps) {
       <EmptyState
         icon={Sparkles}
         title="No discoveries here"
-        description="Add sources at Settings → Sources to start feeding the pipeline."
+        description="Discovery is fed by your sources. Add or tune them in Settings › Sources."
         action={
-          <Button asChild size="sm" variant="outline">
-            <Link href="/settings/sources">Manage sources</Link>
+          <Button asChild size="sm">
+            <Link href="/settings/sources">Set up sources</Link>
           </Button>
         }
       />

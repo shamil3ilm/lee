@@ -15,6 +15,7 @@ import { OutreachCard } from '@/components/outreach-card'
 import { PrepPackCard } from '@/components/prep-pack-card'
 import { TodosCard } from '@/components/todos-card'
 import { PageHeader } from '@/components/page-header'
+import { Breadcrumbs } from '@/components/breadcrumbs'
 import { Timeline, mergeTimeline, type TimelineActivity, type TimelineStage } from '@/components/timeline'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -135,6 +136,18 @@ export default async function ApplicationDetail({
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs
+        className="-mb-3"
+        items={[
+          { label: 'Apply' },
+          { label: 'Applications', href: '/applications' },
+          {
+            label: app.job.company?.name
+              ? `${app.job.company.name} — ${app.job.title}`
+              : app.job.title,
+          },
+        ]}
+      />
       <PageHeader
         title={app.job.title}
         description={app.job.company?.name ?? undefined}

@@ -165,13 +165,10 @@ export function DocumentsTable({ documents, currentFilter }: DocumentsTableProps
           <CardContent className="flex flex-col items-center gap-2 py-12 text-center text-sm text-muted-foreground">
             <FileText className="size-6" />
             <p className="font-medium text-foreground">No documents yet.</p>
-            <p>
-              Populate your CV at{' '}
-              <Link href="/settings/cv" className="text-primary hover:underline">
-                Settings → CV
-              </Link>
-              .
-            </p>
+            <p>Tailored CVs and cover letters start from your master CV in Settings › CV.</p>
+            <Button asChild size="sm" className="mt-1">
+              <Link href="/settings/cv">Set up your CV</Link>
+            </Button>
           </CardContent>
         </Card>
       ) : (

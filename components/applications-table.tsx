@@ -131,16 +131,35 @@ export function ApplicationsTable({ rows, initialFilter = 'all' }: ApplicationsT
       </div>
 
       {sorted.length === 0 ? (
-        <EmptyState
-          icon={Briefcase}
-          title="No applications match this filter."
-          description={filter === 'all' ? 'Add your first application to get started.' : 'Try a different status filter.'}
-          action={
-            <Button asChild size="sm" variant="outline">
-              <Link href="/applications/new">Add application</Link>
-            </Button>
-          }
-        />
+        rows.length === 0 ? (
+          // Journey cue: nothing tracked yet → the previous step is Discovery.
+          <EmptyState
+            icon={Briefcase}
+            title="No applications yet"
+            description="Find roles worth applying to in Discovery, or add one you already have in mind."
+            action={
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button asChild size="sm">
+                  <Link href="/discoveries">Find roles in Discovery</Link>
+                </Button>
+                <Button asChild size="sm" variant="outline">
+                  <Link href="/applications/new">Add application</Link>
+                </Button>
+              </div>
+            }
+          />
+        ) : (
+          <EmptyState
+            icon={Briefcase}
+            title="No applications match this filter."
+            description="Try a different status filter."
+            action={
+              <Button asChild size="sm" variant="outline">
+                <Link href="/applications/new">Add application</Link>
+              </Button>
+            }
+          />
+        )
       ) : (
         <div className="overflow-hidden rounded-lg border">
           {/*

@@ -15,6 +15,7 @@ import { CompanyInterestPicker } from '@/components/company-interest-picker'
 import { CompanyStancePicker } from '@/components/company-stance-picker'
 import { EmptyState } from '@/components/empty-state'
 import { PageHeader } from '@/components/page-header'
+import { Breadcrumbs } from '@/components/breadcrumbs'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { shortDate } from '@/lib/ui/date'
@@ -48,6 +49,14 @@ export default async function CompanyDetailPage({
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs
+        className="-mb-3"
+        items={[
+          { label: 'Find' },
+          { label: 'Companies', href: '/companies' },
+          { label: company.name },
+        ]}
+      />
       <PageHeader
         title={company.name}
         description={company.domain ?? undefined}

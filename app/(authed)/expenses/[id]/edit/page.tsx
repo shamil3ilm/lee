@@ -4,6 +4,7 @@ import { ChevronLeft } from 'lucide-react'
 import { requireUserId } from '@/lib/auth/require-session'
 import * as expensesQ from '@/lib/db/queries/expenses'
 import { PageHeader } from '@/components/page-header'
+import { Breadcrumbs } from '@/components/breadcrumbs'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ExpenseForm } from '@/components/expense-form'
@@ -22,6 +23,14 @@ export default async function EditExpensePage({ params }: EditExpensePageProps) 
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs
+        className="-mb-3"
+        items={[
+          { label: 'Money' },
+          { label: 'Expenses', href: '/expenses' },
+          { label: expense.vendor?.trim() || 'Edit expense' },
+        ]}
+      />
       <PageHeader
         title="Edit expense"
         description="Update amount, category, vendor, or notes."

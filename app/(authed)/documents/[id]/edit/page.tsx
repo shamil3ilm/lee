@@ -4,6 +4,7 @@ import * as documentsQ from '@/lib/db/queries/documents'
 import * as assetsQ from '@/lib/db/queries/documentAssets'
 import { latexDocumentContentSchema } from '@/lib/documents/types'
 import { LatexEditor } from '@/components/latex-editor'
+import { Breadcrumbs } from '@/components/breadcrumbs'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,16 +29,26 @@ export default async function EditLatexPage({ params }: EditPageProps) {
   const initialAssets = await assetsQ.list(userId, doc.id)
 
   return (
-    <LatexEditor
-      documentId={doc.id}
-      initialTitle={doc.title}
-      initialSource={initialSource}
-      initialError={
-        compileError
-          ? { message: compileError, log: compileLog ?? '' }
-          : null
-      }
-      initialAssets={initialAssets}
-    />
+    <div className="space-y-2">
+      <Breadcrumbs
+        items={[
+          { label: 'Apply' },
+          { label: 'Documents', href: '/documents' },
+          { label: doc.title },
+        ]}
+      />
+      <LatexEditor
+        className="h-[calc(100vh-8rem)]"
+        documentId={doc.id}
+        initialTitle={doc.title}
+        initialSource={initialSource}
+        initialError={
+          compileError
+            ? { message: compileError, log: compileLog ?? '' }
+            : null
+        }
+        initialAssets={initialAssets}
+      />
+    </div>
   )
 }

@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { CheckSquare } from 'lucide-react'
 import type { Todo } from '@/lib/db/queries/todos'
 import { TodoRow } from '@/components/todo-row'
@@ -58,6 +59,15 @@ export function TodosList({
         <CheckSquare className="size-6" />
         <p className="font-medium text-foreground">Inbox zero.</p>
         <p>Add a todo above to get started.</p>
+        {hideApplicationChip ? null : (
+          <p>
+            Or review your{' '}
+            <Link href="/applications" className="text-primary hover:underline">
+              Applications
+            </Link>{' '}
+            for the next step to plan.
+          </p>
+        )}
       </div>
     )
   }

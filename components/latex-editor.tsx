@@ -51,6 +51,8 @@ interface LatexEditorProps {
   initialSource: string
   initialError: { message: string; log: string } | null
   initialAssets: AssetMetadata[]
+  /** Overrides the default full-viewport height (e.g. when a breadcrumb sits above). */
+  className?: string
 }
 
 type CompileError = { message: string; log: string }
@@ -63,6 +65,7 @@ export function LatexEditor({
   initialSource,
   initialError,
   initialAssets,
+  className,
 }: LatexEditorProps) {
   const [source, setSource] = useState(initialSource)
   const [title, setTitle] = useState(initialTitle)
@@ -261,7 +264,7 @@ export function LatexEditor({
   const hint = error ? extractLatexHint(error.log) : null
 
   return (
-    <div className="flex h-[calc(100vh-6rem)] flex-col">
+    <div className={cn('flex h-[calc(100vh-6rem)] flex-col', className)}>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-background px-3 py-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <Button asChild variant="ghost" size="icon" aria-label="Back to documents">
