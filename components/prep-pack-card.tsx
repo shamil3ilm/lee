@@ -24,6 +24,8 @@ import type {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { FeedbackButtons } from '@/components/feedback-buttons'
+import { logImplicitAction } from '@/lib/ui/implicit-signals'
 import { relativeFromNow } from '@/lib/ui/date'
 
 interface PrepPackCardProps {
@@ -107,8 +109,9 @@ export function PrepPackCard({ applicationId, stages, prepDocs }: PrepPackCardPr
     return list
   }, [prepDocs])
 
-  async function generate(stage: InterviewStage): Promise<void> {
+  async function generate(stage: InterviewStage, priorDocId?: string): Promise<void> {
     setBusyStageId(stage.id)
+    if (priorDocId) void logImplicitAction(priorDocId, 'regenerated')
     try {
       const res = await fetch(
         `/api/applications/${applicationId}/documents/generate-prep-pack`,
@@ -259,13 +262,14 @@ export function PrepPackCard({ applicationId, stages, prepDocs }: PrepPackCardPr
                     talkingPoints={entry.pack.talkingPoints}
                     redFlags={entry.pack.redFlags}
                   />
-                  <div className="flex items-center justify-end">
+                  <div className="flex items-center justify-between">
+                    <FeedbackButtons documentId={entry.doc.id} caption={null} />
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        void generate(stage)
+                        void generate(stage, entry.doc.id)
                       }}
                       disabled={busy}
                     >

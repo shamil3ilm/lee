@@ -19,6 +19,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { VoiceInputButton } from '@/components/voice-input-button'
 import { StalenessBanner } from '@/components/staleness-banner'
+import { FeedbackButtons } from '@/components/feedback-buttons'
+import { logImplicitAction } from '@/lib/ui/implicit-signals'
 import { relativeFromNow } from '@/lib/ui/date'
 
 type OutreachKind =
@@ -144,8 +146,15 @@ export function OutreachCard({
     [outreachDocs],
   )
 
-  async function generate(tab: Exclude<TabValue, 'followup'>): Promise<void> {
+  async function generate(
+    tab: Exclude<TabValue, 'followup'>,
+    priorDocId?: string,
+  ): Promise<void> {
     setBusyTab(tab)
+    // v10 implicit-signal: if the user is regenerating on top of an existing
+    // draft, log a 'regenerated' action against that draft's underlying call
+    // (implicit thumbs-down). Best-effort — never blocks the regeneration.
+    if (priorDocId) void logImplicitAction(priorDocId, 'regenerated')
     try {
       const res = await fetch(
         `/api/applications/${applicationId}/documents/generate-outreach`,
@@ -187,8 +196,12 @@ export function OutreachCard({
     }
   }
 
-  async function generateFollowup(days: FollowupInterval): Promise<void> {
+  async function generateFollowup(
+    days: FollowupInterval,
+    priorDocId?: string,
+  ): Promise<void> {
     setBusyFollowup(days)
+    if (priorDocId) void logImplicitAction(priorDocId, 'regenerated')
     try {
       const res = await fetch(
         `/api/applications/${applicationId}/documents/generate-followup`,
@@ -229,10 +242,14 @@ export function OutreachCard({
     }
   }
 
-  async function copyToClipboard(text: string): Promise<void> {
+  async function copyToClipboard(text: string, documentId?: string): Promise<void> {
     try {
       await navigator.clipboard.writeText(text)
       toast.success('Copied to clipboard')
+      // v10 implicit-signal: log a 'used' action against the underlying call
+      // so analytics can distinguish drafts that got sent from drafts that
+      // sat unused. Best-effort; never blocks the copy.
+      if (documentId) void logImplicitAction(documentId, 'used')
     } catch {
       toast.error('Could not copy to clipboard.')
     }
@@ -316,7 +333,7 @@ export function OutreachCard({
             variant="ghost"
             size="sm"
             onClick={() => {
-              void generate(tab)
+              void generate(tab, latest.id)
             }}
             disabled={busy}
           >
@@ -332,7 +349,7 @@ export function OutreachCard({
             variant="outline"
             size="sm"
             onClick={() => {
-              void copyToClipboard(currentBody)
+              void copyToClipboard(currentBody, latest.id)
             }}
             disabled={currentBody.length === 0}
           >
@@ -340,6 +357,7 @@ export function OutreachCard({
             Copy
           </Button>
         </div>
+        <FeedbackButtons documentId={latest.id} className="pt-1" />
       </div>
     )
   }
@@ -457,7 +475,7 @@ export function OutreachCard({
                       size="sm"
                       className="h-7"
                       onClick={() => {
-                        void copyToClipboard(currentBody)
+                        void copyToClipboard(currentBody, doc.id)
                       }}
                       disabled={currentBody.length === 0}
                     >
@@ -466,6 +484,7 @@ export function OutreachCard({
                     </Button>
                   </div>
                 </div>
+                <FeedbackButtons documentId={doc.id} className="pt-2" />
               </div>
             )
           })}

@@ -33,6 +33,8 @@ import {
 import { relativeFromNow } from '@/lib/ui/date'
 import { MergeDocumentsDialog } from '@/components/merge-documents-dialog'
 import { StalenessBadge } from '@/components/staleness-badge'
+import { FeedbackButtons } from '@/components/feedback-buttons'
+import { logImplicitAction } from '@/lib/ui/implicit-signals'
 
 type DocumentKind =
   | 'master_cv'
@@ -89,8 +91,12 @@ export function DocumentsCard({ applicationId, documents }: DocumentsCardProps) 
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<Document | null>(null)
 
-  async function generate(kind: 'tailored' | 'cover_letter'): Promise<void> {
+  async function generate(
+    kind: 'tailored' | 'cover_letter',
+    priorDocId?: string,
+  ): Promise<void> {
     setBusy(kind)
+    if (priorDocId) void logImplicitAction(priorDocId, 'regenerated')
     try {
       const endpoint =
         kind === 'tailored'
@@ -126,12 +132,17 @@ export function DocumentsCard({ applicationId, documents }: DocumentsCardProps) 
   async function regenerate(doc: Document): Promise<void> {
     const kind = doc.kind as DocumentKind
     if (kind === 'tailored_cv') {
-      await generate('tailored')
+      await generate('tailored', doc.id)
     } else if (kind === 'cover_letter') {
-      await generate('cover_letter')
+      await generate('cover_letter', doc.id)
     } else {
       toast.error('Master CV is regenerated from Settings → CV.')
     }
+  }
+
+  // Only AI-generated docs get thumbs; the master CV is user-authored.
+  function isRatable(kind: DocumentKind): boolean {
+    return kind === 'tailored_cv' || kind === 'cover_letter'
   }
 
   async function performDelete(doc: Document): Promise<void> {
@@ -189,6 +200,13 @@ export function DocumentsCard({ applicationId, documents }: DocumentsCardProps) 
                       </span>
                       <StalenessBadge documentId={doc.id} />
                     </div>
+                    {isRatable(kind) ? (
+                      <FeedbackButtons
+                        documentId={doc.id}
+                        caption={null}
+                        className="mt-1"
+                      />
+                    ) : null}
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

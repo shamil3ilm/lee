@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
+import { FeedbackButtons } from '@/components/feedback-buttons'
 
 const DEBRIEF_TEMPLATE = `## What went well
 -
@@ -195,21 +196,24 @@ export function DebriefDialog({
               {generatingAI ? 'Generating…' : 'Generate AI summary'}
             </Button>
             {lastGeneratedDocId ? (
-              <Button
-                asChild
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="text-xs"
-              >
-                <Link
-                  href={`/api/documents/${lastGeneratedDocId}/pdf`}
-                  target="_blank"
+              <div className="flex items-center gap-2">
+                <Button
+                  asChild
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs"
                 >
-                  <Download className="size-3.5" />
-                  Download AI summary
-                </Link>
-              </Button>
+                  <Link
+                    href={`/api/documents/${lastGeneratedDocId}/pdf`}
+                    target="_blank"
+                  >
+                    <Download className="size-3.5" />
+                    Download AI summary
+                  </Link>
+                </Button>
+                <FeedbackButtons documentId={lastGeneratedDocId} caption={null} />
+              </div>
             ) : null}
           </div>
         </div>
