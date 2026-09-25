@@ -1,4 +1,8 @@
-import { EXPENSE_CATEGORIES, isExpenseCategory, type ExpenseCategory } from '@/lib/db/queries/expenses'
+import {
+  EXPENSE_CATEGORIES,
+  isExpenseCategory,
+  type ExpenseCategory,
+} from '@/lib/expenses/categories'
 
 /**
  * Very small RFC-4180 CSV parser — supports quoted fields with embedded

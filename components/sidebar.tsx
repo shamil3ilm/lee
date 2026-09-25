@@ -18,6 +18,7 @@ import {
   Wallet,
   Target,
   Upload,
+  Layers,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -41,6 +42,7 @@ const SECTIONS: NavSection[] = [
       { href: '/analytics', label: 'Analytics', icon: BarChart3 },
       { href: '/applications', label: 'Applications', icon: Briefcase },
       { href: '/documents', label: 'Documents', icon: FileCheck2 },
+      { href: '/documents/merge', label: 'Merge', icon: Layers },
       { href: '/discoveries', label: 'Discovery', icon: Sparkles },
     ],
   },

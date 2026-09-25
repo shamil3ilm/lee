@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { EXPENSE_CATEGORIES } from '@/lib/db/queries/expenses'
+import { EXPENSE_CATEGORIES } from '@/lib/expenses/categories'
 
 interface ExpenseFormProps {
   mode: 'create' | 'edit'

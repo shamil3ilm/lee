@@ -31,6 +31,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { relativeFromNow } from '@/lib/ui/date'
+import { MergeDocumentsDialog } from '@/components/merge-documents-dialog'
 
 type DocumentKind =
   | 'master_cv'
@@ -38,6 +39,7 @@ type DocumentKind =
   | 'cover_letter'
   | 'latex_cv'
   | 'latex_cover_letter'
+  | 'merged_pdf'
 
 interface DocumentsCardProps {
   applicationId: string
@@ -50,6 +52,7 @@ const KIND_LABELS: Record<DocumentKind, string> = {
   cover_letter: 'Cover letter',
   latex_cv: 'LaTeX CV',
   latex_cover_letter: 'LaTeX Letter',
+  merged_pdf: 'Merged',
 }
 
 const KIND_BADGE: Record<
@@ -61,6 +64,7 @@ const KIND_BADGE: Record<
   cover_letter: 'blue',
   latex_cv: 'indigo',
   latex_cover_letter: 'indigo',
+  merged_pdf: 'neutral',
 }
 
 function isLatexKind(kind: DocumentKind): boolean {
@@ -259,6 +263,15 @@ export function DocumentsCard({ applicationId, documents }: DocumentsCardProps) 
             {busy === 'cover_letter' ? 'Generating…' : '+ Draft cover letter'}
           </Button>
         </div>
+        {documents.length > 0 ? (
+          <div className="pt-1">
+            <MergeDocumentsDialog
+              documents={documents}
+              applicationId={applicationId}
+              triggerLabel="Merge documents"
+            />
+          </div>
+        ) : null}
       </CardContent>
 
       <Dialog

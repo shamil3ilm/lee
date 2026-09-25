@@ -1,46 +1,17 @@
 import { and, desc, eq, gte, lte, sql } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import { expenses } from '@/lib/db/schema'
+// Re-export the client-safe category enum so existing server-side callers
+// keep working; the actual data lives in `lib/expenses/categories.ts` so
+// client bundles can pull the constants without dragging in Drizzle.
+export {
+  EXPENSE_CATEGORIES,
+  isExpenseCategory,
+  type ExpenseCategory,
+} from '@/lib/expenses/categories'
 
 export type Expense = typeof expenses.$inferSelect
 export type NewExpense = typeof expenses.$inferInsert
-
-/**
- * Ordered list of top-level categories the UI knows how to render (labels,
- * colours, icons). New categories should be appended, not reordered — every
- * consumer (charts, budget form, quick-add select) reads this array directly.
- */
-export const EXPENSE_CATEGORIES = [
-  'subscription',
-  'food',
-  'groceries',
-  'dining',
-  'electricity',
-  'utilities',
-  'water',
-  'internet',
-  'transport',
-  'fuel',
-  'housing',
-  'rent',
-  'mortgage',
-  'health',
-  'insurance',
-  'entertainment',
-  'education',
-  'shopping',
-  'travel',
-  'gifts',
-  'fees',
-  'tax',
-  'other',
-] as const
-
-export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
-
-export function isExpenseCategory(v: string): v is ExpenseCategory {
-  return (EXPENSE_CATEGORIES as readonly string[]).includes(v)
-}
 
 /** Return `YYYY-MM-01` and `YYYY-MM-31` bounds for a `YYYY-MM` string. */
 function monthBounds(yyyyMm: string): { from: string; to: string } {

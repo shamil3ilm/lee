@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { deleteBudget, upsertBudget } from '@/app/(authed)/expenses/actions'
-import { EXPENSE_CATEGORIES } from '@/lib/db/queries/expenses'
+import { EXPENSE_CATEGORIES } from '@/lib/expenses/categories'
 import { formatMoney } from '@/lib/ui/money'
 
 interface BudgetFormProps {

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Loader2, Pencil, Trash2 } from 'lucide-react'
 import type { Expense } from '@/lib/db/queries/expenses'
+// (Type-only import — Drizzle types erase at compile time, no runtime cost.)
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {

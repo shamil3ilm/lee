@@ -30,6 +30,7 @@ type DocumentKind =
   | 'interview_prep_pack'
   | 'latex_cv'
   | 'latex_cover_letter'
+  | 'merged_pdf'
 
 // The filter chip value maps to the URL `?kind=` param. The bespoke `outreach`,
 // `interview_prep`, and `latex` values are prefix-matched server-side in the
@@ -43,6 +44,7 @@ type FilterValue =
   | 'outreach'
   | 'interview_prep'
   | 'latex'
+  | 'merged'
 
 interface DocumentsTableProps {
   documents: Document[]
@@ -60,6 +62,7 @@ const KIND_LABELS: Record<DocumentKind, string> = {
   interview_prep_pack: 'Interview Prep',
   latex_cv: 'LaTeX CV',
   latex_cover_letter: 'LaTeX Letter',
+  merged_pdf: 'Merged',
 }
 
 const KIND_BADGE: Record<
@@ -78,6 +81,7 @@ const KIND_BADGE: Record<
   interview_prep_pack: 'emerald',
   latex_cv: 'indigo',
   latex_cover_letter: 'indigo',
+  merged_pdf: 'neutral',
 }
 
 const FILTER_CHIPS: ReadonlyArray<{ label: string; value: FilterValue }> = [
@@ -88,6 +92,7 @@ const FILTER_CHIPS: ReadonlyArray<{ label: string; value: FilterValue }> = [
   { label: 'Outreach', value: 'outreach' },
   { label: 'Interview Prep', value: 'interview_prep' },
   { label: 'LaTeX', value: 'latex' },
+  { label: 'Merged', value: 'merged' },
 ]
 
 function isLatexKind(kind: DocumentKind): boolean {
