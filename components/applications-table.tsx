@@ -141,7 +141,13 @@ export function ApplicationsTable({ rows }: ApplicationsTableProps) {
         />
       ) : (
         <div className="overflow-hidden rounded-lg border">
-          <table className="w-full text-sm">
+          {/*
+            Wrap the table in an overflow-x-auto scroller so 6 columns don't
+            force horizontal page overflow on mobile. `min-w-[720px]` keeps
+            columns readable inside the scroller; the row stays clickable.
+          */}
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-sm">
             <thead className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <Th onClick={() => toggleSort('company')} active={sortKey === 'company'} dir={sortDir}>
@@ -222,6 +228,7 @@ export function ApplicationsTable({ rows }: ApplicationsTableProps) {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

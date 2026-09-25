@@ -70,13 +70,13 @@ export function DiscoveryFilters({
       className="mb-3 flex flex-wrap items-end gap-3 rounded-lg border bg-card/40 p-3"
       data-pending={isPending || undefined}
     >
-      <div className="space-y-1.5">
+      <div className="w-full space-y-1.5 sm:w-auto">
         <Label htmlFor="disc-status" className="text-xs">Status</Label>
         <Select
           value={status}
           onValueChange={(v) => update({ status: v })}
         >
-          <SelectTrigger id="disc-status" className="h-8 w-[130px]">
+          <SelectTrigger id="disc-status" className="h-8 w-full sm:w-[130px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -90,10 +90,10 @@ export function DiscoveryFilters({
       </div>
 
       {tab === 'jobs' ? (
-        <div className="space-y-1.5">
+        <div className="w-full space-y-1.5 sm:w-auto">
           <Label htmlFor="disc-sort" className="text-xs">Sort</Label>
           <Select value={sort} onValueChange={(v) => update({ sort: v })}>
-            <SelectTrigger id="disc-sort" className="h-8 w-[220px]">
+            <SelectTrigger id="disc-sort" className="h-8 w-full sm:w-[220px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -107,7 +107,7 @@ export function DiscoveryFilters({
         </div>
       ) : null}
 
-      <div className="min-w-[180px] flex-1 space-y-1.5">
+      <div className="w-full flex-1 space-y-1.5 sm:min-w-[180px]">
         <Label htmlFor="disc-min" className="flex items-center justify-between text-xs">
           <span>Min match score</span>
           <span className="tabular-nums text-muted-foreground">{minScore}</span>

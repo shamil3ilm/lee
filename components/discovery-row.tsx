@@ -100,7 +100,13 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-3">
-        <div className="flex items-start gap-3">
+        {/*
+          Mobile: content stacks (checkbox + meta on top, actions row below)
+          so long titles never push Save/Dismiss off-screen. sm+: original
+          side-by-side layout is preserved.
+        */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+          <div className="flex min-w-0 flex-1 items-start gap-3">
           {isActionable && onToggleSelect ? (
             <input
               type="checkbox"
@@ -138,7 +144,8 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
               </span>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-1">
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
             {n.applyUrl ? (
               <Button
                 asChild
@@ -221,7 +228,7 @@ export function CompanyDiscoveryRow({ item }: { item: DiscoveryRowCompany }) {
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-3">
-        <div className="flex items-start gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="truncate text-sm font-semibold">{n.name}</span>
@@ -253,7 +260,7 @@ export function CompanyDiscoveryRow({ item }: { item: DiscoveryRowCompany }) {
               </p>
             ) : null}
           </div>
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
             {isActionable ? (
               <>
                 <Button size="sm" onClick={handleSave} disabled={isPending}>

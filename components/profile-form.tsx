@@ -76,13 +76,19 @@ export function ProfileForm({ profile }: ProfileFormProps) {
   return (
     <form action={handleSubmit} className="space-y-4">
       <Tabs defaultValue="basics">
-        <TabsList>
-          <TabsTrigger value="basics">Basics</TabsTrigger>
-          <TabsTrigger value="skills">Skills</TabsTrigger>
-          <TabsTrigger value="location">Location</TabsTrigger>
-          <TabsTrigger value="preferences">Preferences</TabsTrigger>
-          <TabsTrigger value="narrative">Narrative</TabsTrigger>
-        </TabsList>
+        {/*
+          5 tabs at 390px would overflow. Horizontal-scroll wrapper keeps the
+          row single-line without expanding the page beyond the viewport.
+        */}
+        <div className="-mx-1 overflow-x-auto px-1">
+          <TabsList className="w-max">
+            <TabsTrigger value="basics">Basics</TabsTrigger>
+            <TabsTrigger value="skills">Skills</TabsTrigger>
+            <TabsTrigger value="location">Location</TabsTrigger>
+            <TabsTrigger value="preferences">Preferences</TabsTrigger>
+            <TabsTrigger value="narrative">Narrative</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="basics">
           <Card>

@@ -3,7 +3,16 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
-import { AlertTriangle, ChevronLeft, Download, Loader2, PlayCircle, Save } from 'lucide-react'
+import {
+  AlertTriangle,
+  ChevronLeft,
+  Download,
+  Eye,
+  FileCode2,
+  Loader2,
+  PlayCircle,
+  Save,
+} from 'lucide-react'
 import { loader, type OnMount } from '@monaco-editor/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -64,6 +73,10 @@ export function LatexEditor({
   const [showErrorPanel, setShowErrorPanel] = useState<boolean>(initialError !== null)
   const [assets, setAssets] = useState<AssetMetadata[]>(initialAssets)
   const [dragActive, setDragActive] = useState(false)
+  // Mobile-only pane toggle. Desktop (md+) always shows both side-by-side, so
+  // this state is ignored there; on mobile we swap between source and preview
+  // via a segmented control so neither pane gets a useless ~50vw column.
+  const [mobilePane, setMobilePane] = useState<'source' | 'preview'>('source')
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestSource = useRef(initialSource)
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null)
@@ -250,7 +263,7 @@ export function LatexEditor({
   return (
     <div className="flex h-[calc(100vh-6rem)] flex-col">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-background px-3 py-2">
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           <Button asChild variant="ghost" size="icon" aria-label="Back to documents">
             <Link href="/documents">
               <ChevronLeft className="size-4" />
@@ -259,18 +272,54 @@ export function LatexEditor({
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-72"
+            // Mobile: fill the row so the title is legible/edittable without
+            // horizontal scrolling. md+: cap at 18rem so it doesn't push the
+            // action cluster off-screen.
+            className="min-w-0 flex-1 md:w-72 md:max-w-72 md:flex-none"
             placeholder="Document title"
             aria-label="Document title"
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {compiling ? (
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <Loader2 className="size-3 animate-spin" />
               Compiling…
             </span>
           ) : null}
+          {/* Mobile-only pane toggle. Segmented button pair mirrors iOS/Android
+              conventions and lets the user swap views instead of squinting at
+              a 200px-wide iframe. */}
+          <div className="inline-flex items-center rounded-md border bg-muted p-0.5 md:hidden">
+            <button
+              type="button"
+              onClick={() => setMobilePane('source')}
+              className={cn(
+                'inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors',
+                mobilePane === 'source'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground',
+              )}
+              aria-pressed={mobilePane === 'source'}
+            >
+              <FileCode2 className="size-3.5" />
+              Source
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobilePane('preview')}
+              className={cn(
+                'inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors',
+                mobilePane === 'preview'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground',
+              )}
+              aria-pressed={mobilePane === 'preview'}
+            >
+              <Eye className="size-3.5" />
+              Preview
+            </button>
+          </div>
           <LatexAssetsDialog
             documentId={documentId}
             assets={assets}
@@ -285,7 +334,7 @@ export function LatexEditor({
             disabled={compiling}
           >
             <PlayCircle className="size-4" />
-            Compile
+            <span className="hidden sm:inline">Compile</span>
           </Button>
           <Button
             type="button"
@@ -294,7 +343,7 @@ export function LatexEditor({
             onClick={handleDownload}
           >
             <Download className="size-4" />
-            Download .tex
+            <span className="hidden sm:inline">Download .tex</span>
           </Button>
           <Button
             type="button"
@@ -304,13 +353,25 @@ export function LatexEditor({
             disabled={saving}
           >
             {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-            Save
+            <span className="hidden sm:inline">Save</span>
           </Button>
         </div>
       </div>
 
+      {/*
+        Layout:
+        - Mobile (<md): single column; only the currently-selected pane mounts
+          via the mobilePane toggle. Both are conditionally shown so Monaco
+          keeps its state and the iframe doesn't reload on toggle.
+        - md+: two-column split as before.
+      */}
       <div className="grid flex-1 grid-cols-1 overflow-hidden md:grid-cols-2">
-        <div className="relative h-full min-h-[400px] border-b md:border-b-0 md:border-r">
+        <div
+          className={cn(
+            'relative h-full min-h-[400px] border-b md:border-b-0 md:border-r',
+            mobilePane === 'preview' && 'hidden md:block',
+          )}
+        >
           <MonacoEditor
             height="100%"
             language="latex"
@@ -335,7 +396,12 @@ export function LatexEditor({
           ) : null}
         </div>
 
-        <div className="relative h-full min-h-[400px] bg-muted/20">
+        <div
+          className={cn(
+            'relative h-full min-h-[400px] bg-muted/20',
+            mobilePane === 'source' && 'hidden md:block',
+          )}
+        >
           <iframe
             key={previewKey}
             src={`/api/documents/${documentId}/pdf?v=${previewKey}`}

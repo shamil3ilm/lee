@@ -127,7 +127,12 @@ export function AIUsageCard({ data, className }: AIUsageCardProps) {
         ) : (
           <>
             <div className="overflow-hidden rounded-md border">
-              <table className="w-full text-xs">
+              {/*
+                7 columns won't fit at 390-768px viewport widths — wrap in a
+                horizontal scroller with a min-width so columns stay readable.
+              */}
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] text-xs">
                 <thead className="bg-muted/40">
                   <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground">
                     <th className="px-3 py-2 font-semibold">Provider</th>
@@ -163,6 +168,7 @@ export function AIUsageCard({ data, className }: AIUsageCardProps) {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
 
             <div>

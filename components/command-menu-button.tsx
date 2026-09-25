@@ -25,6 +25,17 @@ export function CommandMenuButton() {
 
   return (
     <>
+      {/* Mobile: icon-only chip so the header row never overflows on 390px viewports. */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => setOpen(true)}
+        className="sm:hidden"
+        aria-label="Open command menu"
+      >
+        <Search className="size-4" />
+      </Button>
+      {/* Desktop/tablet: full "Search" chip with ⌘K hint. */}
       <Button
         variant="outline"
         size="sm"

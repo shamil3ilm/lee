@@ -76,14 +76,21 @@ export function CvEditor({ initialCv, documentId }: CvEditorProps) {
       </div>
 
       <Tabs defaultValue="overview">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="experience">Experience</TabsTrigger>
-          <TabsTrigger value="projects">Projects</TabsTrigger>
-          <TabsTrigger value="education">Education</TabsTrigger>
-          <TabsTrigger value="skills">Skills</TabsTrigger>
-          <TabsTrigger value="import">Import</TabsTrigger>
-        </TabsList>
+        {/*
+          6 tabs on a 390px viewport would overflow. Wrap the TabsList in a
+          horizontal scroller so it stays a single row without pushing the
+          page wider than the viewport.
+        */}
+        <div className="-mx-1 overflow-x-auto px-1">
+          <TabsList className="w-max">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="experience">Experience</TabsTrigger>
+            <TabsTrigger value="projects">Projects</TabsTrigger>
+            <TabsTrigger value="education">Education</TabsTrigger>
+            <TabsTrigger value="skills">Skills</TabsTrigger>
+            <TabsTrigger value="import">Import</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="overview">
           <BasicsTab cv={cv} setCv={setCv} />
