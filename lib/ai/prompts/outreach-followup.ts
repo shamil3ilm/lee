@@ -9,6 +9,9 @@ import type { ApplicationWithJob } from '@/lib/db/queries/applications'
  * All intervals share the same shape (subject + body) so the OutreachDraft
  * schema round-trips regardless of daysSince.
  */
+// v10.1 — bump on intentional edits; see lib/ai/prompts/hash.ts for rationale.
+export const OUTREACH_FOLLOWUP_PROMPT_VERSION = '1.0.0'
+
 export const OUTREACH_FOLLOWUP_SYSTEM = `You draft a follow-up EMAIL from a candidate to a recruiter/hiring manager AFTER they have already applied.
 
 Rules for ALL intervals:

@@ -1,5 +1,8 @@
 import type { GitHubRepo } from '@/lib/documents/types'
 
+// v10.1 — bump on intentional edits; see lib/ai/prompts/hash.ts for rationale.
+export const DISTILL_GITHUB_PROMPT_VERSION = '1.0.0'
+
 export const DISTILL_GITHUB_SYSTEM = `You distill a list of GitHub public repos into a short "notable projects" list for a CV.
 
 Rules:

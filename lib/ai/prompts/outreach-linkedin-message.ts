@@ -1,6 +1,9 @@
 import type { MasterCV, OutreachTone } from '@/lib/documents/types'
 import type { ApplicationWithJob } from '@/lib/db/queries/applications'
 
+// v10.1 — bump on intentional edits; see lib/ai/prompts/hash.ts for rationale.
+export const OUTREACH_LINKEDIN_MESSAGE_PROMPT_VERSION = '1.0.0'
+
 export const OUTREACH_LINKEDIN_MESSAGE_SYSTEM = `You draft a follow-up LinkedIn message from a candidate to a recruiter/hiring manager AFTER the connection request has been accepted.
 
 Rules:

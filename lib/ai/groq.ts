@@ -1,17 +1,33 @@
-import { buildParseJobPrompt } from './prompts/parse-job'
-import { buildParseProfilePrompt } from './prompts/parse-profile'
-import { buildScoreJobPrompt } from './prompts/score-job'
-import { buildScoreCompanyPrompt } from './prompts/score-company'
-import { buildTailorCVPrompt } from './prompts/tailor-cv'
-import { buildCoverLetterPrompt } from './prompts/cover-letter'
-import { buildDistillGithubPrompt } from './prompts/distill-github'
-import { buildOutreachLinkedInConnectionPrompt } from './prompts/outreach-linkedin-connection'
-import { buildOutreachLinkedInMessagePrompt } from './prompts/outreach-linkedin-message'
-import { buildOutreachRecruiterReplyPrompt } from './prompts/outreach-recruiter-reply'
-import { buildFollowupPrompt } from './prompts/outreach-followup'
-import { buildInterviewPrepPrompt } from './prompts/interview-prep'
-import { buildInterviewDebriefPrompt } from './prompts/interview-debrief'
-import { buildGenerateLatexCVPrompt } from './prompts/generate-latex-cv'
+import { buildParseJobPrompt, PARSE_JOB_PROMPT_VERSION } from './prompts/parse-job'
+import { buildParseProfilePrompt, PARSE_PROFILE_PROMPT_VERSION } from './prompts/parse-profile'
+import { buildScoreJobPrompt, SCORE_JOB_PROMPT_VERSION } from './prompts/score-job'
+import { buildScoreCompanyPrompt, SCORE_COMPANY_PROMPT_VERSION } from './prompts/score-company'
+import { buildTailorCVPrompt, TAILOR_CV_PROMPT_VERSION } from './prompts/tailor-cv'
+import { buildCoverLetterPrompt, COVER_LETTER_PROMPT_VERSION } from './prompts/cover-letter'
+import { buildDistillGithubPrompt, DISTILL_GITHUB_PROMPT_VERSION } from './prompts/distill-github'
+import {
+  buildOutreachLinkedInConnectionPrompt,
+  OUTREACH_LINKEDIN_CONNECTION_PROMPT_VERSION,
+} from './prompts/outreach-linkedin-connection'
+import {
+  buildOutreachLinkedInMessagePrompt,
+  OUTREACH_LINKEDIN_MESSAGE_PROMPT_VERSION,
+} from './prompts/outreach-linkedin-message'
+import {
+  buildOutreachRecruiterReplyPrompt,
+  OUTREACH_RECRUITER_REPLY_PROMPT_VERSION,
+} from './prompts/outreach-recruiter-reply'
+import { buildFollowupPrompt, OUTREACH_FOLLOWUP_PROMPT_VERSION } from './prompts/outreach-followup'
+import { buildInterviewPrepPrompt, INTERVIEW_PREP_PROMPT_VERSION } from './prompts/interview-prep'
+import {
+  buildInterviewDebriefPrompt,
+  INTERVIEW_DEBRIEF_PROMPT_VERSION,
+} from './prompts/interview-debrief'
+import {
+  buildGenerateLatexCVPrompt,
+  GENERATE_LATEX_CV_PROMPT_VERSION,
+} from './prompts/generate-latex-cv'
+import { hashPrompt } from './prompts/hash'
 import {
   companyMatchResultSchema,
   jobMatchResultSchema,
@@ -101,6 +117,11 @@ export class GroqProvider implements AIProvider {
   private async generate(prompt: string, meta: CallMeta = {}): Promise<string> {
     const start = Date.now()
     const backoffs = [0, 1_000, 3_000]
+    // v10.1 — compute prompt hash once per generate() so retries share the key.
+    const metaWithHash: CallMeta = {
+      ...meta,
+      promptHash: meta.promptHash ?? hashPrompt(prompt),
+    }
     let lastError: unknown
     for (const wait of backoffs) {
       if (wait > 0) await new Promise((r) => setTimeout(r, wait))
@@ -111,7 +132,7 @@ export class GroqProvider implements AIProvider {
           latency: Date.now() - start,
           promptTokens,
           completionTokens,
-          meta,
+          meta: metaWithHash,
         })
         return text
       } catch (e) {
@@ -127,11 +148,16 @@ export class GroqProvider implements AIProvider {
       status: 'error',
       latency: Date.now() - start,
       error: lastError instanceof Error ? lastError.message : String(lastError),
-      meta,
+      meta: metaWithHash,
     })
     throw lastError
   }
 
+  /**
+   * v10.1 — inserts one ai_call_logs row (with prompt hash + version + doc
+   * link if provided) and fires `onLogged(callId)` when the caller wants to
+   * capture the inserted id for a foreign-key linkage.
+   */
   private async logCall(x: {
     status: string
     latency: number
@@ -143,42 +169,80 @@ export class GroqProvider implements AIProvider {
     try {
       const { db } = await import('@/lib/db/client')
       const { aiCallLogs } = await import('@/lib/db/schema')
-      await db.insert(aiCallLogs).values({
-        userId: x.meta?.userId ?? null,
-        provider: 'groq',
-        kind: x.meta?.kind ?? 'parse',
-        promptTokens: x.promptTokens ?? null,
-        completionTokens: x.completionTokens ?? null,
-        latencyMs: x.latency,
-        status: x.status,
-        error: x.error ?? null,
-        documentId: x.meta?.documentId ?? null,
-        signalCheckPassed: x.meta?.signalCheckPassed ?? null,
-        signalCheckCode: x.meta?.signalCheckCode ?? null,
-      })
+      const inserted = await db
+        .insert(aiCallLogs)
+        .values({
+          userId: x.meta?.userId ?? null,
+          provider: 'groq',
+          kind: x.meta?.kind ?? 'parse',
+          promptTokens: x.promptTokens ?? null,
+          completionTokens: x.completionTokens ?? null,
+          latencyMs: x.latency,
+          status: x.status,
+          error: x.error ?? null,
+          documentId: x.meta?.documentId ?? null,
+          signalCheckPassed: x.meta?.signalCheckPassed ?? null,
+          signalCheckCode: x.meta?.signalCheckCode ?? null,
+          promptHash: x.meta?.promptHash ?? null,
+          promptVersion: x.meta?.promptVersion ?? null,
+        })
+        .returning()
+      const id = inserted[0]?.id
+      if (id && x.meta?.onLogged) {
+        try {
+          x.meta.onLogged(id)
+        } catch {
+          /* callback must never break the call */
+        }
+      }
     } catch {
       /* logging must never break the call */
     }
   }
 
-  async parseJob(text: string): Promise<ParsedJob> {
-    const raw = await this.generate(buildParseJobPrompt(text), { kind: 'parse_job' })
+  async parseJob(text: string, meta: CallMeta = {}): Promise<ParsedJob> {
+    const raw = await this.generate(buildParseJobPrompt(text), {
+      ...meta,
+      kind: 'parse_job',
+      promptVersion: PARSE_JOB_PROMPT_VERSION,
+    })
     return parsedJobSchema.parse(JSON.parse(raw))
   }
 
-  async parseProfile(input: { cvText?: string; profileMd?: string }): Promise<ParsedProfile> {
-    const raw = await this.generate(buildParseProfilePrompt(input), { kind: 'parse_profile' })
+  async parseProfile(
+    input: { cvText?: string; profileMd?: string },
+    meta: CallMeta = {},
+  ): Promise<ParsedProfile> {
+    const raw = await this.generate(buildParseProfilePrompt(input), {
+      ...meta,
+      kind: 'parse_profile',
+      promptVersion: PARSE_PROFILE_PROMPT_VERSION,
+    })
     return parsedProfileSchema.parse(JSON.parse(raw))
   }
 
-  async scoreJob(job: NormalizedJob, profile: UserProfile): Promise<JobMatchResult> {
-    const raw = await this.generate(buildScoreJobPrompt(job, profile), { kind: 'score_job' })
+  async scoreJob(
+    job: NormalizedJob,
+    profile: UserProfile,
+    meta: CallMeta = {},
+  ): Promise<JobMatchResult> {
+    const raw = await this.generate(buildScoreJobPrompt(job, profile), {
+      ...meta,
+      kind: 'score_job',
+      promptVersion: SCORE_JOB_PROMPT_VERSION,
+    })
     return jobMatchResultSchema.parse(JSON.parse(raw))
   }
 
-  async scoreCompany(company: NormalizedCompany, profile: UserProfile): Promise<CompanyMatchResult> {
+  async scoreCompany(
+    company: NormalizedCompany,
+    profile: UserProfile,
+    meta: CallMeta = {},
+  ): Promise<CompanyMatchResult> {
     const raw = await this.generate(buildScoreCompanyPrompt(company, profile), {
+      ...meta,
       kind: 'score_company',
+      promptVersion: SCORE_COMPANY_PROMPT_VERSION,
     })
     return companyMatchResultSchema.parse(JSON.parse(raw))
   }
@@ -187,7 +251,10 @@ export class GroqProvider implements AIProvider {
     master: MasterCV
     application: ApplicationWithJob
   }): Promise<TailoredCV> {
-    const raw = await this.generate(buildTailorCVPrompt(input), { kind: 'tailored_cv' })
+    const raw = await this.generate(buildTailorCVPrompt(input), {
+      kind: 'tailored_cv',
+      promptVersion: TAILOR_CV_PROMPT_VERSION,
+    })
     return tailoredCvSchema.parse(JSON.parse(raw))
   }
 
@@ -195,13 +262,17 @@ export class GroqProvider implements AIProvider {
     master: MasterCV
     application: ApplicationWithJob
   }): Promise<CoverLetter> {
-    const raw = await this.generate(buildCoverLetterPrompt(input), { kind: 'cover_letter' })
+    const raw = await this.generate(buildCoverLetterPrompt(input), {
+      kind: 'cover_letter',
+      promptVersion: COVER_LETTER_PROMPT_VERSION,
+    })
     return coverLetterSchema.parse(JSON.parse(raw))
   }
 
   async distillGithubProjects(input: { repos: GitHubRepo[] }): Promise<CvProjects> {
     const raw = await this.generate(buildDistillGithubPrompt(input), {
       kind: 'distill_github',
+      promptVersion: DISTILL_GITHUB_PROMPT_VERSION,
     })
     // JSON mode often forces an object wrapper even when the prompt asks for
     // an array. Accept either shape.
@@ -224,7 +295,10 @@ export class GroqProvider implements AIProvider {
     daysSince?: number
   }): Promise<OutreachDraft> {
     const prompt = buildOutreachPromptGroq(input)
-    const raw = await this.generate(prompt, { kind: `outreach_${input.kind}` })
+    const raw = await this.generate(prompt, {
+      kind: `outreach_${input.kind}`,
+      promptVersion: outreachPromptVersionGroq(input.kind),
+    })
     return outreachDraftSchema.parse(JSON.parse(raw))
   }
 
@@ -236,6 +310,7 @@ export class GroqProvider implements AIProvider {
   }): Promise<InterviewPrepPack> {
     const raw = await this.generate(buildInterviewPrepPrompt(input), {
       kind: 'interview_prep_pack',
+      promptVersion: INTERVIEW_PREP_PROMPT_VERSION,
     })
     return interviewPrepPackSchema.parse(JSON.parse(raw))
   }
@@ -248,6 +323,7 @@ export class GroqProvider implements AIProvider {
   }): Promise<InterviewDebrief> {
     const raw = await this.generate(buildInterviewDebriefPrompt(input), {
       kind: 'interview_debrief',
+      promptVersion: INTERVIEW_DEBRIEF_PROMPT_VERSION,
     })
     return interviewDebriefSchema.parse(JSON.parse(raw))
   }
@@ -258,6 +334,7 @@ export class GroqProvider implements AIProvider {
   }): Promise<{ source: string }> {
     const raw = await this.generate(buildGenerateLatexCVPrompt(input), {
       kind: 'latex_cv',
+      promptVersion: GENERATE_LATEX_CV_PROMPT_VERSION,
     })
     let source: string
     try {
@@ -298,5 +375,19 @@ function buildOutreachPromptGroq(input: {
         tone: input.tone,
         daysSince: input.daysSince,
       })
+  }
+}
+
+/** v10.1 — map an OutreachKind to the prompt builder's VERSION constant. */
+function outreachPromptVersionGroq(kind: OutreachKind): string {
+  switch (kind) {
+    case 'linkedin_connection':
+      return OUTREACH_LINKEDIN_CONNECTION_PROMPT_VERSION
+    case 'linkedin_message':
+      return OUTREACH_LINKEDIN_MESSAGE_PROMPT_VERSION
+    case 'recruiter_reply':
+      return OUTREACH_RECRUITER_REPLY_PROMPT_VERSION
+    case 'followup_email':
+      return OUTREACH_FOLLOWUP_PROMPT_VERSION
   }
 }

@@ -406,6 +406,19 @@ export interface AISignalCheckBar {
   skipped: number
 }
 
+// v10.1 — per (kind, promptVersion) aggregation so analytics can spot which
+// prompt version is performing best. `ratingAvg` is null when the version
+// has no rated calls; `avgLatencyMs` is 0 for kinds that don't record latency.
+// (Uses `ratingAvg` for naming consistency with AIUsageRow above.)
+export interface AIPromptVersionRow {
+  kind: string
+  promptVersion: string
+  calls: number
+  ratingAvg: number | null
+  ratingCount: number
+  avgLatencyMs: number
+}
+
 export interface AIUsageStats {
   rows: AIUsageRow[]
   totalCalls: number
@@ -418,6 +431,9 @@ export interface AIUsageStats {
   signalSkipRate: number
   ratingAvg: number | null
   signalCheckByKind: AISignalCheckBar[]
+  // v10.1 — per-prompt-version breakdown. Sorted by kind, then by version so
+  // the table reads top-to-bottom as a version history per feature.
+  byPromptVersion: AIPromptVersionRow[]
 }
 
 /**
@@ -596,6 +612,43 @@ export async function aiUsageStats(userId: string, days = 30): Promise<AIUsageSt
   const ratingAvg =
     totalRatingCount > 0 ? Math.round((totalRatingSum / totalRatingCount) * 100) / 100 : null
 
+  // v10.1 — per (kind, promptVersion) breakdown. Rows with a null
+  // promptVersion (older logs from before this column existed) are surfaced
+  // under a synthetic 'unversioned' label so the table remains complete.
+  const versionRows = await db
+    .select({
+      kind: aiCallLogs.kind,
+      promptVersion: aiCallLogs.promptVersion,
+      calls: sql<number>`count(*)::int`,
+      avgLatencyMs: sql<number>`coalesce(avg(${aiCallLogs.latencyMs}), 0)::int`,
+      ratingAvg: sql<number | null>`avg(${aiCallLogs.userRating})::float`,
+      ratingCount: sql<number>`count(${aiCallLogs.userRating})::int`,
+    })
+    .from(aiCallLogs)
+    .where(sql`${aiCallLogs.userId} = ${userId} and ${aiCallLogs.createdAt} >= ${since}`)
+    .groupBy(aiCallLogs.kind, aiCallLogs.promptVersion)
+  const byPromptVersion: AIPromptVersionRow[] = versionRows
+    .map((r) => {
+      const ratingCount = Number(r.ratingCount)
+      const ratingAvgRaw = r.ratingAvg == null ? null : Number(r.ratingAvg)
+      return {
+        kind: r.kind,
+        promptVersion: r.promptVersion ?? 'unversioned',
+        calls: Number(r.calls),
+        avgLatencyMs: Number(r.avgLatencyMs),
+        ratingAvg:
+          ratingCount > 0 && ratingAvgRaw != null
+            ? Math.round(ratingAvgRaw * 100) / 100
+            : null,
+        ratingCount,
+      }
+    })
+    .sort((a, b) =>
+      a.kind === b.kind
+        ? a.promptVersion.localeCompare(b.promptVersion)
+        : a.kind.localeCompare(b.kind),
+    )
+
   return {
     rows,
     totalCalls,
@@ -606,6 +659,7 @@ export async function aiUsageStats(userId: string, days = 30): Promise<AIUsageSt
     signalSkipRate,
     ratingAvg,
     signalCheckByKind,
+    byPromptVersion,
   }
 }
 

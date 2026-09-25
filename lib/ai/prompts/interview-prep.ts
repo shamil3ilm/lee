@@ -1,6 +1,9 @@
 import type { MasterCV } from '@/lib/documents/types'
 import type { ApplicationWithJob } from '@/lib/db/queries/applications'
 
+// v10.1 — bump on intentional edits; see lib/ai/prompts/hash.ts for rationale.
+export const INTERVIEW_PREP_PROMPT_VERSION = '1.0.0'
+
 export const INTERVIEW_PREP_SYSTEM = `You produce an interview prep pack for a candidate preparing for a specific interview stage.
 
 Rules for the JSON you must return:

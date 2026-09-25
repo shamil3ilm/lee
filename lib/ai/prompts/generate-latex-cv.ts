@@ -9,6 +9,9 @@ const STYLE_HINT: Record<string, string> = {
     'Two-column layout using the \\`paracol\\` package. Left column: skills + education. Right column: summary, experience, projects. Use a primary color (navy) with an orange accent.',
 }
 
+// v10.1 — bump on intentional edits; see lib/ai/prompts/hash.ts for rationale.
+export const GENERATE_LATEX_CV_PROMPT_VERSION = '1.0.0'
+
 export const GENERATE_LATEX_CV_SYSTEM = `You produce a COMPLETE, VALID LaTeX document that compiles with \`pdflatex\` on TeX Live 2023+.
 
 Hard rules:

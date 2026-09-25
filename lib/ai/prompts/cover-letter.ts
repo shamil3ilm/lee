@@ -1,6 +1,9 @@
 import type { MasterCV } from '@/lib/documents/types'
 import type { ApplicationWithJob } from '@/lib/db/queries/applications'
 
+// v10.1 — bump on intentional edits; see lib/ai/prompts/hash.ts for rationale.
+export const COVER_LETTER_PROMPT_VERSION = '1.0.0'
+
 export const COVER_LETTER_SYSTEM = `You draft a role-specific cover letter from a master CV and a job posting.
 
 Rules:

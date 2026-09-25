@@ -1,6 +1,9 @@
 import type { NormalizedJob } from '@/lib/discovery/adapters/types'
 import type { UserProfile } from '@/lib/db/queries/profile'
 
+// v10.1 — bump on intentional edits; see lib/ai/prompts/hash.ts for rationale.
+export const SCORE_JOB_PROMPT_VERSION = '1.0.0'
+
 export const SCORE_JOB_SYSTEM = `You score how well a job posting matches a user's profile.
 
 Rules the score MUST follow:

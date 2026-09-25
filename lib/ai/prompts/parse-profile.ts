@@ -1,3 +1,6 @@
+// v10.1 — bump on intentional edits; see lib/ai/prompts/hash.ts for rationale.
+export const PARSE_PROFILE_PROMPT_VERSION = '1.0.0'
+
 export const PARSE_PROFILE_SYSTEM = `You extract a developer's structured profile from a CV and/or a PROFILE.md file.
 Return JSON that matches the provided schema.
 Rules:

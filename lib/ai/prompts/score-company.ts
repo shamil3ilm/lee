@@ -1,6 +1,9 @@
 import type { NormalizedCompany } from '@/lib/discovery/adapters/types'
 import type { UserProfile } from '@/lib/db/queries/profile'
 
+// v10.1 — bump on intentional edits; see lib/ai/prompts/hash.ts for rationale.
+export const SCORE_COMPANY_PROMPT_VERSION = '1.0.0'
+
 export const SCORE_COMPANY_SYSTEM = `You score how well a company matches a user's profile for a job search.
 
 Rules the score MUST follow:

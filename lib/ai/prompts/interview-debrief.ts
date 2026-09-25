@@ -2,6 +2,9 @@ import type { MasterCV } from '@/lib/documents/types'
 import type { ApplicationWithJob } from '@/lib/db/queries/applications'
 import type { InterviewStage } from '@/lib/db/queries/stages'
 
+// v10.1 — bump on intentional edits; see lib/ai/prompts/hash.ts for rationale.
+export const INTERVIEW_DEBRIEF_PROMPT_VERSION = '1.0.0'
+
 export const INTERVIEW_DEBRIEF_SYSTEM = `You produce an honest, structured post-interview debrief for a candidate. The candidate has already jotted quick reflection notes (see QUICK NOTES below) and wants those turned into a polished summary the future-them can review before follow-up decisions and next-round prep.
 
 Rules for the JSON you must return:

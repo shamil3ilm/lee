@@ -221,6 +221,72 @@ export function AIUsageCard({ data, className }: AIUsageCardProps) {
               </div>
             </div>
 
+            {data.byPromptVersion.length > 0 ? (
+              <div>
+                <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Prompt versions (last 30 days)
+                </div>
+                <div className="overflow-hidden rounded-md border">
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[520px] text-xs">
+                      <thead className="bg-muted/40">
+                        <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                          <th className="px-3 py-2 font-semibold">Kind</th>
+                          <th className="px-3 py-2 font-semibold">Version</th>
+                          <th className="px-3 py-2 text-right font-semibold">Calls</th>
+                          <th className="px-3 py-2 text-right font-semibold">Avg rating</th>
+                          <th className="px-3 py-2 text-right font-semibold">Avg latency</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.byPromptVersion.map((r) => {
+                          // v10.1 — versions performing below 3.0 average
+                          // rating are flagged so a bad prompt bump is
+                          // visible without opening the raw rating log.
+                          const isPoor = r.ratingAvg != null && r.ratingAvg < 3.0
+                          return (
+                            <tr
+                              key={`${r.kind}:${r.promptVersion}`}
+                              className={cn(
+                                'border-t',
+                                isPoor && 'bg-yellow-500/10',
+                              )}
+                            >
+                              <td className="px-3 py-1.5 font-medium">{r.kind}</td>
+                              <td className="px-3 py-1.5 text-muted-foreground tabular-nums">
+                                {r.promptVersion}
+                              </td>
+                              <td className="px-3 py-1.5 text-right tabular-nums">
+                                {formatNumber(r.calls)}
+                              </td>
+                              <td
+                                className={cn(
+                                  'px-3 py-1.5 text-right tabular-nums',
+                                  isPoor
+                                    ? 'text-yellow-700 dark:text-yellow-400 font-medium'
+                                    : 'text-muted-foreground',
+                                )}
+                              >
+                                {formatRating(r.ratingAvg)}
+                                {r.ratingCount > 0 ? (
+                                  <span className="ml-1 text-[10px] opacity-60">
+                                    ({r.ratingCount})
+                                  </span>
+                                ) : null}
+                              </td>
+                              <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
+                                {formatNumber(r.avgLatencyMs)}ms
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             {data.signalCheckByKind.some((b) => b.skipped > 0) ? (
               <div>
                 <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
