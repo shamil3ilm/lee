@@ -1,6 +1,12 @@
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, gte, lte, sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
-import { activities, aiCallLogs, applications, discoveries } from '@/lib/db/schema'
+import {
+  activities,
+  aiCallLogs,
+  applications,
+  discoveries,
+  expenses,
+} from '@/lib/db/schema'
 import * as expensesQ from '@/lib/db/queries/expenses'
 import * as budgetsQ from '@/lib/db/queries/expenseBudgets'
 
@@ -625,6 +631,211 @@ export async function budgetVsActual(
   return Array.from(byCategory.values()).sort(
     (a, b) => b.actualCents - a.actualCents || b.budgetCents - a.budgetCents,
   )
+}
+
+// ---------------------------------------------------------------------------
+// v8 — Expense analytics extensions
+// ---------------------------------------------------------------------------
+
+export interface MonthComparisonRow {
+  category: string
+  currentCents: number
+  previousCents: number
+  deltaCents: number
+  // Percent change; null when previous is 0 (would divide by zero).
+  deltaPercent: number | null
+}
+
+/**
+ * Compare per-category spend between two months. Returns rows for every
+ * category that had spend in either month; missing sides read as 0. Sorted
+ * by absolute delta desc so the biggest movers surface first.
+ */
+export async function monthOverMonthByCategory(
+  userId: string,
+  month: string,
+  prevMonth: string,
+): Promise<MonthComparisonRow[]> {
+  const [current, previous] = await Promise.all([
+    expensesQ.sumByCategory(userId, month),
+    expensesQ.sumByCategory(userId, prevMonth),
+  ])
+  const map = new Map<string, MonthComparisonRow>()
+  for (const c of current) {
+    map.set(c.category, {
+      category: c.category,
+      currentCents: c.totalCents,
+      previousCents: 0,
+      deltaCents: c.totalCents,
+      deltaPercent: null,
+    })
+  }
+  for (const p of previous) {
+    const existing = map.get(p.category)
+    if (existing) {
+      existing.previousCents = p.totalCents
+      existing.deltaCents = existing.currentCents - p.totalCents
+      existing.deltaPercent =
+        p.totalCents === 0
+          ? null
+          : Math.round(((existing.currentCents - p.totalCents) / p.totalCents) * 1000) / 10
+    } else {
+      map.set(p.category, {
+        category: p.category,
+        currentCents: 0,
+        previousCents: p.totalCents,
+        deltaCents: -p.totalCents,
+        deltaPercent: p.totalCents === 0 ? null : -100,
+      })
+    }
+  }
+  // Compute deltaPercent for rows that had no previous entry (currently null).
+  for (const row of map.values()) {
+    if (row.deltaPercent === null && row.previousCents > 0) {
+      row.deltaPercent =
+        Math.round(((row.currentCents - row.previousCents) / row.previousCents) * 1000) / 10
+    }
+  }
+  return Array.from(map.values()).sort(
+    (a, b) => Math.abs(b.deltaCents) - Math.abs(a.deltaCents),
+  )
+}
+
+export interface CategoryTrendRow {
+  month: string // YYYY-MM
+  category: string
+  totalCents: number
+}
+
+/**
+ * Long-format (month, category, totalCents) grid over the trailing `months`
+ * calendar months. Consumers (line chart, CSV export) pivot as needed.
+ * Includes every (month, category) pair that had spend; empty cells omitted.
+ */
+export async function expenseCategoryTrend(
+  userId: string,
+  months = 6,
+): Promise<CategoryTrendRow[]> {
+  const bars = await expensesQ.sumByMonth(userId, months)
+  const rows: CategoryTrendRow[] = []
+  for (const bar of bars) {
+    for (const c of bar.perCategory) {
+      rows.push({ month: bar.month, category: c.category, totalCents: c.totalCents })
+    }
+  }
+  return rows
+}
+
+export interface VendorRow {
+  vendor: string
+  totalCents: number
+  count: number
+}
+
+/**
+ * Top vendors by aggregate spend over the trailing `months` months. Vendor
+ * comparison is case-insensitive so "Netflix" and "netflix" collapse — the
+ * label used is the vendor casing from the most recent expense.
+ * Rows with a null/empty vendor collapse under 'Unknown'.
+ */
+export async function topVendors(
+  userId: string,
+  months = 3,
+  limit = 10,
+): Promise<VendorRow[]> {
+  if (months < 1) return []
+  const now = new Date()
+  // Cut-off = first day of the (months-1) months ago period.
+  const oldest = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (months - 1), 1))
+  const oldestKey = `${oldest.getUTCFullYear()}-${String(oldest.getUTCMonth() + 1).padStart(2, '0')}-01`
+
+  const rows = await db
+    .select({
+      vendor: expenses.vendor,
+      amountCents: expenses.amountCents,
+      date: expenses.date,
+    })
+    .from(expenses)
+    .where(and(eq(expenses.userId, userId), gte(expenses.date, oldestKey)))
+
+  interface Agg {
+    displayName: string
+    latestDate: string
+    totalCents: number
+    count: number
+  }
+  const byKey = new Map<string, Agg>()
+  for (const r of rows) {
+    const displayName = (r.vendor ?? '').trim() || 'Unknown'
+    const key = displayName.toLowerCase()
+    const existing = byKey.get(key)
+    if (existing) {
+      existing.totalCents += Number(r.amountCents)
+      existing.count += 1
+      // Prefer the label of the most recent expense — dates are ISO strings,
+      // lex compare works.
+      if (String(r.date) > existing.latestDate) {
+        existing.latestDate = String(r.date)
+        existing.displayName = displayName
+      }
+    } else {
+      byKey.set(key, {
+        displayName,
+        latestDate: String(r.date),
+        totalCents: Number(r.amountCents),
+        count: 1,
+      })
+    }
+  }
+  return Array.from(byKey.values())
+    .map((v) => ({ vendor: v.displayName, totalCents: v.totalCents, count: v.count }))
+    .sort((a, b) => b.totalCents - a.totalCents || b.count - a.count)
+    .slice(0, limit)
+}
+
+export interface AdherenceCell {
+  month: string // YYYY-MM
+  category: string
+  budgetCents: number
+  spentCents: number
+  adherence: 'under' | 'over'
+}
+
+/**
+ * Grid of (month, category) adherence over the last N months. Only surfaces
+ * categories that had either a budget or spend in the window — categories
+ * with neither are omitted. Budgets are current values (spec keeps history
+ * out of scope for v8; deferred). Uses month-end cutoff so a partial
+ * current-month still classifies fairly.
+ */
+export async function budgetAdherenceHistory(
+  userId: string,
+  months = 12,
+): Promise<AdherenceCell[]> {
+  if (months < 1) return []
+  const [bars, budgets] = await Promise.all([
+    expensesQ.sumByMonth(userId, months),
+    budgetsQ.list(userId),
+  ])
+  const budgetByCategory = new Map(budgets.map((b) => [b.category, b.monthlyCapCents]))
+  const cells: AdherenceCell[] = []
+  for (const bar of bars) {
+    // Union of categories with either spend or a budget cap. Categories
+    // with a cap but zero spend are still worth surfacing (green cell).
+    const seen = new Set<string>()
+    for (const c of bar.perCategory) seen.add(c.category)
+    for (const cat of budgetByCategory.keys()) seen.add(cat)
+    for (const category of seen) {
+      const spentCents = bar.perCategory.find((p) => p.category === category)?.totalCents ?? 0
+      const budgetCents = budgetByCategory.get(category) ?? 0
+      // Skip cells with no cap AND no spend — nothing to say.
+      if (budgetCents === 0 && spentCents === 0) continue
+      const adherence: AdherenceCell['adherence'] =
+        budgetCents === 0 || spentCents > budgetCents ? 'over' : 'under'
+      cells.push({ month: bar.month, category, budgetCents, spentCents, adherence })
+    }
+  }
+  return cells
 }
 
 // Re-exported so tests can exercise the pure helpers directly and the CSV
