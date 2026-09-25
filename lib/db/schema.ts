@@ -755,6 +755,9 @@ export const aiCallLogs = pgTable('ai_call_logs', {
   // and detect silent-behavior changes when only the hash moves.
   promptHash: text('prompt_hash'),
   promptVersion: text('prompt_version'),
+  // v14 — model id actually called (e.g. 'openai/gpt-oss-20b'). Nullable so
+  // pre-v14 rows stay valid; Model Lab writes it for every arena call.
+  model: text('model'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
@@ -810,3 +813,77 @@ export const cvScores = pgTable(
     ),
   }),
 )
+
+// ---------------------------------------------------------------------------
+// v14 — Model Lab. Provider API keys are stored AES-256-GCM encrypted (see
+// lib/lab/crypto.ts); only `key_last4` is ever shown back to the client.
+// ---------------------------------------------------------------------------
+
+export const labProviderKeys = pgTable(
+  'lab_provider_keys',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    provider: text('provider').notNull(),
+    encryptedKey: text('encrypted_key').notNull(),
+    iv: text('iv').notNull(),
+    authTag: text('auth_tag').notNull(),
+    keyLast4: text('key_last4').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    userProviderUq: uniqueIndex('lab_provider_keys_user_provider_uq').on(t.userId, t.provider),
+  }),
+)
+
+// kind: 'arena' | 'eval' | 'agent'
+export const labRuns = pgTable(
+  'lab_runs',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    kind: text('kind').notNull(),
+    config: jsonb('config').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    userCreatedIx: index('lab_runs_user_created_idx').on(t.userId, t.createdAt),
+  }),
+)
+
+export const labRunResults = pgTable(
+  'lab_run_results',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    runId: uuid('run_id')
+      .notNull()
+      .references(() => labRuns.id, { onDelete: 'cascade' }),
+    modelProvider: text('model_provider').notNull(),
+    modelId: text('model_id').notNull(),
+    blindLabel: text('blind_label'),
+    output: text('output'),
+    outputJson: jsonb('output_json'),
+    metrics: jsonb('metrics'),
+    schemaValid: boolean('schema_valid'),
+    error: text('error'),
+    // 1 = picked as the winner of a blind vote; null = not voted
+    vote: smallint('vote'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    runIx: index('lab_run_results_run_idx').on(t.runId),
+  }),
+)
+
+export const labRunsRelations = relations(labRuns, ({ many }) => ({
+  results: many(labRunResults),
+}))
+
+export const labRunResultsRelations = relations(labRunResults, ({ one }) => ({
+  run: one(labRuns, { fields: [labRunResults.runId], references: [labRuns.id] }),
+}))

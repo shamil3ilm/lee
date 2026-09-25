@@ -8,6 +8,9 @@ import { db, isPglite, pgliteClient } from '@/lib/db/client'
 // (though CASCADE handles the rest). Keep in sync with lib/db/schema.ts.
 const TABLES = [
   'cv_scores',
+  'lab_run_results',
+  'lab_runs',
+  'lab_provider_keys',
   'expense_budgets',
   'expenses',
   'document_assets',
