@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { db } from '@/lib/db/client'
-import { activities, discoveries, sources } from '@/lib/db/schema'
+import { activities, aiCallLogs, discoveries, sources } from '@/lib/db/schema'
 import {
+  aiUsageStats,
   discoveryCalibration,
   responseTimeDistribution,
   sourceFunnel,
@@ -359,5 +360,121 @@ describe('statusDistribution', () => {
     expect(byStatus.screen).toBe(1)
     expect(byStatus.offer).toBe(1)
     expect(rows.reduce((s, r) => s + r.count, 0)).toBe(4)
+  })
+})
+
+describe('aiUsageStats', () => {
+  it('returns zeros and back-filled daily bars when the user has no calls', async () => {
+    const u = await makeUser()
+    const stats = await aiUsageStats(u.id, 30)
+    expect(stats.totalCalls).toBe(0)
+    expect(stats.totalEstimatedCostUsd).toBe(0)
+    expect(stats.rows).toEqual([])
+    // 30-day window → 30 or 31 daily bars back-filled with zero cost.
+    expect(stats.byDay.length).toBeGreaterThanOrEqual(30)
+    expect(stats.byDay.every((b) => b.cost === 0 && b.calls === 0)).toBe(true)
+  })
+
+  it('aggregates by (provider, kind) and estimates cost from the price table', async () => {
+    const u = await makeUser()
+    await db.insert(aiCallLogs).values([
+      // Gemini flash defaults: input $0.075/M, output $0.30/M
+      // 2M input + 1M output → $0.15 + $0.30 = $0.45 across two calls
+      {
+        userId: u.id,
+        provider: 'gemini',
+        kind: 'parse',
+        promptTokens: 1_000_000,
+        completionTokens: 500_000,
+        latencyMs: 400,
+        status: 'ok',
+      },
+      {
+        userId: u.id,
+        provider: 'gemini',
+        kind: 'parse',
+        promptTokens: 1_000_000,
+        completionTokens: 500_000,
+        latencyMs: 600,
+        status: 'ok',
+      },
+      // Groq gpt-oss-20b defaults: input $0.075/M, output $0.30/M
+      // 500k input + 500k output → $0.0375 + $0.15 = $0.1875
+      {
+        userId: u.id,
+        provider: 'groq',
+        kind: 'parse',
+        promptTokens: 500_000,
+        completionTokens: 500_000,
+        latencyMs: 200,
+        status: 'ok',
+      },
+    ])
+
+    const stats = await aiUsageStats(u.id, 30)
+    expect(stats.totalCalls).toBe(3)
+    expect(stats.totalPromptTokens).toBe(2_500_000)
+    expect(stats.totalCompletionTokens).toBe(1_500_000)
+    // Sum: 0.45 (gemini) + 0.1875 (groq) = 0.6375
+    expect(stats.totalEstimatedCostUsd).toBeCloseTo(0.6375, 4)
+
+    const byKey = Object.fromEntries(
+      stats.rows.map((r) => [`${r.provider}:${r.kind}`, r]),
+    )
+    expect(byKey['gemini:parse']!.calls).toBe(2)
+    expect(byKey['gemini:parse']!.promptTokens).toBe(2_000_000)
+    expect(byKey['gemini:parse']!.completionTokens).toBe(1_000_000)
+    expect(byKey['gemini:parse']!.avgLatencyMs).toBe(500)
+    expect(byKey['gemini:parse']!.estimatedCostUsd).toBeCloseTo(0.45, 4)
+    expect(byKey['groq:parse']!.calls).toBe(1)
+    expect(byKey['groq:parse']!.estimatedCostUsd).toBeCloseTo(0.1875, 4)
+  })
+
+  it('scopes results to the given user and honors the days window', async () => {
+    const u1 = await makeUser()
+    const u2 = await makeUser()
+    // u2's call should not leak into u1's stats.
+    await db.insert(aiCallLogs).values({
+      userId: u2.id,
+      provider: 'gemini',
+      kind: 'parse',
+      promptTokens: 1_000_000,
+      completionTokens: 1_000_000,
+      latencyMs: 300,
+      status: 'ok',
+    })
+    // An old u1 call outside the window should be excluded.
+    const oldDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+    await db.insert(aiCallLogs).values({
+      userId: u1.id,
+      provider: 'gemini',
+      kind: 'parse',
+      promptTokens: 1_000_000,
+      completionTokens: 1_000_000,
+      latencyMs: 300,
+      status: 'ok',
+      createdAt: oldDate,
+    })
+
+    const stats = await aiUsageStats(u1.id, 30)
+    expect(stats.totalCalls).toBe(0)
+    expect(stats.rows).toEqual([])
+  })
+
+  it('treats unknown providers as zero-cost but still counts calls and tokens', async () => {
+    const u = await makeUser()
+    await db.insert(aiCallLogs).values({
+      userId: u.id,
+      provider: 'anthropic',
+      kind: 'parse',
+      promptTokens: 1_000_000,
+      completionTokens: 1_000_000,
+      latencyMs: 300,
+      status: 'ok',
+    })
+    const stats = await aiUsageStats(u.id, 30)
+    expect(stats.totalCalls).toBe(1)
+    expect(stats.totalEstimatedCostUsd).toBe(0)
+    expect(stats.rows[0]!.estimatedCostUsd).toBe(0)
   })
 })

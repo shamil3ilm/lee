@@ -1,4 +1,5 @@
 import {
+  aiUsageStats,
   discoveryCalibration,
   responseTimeDistribution,
   sourceFunnel,
@@ -21,6 +22,7 @@ export const EXPORT_METRICS = [
   'discovery-calibration',
   'weekly-activity',
   'status-distribution',
+  'ai-usage',
 ] as const
 
 export type ExportMetric = (typeof EXPORT_METRICS)[number]
@@ -113,6 +115,29 @@ async function buildTable(metric: ExportMetric, userId: string): Promise<CsvTabl
       return {
         columns: ['status', 'count'],
         rows: rows.map((r) => [r.status, r.count]),
+      }
+    }
+    case 'ai-usage': {
+      const stats = await aiUsageStats(userId, 30)
+      return {
+        columns: [
+          'provider',
+          'kind',
+          'calls',
+          'prompt_tokens',
+          'completion_tokens',
+          'avg_latency_ms',
+          'estimated_cost_usd',
+        ],
+        rows: stats.rows.map((r) => [
+          r.provider,
+          r.kind,
+          r.calls,
+          r.promptTokens,
+          r.completionTokens,
+          r.avgLatencyMs,
+          Number(r.estimatedCostUsd.toFixed(6)),
+        ]),
       }
     }
   }

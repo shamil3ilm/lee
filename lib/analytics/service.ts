@@ -1,6 +1,6 @@
 import { eq, sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
-import { activities, applications, discoveries } from '@/lib/db/schema'
+import { activities, aiCallLogs, applications, discoveries } from '@/lib/db/schema'
 
 /**
  * Normalize the row-set that a Drizzle `db.execute()` returns. postgres-js
@@ -364,12 +364,195 @@ export async function statusDistribution(userId: string): Promise<StatusSlice[]>
   return rows.map((r) => ({ status: r.status, count: Number(r.count) }))
 }
 
+// ---------------------------------------------------------------------------
+// AI usage & cost tracking (v6.1)
+// ---------------------------------------------------------------------------
+
+export interface AIUsageRow {
+  provider: string
+  kind: string
+  calls: number
+  promptTokens: number
+  completionTokens: number
+  avgLatencyMs: number
+  estimatedCostUsd: number
+}
+
+export interface AIDailyCostBar {
+  date: string // YYYY-MM-DD
+  calls: number
+  cost: number
+}
+
+export interface AIUsageStats {
+  rows: AIUsageRow[]
+  totalCalls: number
+  totalPromptTokens: number
+  totalCompletionTokens: number
+  totalEstimatedCostUsd: number
+  byDay: AIDailyCostBar[]
+}
+
+/**
+ * Hardcoded per-million-token prices. We only log (provider, kind) — not the
+ * specific model — so pricing is estimated by matching provider and picking
+ * a sensible default for that provider's usual model. When a provider isn't
+ * in the table (or is a free tier), cost is 0.
+ *
+ * Prices are USD per million tokens, mirroring vendor rate cards as of
+ * 2026-09. Update these when vendors change tiers — the analytics card is
+ * an estimate, not billing truth.
+ */
+interface PriceEntry {
+  inputPerM: number
+  outputPerM: number
+}
+
+const AI_PRICES: Record<string, PriceEntry> = {
+  // gemini defaults to flash (kind 'parse' is our shared logging kind).
+  // gemini flash-lite is cheaper but we can't distinguish it from the DB
+  // without a model column — use flash as the conservative estimate.
+  'gemini:flash': { inputPerM: 0.075, outputPerM: 0.3 },
+  'gemini:flash-lite': { inputPerM: 0.037, outputPerM: 0.15 },
+  'groq:gpt-oss-20b': { inputPerM: 0.075, outputPerM: 0.3 },
+  'groq:gpt-oss-120b': { inputPerM: 0.15, outputPerM: 0.6 },
+}
+
+// Provider → default model key used when the log row has no model info.
+// Matches the default model each provider constructor sets today.
+const PROVIDER_DEFAULT_MODEL: Record<string, string> = {
+  gemini: 'flash',
+  groq: 'gpt-oss-20b',
+}
+
+function estimateCostUsd(provider: string, promptTokens: number, completionTokens: number): number {
+  const model = PROVIDER_DEFAULT_MODEL[provider]
+  if (!model) return 0
+  const price = AI_PRICES[`${provider}:${model}`]
+  if (!price) return 0
+  return (promptTokens / 1_000_000) * price.inputPerM + (completionTokens / 1_000_000) * price.outputPerM
+}
+
+/**
+ * Aggregated AI call stats for the given user over the last `days` window.
+ * Groups by (provider, kind) for the tabular breakdown and by day for the
+ * cost trend bar chart. Failed calls are still counted (they cost money on
+ * some providers) but token totals may be null; we treat null as 0.
+ */
+export async function aiUsageStats(userId: string, days = 30): Promise<AIUsageStats> {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+
+  // Per-(provider, kind) aggregation
+  const groupRows = await db
+    .select({
+      provider: aiCallLogs.provider,
+      kind: aiCallLogs.kind,
+      calls: sql<number>`count(*)::int`,
+      promptTokens: sql<number>`coalesce(sum(${aiCallLogs.promptTokens}), 0)::int`,
+      completionTokens: sql<number>`coalesce(sum(${aiCallLogs.completionTokens}), 0)::int`,
+      avgLatencyMs: sql<number>`coalesce(avg(${aiCallLogs.latencyMs}), 0)::int`,
+    })
+    .from(aiCallLogs)
+    .where(sql`${aiCallLogs.userId} = ${userId} and ${aiCallLogs.createdAt} >= ${since}`)
+    .groupBy(aiCallLogs.provider, aiCallLogs.kind)
+
+  const rows: AIUsageRow[] = groupRows
+    .map((r) => {
+      const promptTokens = Number(r.promptTokens)
+      const completionTokens = Number(r.completionTokens)
+      return {
+        provider: r.provider,
+        kind: r.kind,
+        calls: Number(r.calls),
+        promptTokens,
+        completionTokens,
+        avgLatencyMs: Number(r.avgLatencyMs),
+        estimatedCostUsd: estimateCostUsd(r.provider, promptTokens, completionTokens),
+      }
+    })
+    .sort((a, b) => b.estimatedCostUsd - a.estimatedCostUsd || b.calls - a.calls)
+
+  // Daily aggregation for the trend bar chart. Group by created_at::date so
+  // sparse days collapse; we back-fill missing days below.
+  const dailyRaw = await db.execute(sql`
+    select
+      date_trunc('day', ${aiCallLogs.createdAt})::date as day,
+      ${aiCallLogs.provider} as provider,
+      coalesce(sum(${aiCallLogs.promptTokens}), 0)::int as prompt_tokens,
+      coalesce(sum(${aiCallLogs.completionTokens}), 0)::int as completion_tokens,
+      count(*)::int as calls
+    from ${aiCallLogs}
+    where ${aiCallLogs.userId} = ${userId}
+      and ${aiCallLogs.createdAt} >= ${since}
+    group by day, ${aiCallLogs.provider}
+    order by day asc
+  `)
+  const dailyRows = toRows<{
+    day: Date | string
+    provider: string
+    prompt_tokens: number | string
+    completion_tokens: number | string
+    calls: number | string
+  }>(dailyRaw)
+
+  const byDayMap = new Map<string, { calls: number; cost: number }>()
+  for (const r of dailyRows) {
+    const key = dayIsoDate(r.day)
+    const existing = byDayMap.get(key) ?? { calls: 0, cost: 0 }
+    existing.calls += Number(r.calls)
+    existing.cost += estimateCostUsd(
+      r.provider,
+      Number(r.prompt_tokens),
+      Number(r.completion_tokens),
+    )
+    byDayMap.set(key, existing)
+  }
+
+  // Back-fill every day in the window so the trend bar chart has a
+  // continuous X axis (matching how weeklyActivity fills quiet weeks).
+  const byDay: AIDailyCostBar[] = []
+  const cursor = new Date(
+    Date.UTC(since.getUTCFullYear(), since.getUTCMonth(), since.getUTCDate()),
+  )
+  const now = new Date()
+  const lastDay = dayIsoDate(now)
+  while (dayIsoDate(cursor) <= lastDay) {
+    const key = dayIsoDate(cursor)
+    const bucket = byDayMap.get(key) ?? { calls: 0, cost: 0 }
+    byDay.push({ date: key, calls: bucket.calls, cost: bucket.cost })
+    cursor.setUTCDate(cursor.getUTCDate() + 1)
+  }
+
+  return {
+    rows,
+    totalCalls: rows.reduce((s, r) => s + r.calls, 0),
+    totalPromptTokens: rows.reduce((s, r) => s + r.promptTokens, 0),
+    totalCompletionTokens: rows.reduce((s, r) => s + r.completionTokens, 0),
+    totalEstimatedCostUsd: rows.reduce((s, r) => s + r.estimatedCostUsd, 0),
+    byDay,
+  }
+}
+
+function dayIsoDate(value: Date | string): string {
+  if (typeof value === 'string') {
+    const m = value.match(/^(\d{4}-\d{2}-\d{2})/)
+    if (m) return m[1]!
+    return value
+  }
+  const utc = new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()))
+  return utc.toISOString().slice(0, 10)
+}
+
 // Re-exported so tests can exercise the pure helpers directly and the CSV
 // route can reuse the same bucket labels without duplicating them.
 export const _internal = {
   classifyDiscoveryOutcome,
+  dayIsoDate,
+  estimateCostUsd,
   mondayIsoDate,
   quantile,
   RESPONSE_BUCKETS,
   weekStartIsoDate,
+  AI_PRICES,
+  PROVIDER_DEFAULT_MODEL,
 }
