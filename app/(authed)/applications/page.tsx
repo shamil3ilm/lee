@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Plus } from 'lucide-react'
+import { Download, Plus } from 'lucide-react'
 import { requireUserId } from '@/lib/auth/require-session'
 import * as appsQ from '@/lib/db/queries/applications'
 import { ApplicationsTable } from '@/components/applications-table'
@@ -17,12 +17,20 @@ export default async function ApplicationsPage() {
         title="Applications"
         description={`${rows.length} total`}
         actions={
-          <Button asChild size="sm">
-            <Link href="/applications/new">
-              <Plus className="size-4" />
-              Add application
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button asChild size="sm" variant="outline">
+              <a href="/api/applications/export">
+                <Download className="size-4" />
+                Export CSV
+              </a>
+            </Button>
+            <Button asChild size="sm">
+              <Link href="/applications/new">
+                <Plus className="size-4" />
+                Add application
+              </Link>
+            </Button>
+          </div>
         }
       />
       <ApplicationsTable
