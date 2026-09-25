@@ -1,10 +1,16 @@
 import type {
   AIProvider,
+  BulletRewriteInput,
+  BulletRewriteResult,
   CompanyMatchResult,
   JobMatchResult,
   ParsedJob,
   ParsedProfile,
+  RequirementFitInput,
+  RequirementFitResult,
 } from './types'
+import { contentStems } from '@/lib/cv-score/text'
+import { replacementVerb, weakOpenerOf } from '@/lib/cv-score/dimensions/impact'
 import type { CallMeta } from './log'
 import type { NormalizedCompany, NormalizedJob } from '@/lib/discovery/adapters/types'
 import type { UserProfile } from '@/lib/db/queries/profile'
@@ -62,6 +68,8 @@ export class FixtureAIProvider implements AIProvider {
         master: MasterCV
         templateId: string
       }) => { source: string }
+      assessRequirementFit?: (input: RequirementFitInput) => RequirementFitResult
+      rewriteCvBullets?: (input: BulletRewriteInput) => BulletRewriteResult
     } = {},
   ) {}
 
@@ -211,6 +219,73 @@ export class FixtureAIProvider implements AIProvider {
     return {
       source: '\\documentclass{article}\n\\begin{document}\nTest\n\\end{document}\n',
     }
+  }
+
+  async assessRequirementFit(
+    input: RequirementFitInput,
+    meta?: CallMeta,
+  ): Promise<RequirementFitResult> {
+    await this.emitLoggedCallId('cv_requirement_fit', meta)
+    if (this.fixtures.assessRequirementFit) return this.fixtures.assessRequirementFit(input)
+    return pseudoRequirementFit(input)
+  }
+
+  async rewriteCvBullets(
+    input: BulletRewriteInput,
+    meta?: CallMeta,
+  ): Promise<BulletRewriteResult> {
+    await this.emitLoggedCallId('cv_bullet_rewrite', meta)
+    if (this.fixtures.rewriteCvBullets) return this.fixtures.rewriteCvBullets(input)
+    return pseudoRewriteBullets(input)
+  }
+}
+
+/**
+ * v12.0 — deterministic requirement fit: for each requirement pick the CV
+ * line sharing the most content-word stems. ≥60% overlap → met, ≥30% →
+ * partial, else missing. Evidence is the verbatim line (so it verifies).
+ */
+function pseudoRequirementFit(input: RequirementFitInput): RequirementFitResult {
+  const lines = input.cvText
+    .split('\n')
+    .map((l) => l.replace(/^\s*[•*-]\s*/, '').trim())
+    .filter((l) => l.length > 0)
+  const lineStems = lines.map((l) => contentStems(l))
+  return {
+    items: input.requirements.map((requirement) => {
+      const req = [...contentStems(requirement)]
+      let best = -1
+      let bestHits = 0
+      lineStems.forEach((stems, i) => {
+        const hits = req.filter((s) => stems.has(s)).length
+        if (hits > bestHits) {
+          bestHits = hits
+          best = i
+        }
+      })
+      const ratio = req.length ? bestHits / req.length : 0
+      const status = ratio >= 0.6 ? 'met' : ratio >= 0.3 ? 'partial' : 'missing'
+      const evidence = status === 'missing' || best < 0 ? '' : lines[best]!.slice(0, 200)
+      const suggestion =
+        status === 'met'
+          ? ''
+          : status === 'partial'
+            ? 'Make this more explicit with a concrete example from a recent role.'
+            : `If you have done this, add a bullet that shows it: "${requirement}"`
+      return { requirement, status, evidence, suggestion }
+    }),
+  }
+}
+
+/** v12.0 — deterministic weak-opener rewrite: swap the opener for a verb. */
+function pseudoRewriteBullets(input: BulletRewriteInput): BulletRewriteResult {
+  return {
+    rewrites: input.bullets.map((b) => {
+      const opener = weakOpenerOf(b.text)
+      if (!opener) return { id: b.id, text: b.text }
+      const rest = b.text.trim().slice(opener.length).trim().replace(/[.;]$/, '')
+      return { id: b.id, text: `${replacementVerb(opener)} ${rest}.` }
+    }),
   }
 }
 

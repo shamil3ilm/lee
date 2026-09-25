@@ -82,6 +82,37 @@ export const companyMatchResultSchema = z.object({
 
 export type CompanyMatchResult = z.infer<typeof companyMatchResultSchema>
 
+// ---------------------------------------------------------------------------
+// v12.0 — CV scoring (requirement fit + autofix bullet rewrites)
+// ---------------------------------------------------------------------------
+
+export const requirementFitItemSchema = z.object({
+  requirement: z.string(),
+  status: z.enum(['met', 'partial', 'missing']).catch('missing'),
+  evidence: z.string().default(''),
+  suggestion: z.string().default(''),
+})
+export const requirementFitResultSchema = z.object({
+  items: z.array(requirementFitItemSchema).default([]),
+})
+export type RequirementFitItem = z.infer<typeof requirementFitItemSchema>
+export type RequirementFitResult = z.infer<typeof requirementFitResultSchema>
+
+export interface RequirementFitInput {
+  cvText: string
+  requirements: string[]
+  jobTitle: string
+}
+
+export const bulletRewriteResultSchema = z.object({
+  rewrites: z.array(z.object({ id: z.string(), text: z.string() })).default([]),
+})
+export type BulletRewriteResult = z.infer<typeof bulletRewriteResultSchema>
+
+export interface BulletRewriteInput {
+  bullets: { id: string; text: string; role?: string; company?: string }[]
+}
+
 export interface AIProvider {
   parseJob(text: string, meta?: CallMeta): Promise<ParsedJob>
   parseProfile(
@@ -134,6 +165,12 @@ export interface AIProvider {
     master: MasterCV
     templateId: string
   }): Promise<{ source: string }>
+  // v12.0 additions — CV scoring. `assessRequirementFit` returns per-JD-
+  // requirement status + a quote the caller VERIFIES against the CV text;
+  // `rewriteCvBullets` powers the weak-opener autofix preview (the caller
+  // rejects any rewrite that introduces new digits).
+  assessRequirementFit(input: RequirementFitInput, meta?: CallMeta): Promise<RequirementFitResult>
+  rewriteCvBullets(input: BulletRewriteInput, meta?: CallMeta): Promise<BulletRewriteResult>
 }
 
 export const latexCVResultSchema = z.object({ source: z.string().min(1) })
