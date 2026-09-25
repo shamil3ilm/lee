@@ -2,9 +2,11 @@ import { describe, it, expect } from 'vitest'
 import { generateOutreachDraft } from '@/lib/documents/outreach'
 import { saveMasterCV } from '@/lib/documents/master'
 import { MasterCVNotFoundError, ApplicationNotFoundError } from '@/lib/documents/errors'
+import { AISkippedError } from '@/lib/ai/signal'
 import { FixtureAIProvider } from '@/lib/ai/fixtures'
 import * as documentsQ from '@/lib/db/queries/documents'
-import { makeUser, makeCompany, makeJob, makeApplication } from '@/tests/factories'
+import * as appContactsQ from '@/lib/db/queries/applicationContacts'
+import { makeUser, makeCompany, makeContact, makeJob, makeApplication } from '@/tests/factories'
 import type { MasterCV, OutreachDraft } from '@/lib/documents/types'
 
 function makeCv(): MasterCV {
@@ -56,8 +58,11 @@ describe('generateOutreachDraft', () => {
   })
 
   it('persists an outreach_linkedin_message document', async () => {
-    const { u, app } = await seed('outreach-msg@x.com')
+    const { u, co, app } = await seed('outreach-msg@x.com')
     await saveMasterCV(u.id, makeCv())
+    // v10 — linkedin_message signal check requires a linked contact.
+    const contact = await makeContact(u.id, { name: 'Recruiter', companyId: co.id })
+    await appContactsQ.link(u.id, app.id, contact.id, 'recruiter')
     const ai = new FixtureAIProvider()
     const doc = await generateOutreachDraft({
       userId: u.id,
@@ -67,6 +72,21 @@ describe('generateOutreachDraft', () => {
       ai,
     })
     expect(doc.kind).toBe('outreach_linkedin_message')
+  })
+
+  it('skips linkedin_message when no contact is linked (v10 signal check)', async () => {
+    const { u, app } = await seed('outreach-msg-nocontact@x.com')
+    await saveMasterCV(u.id, makeCv())
+    const ai = new FixtureAIProvider()
+    await expect(
+      generateOutreachDraft({
+        userId: u.id,
+        applicationId: app.id,
+        kind: 'linkedin_message',
+        tone: 'formal',
+        ai,
+      }),
+    ).rejects.toBeInstanceOf(AISkippedError)
   })
 
   it('persists an outreach_recruiter_reply document with a subject', async () => {
@@ -145,7 +165,16 @@ describe('generateOutreachDraft', () => {
   // -------------------------------------------------------------------------
 
   it('persists an outreach_followup_email with daysSince from body', async () => {
-    const { u, app } = await seed('outreach-followup-7@x.com')
+    // v10 signal check requires appliedAt for follow-ups even when daysSince
+    // is provided explicitly — backfill it here so this test drives the
+    // happy path.
+    const u = await makeUser('outreach-followup-7@x.com')
+    const co = await makeCompany(u.id, { name: 'Stripe' })
+    const j = await makeJob(u.id, co.id, { title: 'Staff Payments Engineer' })
+    const app = await makeApplication(u.id, j.id, {
+      status: 'applied',
+      appliedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+    })
     await saveMasterCV(u.id, makeCv())
     const ai = new FixtureAIProvider()
     const doc = await generateOutreachDraft({

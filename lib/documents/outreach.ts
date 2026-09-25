@@ -1,9 +1,11 @@
 import * as applicationsQ from '@/lib/db/queries/applications'
 import * as activitiesQ from '@/lib/db/queries/activities'
 import * as documentsQ from '@/lib/db/queries/documents'
+import * as appContactsQ from '@/lib/db/queries/applicationContacts'
 import { getMasterCV } from './master'
 import { outreachDraftSchema, type OutreachKind, type OutreachTone } from './types'
 import { ApplicationNotFoundError, MasterCVNotFoundError } from './errors'
+import { AISkippedError, checkFollowupSignal, checkOutreachSignal } from '@/lib/ai/signal'
 import {
   snapshotForFollowup,
   snapshotForOutreach,
@@ -70,12 +72,38 @@ export async function generateOutreachDraft(input: {
 
   let daysSince: number | undefined = input.daysSince
   if (input.kind === 'followup_email' && daysSince === undefined) {
-    if (!application.appliedAt) {
-      throw new Error(
-        'Cannot draft a follow-up: set applied-at on the application first.',
+    if (application.appliedAt) {
+      daysSince = daysBetween(application.appliedAt, new Date())
+    }
+    // If appliedAt is missing we leave daysSince undefined and let the
+    // signal check below produce a proper AISkippedError with a fixHint.
+  }
+
+  // Signal-check gate: outreach requires sender name, job title, company name,
+  // and — for linkedin_message — at least one linked contact.
+  const linkedContactCount =
+    input.kind === 'linkedin_message'
+      ? (await appContactsQ.listForApplication(input.userId, input.applicationId)).length
+      : undefined
+  const outreachSignal = checkOutreachSignal(application, master, input.kind, {
+    linkedContactCount,
+  })
+  if (!outreachSignal.ok) {
+    throw new AISkippedError(
+      outreachSignal.code,
+      outreachSignal.message,
+      outreachSignal.fixHint,
+    )
+  }
+  if (input.kind === 'followup_email') {
+    const followupSignal = checkFollowupSignal(application, daysSince)
+    if (!followupSignal.ok) {
+      throw new AISkippedError(
+        followupSignal.code,
+        followupSignal.message,
+        followupSignal.fixHint,
       )
     }
-    daysSince = daysBetween(application.appliedAt, new Date())
   }
 
   const draft = await input.ai.draftOutreach({

@@ -7,6 +7,7 @@ import { getMasterCV } from './master'
 import { interviewPrepPackSchema } from './types'
 import { ApplicationNotFoundError, MasterCVNotFoundError } from './errors'
 import { snapshotForPrepPack, type StageRecord } from '@/lib/staleness/snapshot'
+import { AISkippedError, checkPrepPackSignal } from '@/lib/ai/signal'
 import type { AIProvider } from '@/lib/ai/types'
 import type { Document } from '@/lib/db/queries/documents'
 
@@ -28,6 +29,9 @@ export async function generateInterviewPrepPack(input: {
 
   const application = await applicationsQ.getById(input.userId, input.applicationId)
   if (!application) throw new ApplicationNotFoundError(input.applicationId)
+
+  const signal = checkPrepPackSignal(application, master)
+  if (!signal.ok) throw new AISkippedError(signal.code, signal.message, signal.fixHint)
 
   const pack = await input.ai.generateInterviewPrepPack({
     master,

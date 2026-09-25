@@ -3,20 +3,21 @@ import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { getDecisionProviderForUser } from '@/lib/decisions'
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/expenses/categories'
+import { checkExpenseClassifySignal } from '@/lib/ai/signal'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-const bodySchema = z
-  .object({
-    description: z.string().max(500).optional(),
-    vendor: z.string().max(200).optional(),
-    subcategory: z.string().max(200).optional(),
-  })
-  .refine((v) => (v.description ?? '').trim() || (v.vendor ?? '').trim(), {
-    message: 'description or vendor required',
-  })
+// v10 — dropped the `.refine(...)` here so the "both fields empty" case is
+// handled by the signal-check gate below (returns HTTP 200 with a skip
+// envelope rather than a 400). This keeps the "refused" semantics consistent
+// with the other generator routes.
+const bodySchema = z.object({
+  description: z.string().max(500).optional(),
+  vendor: z.string().max(200).optional(),
+  subcategory: z.string().max(200).optional(),
+})
 
 /**
  * POST /api/expenses/classify
@@ -44,6 +45,18 @@ export async function POST(req: Request): Promise<NextResponse> {
       )
     }
     const { description, vendor } = parsed.data
+    const signal = checkExpenseClassifySignal(description, vendor)
+    if (!signal.ok) {
+      return NextResponse.json(
+        {
+          skipped: true,
+          code: signal.code,
+          message: signal.message,
+          fixHint: signal.fixHint,
+        },
+        { status: 200 },
+      )
+    }
     const text = [vendor, description].filter(Boolean).join(' — ')
 
     const provider = await getDecisionProviderForUser(userId)

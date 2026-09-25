@@ -4,6 +4,7 @@ import { getMasterCV } from './master'
 import { coverLetterSchema } from './types'
 import { ApplicationNotFoundError, MasterCVNotFoundError } from './errors'
 import { snapshotForCoverLetter } from '@/lib/staleness/snapshot'
+import { AISkippedError, checkCoverLetterSignal } from '@/lib/ai/signal'
 import type { AIProvider } from '@/lib/ai/types'
 import type { Document } from '@/lib/db/queries/documents'
 
@@ -17,6 +18,9 @@ export async function generateCoverLetter(input: {
 
   const application = await applicationsQ.getById(input.userId, input.applicationId)
   if (!application) throw new ApplicationNotFoundError(input.applicationId)
+
+  const signal = checkCoverLetterSignal(application, master)
+  if (!signal.ok) throw new AISkippedError(signal.code, signal.message, signal.fixHint)
 
   const letter = await input.ai.draftCoverLetter({ master, application })
   const validated = coverLetterSchema.parse(letter)

@@ -8,6 +8,7 @@ import { getMasterCV } from './master'
 import { interviewDebriefSchema } from './types'
 import { ApplicationNotFoundError, MasterCVNotFoundError } from './errors'
 import { snapshotForDebrief } from '@/lib/staleness/snapshot'
+import { AISkippedError, checkDebriefSignal } from '@/lib/ai/signal'
 import type { AIProvider } from '@/lib/ai/types'
 import type { Document } from '@/lib/db/queries/documents'
 
@@ -70,6 +71,19 @@ export async function generateAIDebrief(input: {
 
   const quickNotes = (stage.debriefNotesMd ?? '').trim()
   if (!quickNotes) throw new EmptyDebriefNotesError()
+
+  // Signal gate: refuse to reflect on empty notes or a stage that hasn't
+  // been marked completed. `EmptyDebriefNotesError` above already covers the
+  // strictly-empty case; this catches template-only inputs and non-completed
+  // stages before we hit the model.
+  const debriefSignal = checkDebriefSignal(stage, stage.debriefNotesMd)
+  if (!debriefSignal.ok) {
+    throw new AISkippedError(
+      debriefSignal.code,
+      debriefSignal.message,
+      debriefSignal.fixHint,
+    )
+  }
 
   const application = await applicationsQ.getById(userId, stage.applicationId)
   if (!application) throw new ApplicationNotFoundError(stage.applicationId)

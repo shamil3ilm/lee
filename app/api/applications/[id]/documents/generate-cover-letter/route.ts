@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { generateCoverLetter } from '@/lib/documents/coverLetter'
 import { getAIProviderForUser } from '@/lib/ai'
+import { AISkippedError } from '@/lib/ai/signal'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -24,6 +25,12 @@ export async function POST(
       downloadUrl: `/api/documents/${doc.id}/pdf`,
     })
   } catch (err) {
+    if (err instanceof AISkippedError) {
+      return NextResponse.json(
+        { skipped: true, code: err.code, message: err.message, fixHint: err.fixHint },
+        { status: 200 },
+      )
+    }
     logger.error('generate-cover-letter failed', {
       err: err instanceof Error ? err.message : String(err),
     })

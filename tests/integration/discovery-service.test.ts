@@ -67,7 +67,12 @@ describe('runDiscoveryCycleForUser', () => {
 
   it('polls enabled sources, upserts items, scores new ones', async () => {
     const u = await makeUser()
-    await profileQ.upsert(u.id, { headline: 'Senior BE', skills: ['typescript'] })
+    // v10 — scoring requires at least 3 combined skills/industries/role_types.
+    await profileQ.upsert(u.id, {
+      headline: 'Senior BE',
+      skills: ['typescript', 'postgres'],
+      industries: ['fintech'],
+    })
     const src = await sourcesQ.create(u.id, {
       name: 'Acme GH',
       kind: 'greenhouse',
@@ -94,7 +99,12 @@ describe('runDiscoveryCycleForUser', () => {
 
   it('does not re-score on second poll', async () => {
     const u = await makeUser()
-    await profileQ.upsert(u.id, { headline: 'x', skills: [] })
+    // v10 — populate enough signals to pass the scoring gate.
+    await profileQ.upsert(u.id, {
+      headline: 'x',
+      skills: ['ts', 'go'],
+      industries: ['fintech'],
+    })
     await sourcesQ.create(u.id, {
       name: 'Acme',
       kind: 'greenhouse',

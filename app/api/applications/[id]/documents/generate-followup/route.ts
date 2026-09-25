@@ -8,6 +8,7 @@ import {
   MasterCVNotFoundError,
 } from '@/lib/documents/errors'
 import { getAIProviderForUser } from '@/lib/ai'
+import { AISkippedError } from '@/lib/ai/signal'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -52,16 +53,17 @@ export async function POST(
       downloadUrl: `/api/documents/${doc.id}/pdf`,
     })
   } catch (err) {
+    if (err instanceof AISkippedError) {
+      return NextResponse.json(
+        { skipped: true, code: err.code, message: err.message, fixHint: err.fixHint },
+        { status: 200 },
+      )
+    }
     if (err instanceof MasterCVNotFoundError) {
       return NextResponse.json({ error: err.message }, { status: 400 })
     }
     if (err instanceof ApplicationNotFoundError) {
       return NextResponse.json({ error: err.message }, { status: 404 })
-    }
-    // Missing appliedAt is a 400 with a user-friendly hint — the UI shows it
-    // as a toast so the user knows to backfill.
-    if (err instanceof Error && err.message.startsWith('Cannot draft a follow-up')) {
-      return NextResponse.json({ error: err.message }, { status: 400 })
     }
     logger.error('generate-followup failed', {
       err: err instanceof Error ? err.message : String(err),

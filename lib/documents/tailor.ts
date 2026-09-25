@@ -4,6 +4,7 @@ import { getMasterCV } from './master'
 import { tailoredCvSchema } from './types'
 import { ApplicationNotFoundError, MasterCVNotFoundError } from './errors'
 import { snapshotForTailoredCV } from '@/lib/staleness/snapshot'
+import { AISkippedError, checkTailorCVSignal } from '@/lib/ai/signal'
 import type { AIProvider } from '@/lib/ai/types'
 import type { Document } from '@/lib/db/queries/documents'
 
@@ -26,6 +27,9 @@ export async function generateTailoredCV(input: {
 
   const application = await applicationsQ.getById(input.userId, input.applicationId)
   if (!application) throw new ApplicationNotFoundError(input.applicationId)
+
+  const signal = checkTailorCVSignal(application, master)
+  if (!signal.ok) throw new AISkippedError(signal.code, signal.message, signal.fixHint)
 
   const tailored = await input.ai.tailorCV({ master, application })
   // Belt-and-braces: providers already validate, but a caller-supplied AI

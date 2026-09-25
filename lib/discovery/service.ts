@@ -17,6 +17,7 @@ import type {
   NormalizedJob,
 } from './adapters/types'
 import { applyCaps, benefitsScore } from './scoring'
+import { checkDiscoveryScoringSignal } from '@/lib/ai/signal'
 import type { Source } from '@/lib/db/queries/sources'
 import type { Discovery } from '@/lib/db/queries/discoveries'
 import type { CompanyDiscovery } from '@/lib/db/queries/companyDiscoveries'
@@ -27,6 +28,14 @@ export interface DiscoveryCycleResult {
   newJobDiscoveries: number
   newCompanyDiscoveries: number
   errors: Array<{ sourceId: string; message: string }>
+  // v10 — set when the per-user signal check refuses scoring (thin profile).
+  // Discoveries are still ingested, just not scored. Surfaced in the cron
+  // response so operators can see which users are being skipped.
+  signalCheck?: {
+    skipped: boolean
+    code?: string
+    message?: string
+  }
 }
 
 const CONCURRENCY = 4
@@ -53,9 +62,22 @@ export async function runDiscoveryCycleForUser(args: {
     errors: [],
   }
 
+  // v10 — signal-check gate. If the user's profile is too thin to produce
+  // grounded match scores, we still ingest fresh discoveries but skip the
+  // AI scoring pass entirely for this cycle. Surfaced in the response.
+  const profileSignal = checkDiscoveryScoringSignal(profile)
+  const scoringProfile = profileSignal.ok ? profile : null
+  if (!profileSignal.ok) {
+    result.signalCheck = {
+      skipped: true,
+      code: profileSignal.code,
+      message: profileSignal.message,
+    }
+  }
+
   await inBatches(active, CONCURRENCY, async (source) => {
     try {
-      const perSource = await pollSource({ userId, source, ai, profile })
+      const perSource = await pollSource({ userId, source, ai, profile: scoringProfile })
       result.sourcesPolled += 1
       result.newJobDiscoveries += perSource.newJobs
       result.newCompanyDiscoveries += perSource.newCompanies

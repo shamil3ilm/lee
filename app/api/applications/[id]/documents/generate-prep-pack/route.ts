@@ -7,6 +7,7 @@ import {
   MasterCVNotFoundError,
 } from '@/lib/documents/errors'
 import { getAIProviderForUser } from '@/lib/ai'
+import { AISkippedError } from '@/lib/ai/signal'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -45,6 +46,12 @@ export async function POST(
       downloadUrl: `/api/documents/${doc.id}/pdf`,
     })
   } catch (err) {
+    if (err instanceof AISkippedError) {
+      return NextResponse.json(
+        { skipped: true, code: err.code, message: err.message, fixHint: err.fixHint },
+        { status: 200 },
+      )
+    }
     if (err instanceof MasterCVNotFoundError) {
       return NextResponse.json({ error: err.message }, { status: 400 })
     }

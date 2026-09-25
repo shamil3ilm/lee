@@ -53,11 +53,16 @@ describe('POST /api/expenses/classify — per-user decision provider', () => {
     expect(res.status).toBe(401)
   })
 
-  it('returns 400 when neither vendor nor description is supplied', async () => {
+  it('returns 200 with a skip envelope when neither vendor nor description is supplied', async () => {
+    // v10 — the signal-check gate refuses the request rather than 400-ing.
+    // Client shows the fixHint as a toast; the request itself is valid.
     const u = await makeUser(`classify-empty-${Math.random()}@x.com`)
     authMock.mockResolvedValue({ user: { id: u.id } })
     const { POST } = await importRoute()
     const res = await POST(buildRequest({}))
-    expect(res.status).toBe(400)
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { skipped?: boolean; code?: string }
+    expect(body.skipped).toBe(true)
+    expect(body.code).toBe('expense_no_signal')
   })
 })
