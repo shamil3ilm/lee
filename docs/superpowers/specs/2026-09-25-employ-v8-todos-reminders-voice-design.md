@@ -118,9 +118,47 @@ Add microphone button next to:
 - Activity note textarea (application detail)
 - Outreach draft editable textarea (`components/outreach-card.tsx`)
 
-## 6. Constraints and non-goals
+## 5b. Feature E — Laya decision provider
 
-- **No Laya AI integration.** Not a fit for our stack (Python-native, no hosted API, decision engine not STT).
+### Purpose
+Laya (`github.com/NandhaKishorM/laya`, Apache 2.0) is a decision engine — typed choice / score / yes-no over text, no free-form generation. Extremely well-suited for narrow classification tasks where Gemini/Groq are overkill.
+
+### Provider abstraction
+`lib/decisions/types.ts`:
+```typescript
+export interface DecisionProvider {
+  choice<T extends string>(input: {
+    text: string
+    options: T[]
+    context?: string
+  }): Promise<{ pick: T; confidence: number }>
+  yesNo(input: { text: string; question: string }): Promise<{ answer: boolean; confidence: number }>
+  score(input: { text: string; rubric: string; scale?: [number, number] }): Promise<{ score: number }>
+}
+```
+
+### Implementations
+- `lib/decisions/laya-hf.ts` — HuggingFace Inference API call to hosted Laya checkpoint (`nandhakishoreconvai/laya-multilingual` or equivalent). Requires `HF_TOKEN` env var (free tier: 1000 requests/day). If the checkpoint isn't available on HF Inference, falls back to raising `LayaUnavailableError`.
+- `lib/decisions/heuristic.ts` — fallback: simple keyword-match categorization + regex-based booleans. Never fails, always deterministic. Lower quality.
+- `lib/decisions/index.ts` — `getDecisionProvider()` — env-driven: `DECISION_PROVIDER=laya` uses Laya with heuristic fallback on error; anything else uses heuristic.
+
+### First use case: expense auto-categorization
+- New API route `POST /api/expenses/classify` — body `{description: string, vendor?: string}` → returns `{category, subcategory?, confidence}`
+- On expense form, "Auto-categorize" button next to Category field: fills the select based on Description + Vendor input
+- Uses Laya's `choice` with our 22-value category enum
+- If Laya unavailable, falls back to heuristic keyword match (Netflix → subscription, DEWA → electricity, etc.)
+
+### Later use cases (deferred, but interface is ready)
+- Discovery pre-filter (yesNo before Gemini scoring)
+- Email triage relevance (yesNo replacing keyword matcher)
+- Follow-up timing (yesNo "should I follow up today?")
+
+### Env vars
+- `HF_TOKEN` — HuggingFace API token (free at huggingface.co/settings/tokens)
+- `DECISION_PROVIDER` — `laya | heuristic` (default: `heuristic` for zero-config)
+- `LAYA_HF_MODEL` — override the HF model id (default: `nandhakishoreconvai/laya-multilingual`)
+
+## 6. Constraints and non-goals
 - **No streaming transcription** in v8 (single-shot only)
 - **No cross-device sync of notifications** — browser-only
 - **No shared todos** — single user only
