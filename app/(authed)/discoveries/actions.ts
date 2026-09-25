@@ -9,6 +9,7 @@ import {
 } from '@/lib/discovery/service'
 import * as discQ from '@/lib/db/queries/discoveries'
 import * as compDiscQ from '@/lib/db/queries/companyDiscoveries'
+import * as aiCallLogsQ from '@/lib/db/queries/aiCallLogs'
 import { logger } from '@/lib/logger'
 
 export type ActionResult =
@@ -38,6 +39,11 @@ export async function saveDiscovery(discoveryId: string): Promise<ActionResult> 
       }
     }
     await promoteJobDiscovery({ userId, discoveryId })
+    // v10.1 — implicit positive signal on the underlying scoring call so
+    // analytics can correlate discovery scores → outcomes.
+    if (current.scoredByCallId) {
+      await aiCallLogsQ.updateAction(userId, current.scoredByCallId, 'used')
+    }
     revalidatePath('/discoveries')
     revalidatePath('/')
     revalidatePath('/applications')
@@ -54,7 +60,15 @@ export async function saveDiscovery(discoveryId: string): Promise<ActionResult> 
 export async function dismissDiscovery(discoveryId: string): Promise<ActionResult> {
   try {
     const userId = await requireUserId()
+    // Pre-read so we can attribute the implicit signal — the row is mutated
+    // by dismissJobService below.
+    const before = await discQ.getById(userId, discoveryId)
     await dismissJobService({ userId, discoveryId })
+    // v10.1 — implicit negative signal on the scoring call. Safe when the
+    // discovery has no scoredByCallId (no-op update by id + user).
+    if (before?.scoredByCallId) {
+      await aiCallLogsQ.updateAction(userId, before.scoredByCallId, 'dismissed')
+    }
     revalidatePath('/discoveries')
     revalidatePath('/')
     return { success: true }
@@ -81,6 +95,9 @@ export async function saveCompanyDiscovery(discoveryId: string): Promise<ActionR
       }
     }
     await promoteCompanyDiscovery({ userId, discoveryId })
+    if (current.scoredByCallId) {
+      await aiCallLogsQ.updateAction(userId, current.scoredByCallId, 'used')
+    }
     revalidatePath('/discoveries')
     revalidatePath('/companies')
     return { success: true }
@@ -96,7 +113,11 @@ export async function saveCompanyDiscovery(discoveryId: string): Promise<ActionR
 export async function dismissCompanyDiscovery(discoveryId: string): Promise<ActionResult> {
   try {
     const userId = await requireUserId()
+    const before = await compDiscQ.getById(userId, discoveryId)
     await dismissCompanyService({ userId, discoveryId })
+    if (before?.scoredByCallId) {
+      await aiCallLogsQ.updateAction(userId, before.scoredByCallId, 'dismissed')
+    }
     revalidatePath('/discoveries')
     return { success: true }
   } catch (err) {

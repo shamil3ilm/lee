@@ -62,25 +62,35 @@ export class LayaHttpDecisionProvider implements DecisionProvider {
    * v10 — log every completed Laya decision call so it shows up in analytics
    * alongside Gemini/Groq generations. Best-effort — logging must never
    * break the call. Called from choice/yesNo/score after the SSE round-trip.
+   *
+   * v10.1 — returns the inserted row's id so a caller can capture it for a
+   * downstream foreign-key linkage (currently unused by the expense classify
+   * path but kept symmetric with the Gemini/Groq providers). Returns null
+   * when logging fails so callers never depend on the id existing.
    */
   private async logCall(
     kind: string,
     status: 'ok' | 'error',
     latency: number,
     error?: string,
-  ): Promise<void> {
+  ): Promise<string | null> {
     try {
       const { db } = await import('@/lib/db/client')
       const { aiCallLogs } = await import('@/lib/db/schema')
-      await db.insert(aiCallLogs).values({
-        provider: 'laya',
-        kind,
-        latencyMs: latency,
-        status,
-        error: error ?? null,
-      })
+      const inserted = await db
+        .insert(aiCallLogs)
+        .values({
+          provider: 'laya',
+          kind,
+          latencyMs: latency,
+          status,
+          error: error ?? null,
+        })
+        .returning()
+      return inserted[0]?.id ?? null
     } catch {
       /* logging must never break the call */
+      return null
     }
   }
 

@@ -140,13 +140,25 @@ async function handleJobItem(args: {
   if (!isNew) return false
   if (!profile) return true // no profile → skip scoring, keep discovery
   try {
-    const scored = await ai.scoreJob(normalized, profile)
+    // v10.1 — capture the ai_call_logs row id via the `onLogged` callback so
+    // we can persist it onto the discovery row for later implicit-signal
+    // writeback when the user dismisses or promotes the discovery.
+    let capturedCallId: string | null = null
+    const scored = await ai.scoreJob(normalized, profile, {
+      userId,
+      onLogged: (id) => {
+        capturedCallId = id
+      },
+    })
     const finalScore = applyCaps(scored, normalized, profile)
     const bWeights = readBenefitWeights(profile)
     const benefitsRaw =
       (normalized as unknown as { benefits?: Record<string, unknown> }).benefits ?? {}
     const bScore = benefitsScore(benefitsRaw, bWeights)
     await discQ.updateScore(userId, discovery.id, finalScore, bScore, scored)
+    if (capturedCallId) {
+      await discQ.updateScoredByCallId(userId, discovery.id, capturedCallId)
+    }
   } catch {
     // Scoring failure is non-fatal — the discovery row still exists and can
     // be re-scored on the next cycle.
@@ -173,8 +185,19 @@ async function handleCompanyItem(args: {
   if (!isNew) return false
   if (!profile) return true
   try {
-    const scored = await ai.scoreCompany(normalized, profile)
+    // v10.1 — see handleJobItem: capture the log row id so implicit signals
+    // can flow back on dismiss/save.
+    let capturedCallId: string | null = null
+    const scored = await ai.scoreCompany(normalized, profile, {
+      userId,
+      onLogged: (id) => {
+        capturedCallId = id
+      },
+    })
     await compDiscQ.updateScore(userId, discovery.id, Math.round(scored.match_score), scored)
+    if (capturedCallId) {
+      await compDiscQ.updateScoredByCallId(userId, discovery.id, capturedCallId)
+    }
   } catch {
     // Non-fatal.
   }

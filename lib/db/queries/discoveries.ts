@@ -124,6 +124,24 @@ export async function updateScore(
     .where(and(eq(discoveries.userId, userId), eq(discoveries.id, id)))
 }
 
+/**
+ * v10.1 — persist the ai_call_logs row id that produced this discovery's
+ * score. Called by the discovery service right after AI scoring succeeds
+ * so dismiss/save actions can later flip `user_action` on the exact call.
+ * Best-effort: an unknown discovery/user is a silent no-op.
+ */
+export async function updateScoredByCallId(
+  userId: string,
+  id: string,
+  callId: string,
+  client: DbClient = db,
+): Promise<void> {
+  await client
+    .update(discoveries)
+    .set({ scoredByCallId: callId, updatedAt: new Date() })
+    .where(and(eq(discoveries.userId, userId), eq(discoveries.id, id)))
+}
+
 export async function setStatus(
   userId: string,
   id: string,

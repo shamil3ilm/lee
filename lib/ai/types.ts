@@ -15,6 +15,7 @@ import type {
   TailoredCV,
 } from '@/lib/documents/types'
 import type { InterviewStage } from '@/lib/db/queries/stages'
+import type { CallMeta } from './log'
 
 export const parsedJobSchema = z.object({
   title: z.string(),
@@ -82,10 +83,20 @@ export const companyMatchResultSchema = z.object({
 export type CompanyMatchResult = z.infer<typeof companyMatchResultSchema>
 
 export interface AIProvider {
-  parseJob(text: string): Promise<ParsedJob>
-  parseProfile(input: { cvText?: string; profileMd?: string }): Promise<ParsedProfile>
-  scoreJob(job: NormalizedJob, profile: UserProfile): Promise<JobMatchResult>
-  scoreCompany(company: NormalizedCompany, profile: UserProfile): Promise<CompanyMatchResult>
+  parseJob(text: string, meta?: CallMeta): Promise<ParsedJob>
+  parseProfile(
+    input: { cvText?: string; profileMd?: string },
+    meta?: CallMeta,
+  ): Promise<ParsedProfile>
+  // v10.1 — `meta` lets the discovery service capture the ai_call_logs row
+  // id via `onLogged`, so the score can be persisted onto the discovery row
+  // for later implicit-signal writeback (dismiss/save).
+  scoreJob(job: NormalizedJob, profile: UserProfile, meta?: CallMeta): Promise<JobMatchResult>
+  scoreCompany(
+    company: NormalizedCompany,
+    profile: UserProfile,
+    meta?: CallMeta,
+  ): Promise<CompanyMatchResult>
   // v2 additions — CV & document generation.
   tailorCV(input: { master: MasterCV; application: ApplicationWithJob }): Promise<TailoredCV>
   draftCoverLetter(input: {

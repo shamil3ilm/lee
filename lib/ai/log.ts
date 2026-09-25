@@ -39,6 +39,14 @@ export interface CallMeta {
   documentId?: string
   signalCheckPassed?: boolean
   signalCheckCode?: string
+  // v10.1 — prompt versioning. Providers can compute + attach the hash /
+  // version so ai_call_logs rows are grouped by (kind, promptVersion) in
+  // analytics. `onLogged` fires with the just-inserted row id so callers
+  // (like the discovery service) can capture it for foreign-key linkage
+  // without querying for the latest row afterwards.
+  promptHash?: string
+  promptVersion?: string
+  onLogged?: (callId: string) => void
 }
 
 /**

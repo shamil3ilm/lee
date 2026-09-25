@@ -6,6 +6,7 @@ import { applications, companies, discoveries as discTable, sources } from '@/li
 import { FixtureAIProvider } from '@/lib/ai/fixtures'
 import * as profileQ from '@/lib/db/queries/profile'
 import * as sourcesQ from '@/lib/db/queries/sources'
+import * as aiCallLogsQ from '@/lib/db/queries/aiCallLogs'
 import {
   runDiscoveryCycleForUser,
   promoteJobDiscovery,
@@ -249,6 +250,94 @@ describe('dismissDiscovery', () => {
     await dismissDiscovery({ userId: u.id, discoveryId: disc!.id })
     const [after] = await db.select().from(discTable).where(eq(discTable.id, disc!.id))
     expect(after!.status).toBe('dismissed')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// v10.1 — per-discovery scoring rows + implicit dismiss/save signal.
+// Verifies: (a) scoring persists ai_call_logs.id onto discoveries.scoredByCallId
+//           (b) dismissing a scored discovery writes user_action='dismissed' on that call
+//           (c) promoting (save) a scored discovery writes user_action='used' on that call
+// ---------------------------------------------------------------------------
+describe('per-discovery scoring rows + implicit signal', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('populates scoredByCallId on a newly scored discovery', async () => {
+    const u = await makeUser()
+    await profileQ.upsert(u.id, {
+      headline: 'BE',
+      skills: ['typescript', 'postgres'],
+      industries: ['fintech'],
+    })
+    await sourcesQ.create(u.id, {
+      name: 'Acme',
+      kind: 'greenhouse',
+      config: { company: 'acme' },
+    })
+    stubAdapter('greenhouse', [jobItem])
+    await runDiscoveryCycleForUser({ userId: u.id, ai: new FixtureAIProvider() })
+
+    const [disc] = await db.select().from(discTable).where(eq(discTable.userId, u.id))
+    expect(disc?.scoredByCallId).toBeTruthy()
+    // The linked call row must exist (FK) and be owned by the same user.
+    const call = await aiCallLogsQ.getById(u.id, disc!.scoredByCallId!)
+    expect(call).toBeTruthy()
+    expect(call?.kind).toBe('score_job')
+  })
+
+  it('dismissing a scored discovery flips user_action to "dismissed" on the scoring call', async () => {
+    const u = await makeUser()
+    await profileQ.upsert(u.id, {
+      headline: 'BE',
+      skills: ['typescript', 'postgres'],
+      industries: ['fintech'],
+    })
+    await sourcesQ.create(u.id, {
+      name: 'Acme',
+      kind: 'greenhouse',
+      config: { company: 'acme' },
+    })
+    stubAdapter('greenhouse', [jobItem])
+    await runDiscoveryCycleForUser({ userId: u.id, ai: new FixtureAIProvider() })
+
+    const [disc] = await db.select().from(discTable).where(eq(discTable.userId, u.id))
+    expect(disc?.scoredByCallId).toBeTruthy()
+
+    // Mirror the action: dismiss via the service, then fire the implicit
+    // signal like the server action does.
+    await dismissDiscovery({ userId: u.id, discoveryId: disc!.id })
+    await aiCallLogsQ.updateAction(u.id, disc!.scoredByCallId!, 'dismissed')
+
+    const call = await aiCallLogsQ.getById(u.id, disc!.scoredByCallId!)
+    expect(call?.userAction).toBe('dismissed')
+  })
+
+  it('promoting a scored discovery flips user_action to "used" on the scoring call', async () => {
+    const u = await makeUser()
+    await profileQ.upsert(u.id, {
+      headline: 'BE',
+      skills: ['typescript', 'postgres'],
+      industries: ['fintech'],
+    })
+    await sourcesQ.create(u.id, {
+      name: 'Acme',
+      kind: 'greenhouse',
+      config: { company: 'acme' },
+    })
+    stubAdapter('greenhouse', [jobItem])
+    await runDiscoveryCycleForUser({ userId: u.id, ai: new FixtureAIProvider() })
+
+    const [disc] = await db.select().from(discTable).where(eq(discTable.userId, u.id))
+    expect(disc?.scoredByCallId).toBeTruthy()
+    const callId = disc!.scoredByCallId!
+
+    await promoteJobDiscovery({ userId: u.id, discoveryId: disc!.id })
+    await aiCallLogsQ.updateAction(u.id, callId, 'used')
+
+    const call = await aiCallLogsQ.getById(u.id, callId)
+    expect(call?.userAction).toBe('used')
   })
 })
 

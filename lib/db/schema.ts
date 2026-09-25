@@ -396,6 +396,13 @@ export const discoveries = pgTable(
     savedApplicationId: uuid('saved_application_id').references(() => applications.id, {
       onDelete: 'set null',
     }),
+    // v10.1 — link a discovery row to the ai_call_logs row that scored it.
+    // Enables the dismiss/save actions to write an implicit rating signal
+    // back to the exact call that produced the score. Nullable because
+    // discoveries can exist without a score (thin profile → scoring skipped).
+    scoredByCallId: uuid('scored_by_call_id').references(() => aiCallLogs.id, {
+      onDelete: 'set null',
+    }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -426,6 +433,11 @@ export const companyDiscoveries = pgTable(
     matchReasoning: jsonb('match_reasoning'),
     status: text('status').notNull().default('new'),
     addedCompanyId: uuid('added_company_id').references(() => companies.id, {
+      onDelete: 'set null',
+    }),
+    // v10.1 — same as discoveries.scoredByCallId; enables implicit signal on
+    // dismiss/save of scored company discoveries.
+    scoredByCallId: uuid('scored_by_call_id').references(() => aiCallLogs.id, {
       onDelete: 'set null',
     }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -736,5 +748,12 @@ export const aiCallLogs = pgTable('ai_call_logs', {
   // reason so analytics can group skips by kind.
   signalCheckPassed: boolean('signal_check_passed'),
   signalCheckCode: text('signal_check_code'),
+  // v10.1 — prompt versioning. `promptHash` is the first 12 chars of a sha256
+  // of the exact prompt text sent to the model. `promptVersion` is a
+  // semver-ish string bumped by hand when a prompt builder is intentionally
+  // changed. Together they let analytics roll up ratings per prompt version
+  // and detect silent-behavior changes when only the hash moves.
+  promptHash: text('prompt_hash'),
+  promptVersion: text('prompt_version'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })

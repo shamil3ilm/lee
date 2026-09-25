@@ -100,6 +100,23 @@ export async function updateScore(
     .where(and(eq(companyDiscoveries.userId, userId), eq(companyDiscoveries.id, id)))
 }
 
+/**
+ * v10.1 — same as discoveries.updateScoredByCallId; persists the ai_call_logs
+ * row id that produced the score onto the company discovery row so dismiss/
+ * save actions can later attribute an implicit rating signal to that call.
+ */
+export async function updateScoredByCallId(
+  userId: string,
+  id: string,
+  callId: string,
+  client: DbClient = db,
+): Promise<void> {
+  await client
+    .update(companyDiscoveries)
+    .set({ scoredByCallId: callId, updatedAt: new Date() })
+    .where(and(eq(companyDiscoveries.userId, userId), eq(companyDiscoveries.id, id)))
+}
+
 export async function setStatus(
   userId: string,
   id: string,

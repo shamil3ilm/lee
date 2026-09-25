@@ -5,6 +5,7 @@ import type {
   ParsedJob,
   ParsedProfile,
 } from './types'
+import type { CallMeta } from './log'
 import type { NormalizedCompany, NormalizedJob } from '@/lib/discovery/adapters/types'
 import type { UserProfile } from '@/lib/db/queries/profile'
 import type { ApplicationWithJob } from '@/lib/db/queries/applications'
@@ -64,7 +65,39 @@ export class FixtureAIProvider implements AIProvider {
     } = {},
   ) {}
 
-  async parseJob(text: string): Promise<ParsedJob> {
+  /**
+   * v10.1 — mirror the real providers by inserting a synthetic ai_call_logs
+   * row when a caller registers `onLogged`, so foreign keys onto that row
+   * (e.g. discoveries.scored_by_call_id) are satisfied in tests. Best-effort;
+   * failures return null and the caller sees no callId, which matches the
+   * real providers' silence-on-logging-failure behavior.
+   */
+  private async emitLoggedCallId(kind: string, meta?: CallMeta): Promise<void> {
+    if (!meta?.onLogged) return
+    try {
+      const { db } = await import('@/lib/db/client')
+      const { aiCallLogs } = await import('@/lib/db/schema')
+      const inserted = await db
+        .insert(aiCallLogs)
+        .values({
+          userId: meta.userId ?? null,
+          provider: 'fixture',
+          kind,
+          status: 'ok',
+          latencyMs: 0,
+          promptHash: meta.promptHash ?? null,
+          promptVersion: meta.promptVersion ?? null,
+        })
+        .returning()
+      const id = inserted[0]?.id
+      if (id) meta.onLogged(id)
+    } catch {
+      /* logging must never break the call */
+    }
+  }
+
+  async parseJob(text: string, meta?: CallMeta): Promise<ParsedJob> {
+    await this.emitLoggedCallId('parse_job', meta)
     return this.fixtures.parseJob?.(text) ?? {
       title: 'Test Engineer',
       company_name: 'Test Co',
@@ -83,7 +116,12 @@ export class FixtureAIProvider implements AIProvider {
     }
   }
 
-  async parseProfile(): Promise<ParsedProfile> {
+  async parseProfile(
+    input: { cvText?: string; profileMd?: string } = {},
+    meta?: CallMeta,
+  ): Promise<ParsedProfile> {
+    await this.emitLoggedCallId('parse_profile', meta)
+    void input
     return this.fixtures.parseProfile?.({}) ?? {
       headline: 'Engineer', summary_md: null,
       skills: [], industries: [], role_types: [],
@@ -91,7 +129,12 @@ export class FixtureAIProvider implements AIProvider {
     }
   }
 
-  async scoreJob(job: NormalizedJob, profile: UserProfile): Promise<JobMatchResult> {
+  async scoreJob(
+    job: NormalizedJob,
+    profile: UserProfile,
+    meta?: CallMeta,
+  ): Promise<JobMatchResult> {
+    await this.emitLoggedCallId('score_job', meta)
     if (this.fixtures.scoreJob) return this.fixtures.scoreJob(job, profile)
     return pseudoScoreJob(job, profile)
   }
@@ -99,7 +142,9 @@ export class FixtureAIProvider implements AIProvider {
   async scoreCompany(
     company: NormalizedCompany,
     profile: UserProfile,
+    meta?: CallMeta,
   ): Promise<CompanyMatchResult> {
+    await this.emitLoggedCallId('score_company', meta)
     if (this.fixtures.scoreCompany) return this.fixtures.scoreCompany(company, profile)
     return pseudoScoreCompany(company, profile)
   }
