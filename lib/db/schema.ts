@@ -10,8 +10,29 @@ import {
   smallint,
   index,
   uniqueIndex,
+  customType,
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
+
+// ---------------------------------------------------------------------------
+// bytea custom type. Drizzle has no first-class bytea column; both
+// postgres-js (Neon prod) and PGlite (tests) accept a Uint8Array on write
+// and return a Uint8Array on read. We surface both sides as Node's `Buffer`
+// so callers get a familiar API — `Buffer` extends Uint8Array so passing it
+// to the driver is a no-op cast.
+// ---------------------------------------------------------------------------
+
+const bytea = customType<{ data: Buffer; driverData: Uint8Array; default: false }>({
+  dataType() {
+    return 'bytea'
+  },
+  toDriver(value: Buffer): Uint8Array {
+    return value
+  },
+  fromDriver(value: Uint8Array): Buffer {
+    return Buffer.isBuffer(value) ? value : Buffer.from(value)
+  },
+})
 
 // ---------------------------------------------------------------------------
 // Auth.js schema (compatible with @auth/drizzle-adapter)
@@ -506,6 +527,51 @@ export const documentsRelations = relations(documents, ({ one }) => ({
   application: one(applications, {
     fields: [documents.applicationId],
     references: [applications.id],
+  }),
+}))
+
+// ---------------------------------------------------------------------------
+// v5.2 — document assets. Files (images, PDFs, arbitrary attachments) that
+// belong to a LaTeX document, referenced from the .tex source by filename
+// and bundled with the compile request to latexonline.cc.
+//
+// Bytes are stored directly in Postgres as `bytea`. For personal-use scale
+// (few MB per doc, 20-asset cap, 500MB Neon free tier) this avoids a new
+// external dependency (S3/R2) and keeps ownership + backup with the
+// document row itself. Move to object storage before scaling to multiple
+// power users.
+// ---------------------------------------------------------------------------
+
+export const documentAssets = pgTable(
+  'document_assets',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    documentId: uuid('document_id')
+      .notNull()
+      .references(() => documents.id, { onDelete: 'cascade' }),
+    // How the file is referenced from LaTeX (e.g. 'photo.jpg' or 'cover.pdf').
+    // Sanitised before insert — no directory separators, no '..', spaces
+    // collapsed to underscores. Unique per document so `\includegraphics{name}`
+    // is unambiguous.
+    filename: text('filename').notNull(),
+    mimeType: text('mime_type').notNull(),
+    sizeBytes: integer('size_bytes').notNull(),
+    bytes: bytea('bytes').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    documentIdx: index('document_assets_document_idx').on(t.documentId),
+    docFilenameUq: uniqueIndex('document_assets_doc_filename_uq').on(t.documentId, t.filename),
+  }),
+)
+
+export const documentAssetsRelations = relations(documentAssets, ({ one }) => ({
+  document: one(documents, {
+    fields: [documentAssets.documentId],
+    references: [documents.id],
   }),
 }))
 
