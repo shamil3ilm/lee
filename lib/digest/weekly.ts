@@ -4,6 +4,7 @@ import {
   applications,
   companies,
   discoveries,
+  documents,
   interviewStages,
   jobs,
   todos,
@@ -58,6 +59,20 @@ export interface PipelineSnapshot {
     dueAt: Date | null
     priority: number
     applicationId: string | null
+  }[]
+  // v4.3 — interview stages whose status flipped to 'completed' within the
+  // past 7 days. `hasDebrief` / `hasAIDebrief` let the email nudge the user
+  // to reflect while the interview is still fresh.
+  completedStagesThisWeek: {
+    stageId: string
+    stageKind: string
+    stageTitle: string | null
+    updatedAt: Date
+    jobTitle: string
+    companyName: string | null
+    applicationId: string
+    hasDebrief: boolean
+    hasAIDebrief: boolean
   }[]
 }
 
@@ -269,6 +284,66 @@ export async function gatherPipelineSnapshot(
       applicationId: r.applicationId,
     }))
 
+  // v4.3 — completed stages in the trailing 7 days. Match completion by
+  // updated_at because there is no dedicated `completed_at` column; a stage
+  // whose status is now 'completed' and whose updated_at is within the window
+  // is treated as freshly closed. Not perfect (any subsequent edit re-stamps
+  // updated_at), but good enough for a nudge digest and cheaper than adding
+  // a schema change.
+  const sevenDaysAgo = new Date(now.getTime() - 7 * DAY_MS)
+  const completedRows = await client
+    .select({
+      stageId: interviewStages.id,
+      stageKind: interviewStages.kind,
+      stageTitle: interviewStages.title,
+      debriefNotesMd: interviewStages.debriefNotesMd,
+      updatedAt: interviewStages.updatedAt,
+      applicationId: applications.id,
+      jobTitle: jobs.title,
+      companyName: companies.name,
+    })
+    .from(interviewStages)
+    .innerJoin(applications, eq(interviewStages.applicationId, applications.id))
+    .innerJoin(jobs, eq(applications.jobId, jobs.id))
+    .leftJoin(companies, eq(jobs.companyId, companies.id))
+    .where(
+      and(
+        eq(interviewStages.userId, userId),
+        eq(interviewStages.status, 'completed'),
+        gte(interviewStages.updatedAt, sevenDaysAgo),
+      ),
+    )
+    .orderBy(desc(interviewStages.updatedAt))
+    .limit(20)
+
+  // Second pass: does the user have an interview_debrief document per stage?
+  // Loading all recent debriefs once and matching by content.stageId keeps
+  // this to two queries rather than N.
+  const stageIds = completedRows.map((r) => r.stageId)
+  const debriefStageIdSet = new Set<string>()
+  if (stageIds.length > 0) {
+    const debriefRows = await client
+      .select({ content: documents.content })
+      .from(documents)
+      .where(and(eq(documents.userId, userId), eq(documents.kind, 'interview_debrief')))
+    for (const row of debriefRows) {
+      const c = row.content as { stageId?: string } | null
+      if (c && typeof c.stageId === 'string') debriefStageIdSet.add(c.stageId)
+    }
+  }
+
+  const completedStagesThisWeek = completedRows.map((r) => ({
+    stageId: r.stageId,
+    stageKind: r.stageKind,
+    stageTitle: r.stageTitle,
+    updatedAt: r.updatedAt,
+    jobTitle: r.jobTitle,
+    companyName: r.companyName,
+    applicationId: r.applicationId,
+    hasDebrief: Boolean(r.debriefNotesMd && r.debriefNotesMd.trim().length > 0),
+    hasAIDebrief: debriefStageIdSet.has(r.stageId),
+  }))
+
   return {
     userId,
     userEmail: user.email,
@@ -281,6 +356,7 @@ export async function gatherPipelineSnapshot(
     topDiscoveries,
     staleApplications,
     upcomingTodos,
+    completedStagesThisWeek,
   }
 }
 

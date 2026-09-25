@@ -135,6 +135,101 @@ describe('gatherPipelineSnapshot', () => {
     expect(snap.upcomingTodos[0]?.title).toBe('Send CV')
   })
 
+  it('surfaces stages completed in the last 7 days with debrief flags', async () => {
+    const u = await makeUser('digest-completed@x.com')
+    const c = await makeCompany(u.id, { name: 'Stripe' })
+    const j = await makeJob(u.id, c.id, { title: 'Payments' })
+    const app = await makeApplication(u.id, j.id, { status: 'interview' })
+
+    // Stage 1: completed 2 days ago, has quick notes only.
+    const [stage1] = await db
+      .insert(interviewStages)
+      .values({
+        userId: u.id,
+        applicationId: app.id,
+        kind: 'phone_screen',
+        status: 'completed',
+        debriefNotesMd: '## What went well\n- SQL question landed',
+      })
+      .returning()
+    if (!stage1) throw new Error('stage1 insert failed')
+    await db
+      .update(interviewStages)
+      .set({ updatedAt: new Date(Date.now() - 2 * DAY_MS) })
+      .where(eq(interviewStages.id, stage1.id))
+
+    // Stage 2: completed 3 days ago, has AI debrief document.
+    const [stage2] = await db
+      .insert(interviewStages)
+      .values({
+        userId: u.id,
+        applicationId: app.id,
+        kind: 'tech_screen',
+        status: 'completed',
+        debriefNotesMd: '- crushed it',
+      })
+      .returning()
+    if (!stage2) throw new Error('stage2 insert failed')
+    await db
+      .update(interviewStages)
+      .set({ updatedAt: new Date(Date.now() - 3 * DAY_MS) })
+      .where(eq(interviewStages.id, stage2.id))
+    // Emulate what the debrief service persists — a documents row whose
+    // content.stageId points back to stage2.
+    const { documents } = await import('@/lib/db/schema')
+    await db.insert(documents).values({
+      userId: u.id,
+      applicationId: app.id,
+      kind: 'interview_debrief',
+      version: 1,
+      title: 'Debrief',
+      content: {
+        stageId: stage2.id,
+        applicationId: app.id,
+        summary: 'x',
+        wentWell: [],
+        toImprove: [],
+        questionsAsked: [],
+        redFlags: [],
+        followUpRecommendations: [],
+        outcomeConfidence: 'unclear',
+        reasoning: 'x',
+      },
+    })
+
+    // Stage 3: completed 30 days ago — outside the window, should NOT appear.
+    const [stage3] = await db
+      .insert(interviewStages)
+      .values({
+        userId: u.id,
+        applicationId: app.id,
+        kind: 'onsite',
+        status: 'completed',
+      })
+      .returning()
+    if (!stage3) throw new Error('stage3 insert failed')
+    await db
+      .update(interviewStages)
+      .set({ updatedAt: new Date(Date.now() - 30 * DAY_MS) })
+      .where(eq(interviewStages.id, stage3.id))
+
+    // Stage 4: still scheduled — should NOT appear.
+    await db.insert(interviewStages).values({
+      userId: u.id,
+      applicationId: app.id,
+      kind: 'final',
+      status: 'scheduled',
+    })
+
+    const snap = await gatherPipelineSnapshot(u.id)
+    expect(snap.completedStagesThisWeek).toHaveLength(2)
+    const byKind = new Map(snap.completedStagesThisWeek.map((s) => [s.stageKind, s]))
+    expect(byKind.get('phone_screen')?.hasDebrief).toBe(true)
+    expect(byKind.get('phone_screen')?.hasAIDebrief).toBe(false)
+    expect(byKind.get('tech_screen')?.hasDebrief).toBe(true)
+    expect(byKind.get('tech_screen')?.hasAIDebrief).toBe(true)
+  })
+
   it('scopes strictly by userId', async () => {
     const u1 = await makeUser('digest-scope-1@x.com')
     const u2 = await makeUser('digest-scope-2@x.com')
@@ -203,6 +298,7 @@ describe('renderWeeklyDigestHtml', () => {
     expect(html).toContain('Top discoveries')
     expect(html).toContain('Stale follow-ups')
     expect(html).toContain('Upcoming this week')
+    expect(html).toContain('Interviews this week')
     expect(html).toContain('/settings/notifications')
   })
 })

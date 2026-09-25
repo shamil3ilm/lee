@@ -86,6 +86,7 @@ export function WeeklyDigestEmail({
     topDiscoveries,
     staleApplications,
     upcomingTodos,
+    completedStagesThisWeek,
   } = snapshot
   return (
     <div style={styles.wrapper}>
@@ -93,7 +94,8 @@ export function WeeklyDigestEmail({
       <p style={styles.subline}>
         This week at a glance: {totalApplications} applications ·{' '}
         {upcomingInterviews.length} interviews · {topDiscoveries.length} discoveries ·{' '}
-        {staleApplications.length} stale · {upcomingTodos.length} todos
+        {staleApplications.length} stale · {upcomingTodos.length} todos ·{' '}
+        {completedStagesThisWeek.length} interviews done
       </p>
 
       <div style={styles.section}>
@@ -132,6 +134,40 @@ export function WeeklyDigestEmail({
                 {s.companyName ? ` @ ${s.companyName}` : ''}
                 <br />
                 <span style={styles.meta}>{formatDateTime(s.scheduledAt)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div style={styles.section}>
+        <h2 style={styles.h2}>Interviews this week</h2>
+        {completedStagesThisWeek.length === 0 ? (
+          <p style={styles.empty}>No interviews completed in the last 7 days.</p>
+        ) : (
+          <ul style={styles.list}>
+            {completedStagesThisWeek.map((s) => (
+              <li key={s.stageId} style={styles.listItem}>
+                <strong>{s.stageKind}</strong> · {s.jobTitle}
+                {s.companyName ? ` @ ${s.companyName}` : ''}
+                <br />
+                <span style={styles.meta}>
+                  finished {formatDateTime(s.updatedAt)} ·{' '}
+                  {s.hasDebrief ? (
+                    s.hasAIDebrief ? (
+                      <span>debrief + AI summary</span>
+                    ) : (
+                      <span>debrief added — generate AI summary next</span>
+                    )
+                  ) : (
+                    <a
+                      href={`${appBaseUrl}/applications/${s.applicationId}`}
+                      style={styles.link}
+                    >
+                      add a debrief while it&apos;s fresh
+                    </a>
+                  )}
+                </span>
               </li>
             ))}
           </ul>
