@@ -10,6 +10,7 @@ const KIND_LABELS: Record<OutreachKind, string> = {
   linkedin_connection: 'LinkedIn Connection',
   linkedin_message: 'LinkedIn Message',
   recruiter_reply: 'Recruiter Reply',
+  followup_email: 'Follow-up Email',
 }
 
 function toDocumentKind(kind: OutreachKind): DocumentKind {
@@ -20,14 +21,30 @@ function toDocumentKind(kind: OutreachKind): DocumentKind {
       return 'outreach_linkedin_message'
     case 'recruiter_reply':
       return 'outreach_recruiter_reply'
+    case 'followup_email':
+      return 'outreach_followup_email'
   }
 }
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+
+function daysBetween(from: Date, to: Date): number {
+  const diff = to.getTime() - from.getTime()
+  // Floor so a not-quite-7-days-ago application reports 6 (matching human
+  // intuition — "one week later" means ~168 hours have passed).
+  return Math.max(0, Math.floor(diff / MS_PER_DAY))
+}
+
 /**
- * Generates an outreach draft (LinkedIn connection / message / recruiter reply)
- * grounded in the master CV + application context. Persists as a new
- * `documents` row with a kind-specific `outreach_*` value so the library
- * filter chips can group them.
+ * Generates an outreach draft (LinkedIn connection / message / recruiter reply
+ * / follow-up email) grounded in the master CV + application context. Persists
+ * as a new `documents` row with a kind-specific `outreach_*` value so the
+ * library filter chips can group them.
+ *
+ * For kind='followup_email', `daysSince` is required for the prompt. When
+ * omitted, it is computed from application.appliedAt → now; if the application
+ * has never been marked applied, this throws so callers can surface a hint
+ * rather than persist a nonsensical "day 0" draft.
  */
 export async function generateOutreachDraft(input: {
   userId: string
@@ -35,6 +52,7 @@ export async function generateOutreachDraft(input: {
   kind: OutreachKind
   tone: OutreachTone
   ai: AIProvider
+  daysSince?: number
 }): Promise<Document> {
   const master = await getMasterCV(input.userId)
   if (!master) throw new MasterCVNotFoundError()
@@ -42,18 +60,38 @@ export async function generateOutreachDraft(input: {
   const application = await applicationsQ.getById(input.userId, input.applicationId)
   if (!application) throw new ApplicationNotFoundError(input.applicationId)
 
+  let daysSince: number | undefined = input.daysSince
+  if (input.kind === 'followup_email' && daysSince === undefined) {
+    if (!application.appliedAt) {
+      throw new Error(
+        'Cannot draft a follow-up: set applied-at on the application first.',
+      )
+    }
+    daysSince = daysBetween(application.appliedAt, new Date())
+  }
+
   const draft = await input.ai.draftOutreach({
     master,
     application,
     kind: input.kind,
     tone: input.tone,
+    daysSince,
   })
-  const validated = outreachDraftSchema.parse(draft)
+  // The prompt asks the model to echo daysSince back on the draft; some models
+  // will drop it. Server-side truth wins so the UI can group by day reliably.
+  const draftWithMeta =
+    input.kind === 'followup_email' && daysSince !== undefined
+      ? { ...draft, daysSince }
+      : draft
+  const validated = outreachDraftSchema.parse(draftWithMeta)
 
   const documentKind = toDocumentKind(input.kind)
   const version = await documentsQ.nextVersion(input.userId, input.applicationId, documentKind)
   const company = application.job.company?.name ?? 'unknown'
-  const title = `${KIND_LABELS[input.kind]} - ${application.job.title} @ ${company}`.slice(0, 200)
+  const daySuffix =
+    input.kind === 'followup_email' && daysSince !== undefined ? ` (day ${daysSince})` : ''
+  const title =
+    `${KIND_LABELS[input.kind]}${daySuffix} - ${application.job.title} @ ${company}`.slice(0, 200)
 
   return documentsQ.create(input.userId, {
     applicationId: input.applicationId,

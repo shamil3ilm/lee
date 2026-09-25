@@ -139,4 +139,65 @@ describe('generateOutreachDraft', () => {
       }),
     ).rejects.toBeInstanceOf(ApplicationNotFoundError)
   })
+
+  // -------------------------------------------------------------------------
+  // v4.2 — follow-up email drafts
+  // -------------------------------------------------------------------------
+
+  it('persists an outreach_followup_email with daysSince from body', async () => {
+    const { u, app } = await seed('outreach-followup-7@x.com')
+    await saveMasterCV(u.id, makeCv())
+    const ai = new FixtureAIProvider()
+    const doc = await generateOutreachDraft({
+      userId: u.id,
+      applicationId: app.id,
+      kind: 'followup_email',
+      tone: 'friendly',
+      daysSince: 7,
+      ai,
+    })
+    expect(doc.kind).toBe('outreach_followup_email')
+    expect(doc.title).toContain('day 7')
+    const content = doc.content as OutreachDraft
+    expect(content.kind).toBe('followup_email')
+    expect(content.daysSince).toBe(7)
+    expect(content.subject).toBeDefined()
+    expect(content.body.length).toBeGreaterThan(0)
+  })
+
+  it('computes daysSince from appliedAt when omitted', async () => {
+    const u = await makeUser('outreach-followup-compute@x.com')
+    const co = await makeCompany(u.id, { name: 'Stripe' })
+    const j = await makeJob(u.id, co.id, { title: 'Staff Payments Engineer' })
+    // Applied 14 days ago exactly — expect the doc title to say day 14.
+    const appliedAt = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
+    const app = await makeApplication(u.id, j.id, { status: 'applied', appliedAt })
+    await saveMasterCV(u.id, makeCv())
+    const ai = new FixtureAIProvider()
+    const doc = await generateOutreachDraft({
+      userId: u.id,
+      applicationId: app.id,
+      kind: 'followup_email',
+      tone: 'friendly',
+      ai,
+    })
+    const content = doc.content as OutreachDraft
+    expect(content.daysSince).toBe(14)
+    expect(doc.title).toContain('day 14')
+  })
+
+  it('throws when kind=followup_email and appliedAt is null', async () => {
+    const { u, app } = await seed('outreach-followup-noapplied@x.com')
+    await saveMasterCV(u.id, makeCv())
+    const ai = new FixtureAIProvider()
+    await expect(
+      generateOutreachDraft({
+        userId: u.id,
+        applicationId: app.id,
+        kind: 'followup_email',
+        tone: 'friendly',
+        ai,
+      }),
+    ).rejects.toThrow(/applied-at/i)
+  })
 })
