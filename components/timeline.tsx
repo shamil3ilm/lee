@@ -89,8 +89,27 @@ function StageItem({ item }: { item: TimelineStage }) {
   function pushToCalendar(): void {
     start(async () => {
       try {
-        const res = await fetch(`/api/stages/${item.id}/push-to-calendar`, { method: 'POST' })
-        const json = (await res.json().catch(() => ({}))) as { error?: string; success?: boolean }
+        // v9 — send what the client believed the stage state was so the
+        // server can 409 if another tab already pushed or rescheduled.
+        const res = await fetch(`/api/stages/${item.id}/push-to-calendar`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            expectedGoogleEventId: item.googleEventId ?? null,
+            expectedScheduledAt: item.scheduledAt ?? null,
+          }),
+        })
+        const json = (await res.json().catch(() => ({}))) as {
+          error?: string
+          success?: boolean
+          conflict?: string
+          message?: string
+        }
+        if (res.status === 409) {
+          toast(json.message ?? 'Stage changed since you opened the page.')
+          router.refresh()
+          return
+        }
         if (!res.ok || !json.success) {
           if (res.status === 400 || res.status === 401) {
             toast.error(json.error ?? 'Connect Google at Settings → Integrations.')

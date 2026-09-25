@@ -1,6 +1,7 @@
 'use client'
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   ChevronDown,
@@ -78,6 +79,7 @@ interface JobDiscoveryRowProps {
 export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscoveryRowProps) {
   const [expanded, setExpanded] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const router = useRouter()
   const n = item.normalized
   const isActionable = item.status === 'new'
 
@@ -85,7 +87,12 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
     startTransition(async () => {
       const result = await saveDiscovery(item.id)
       if ('success' in result) toast.success('Saved to pipeline')
-      else toast.error(result.error)
+      else if ('conflict' in result) {
+        // v9 — discovery drifted between viewing and clicking (dismissed
+        // in another tab, etc). Toast + refresh so the stale row disappears.
+        toast(result.message)
+        router.refresh()
+      } else toast.error(result.error)
     })
   }
 
@@ -93,7 +100,8 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
     startTransition(async () => {
       const result = await dismissDiscovery(item.id)
       if ('success' in result) toast.success('Dismissed')
-      else toast.error(result.error)
+      else if ('error' in result) toast.error(result.error)
+      else toast(result.message)
     })
   }
 
@@ -206,6 +214,7 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
 export function CompanyDiscoveryRow({ item }: { item: DiscoveryRowCompany }) {
   const [expanded, setExpanded] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const router = useRouter()
   const n = item.normalized
   const isActionable = item.status === 'new'
 
@@ -213,7 +222,10 @@ export function CompanyDiscoveryRow({ item }: { item: DiscoveryRowCompany }) {
     startTransition(async () => {
       const result = await saveCompanyDiscovery(item.id)
       if ('success' in result) toast.success('Added to watchlist')
-      else toast.error(result.error)
+      else if ('conflict' in result) {
+        toast(result.message)
+        router.refresh()
+      } else toast.error(result.error)
     })
   }
 
@@ -221,7 +233,8 @@ export function CompanyDiscoveryRow({ item }: { item: DiscoveryRowCompany }) {
     startTransition(async () => {
       const result = await dismissCompanyDiscovery(item.id)
       if ('success' in result) toast.success('Dismissed')
-      else toast.error(result.error)
+      else if ('error' in result) toast.error(result.error)
+      else toast(result.message)
     })
   }
 

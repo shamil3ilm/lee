@@ -8,14 +8,35 @@ import {
   dismissCompanyDiscovery as dismissCompanyService,
 } from '@/lib/discovery/service'
 import * as discQ from '@/lib/db/queries/discoveries'
+import * as compDiscQ from '@/lib/db/queries/companyDiscoveries'
 import { logger } from '@/lib/logger'
 
-export type ActionResult = { success: true } | { error: string }
+export type ActionResult =
+  | { success: true }
+  | { error: string }
+  | { conflict: string; currentStatus: string; message: string }
 export type BulkResult = { success: true; count: number } | { error: string }
 
+/**
+ * Promote a job discovery to an application. v9 guard: refuse if the
+ * discovery is no longer `new` (dismissed in another tab; already promoted).
+ * The client toasts the returned message and refreshes the inbox.
+ */
 export async function saveDiscovery(discoveryId: string): Promise<ActionResult> {
   try {
     const userId = await requireUserId()
+    // v9 — re-check status at execute time. Between the user seeing the
+    // button and the click landing here, another tab or the discovery cron
+    // may have advanced the row.
+    const current = await discQ.getById(userId, discoveryId)
+    if (!current) return { error: 'Discovery not found.' }
+    if (current.status !== 'new') {
+      return {
+        conflict: 'discovery_not_new',
+        currentStatus: current.status,
+        message: `This discovery was ${current.status} since you last viewed it. Refreshing.`,
+      }
+    }
     await promoteJobDiscovery({ userId, discoveryId })
     revalidatePath('/discoveries')
     revalidatePath('/')
@@ -49,6 +70,16 @@ export async function dismissDiscovery(discoveryId: string): Promise<ActionResul
 export async function saveCompanyDiscovery(discoveryId: string): Promise<ActionResult> {
   try {
     const userId = await requireUserId()
+    // v9 — same drift guard as saveDiscovery, applied to company discoveries.
+    const current = await compDiscQ.getById(userId, discoveryId)
+    if (!current) return { error: 'Company discovery not found.' }
+    if (current.status !== 'new') {
+      return {
+        conflict: 'discovery_not_new',
+        currentStatus: current.status,
+        message: `This company discovery was ${current.status} since you last viewed it. Refreshing.`,
+      }
+    }
     await promoteCompanyDiscovery({ userId, discoveryId })
     revalidatePath('/discoveries')
     revalidatePath('/companies')

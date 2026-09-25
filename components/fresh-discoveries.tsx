@@ -1,6 +1,7 @@
 'use client'
 import { useTransition } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Sparkles, ArrowRight, Check, X } from 'lucide-react'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
@@ -60,19 +61,24 @@ export function FreshDiscoveries({ items }: FreshDiscoveriesProps) {
 
 function FreshRow({ item }: { item: FreshDiscoveryItem }) {
   const [isPending, startTransition] = useTransition()
+  const router = useRouter()
 
   const handleSave = (): void => {
     startTransition(async () => {
       const result = await saveDiscovery(item.id)
       if ('success' in result) toast.success('Saved to pipeline')
-      else toast.error(result.error)
+      else if ('conflict' in result) {
+        toast(result.message)
+        router.refresh()
+      } else toast.error(result.error)
     })
   }
   const handleDismiss = (): void => {
     startTransition(async () => {
       const result = await dismissDiscovery(item.id)
       if ('success' in result) toast.success('Dismissed')
-      else toast.error(result.error)
+      else if ('error' in result) toast.error(result.error)
+      else toast(result.message)
     })
   }
 
