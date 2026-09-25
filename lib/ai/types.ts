@@ -6,6 +6,7 @@ import type {
   CoverLetter,
   CvProjects,
   GitHubRepo,
+  InterviewDebrief,
   InterviewPrepPack,
   MasterCV,
   OutreachDraft,
@@ -13,6 +14,7 @@ import type {
   OutreachTone,
   TailoredCV,
 } from '@/lib/documents/types'
+import type { InterviewStage } from '@/lib/db/queries/stages'
 
 export const parsedJobSchema = z.object({
   title: z.string(),
@@ -107,6 +109,15 @@ export interface AIProvider {
     stageKind: string
     stageId?: string
   }): Promise<InterviewPrepPack>
+  // v4.3 addition — post-interview debrief. `quickNotes` is the raw text the
+  // user typed in the debrief modal; the AI turns it into a structured
+  // InterviewDebrief JSON.
+  generateInterviewDebrief(input: {
+    master: MasterCV
+    application: ApplicationWithJob
+    stage: Pick<InterviewStage, 'id' | 'kind' | 'title' | 'scheduledAt'>
+    quickNotes: string
+  }): Promise<InterviewDebrief>
   // v5 addition — LaTeX CV generation for the Overleaf-like editor.
   generateLatexCV(input: {
     master: MasterCV

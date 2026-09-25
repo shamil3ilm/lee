@@ -12,6 +12,7 @@ import type {
   CoverLetter,
   CvProjects,
   GitHubRepo,
+  InterviewDebrief,
   InterviewPrepPack,
   MasterCV,
   OutreachDraft,
@@ -19,6 +20,7 @@ import type {
   OutreachTone,
   TailoredCV,
 } from '@/lib/documents/types'
+import type { InterviewStage } from '@/lib/db/queries/stages'
 
 export class FixtureAIProvider implements AIProvider {
   constructor(
@@ -49,6 +51,12 @@ export class FixtureAIProvider implements AIProvider {
         stageKind: string
         stageId?: string
       }) => InterviewPrepPack
+      generateInterviewDebrief?: (input: {
+        master: MasterCV
+        application: ApplicationWithJob
+        stage: Pick<InterviewStage, 'id' | 'kind' | 'title' | 'scheduledAt'>
+        quickNotes: string
+      }) => InterviewDebrief
       generateLatexCV?: (input: {
         master: MasterCV
         templateId: string
@@ -137,6 +145,17 @@ export class FixtureAIProvider implements AIProvider {
     if (this.fixtures.generateInterviewPrepPack)
       return this.fixtures.generateInterviewPrepPack(input)
     return pseudoPrepPack(input)
+  }
+
+  async generateInterviewDebrief(input: {
+    master: MasterCV
+    application: ApplicationWithJob
+    stage: Pick<InterviewStage, 'id' | 'kind' | 'title' | 'scheduledAt'>
+    quickNotes: string
+  }): Promise<InterviewDebrief> {
+    if (this.fixtures.generateInterviewDebrief)
+      return this.fixtures.generateInterviewDebrief(input)
+    return pseudoDebrief(input)
   }
 
   async generateLatexCV(input: {
@@ -314,6 +333,54 @@ function pseudoFollowupBody(x: {
       return `Hi,\n\nA month on and I haven't heard back, so wanted to close the loop rather than keep either of us guessing. If the role is still active I'd love a quick note; if it's moved on, please keep me in mind for future openings.\n\nThanks for your time,\n${senderName}`
     default:
       return `Hi,\n\nFollowing up on my application for the ${role} role at ${company} (${daysSince} days ago). Let me know if there's an update on next steps.\n\nThanks,\n${senderName}`
+  }
+}
+
+function pseudoDebrief(input: {
+  master: MasterCV
+  application: ApplicationWithJob
+  stage: Pick<InterviewStage, 'id' | 'kind' | 'title' | 'scheduledAt'>
+  quickNotes: string
+}): InterviewDebrief {
+  const { master, application, stage, quickNotes } = input
+  const company = application.job.company?.name ?? 'the company'
+  const first = master.experience[0]
+  const anchor = first ? `${first.role} at ${first.company}` : 'my current role'
+  // Very light heuristic: extract questions from `- ` bullets and mark them as
+  // 'ok' by default. Enough for tests + a graceful offline fallback.
+  const bulletLines = quickNotes
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => /^[-*]\s+/.test(l))
+    .map((l) => l.replace(/^[-*]\s+/, ''))
+    .filter((l) => l.length > 0)
+  const questions = bulletLines.slice(0, 3).map((q) => ({
+    question: q,
+    myAnswerQuality: 'ok' as const,
+    note: 'Refine phrasing and tie the answer to a concrete metric from the CV.',
+  }))
+  const trimmed = quickNotes.trim()
+  const excerpt = trimmed.length > 120 ? `${trimmed.slice(0, 120)}…` : trimmed
+  return {
+    stageId: stage.id,
+    applicationId: application.id,
+    summary: `Debrief for ${stage.kind} at ${company}. Candidate captured: ${excerpt || 'no notes'}.`,
+    wentWell: [
+      `Preparation from ${anchor} translated into concrete examples.`,
+      'Turned up on time and covered the core areas asked.',
+    ],
+    toImprove: [
+      'Tighten STAR framing so each answer lands within 90 seconds.',
+      'Prepare a crisper answer for the toughest question flagged in the notes.',
+    ],
+    questionsAsked: questions,
+    redFlags: [],
+    followUpRecommendations: [
+      `Send a thank-you note to the interviewer within 24 hours referencing ${company}'s stack.`,
+      'Draft a next-round prep pack focused on the weakest topic from this session.',
+    ],
+    outcomeConfidence: 'unclear',
+    reasoning: `pseudo-debrief: insufficient signal in the notes to confidently predict advancement — treat as unclear and follow up proactively.`,
   }
 }
 

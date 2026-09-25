@@ -13,6 +13,7 @@ export type DocumentKind =
   | 'outreach_recruiter_reply'
   | 'outreach_followup_email'
   | 'interview_prep_pack'
+  | 'interview_debrief'
   | 'latex_cv'
   | 'latex_cover_letter'
   // v7 — merged PDFs are stored as document rows with `content` describing

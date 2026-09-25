@@ -232,3 +232,46 @@ export const latexDocumentContentSchema = z.object({
 })
 
 export type LatexDocumentContent = z.infer<typeof latexDocumentContentSchema>
+
+// ---------------------------------------------------------------------------
+// v4.3 — Interview debrief (post-stage reflection). The AI-generated summary
+// is stored as a `documents` row with kind='interview_debrief' so it's
+// versionable and downloadable as PDF. The quick user-notes live on
+// `interview_stages.debriefNotesMd` (already in the schema).
+//
+// Reference back to the stage/application is baked into the content payload so
+// the UI can link the doc to its stage without a schema change.
+// ---------------------------------------------------------------------------
+
+export const debriefQuestionQualitySchema = z.enum(['strong', 'ok', 'weak'])
+export type DebriefQuestionQuality = z.infer<typeof debriefQuestionQualitySchema>
+
+export const debriefOutcomeConfidenceSchema = z.enum([
+  'likely_advance',
+  'unclear',
+  'likely_rejected',
+])
+export type DebriefOutcomeConfidence = z.infer<typeof debriefOutcomeConfidenceSchema>
+
+export const interviewDebriefQuestionSchema = z.object({
+  question: z.string().min(1),
+  myAnswerQuality: debriefQuestionQualitySchema,
+  note: z.string().optional(),
+})
+
+export const interviewDebriefSchema = z.object({
+  stageId: z.string(),
+  applicationId: z.string(),
+  // 2-3 sentences on what happened.
+  summary: z.string().default(''),
+  wentWell: z.array(z.string()).default([]),
+  toImprove: z.array(z.string()).default([]),
+  questionsAsked: z.array(interviewDebriefQuestionSchema).default([]),
+  redFlags: z.array(z.string()).default([]),
+  followUpRecommendations: z.array(z.string()).default([]),
+  outcomeConfidence: debriefOutcomeConfidenceSchema.default('unclear'),
+  reasoning: z.string().default(''),
+})
+
+export type InterviewDebrief = z.infer<typeof interviewDebriefSchema>
+export type InterviewDebriefQuestion = z.infer<typeof interviewDebriefQuestionSchema>

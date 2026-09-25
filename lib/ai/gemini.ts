@@ -11,6 +11,7 @@ import { buildOutreachLinkedInMessagePrompt } from './prompts/outreach-linkedin-
 import { buildOutreachRecruiterReplyPrompt } from './prompts/outreach-recruiter-reply'
 import { buildFollowupPrompt } from './prompts/outreach-followup'
 import { buildInterviewPrepPrompt } from './prompts/interview-prep'
+import { buildInterviewDebriefPrompt } from './prompts/interview-debrief'
 import { buildGenerateLatexCVPrompt } from './prompts/generate-latex-cv'
 import {
   companyMatchResultSchema,
@@ -28,12 +29,14 @@ import { stripLatexFencing } from './utils/latex'
 import {
   coverLetterSchema,
   cvProjectsArraySchema,
+  interviewDebriefSchema,
   interviewPrepPackSchema,
   outreachDraftSchema,
   tailoredCvSchema,
   type CoverLetter,
   type CvProjects,
   type GitHubRepo,
+  type InterviewDebrief,
   type InterviewPrepPack,
   type MasterCV,
   type OutreachDraft,
@@ -44,6 +47,7 @@ import {
 import type { NormalizedCompany, NormalizedJob } from '@/lib/discovery/adapters/types'
 import type { UserProfile } from '@/lib/db/queries/profile'
 import type { ApplicationWithJob } from '@/lib/db/queries/applications'
+import type { InterviewStage } from '@/lib/db/queries/stages'
 
 export class GeminiProvider implements AIProvider {
   private client: GoogleGenerativeAI
@@ -212,6 +216,16 @@ export class GeminiProvider implements AIProvider {
   }): Promise<InterviewPrepPack> {
     const raw = await this.generate(buildInterviewPrepPrompt(input))
     return interviewPrepPackSchema.parse(JSON.parse(raw))
+  }
+
+  async generateInterviewDebrief(input: {
+    master: MasterCV
+    application: ApplicationWithJob
+    stage: Pick<InterviewStage, 'id' | 'kind' | 'title' | 'scheduledAt'>
+    quickNotes: string
+  }): Promise<InterviewDebrief> {
+    const raw = await this.generate(buildInterviewDebriefPrompt(input))
+    return interviewDebriefSchema.parse(JSON.parse(raw))
   }
 
   async generateLatexCV(input: {
