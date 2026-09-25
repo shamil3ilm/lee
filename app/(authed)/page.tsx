@@ -9,6 +9,8 @@ import { getProfile } from '@/lib/profile/service'
 import { Kanban, type KanbanCard } from '@/components/kanban'
 import { NeedsAttention, type AttentionItem } from '@/components/needs-attention'
 import { FreshDiscoveries, type FreshDiscoveryItem } from '@/components/fresh-discoveries'
+import { FunnelWidget } from '@/components/funnel-widget'
+import { buildFunnelCounts } from '@/lib/dashboard/funnel'
 import { SyncStatus } from '@/components/sync-status'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
@@ -117,6 +119,16 @@ export default async function DashboardPage() {
     cards: grouped[status],
   }))
 
+  const funnelCounts = buildFunnelCounts({
+    saved: grouped.saved.length,
+    applied: grouped.applied.length,
+    screen: grouped.screen.length,
+    interview: grouped.interview.length,
+    offer: grouped.offer.length,
+    rejected: grouped.rejected.length,
+    withdrawn: grouped.withdrawn.length,
+  })
+
   const attention: AttentionItem[] = filterAttention(
     rows,
     now.getTime() + ATTENTION_HORIZON_MS,
@@ -150,6 +162,7 @@ export default async function DashboardPage() {
         needsFollowUp={attention.length}
       />
       <FreshDiscoveries items={fresh} />
+      <FunnelWidget counts={funnelCounts} />
       <section className="space-y-3">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           Pipeline
