@@ -30,6 +30,12 @@ import type { MasterCV } from '@/lib/documents/types'
 import type { ApplicationWithJob } from '@/lib/db/queries/applications'
 
 function pickResponseByPrompt(prompt: string): string {
+  if (prompt.includes('You produce a COMPLETE, VALID LaTeX document')) {
+    return JSON.stringify({
+      source:
+        '\\documentclass{article}\n\\begin{document}\nHello from LaTeX.\n\\end{document}\n',
+    })
+  }
   if (prompt.includes('You draft a short LinkedIn connection request')) {
     return JSON.stringify({
       kind: 'linkedin_connection',

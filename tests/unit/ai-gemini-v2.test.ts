@@ -38,6 +38,12 @@ function setDistillShape(s: 'array' | 'wrapped') {
 }
 
 function pickResponseByPrompt(prompt: string): string {
+  if (prompt.includes('You produce a COMPLETE, VALID LaTeX document')) {
+    return JSON.stringify({
+      source:
+        '\\documentclass{article}\n\\begin{document}\nHello from LaTeX.\n\\end{document}\n',
+    })
+  }
   if (prompt.includes('You tailor a master CV JSON')) {
     return JSON.stringify({
       basics: { name: 'Ada', headline: 'Engineer' },
