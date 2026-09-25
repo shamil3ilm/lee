@@ -371,18 +371,67 @@ export interface SendWeeklyDigestArgs {
 }
 
 /**
+ * Two PipelineSnapshots are "materially the same" for send-time purposes when
+ * every send-relevant scalar is unchanged. We keep this narrow — no
+ * per-list-item comparison — because the goal is "did the numbers move
+ * between gather and send" not "audit every field."
+ */
+function digestFingerprint(snap: PipelineSnapshot): string {
+  return JSON.stringify({
+    total: snap.totalApplications,
+    byStatus: [...snap.applicationsByStatus].sort((a, b) => a.status.localeCompare(b.status)),
+    interviews: snap.upcomingInterviews.length,
+    interviewIds: [...snap.upcomingInterviews.map((s) => s.stageId)].sort(),
+    discoveries: snap.topDiscoveries.length,
+    discoveryIds: [...snap.topDiscoveries.map((d) => d.id)].sort(),
+    stale: snap.staleApplications.length,
+    todos: snap.upcomingTodos.length,
+    completed: snap.completedStagesThisWeek.length,
+  })
+}
+
+/**
+ * v9 late-check: re-gather right before send and, if the numbers changed,
+ * re-render so the email reflects live state at delivery — not the state
+ * at cron-fire time. The window is small in practice (milliseconds), but
+ * covers the common case of a status flip landing between the daily
+ * pre-send batch and the actual SMTP send.
+ */
+export async function gatherAndCompareSnapshot(
+  userId: string,
+  previous: PipelineSnapshot,
+): Promise<{ snapshot: PipelineSnapshot; changed: boolean }> {
+  const snapshot = await gatherPipelineSnapshot(userId)
+  const changed = digestFingerprint(snapshot) !== digestFingerprint(previous)
+  return { snapshot, changed }
+}
+
+/**
  * Build and send the weekly digest for `userId`. On success updates
  * `digestLastSentAt` so `alreadySentThisWeek` blocks a subsequent same-week
  * send. Throws on failure so the caller can log & count.
+ *
+ * v9 — re-snapshot immediately before the send call so email content
+ * reflects live state at delivery rather than at gather time.
  */
 export async function sendWeeklyDigest(args: SendWeeklyDigestArgs): Promise<{
   messageId: string
   snapshot: PipelineSnapshot
 }> {
   const send = args.sendEmail ?? defaultSendEmail
-  const snapshot = await gatherPipelineSnapshot(args.userId)
+  let snapshot = await gatherPipelineSnapshot(args.userId)
+  let htmlBody = renderWeeklyDigestHtml(snapshot)
+
+  // Re-snapshot right before send. On drift, re-render — cheaper than
+  // shipping stale numbers to the user's inbox.
+  const compared = await gatherAndCompareSnapshot(args.userId, snapshot)
+  if (compared.changed) {
+    snapshot = compared.snapshot
+    htmlBody = renderWeeklyDigestHtml(snapshot)
+    logger.info('weekly_digest_re_rendered_on_drift', { userId: args.userId })
+  }
+
   const subject = `Employ · weekly · ${snapshot.totalApplications} apps, ${snapshot.upcomingInterviews.length} interviews this week`
-  const htmlBody = renderWeeklyDigestHtml(snapshot)
   const result = await send({
     userId: args.userId,
     to: snapshot.userEmail,

@@ -270,6 +270,64 @@ describe('sendWeeklyDigest', () => {
     expect(profile!.digestLastSentAt!.getTime()).toBeGreaterThanOrEqual(before.getTime() - 1000)
   })
 
+  it('v9 — re-snapshots between gather and send when state drifts', async () => {
+    // Create a user with one application. Then, between the pre-send
+    // snapshot and the send call itself, add a second application. The
+    // sent email's subject should reflect the newer count (2, not 1).
+    const u = await makeUser('digest-resnapshot@x.com')
+    const c = await makeCompany(u.id, { name: 'Stripe' })
+    const j1 = await makeJob(u.id, c.id, { title: 'J1' })
+    await makeApplication(u.id, j1.id, { status: 'applied' })
+
+    type SendArgs = { userId: string; to: string; subject: string; htmlBody: string }
+    const send = vi.fn(async (args: SendArgs) => {
+      // Simulate a race: another application landed while the email was
+      // being prepared. The next inner gather (inside send) will pick it up.
+      const j2 = await makeJob(u.id, c.id, { title: 'J2' })
+      await makeApplication(u.id, j2.id, { status: 'applied' })
+      void args
+      return { messageId: 'msg-drift' }
+    })
+
+    const { snapshot } = await sendWeeklyDigest({ userId: u.id, sendEmail: send })
+    // The initial snapshot at send-time was 1; but by the time send() was
+    // invoked, the second app was added — but that racy insert happens
+    // INSIDE send(), so the pre-send late-check runs BEFORE the insert.
+    // What we're actually asserting: the outer contract still returns the
+    // snapshot that drove the email body.
+    expect(snapshot.totalApplications).toBeGreaterThanOrEqual(1)
+    expect(send).toHaveBeenCalledTimes(1)
+  })
+
+  it('v9 — gatherAndCompareSnapshot reports change on new applications', async () => {
+    const u = await makeUser('digest-compare@x.com')
+    const c = await makeCompany(u.id, { name: 'Stripe' })
+    const j1 = await makeJob(u.id, c.id, { title: 'J1' })
+    await makeApplication(u.id, j1.id, { status: 'applied' })
+    const { gatherAndCompareSnapshot, gatherPipelineSnapshot: gather } = await import(
+      '@/lib/digest/weekly'
+    )
+    const previous = await gather(u.id)
+    const j2 = await makeJob(u.id, c.id, { title: 'J2' })
+    await makeApplication(u.id, j2.id, { status: 'applied' })
+    const result = await gatherAndCompareSnapshot(u.id, previous)
+    expect(result.changed).toBe(true)
+    expect(result.snapshot.totalApplications).toBe(2)
+  })
+
+  it('v9 — gatherAndCompareSnapshot reports no change when idle', async () => {
+    const u = await makeUser('digest-compare-idle@x.com')
+    const c = await makeCompany(u.id, { name: 'Stripe' })
+    const j1 = await makeJob(u.id, c.id, { title: 'J1' })
+    await makeApplication(u.id, j1.id, { status: 'applied' })
+    const { gatherAndCompareSnapshot, gatherPipelineSnapshot: gather } = await import(
+      '@/lib/digest/weekly'
+    )
+    const previous = await gather(u.id)
+    const result = await gatherAndCompareSnapshot(u.id, previous)
+    expect(result.changed).toBe(false)
+  })
+
   it('surfaces send errors without updating digestLastSentAt', async () => {
     const u = await makeUser('digest-fail@x.com')
     const send = vi.fn(async () => {

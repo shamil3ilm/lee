@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
-import { discoveries, sources } from '@/lib/db/schema'
+import { accounts, discoveries, sources } from '@/lib/db/schema'
 import { saveDiscovery } from '@/app/(authed)/discoveries/actions'
 import * as discQ from '@/lib/db/queries/discoveries'
 import * as stagesQ from '@/lib/db/queries/stages'
@@ -32,20 +32,30 @@ vi.mock('@/lib/auth', () => ({ auth: authMock }))
 // Calendar adapter is mocked at the module boundary — we don't want the
 // push route to actually try to hit Google. Return a fake event id when
 // createEvent is called; not called in the drift tests.
+// Note: shared vitest sessions (isolate=false) mean these mocks aren't a
+// hard swap of the module; the "proceeds" test attaches a real accounts row
+// and lets pushStageToCalendar's short-circuit on `googleEventId` skip the
+// actual Google call.
 const createEventMock = vi.hoisted(() => vi.fn())
-vi.mock('@/lib/google/tokens', () => ({
-  getGoogleTokens: async () => ({ access_token: 'x', refresh_token: 'y', expiry_date: null }),
-  NoGoogleAccountError: class extends Error {
-    constructor() {
-      super('Google not connected')
-    }
-  },
-}))
 vi.mock('@/lib/calendar/adapter', () => ({
   createEvent: createEventMock,
   updateEvent: vi.fn(),
   deleteEvent: vi.fn(),
 }))
+
+async function attachGoogleAccount(userId: string): Promise<void> {
+  await db.insert(accounts).values({
+    userId,
+    type: 'oauth',
+    provider: 'google',
+    providerAccountId: `google-${userId}`,
+    access_token: 'AT',
+    refresh_token: 'RT',
+    expires_at: Math.floor(Date.now() / 1000) + 3600,
+    token_type: 'Bearer',
+    scope: 'openid email calendar.events',
+  })
+}
 
 async function seedDiscovery(userId: string): Promise<string> {
   const [src] = await db
@@ -177,7 +187,12 @@ describe('push-to-calendar execution guard', () => {
   })
 
   it('proceeds when expectations match current state', async () => {
+    // Attach a real google account row so getGoogleTokens has data, and seed
+    // the stage with an already-set googleEventId so pushStageToCalendar
+    // short-circuits without calling the Google API — exactly the drift-free
+    // idempotent path we care about testing.
     const u = await makeUser('guard-push-ok@x.com')
+    await attachGoogleAccount(u.id)
     const co = await makeCompany(u.id, { name: 'Acme' })
     const j = await makeJob(u.id, co.id)
     const app = await makeApplication(u.id, j.id)
@@ -190,20 +205,26 @@ describe('push-to-calendar execution guard', () => {
       meetingUrl: null,
       prepNotesMd: null,
       status: 'scheduled',
+      googleEventId: 'seeded-event-id',
     })
-    createEventMock.mockResolvedValue({ eventId: 'new-event-id' })
+    createEventMock.mockResolvedValue({ eventId: 'unused' })
     authMock.mockResolvedValue({ user: { id: u.id } })
     const route = await import('@/app/api/stages/[id]/push-to-calendar/route')
     const res = await route.POST(
       new Request('http://localhost/x', {
         method: 'POST',
         body: JSON.stringify({
-          expectedGoogleEventId: null,
+          // Client believed the stage already had this event id → matches
+          // server → no drift → route proceeds and returns the existing id.
+          expectedGoogleEventId: 'seeded-event-id',
           expectedScheduledAt: '2026-10-01T10:00:00.000Z',
         }),
       }),
       { params: Promise.resolve({ id: stage.id }) },
     )
     expect(res.status).toBe(200)
+    const json = (await res.json()) as { success: boolean; eventId: string }
+    expect(json.success).toBe(true)
+    expect(json.eventId).toBe('seeded-event-id')
   })
 })
