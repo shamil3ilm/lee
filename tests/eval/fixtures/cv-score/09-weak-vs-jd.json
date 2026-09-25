@@ -1,0 +1,31 @@
+{
+  "name": "Weak CV vs backend JD",
+  "notes": "Low Skills/Role Match, domain mismatch, weak impact — every JD headline score populated.",
+  "inputs": {
+    "cv": "weak",
+    "job": "backend"
+  },
+  "expect": {
+    "mode": "jd",
+    "total": 33,
+    "scores": {
+      "roleMatch": 14,
+      "skillsMatch": 0,
+      "experienceMatch": 59,
+      "ats": 61,
+      "impact": 11,
+      "readability": 47,
+      "structure": 91
+    },
+    "grades": {
+      "total": "F",
+      "experienceMatch": "D"
+    },
+    "skipped": [],
+    "findings": [
+      "6 of 6 required skills are missing",
+      "Requirement not evidenced",
+      "The role is in fintech"
+    ]
+  }
+}

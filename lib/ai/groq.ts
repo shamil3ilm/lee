@@ -29,6 +29,20 @@ import {
 } from './prompts/generate-latex-cv'
 import { hashPrompt } from './prompts/hash'
 import {
+  buildCvRequirementFitPrompt,
+  CV_REQUIREMENT_FIT_PROMPT_VERSION,
+} from './prompts/cv-requirement-fit'
+import {
+  buildCvBulletRewritePrompt,
+  CV_BULLET_REWRITE_PROMPT_VERSION,
+} from './prompts/cv-bullet-rewrite'
+import {
+  bulletRewriteResultSchema,
+  requirementFitResultSchema,
+  type BulletRewriteInput,
+  type BulletRewriteResult,
+  type RequirementFitInput,
+  type RequirementFitResult,
   companyMatchResultSchema,
   jobMatchResultSchema,
   latexCVResultSchema,
@@ -348,6 +362,30 @@ export class GroqProvider implements AIProvider {
       throw new Error('generateLatexCV: response does not start with \\documentclass')
     }
     return { source: cleaned }
+  }
+
+  async assessRequirementFit(
+    input: RequirementFitInput,
+    meta: CallMeta = {},
+  ): Promise<RequirementFitResult> {
+    const raw = await this.generate(buildCvRequirementFitPrompt(input), {
+      ...meta,
+      kind: 'cv_requirement_fit',
+      promptVersion: CV_REQUIREMENT_FIT_PROMPT_VERSION,
+    })
+    return requirementFitResultSchema.parse(JSON.parse(raw))
+  }
+
+  async rewriteCvBullets(
+    input: BulletRewriteInput,
+    meta: CallMeta = {},
+  ): Promise<BulletRewriteResult> {
+    const raw = await this.generate(buildCvBulletRewritePrompt(input), {
+      ...meta,
+      kind: 'cv_bullet_rewrite',
+      promptVersion: CV_BULLET_REWRITE_PROMPT_VERSION,
+    })
+    return bulletRewriteResultSchema.parse(JSON.parse(raw))
   }
 }
 

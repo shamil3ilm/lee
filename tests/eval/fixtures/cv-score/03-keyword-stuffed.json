@@ -1,0 +1,30 @@
+{
+  "name": "Keyword-stuffed CV vs matching JD",
+  "notes": "Kubernetes repeated 8+ times and 46 skills listed: stuffing check fails and JD keyword presence inside ATS is halved.",
+  "inputs": {
+    "cv": "stuffed",
+    "job": "backend"
+  },
+  "expect": {
+    "mode": "jd",
+    "totalLabel": "Total Match",
+    "total": 89,
+    "scores": {
+      "roleMatch": 90,
+      "skillsMatch": 81,
+      "experienceMatch": 100,
+      "ats": 76,
+      "impact": 100,
+      "readability": 100,
+      "structure": 100
+    },
+    "grades": {
+      "total": "A",
+      "ats": "B"
+    },
+    "skipped": [],
+    "findings": [
+      "Keyword stuffing suspected: kubernetes"
+    ]
+  }
+}

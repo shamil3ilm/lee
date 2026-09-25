@@ -1,0 +1,53 @@
+{
+  "name": "Strong backend CV vs mismatched design JD",
+  "notes": "Product-design role at a gaming studio: role, skills and domain all misalign even though the CV itself is well written.",
+  "inputs": {
+    "cv": "strong",
+    "job": {
+      "applicationId": "app-design",
+      "title": "Senior Product Designer",
+      "companyName": "PlayLoop",
+      "seniority": "senior",
+      "techStack": [
+        "Figma",
+        "Sketch",
+        "Prototyping"
+      ],
+      "requirements": [
+        "Portfolio of consumer mobile app designs",
+        "5+ years of UX design experience",
+        "Experience running user research sessions"
+      ],
+      "niceToHave": [],
+      "responsibilities": [
+        "Run user research and usability testing sessions",
+        "Design high fidelity prototypes in Figma"
+      ],
+      "descriptionMd": "PlayLoop is a gaming studio building mobile games and esports experiences."
+    }
+  },
+  "expect": {
+    "mode": "jd",
+    "total": 45,
+    "scores": {
+      "roleMatch": 0,
+      "skillsMatch": 0,
+      "experienceMatch": 74,
+      "ats": 70,
+      "impact": 100,
+      "readability": 100,
+      "structure": 100
+    },
+    "grades": {
+      "total": "F",
+      "roleMatch": "F",
+      "skillsMatch": "F"
+    },
+    "skipped": [],
+    "findings": [
+      "3 of 3 required skills are missing",
+      "clearly align with \"Senior Product Designer\"",
+      "The role is in gaming"
+    ]
+  }
+}

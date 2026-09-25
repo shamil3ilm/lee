@@ -290,6 +290,40 @@ export function checkExpenseClassifySignal(
   return { ok: true }
 }
 
+/** Minimum CV text length for the AI requirement-fit dimension (v12.0). */
+const CV_SCORE_MIN_CHARS = 300
+
+/**
+ * v12.0 `cv_requirement_fit` signal check. Gates only the AI dimension of a
+ * CV score — the deterministic dimensions still run. Skips when the CV text
+ * is too thin to quote evidence from, or the job has no requirements to
+ * assess against.
+ */
+export function checkCvScoreSignal(input: {
+  cvText: string | null | undefined
+  requirements: readonly string[] | null | undefined
+}): SignalResult {
+  const len = (input.cvText ?? '').replace(/\s+/g, ' ').trim().length
+  if (len < CV_SCORE_MIN_CHARS) {
+    return {
+      ok: false,
+      code: 'cv_score_cv_too_short',
+      message: `CV text is too short (${len} chars) for an AI requirement check.`,
+      fixHint: 'Add your experience bullets (or upload a text-based PDF/DOCX) and score again.',
+    }
+  }
+  const reqs = (input.requirements ?? []).filter((r) => r.trim().length > 0)
+  if (reqs.length === 0) {
+    return {
+      ok: false,
+      code: 'cv_score_no_requirements',
+      message: 'The job has no parsed requirements to check your CV against.',
+      fixHint: 'Re-parse the job description on the application so its requirements are extracted.',
+    }
+  }
+  return { ok: true }
+}
+
 // ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------
@@ -371,5 +405,6 @@ export const _internal = {
   PARSE_JOB_MIN_CHARS,
   FOLLOWUP_MIN_DAYS_SINCE,
   DISCOVERY_MIN_PROFILE_SIGNALS,
+  CV_SCORE_MIN_CHARS,
   stripDebriefScaffold,
 }

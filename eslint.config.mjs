@@ -33,6 +33,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Vitest coverage output is generated; do not lint it.
     "coverage/**",
+    // Claude Code agent worktrees and their build output (local only).
+    ".claude/**",
   ]),
 ]);
 

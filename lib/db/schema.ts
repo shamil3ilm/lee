@@ -757,3 +757,56 @@ export const aiCallLogs = pgTable('ai_call_logs', {
   promptVersion: text('prompt_version'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+// ---------------------------------------------------------------------------
+// v12.0 — CV scores. One row per scoring run (history + tailoring deltas).
+// `overall` mirrors scores.total.score for cheap sorting/filtering; `scores`
+// holds every HEADLINE score ({score, grade, weight, skipped?, reason?});
+// `dimensions` keeps the raw per-dimension details and `findings` the
+// CvFinding[] list. `scorer_version` makes rule-set changes explicit so
+// scores from different versions are never compared as equal.
+// ---------------------------------------------------------------------------
+
+export const cvScores = pgTable(
+  'cv_scores',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    // Null for uploaded files (no stored document).
+    documentId: uuid('document_id').references(() => documents.id, { onDelete: 'set null' }),
+    // Null = general (no JD) score.
+    applicationId: uuid('application_id').references(() => applications.id, {
+      onDelete: 'set null',
+    }),
+    // master_cv | tailored_cv | latex_cv | upload
+    sourceKind: text('source_kind').notNull(),
+    // Document title or uploaded file name — for history labels.
+    sourceLabel: text('source_label').notNull().default(''),
+    overall: smallint('overall').notNull(),
+    grade: text('grade').notNull(),
+    // 'jd' | 'general'
+    mode: text('mode').notNull().default('general'),
+    scores: jsonb('scores').notNull(),
+    dimensions: jsonb('dimensions').notNull(),
+    findings: jsonb('findings').notNull(),
+    // Skipped dimensions/scores with reasons, Total Match weights, target.
+    meta: jsonb('meta').notNull().default({}),
+    scorerVersion: text('scorer_version').notNull(),
+    aiCallId: uuid('ai_call_id').references(() => aiCallLogs.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    userAppCreatedIx: index('cv_scores_user_app_created_idx').on(
+      t.userId,
+      t.applicationId,
+      t.createdAt.desc(),
+    ),
+    userDocCreatedIx: index('cv_scores_user_doc_created_idx').on(
+      t.userId,
+      t.documentId,
+      t.createdAt.desc(),
+    ),
+  }),
+)

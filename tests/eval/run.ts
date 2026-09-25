@@ -43,6 +43,13 @@ import {
   makeMasterCV,
   makeStage,
 } from './factories'
+import {
+  checkExpectations,
+  runCvScoreFixture,
+  summarize,
+  type CvScoreExpect,
+  type CvScoreFixtureInputs,
+} from './cv-score'
 
 // ---------------------------------------------------------------------------
 // Config
@@ -59,6 +66,7 @@ type Task =
   | 'prep-pack'
   | 'debrief'
   | 'expense-classify'
+  | 'cv-score'
 
 const TASKS: readonly Task[] = [
   'parse-job',
@@ -68,6 +76,7 @@ const TASKS: readonly Task[] = [
   'prep-pack',
   'debrief',
   'expense-classify',
+  'cv-score',
 ]
 
 interface Fixture {
@@ -75,6 +84,8 @@ interface Fixture {
   name: string
   notes?: string
   inputs: unknown
+  /** v12.0 — exact expectations (cv-score fixtures). */
+  expect?: CvScoreExpect
 }
 
 interface Result {
@@ -110,6 +121,7 @@ async function loadFixtures(task: Task): Promise<Fixture[]> {
       name: parsed.name ?? file,
       notes: parsed.notes,
       inputs: parsed.inputs,
+      expect: parsed.expect,
     })
   }
   return fixtures
@@ -191,6 +203,12 @@ async function runFixture(
         stage: inputs.stage as never,
         quickNotes: inputs.quickNotes as string,
       })
+    case 'cv-score': {
+      // Deterministic dimensions + the AI requirement fit via `ai` (the
+      // FixtureAIProvider outside --live). Snapshot = compact summary.
+      const result = await runCvScoreFixture(fixture.inputs as CvScoreFixtureInputs, ai)
+      return summarize(result)
+    }
     case 'expense-classify': {
       const description = inputs.description as string | undefined
       const vendor = inputs.vendor as string | undefined
@@ -270,6 +288,32 @@ function diffJson(a: unknown, b: unknown): string | null {
   return out.slice(0, 40).join('\n') + (out.length > 40 ? `\n... (${out.length - 40} more diff lines)` : '')
 }
 
+async function runCvScoreExpectationGate(): Promise<number> {
+  const fixtures = await loadFixtures('cv-score')
+  if (fixtures.length === 0) return 0
+  const ai = new FixtureAIProvider()
+  let failed = 0
+  console.log(`## cv-score expectations (${fixtures.length} fixtures, deterministic)`)
+  for (const f of fixtures) {
+    try {
+      const result = await runCvScoreFixture(f.inputs as CvScoreFixtureInputs, ai)
+      const violations = checkExpectations(result, f.expect)
+      if (violations.length === 0) {
+        console.log(`  [OK ] ${f.file}`)
+      } else {
+        failed += 1
+        console.log(`  [FAIL] ${f.file}`)
+        for (const v of violations) console.log(`    - ${v}`)
+      }
+    } catch (e) {
+      failed += 1
+      console.log(`  [FAIL] ${f.file} — threw: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+  console.log('')
+  return failed
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -280,6 +324,17 @@ async function main(): Promise<void> {
   const live = args.has('--live')
 
   const modelLabel = live ? liveModelLabel() : 'fixture'
+
+  // v12.0 — the CV scorer's deterministic output is gated by EXACT
+  // expectations in each cv-score fixture. This runs before (and
+  // independently of) the snapshot flow, always against the deterministic
+  // FixtureAIProvider, so a scoring regression fails even on a fresh
+  // checkout with no snapshots.
+  const expectationFailures = await runCvScoreExpectationGate()
+  if (expectationFailures > 0) {
+    console.error(`cv-score expectations failed for ${expectationFailures} fixture(s).`)
+    process.exit(1)
+  }
 
   // Pre-count snapshots so we can print the friendly first-run message.
   let existingSnapshots = 0

@@ -18,6 +18,12 @@ interface FeedbackButtonsProps {
   className?: string
   /** Optional caption below the buttons; defaults to a subtle helper string. */
   caption?: string | null
+  /**
+   * v12.0 — override the rating endpoint. AI output that isn't a document
+   * (e.g. the CV-score requirement fit) rates its ai_call_logs row directly
+   * via `/api/ai-calls/{id}/rate`.
+   */
+  rateUrl?: string
 }
 
 type Rating = 'up' | 'down' | null
@@ -26,6 +32,7 @@ export function FeedbackButtons({
   documentId,
   className,
   caption = 'Ratings help improve future generations',
+  rateUrl,
 }: FeedbackButtonsProps) {
   const [rated, setRated] = useState<Rating>(null)
   const [busy, setBusy] = useState<Rating>(null)
@@ -33,7 +40,7 @@ export function FeedbackButtons({
   async function submit(next: Exclude<Rating, null>): Promise<void> {
     setBusy(next)
     try {
-      const res = await fetch(`/api/documents/${documentId}/rate`, {
+      const res = await fetch(rateUrl ?? `/api/documents/${documentId}/rate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rating: next === 'up' ? 5 : 1 }),
