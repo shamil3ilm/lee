@@ -103,6 +103,52 @@ describe('GET /api/cron/sync-all', () => {
     expect(acts.some((a) => a.kind === 'reminder')).toBe(true)
   })
 
+  it('emits followup_recommended activities for applications past the 7-day mark', async () => {
+    const u = await makeUser('cron-followup@x.com')
+    const co = await makeCompany(u.id)
+    const j = await makeJob(u.id, co.id)
+    const appliedAt = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000)
+    const app = await makeApplication(u.id, j.id, { status: 'applied', appliedAt })
+
+    ;(globalThis as { fetch: typeof fetch }).fetch = (async () =>
+      new Response('nothing', { status: 500 })) as unknown as typeof fetch
+
+    const res = await GET(
+      buildRequest({ authorization: `Bearer ${env.CRON_SECRET}` }) as never,
+    )
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { followups_recommended: number }
+    expect(body.followups_recommended).toBeGreaterThanOrEqual(1)
+
+    const acts = await db
+      .select()
+      .from(activities)
+      .where(eq(activities.applicationId, app.id))
+    const nudge = acts.find((a) => a.kind === 'followup_recommended')
+    expect(nudge).toBeDefined()
+    const payload = nudge?.payload as { daysSince?: number; suggestedInterval?: number }
+    expect(payload?.suggestedInterval).toBe(7)
+  })
+
+  it('does not double-emit followup_recommended on consecutive runs', async () => {
+    const u = await makeUser('cron-followup-dedup@x.com')
+    const co = await makeCompany(u.id)
+    const j = await makeJob(u.id, co.id)
+    const appliedAt = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000)
+    const app = await makeApplication(u.id, j.id, { status: 'applied', appliedAt })
+
+    ;(globalThis as { fetch: typeof fetch }).fetch = (async () =>
+      new Response('nothing', { status: 500 })) as unknown as typeof fetch
+
+    await GET(buildRequest({ authorization: `Bearer ${env.CRON_SECRET}` }) as never)
+    await GET(buildRequest({ authorization: `Bearer ${env.CRON_SECRET}` }) as never)
+
+    const nudges = (
+      await db.select().from(activities).where(eq(activities.applicationId, app.id))
+    ).filter((a) => a.kind === 'followup_recommended')
+    expect(nudges).toHaveLength(1)
+  })
+
   it('counts gmail results for users with a connected google account', async () => {
     const u = await makeUser('cron-gmail@x.com')
     await db.insert(accounts).values({

@@ -8,11 +8,13 @@ import { getAIProviderForUser } from '@/lib/ai'
 import { syncGmail } from '@/lib/gmail/sync'
 import { NoGoogleAccountError } from '@/lib/google/tokens'
 import * as profileQ from '@/lib/db/queries/profile'
+import * as activitiesQ from '@/lib/db/queries/activities'
 import {
   alreadySentThisTzWeek,
   isMondayInTz,
   sendWeeklyDigest,
 } from '@/lib/digest/weekly'
+import { alreadyNudgedRecently, findFollowupCandidates } from '@/lib/followups/service'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -29,6 +31,7 @@ interface CycleTotals {
   gmail_checked: number
   gmail_matched: number
   reminders_added: number
+  followups_recommended: number
   digests_sent: number
   errors: string[]
 }
@@ -69,6 +72,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     gmail_checked: 0,
     gmail_matched: 0,
     reminders_added: 0,
+    followups_recommended: 0,
     digests_sent: 0,
     errors: [],
   }
@@ -125,6 +129,25 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         const message = e instanceof Error ? e.message : String(e)
         totals.errors.push(`user ${user.id} digest: ${message}`)
       }
+    }
+
+    // v4.2 — follow-up nudges. Emit a `followup_recommended` activity per
+    // candidate so the dashboard "Needs attention" widget can surface them.
+    // Idempotent: alreadyNudgedRecently prevents duplicate rows on re-runs
+    // within the same day (cron runs multiple times per day).
+    try {
+      const candidates = await findFollowupCandidates(user.id)
+      for (const c of candidates) {
+        if (await alreadyNudgedRecently(user.id, c.applicationId)) continue
+        await activitiesQ.log(user.id, c.applicationId, 'followup_recommended', {
+          daysSince: c.daysSince,
+          suggestedInterval: c.suggestedInterval,
+        })
+        totals.followups_recommended += 1
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e)
+      totals.errors.push(`user ${user.id} followups: ${message}`)
     }
   }
 
