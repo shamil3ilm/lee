@@ -15,6 +15,9 @@ import {
   Plug,
   Bell,
   BarChart3,
+  Wallet,
+  Target,
+  Upload,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -49,6 +52,14 @@ const SECTIONS: NavSection[] = [
     ],
   },
   {
+    label: 'Expenses',
+    items: [
+      { href: '/expenses', label: 'Overview', icon: Wallet },
+      { href: '/expenses/budgets', label: 'Budgets', icon: Target },
+      { href: '/expenses/import', label: 'Import', icon: Upload },
+    ],
+  },
+  {
     label: 'Personal',
     items: [
       { href: '/settings/profile', label: 'Profile', icon: Settings },
@@ -80,9 +91,20 @@ function initials(email: string, name?: string | null): string {
 export function Sidebar({ className, onNavigate, email, name, image }: SidebarProps) {
   const pathname = usePathname()
 
+  // Collect every nav href once so `isActive` can pick the LONGEST-matching
+  // href for the current path. Prevents the Overview entry (`/expenses`)
+  // from also lighting up when the user is on `/expenses/budgets` — the
+  // more specific sub-page wins.
+  const allHrefs = SECTIONS.flatMap((s) => s.items.map((i) => i.href))
+
   const isActive = (href: string): boolean => {
     if (href === '/') return pathname === '/'
-    return pathname === href || pathname.startsWith(`${href}/`)
+    const matches = allHrefs.filter(
+      (h) => h !== '/' && (pathname === h || pathname.startsWith(`${h}/`)),
+    )
+    if (matches.length === 0) return false
+    const best = matches.reduce((longest, h) => (h.length > longest.length ? h : longest))
+    return href === best
   }
 
   return (
