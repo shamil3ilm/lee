@@ -1,0 +1,33 @@
+{
+  "name": "Two-column PDF text",
+  "notes": "Text extracted from a two-column PDF: headings side by side, cells separated by wide gaps. Layout check fails and roles can't be parsed.",
+  "inputs": {
+    "text": "JORDAN COLS\njordan@example.com    +44 7700 900123\nEXPERIENCE    SKILLS\nSenior Engineer    TypeScript\nAcme Ltd    React\nJan 2020 – Present    Node.js\n• Built things    AWS\n• Led a team of 4    Docker\nEDUCATION    LANGUAGES\nBSc Maths    English",
+    "fileType": "pdf",
+    "pageCount": 1,
+    "job": null
+  },
+  "expect": {
+    "mode": "general",
+    "total": 63,
+    "scores": {
+      "ats": 53,
+      "impact": 92,
+      "readability": 60,
+      "structure": 30
+    },
+    "grades": {
+      "total": "D",
+      "structure": "F"
+    },
+    "skipped": [
+      "roleMatch",
+      "skillsMatch",
+      "experienceMatch"
+    ],
+    "findings": [
+      "Multi-column layout suspected",
+      "No work experience entries could be identified"
+    ]
+  }
+}

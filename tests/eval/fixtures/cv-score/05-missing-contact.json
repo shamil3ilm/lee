@@ -1,0 +1,31 @@
+{
+  "name": "Missing-contact CV (plain text upload)",
+  "notes": "No email / phone / LinkedIn / location: critical ATS finding caps the ATS score at 60.",
+  "inputs": {
+    "text": "Pat Nocontact\nBackend Developer\n\nExperience\nBackend Developer — Initech | Mar 2019 – Present\n• Built billing APIs in Python serving 10k customers\n• Reduced invoice errors by 30% with automated validation\n• Designed the Postgres schema for the reporting service\n\nEducation\nBSc Computer Science — State University | 2015 – 2019\n\nSkills\nPython, Django, PostgreSQL, AWS",
+    "fileType": "txt",
+    "job": null
+  },
+  "expect": {
+    "mode": "general",
+    "total": 78,
+    "scores": {
+      "ats": 60,
+      "impact": 100,
+      "readability": 60,
+      "structure": 100
+    },
+    "grades": {
+      "total": "B",
+      "ats": "D"
+    },
+    "skipped": [
+      "roleMatch",
+      "skillsMatch",
+      "experienceMatch"
+    ],
+    "findings": [
+      "No email address detected"
+    ]
+  }
+}

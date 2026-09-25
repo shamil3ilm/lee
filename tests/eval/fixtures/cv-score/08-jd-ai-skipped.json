@@ -1,0 +1,30 @@
+{
+  "name": "JD without parsed requirements (AI requirement fit skipped)",
+  "notes": "Signal gate refuses the AI dimension; Role Match falls back to title/responsibility alignment and the result states why.",
+  "inputs": {
+    "cv": "strong",
+    "job": {
+      "@job": "backend",
+      "requirements": []
+    }
+  },
+  "expect": {
+    "mode": "jd",
+    "total": 94,
+    "scores": {
+      "roleMatch": 100,
+      "skillsMatch": 77,
+      "experienceMatch": 100,
+      "ats": 94,
+      "impact": 100,
+      "readability": 100,
+      "structure": 100
+    },
+    "grades": {
+      "total": "A"
+    },
+    "skipped": [
+      "requirementFit"
+    ]
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "name": "Weak CV, no job",
+  "notes": "Weak openers, no metrics, passive voice, pronouns, an 18-month gap, thin contact details.",
+  "inputs": {
+    "cv": "weak",
+    "job": null
+  },
+  "expect": {
+    "mode": "general",
+    "totalLabel": "CV Quality",
+    "total": 57,
+    "scores": {
+      "roleMatch": null,
+      "skillsMatch": null,
+      "experienceMatch": null,
+      "ats": 87,
+      "impact": 11,
+      "readability": 47,
+      "structure": 91
+    },
+    "grades": {
+      "total": "D",
+      "impact": "F",
+      "readability": "F"
+    },
+    "skipped": [
+      "roleMatch",
+      "skillsMatch",
+      "experienceMatch"
+    ],
+    "findings": [
+      "weak phrase (\"responsible for\")",
+      "6 of 6 bullets lack a measurable outcome",
+      "use passive voice",
+      "first-person pronouns",
+      "Employment gap of 18 months"
+    ]
+  }
+}

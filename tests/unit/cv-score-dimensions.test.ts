@@ -310,7 +310,7 @@ describe('domain', () => {
 
   it('strong / related / none', () => {
     const cv = structured(strongCv())
-    expect(expectResult(scoreDomain(cv, backendJd(), ctx)).score).toBe(100)
+    expect(expectResult(scoreDomain(cv, backendJd(), {})).score).toBe(100)
     const crypto = backendJd({ descriptionMd: 'A crypto exchange built on blockchain rails', companyName: 'Coin' })
     const plain = structured(strongCv({ summary: 'Engineer.', experience: [] }))
     expect(expectResult(scoreDomain(plain, crypto, { profile: { industries: ['fintech'] } })).details).toEqual({
@@ -319,7 +319,7 @@ describe('domain', () => {
       match: 'related',
     })
     expect(expectResult(scoreDomain(plain, crypto, {})).score).toBe(25)
-    expect(scoreDomain(cv, backendJd({ descriptionMd: 'Great team', companyName: 'X' }), ctx)).toMatchObject({ skipped: true })
+    expect(scoreDomain(cv, backendJd({ descriptionMd: 'Great team', companyName: 'X' }), {})).toMatchObject({ skipped: true })
   })
 })
 

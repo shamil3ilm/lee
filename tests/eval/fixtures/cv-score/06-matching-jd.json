@@ -1,0 +1,33 @@
+{
+  "name": "Strong backend CV vs matching fintech backend JD",
+  "notes": "Every headline score computed; requirement fit via the deterministic fixture provider with verified evidence.",
+  "inputs": {
+    "cv": "strong",
+    "job": "backend"
+  },
+  "expect": {
+    "mode": "jd",
+    "totalLabel": "Total Match",
+    "total": 93,
+    "scores": {
+      "roleMatch": 90,
+      "skillsMatch": 81,
+      "experienceMatch": 100,
+      "ats": 95,
+      "impact": 100,
+      "readability": 100,
+      "structure": 100
+    },
+    "grades": {
+      "total": "A",
+      "skillsMatch": "B"
+    },
+    "skipped": [],
+    "findings": [
+      "1 of 6 required skills are missing: aws"
+    ],
+    "noFindings": [
+      "Keyword stuffing"
+    ]
+  }
+}

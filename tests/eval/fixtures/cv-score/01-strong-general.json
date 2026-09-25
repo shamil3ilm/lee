@@ -1,0 +1,33 @@
+{
+  "name": "Strong CV, no job (CV Quality)",
+  "notes": "No-JD path: JD-only scores show the pick-a-job state and weights renormalise to ATS/Impact/Readability/Structure.",
+  "inputs": {
+    "cv": "strong",
+    "job": null
+  },
+  "expect": {
+    "mode": "general",
+    "totalLabel": "CV Quality",
+    "total": 100,
+    "scores": {
+      "roleMatch": null,
+      "skillsMatch": null,
+      "experienceMatch": null,
+      "ats": 100,
+      "impact": 100,
+      "readability": 100,
+      "structure": 100
+    },
+    "grades": {
+      "total": "A"
+    },
+    "skipped": [
+      "roleMatch",
+      "skillsMatch",
+      "experienceMatch"
+    ],
+    "noFindings": [
+      "weak phrase"
+    ]
+  }
+}
