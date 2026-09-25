@@ -7,11 +7,13 @@ import * as actQ from '@/lib/db/queries/activities'
 import * as stagesQ from '@/lib/db/queries/stages'
 import * as applicationContactsQ from '@/lib/db/queries/applicationContacts'
 import * as documentsQ from '@/lib/db/queries/documents'
+import * as todosQ from '@/lib/db/queries/todos'
 import { StatusPicker } from '@/components/status-picker'
 import { AddStageDialog } from '@/components/add-stage-dialog'
 import { DocumentsCard } from '@/components/documents-card'
 import { OutreachCard } from '@/components/outreach-card'
 import { PrepPackCard } from '@/components/prep-pack-card'
+import { TodosCard } from '@/components/todos-card'
 import { PageHeader } from '@/components/page-header'
 import { Timeline, mergeTimeline, type TimelineActivity, type TimelineStage } from '@/components/timeline'
 import { Badge } from '@/components/ui/badge'
@@ -67,11 +69,12 @@ export default async function ApplicationDetail({
   const app = await appsQ.getById(userId, id)
   if (!app) notFound()
 
-  const [stages, activities, contacts, allDocs] = await Promise.all([
+  const [stages, activities, contacts, allDocs, todos] = await Promise.all([
     stagesQ.list(userId, id),
     actQ.list(userId, id, { limit: 50 }),
     applicationContactsQ.listForApplication(userId, id),
     documentsQ.list(userId, { applicationId: id }),
+    todosQ.list(userId, { applicationId: id }),
   ])
 
   // Split the app's documents so each card only sees the shapes it renders.
@@ -234,6 +237,8 @@ export default async function ApplicationDetail({
               <Timeline items={timelineItems} />
             </CardContent>
           </Card>
+
+          <TodosCard applicationId={app.id} todos={todos} />
 
           <DocumentsCard applicationId={app.id} documents={cvDocs} />
 

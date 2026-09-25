@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react'
 import { and, count, eq, gte } from 'drizzle-orm'
 import { requireUserId } from '@/lib/auth/require-session'
 import * as appsQ from '@/lib/db/queries/applications'
+import * as todosQ from '@/lib/db/queries/todos'
 import { db } from '@/lib/db/client'
 import { accounts, activities, discoveries } from '@/lib/db/schema'
 import { getProfile } from '@/lib/profile/service'
@@ -11,6 +12,7 @@ import {
   NeedsAttention,
   type AttentionItem,
   type FollowupNudge,
+  type TodoNudge,
 } from '@/components/needs-attention'
 import { FreshDiscoveries, type FreshDiscoveryItem } from '@/components/fresh-discoveries'
 import { FunnelWidget } from '@/components/funnel-widget'
@@ -192,6 +194,20 @@ export default async function DashboardPage() {
     })
   }
 
+  // v8 — today's todos (top 3 by priority, due today or overdue). One extra
+  // round-trip; kept sequential so it can piggyback on the userId already
+  // resolved above and to keep the code path readable.
+  const endOfToday = new Date(now)
+  endOfToday.setUTCHours(23, 59, 59, 999)
+  const todayTodos = await todosQ.listDueByEnd(userId, endOfToday, 3)
+  const todoNudges: TodoNudge[] = todayTodos.map((t) => ({
+    id: t.id,
+    title: t.title,
+    priority: t.priority,
+    dueAt: t.dueAt ? t.dueAt.toISOString() : null,
+    applicationId: t.applicationId,
+  }))
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -209,6 +225,7 @@ export default async function DashboardPage() {
       <NeedsAttention
         items={attention}
         followups={followups}
+        todos={todoNudges}
         totalApplications={rows.length}
       />
       <SyncStatus

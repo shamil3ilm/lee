@@ -3,7 +3,14 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Bell, CheckCircle2, Clock, Loader2, Sparkles } from 'lucide-react'
+import {
+  Bell,
+  CheckCircle2,
+  CheckSquare,
+  Clock,
+  Loader2,
+  Sparkles,
+} from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -34,9 +41,20 @@ export interface FollowupNudge {
   recommendedAt: string
 }
 
+// v8 — top-N open todos due today or overdue. Rendered as a distinct row set
+// alongside application attention items and follow-ups.
+export interface TodoNudge {
+  id: string
+  title: string
+  priority: number
+  dueAt: string | null
+  applicationId: string | null
+}
+
 interface NeedsAttentionProps {
   items: AttentionItem[]
   followups?: FollowupNudge[]
+  todos?: TodoNudge[]
   /** Total applications the user has, used to distinguish "brand new" from "all caught up". */
   totalApplications: number
 }
@@ -44,9 +62,10 @@ interface NeedsAttentionProps {
 export function NeedsAttention({
   items,
   followups = [],
+  todos = [],
   totalApplications,
 }: NeedsAttentionProps) {
-  const totalCount = items.length + followups.length
+  const totalCount = items.length + followups.length + todos.length
 
   return (
     <Card>
@@ -90,6 +109,9 @@ export function NeedsAttention({
             ))}
             {followups.map((f) => (
               <FollowupRow key={`fup-${f.applicationId}-${f.suggestedInterval}`} nudge={f} />
+            ))}
+            {todos.map((t) => (
+              <TodoNudgeRow key={`todo-${t.id}`} todo={t} />
             ))}
           </ul>
         )}
@@ -158,6 +180,42 @@ function FollowupRow({ nudge }: { nudge: FollowupNudge }): React.ReactElement {
           Draft follow-up
         </Button>
       </div>
+    </li>
+  )
+}
+
+function TodoNudgeRow({ todo }: { todo: TodoNudge }): React.ReactElement {
+  const overdue = todo.dueAt !== null && new Date(todo.dueAt).getTime() < Date.now()
+  const href = todo.applicationId ? `/applications/${todo.applicationId}` : '/todos'
+  return (
+    <li>
+      <Link
+        href={href}
+        className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      >
+        <CheckSquare className="size-4 shrink-0 text-emerald-500" />
+        <div className="min-w-0">
+          <div className="truncate font-medium">{todo.title}</div>
+          <div className="truncate text-xs text-muted-foreground">
+            {todo.dueAt ? (
+              <>
+                {overdue ? 'Overdue · ' : 'Today · '}
+                {new Date(todo.dueAt).toLocaleDateString(undefined, {
+                  month: 'short',
+                  day: 'numeric',
+                })}
+              </>
+            ) : (
+              'No due date'
+            )}
+          </div>
+        </div>
+        {todo.priority >= 2 ? (
+          <Badge variant={todo.priority === 3 ? 'destructive' : 'default'}>
+            {todo.priority === 3 ? 'High' : 'Med'}
+          </Badge>
+        ) : null}
+      </Link>
     </li>
   )
 }

@@ -52,7 +52,7 @@ export async function GET(req: Request): Promise<NextResponse> {
       return NextResponse.json({ error: 'Invalid status.' }, { status: 400 })
     }
     const opts: todosQ.ListTodosOpts = {}
-    if (status) opts.status = status
+    if (status && todosQ.isTodoStatus(status)) opts.status = status
     if (applicationId) opts.applicationId = applicationId
     if (dueWithin) {
       // Accept "24h", "48h", or raw hours. Cap at 30 days to bound the query.
