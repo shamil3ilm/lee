@@ -76,7 +76,7 @@ describe('POST /api/lab/providers/keys', () => {
     const text = await res.text()
     expect(text).not.toContain(KEY)
     expect(JSON.parse(text)).toEqual({ ok: true, provider: 'cerebras', last4: 'abcd' })
-    expect(String(f.mock.calls[0]?.[0])).toBe('https://api.cerebras.ai/v1/models')
+    expect(String((f.mock.calls[0] as unknown as [string])[0])).toBe('https://api.cerebras.ai/v1/models')
     expect(await keysQ.getDecrypted(u.id, 'cerebras')).toBe(KEY)
 
     // Provider status listing is masked too.
