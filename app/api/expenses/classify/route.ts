@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
-import { getDecisionProvider } from '@/lib/decisions'
+import { getDecisionProviderForUser } from '@/lib/decisions'
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/expenses/categories'
 import { logger } from '@/lib/logger'
 
@@ -46,7 +46,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     const { description, vendor } = parsed.data
     const text = [vendor, description].filter(Boolean).join(' — ')
 
-    const provider = getDecisionProvider()
+    const provider = await getDecisionProviderForUser(userId)
     const result = await provider.choice<ExpenseCategory>({
       text,
       options: EXPENSE_CATEGORIES,
