@@ -192,7 +192,7 @@ export async function saveDecisionProviderAction(
     const endpointToStore =
       provider === 'laya' ? (layaEndpoint === '' ? null : layaEndpoint) : null
     await saveProfile(userId, { decisionProvider, layaEndpoint: endpointToStore })
-    revalidatePath('/settings/profile')
+    revalidatePath('/settings/ai')
     return { success: true }
   } catch (err) {
     logger.error('saveDecisionProvider failed', {
@@ -215,7 +215,7 @@ export async function saveAiModelAction(formData: FormData): Promise<ActionResul
       if (!choice) return { error: 'Unknown model.' }
       await saveProfile(userId, { aiProvider: choice.provider, aiModel: choice.model })
     }
-    revalidatePath('/settings/profile')
+    revalidatePath('/settings/ai')
     return { success: true }
   } catch (err) {
     logger.error('saveAiModel failed', {
