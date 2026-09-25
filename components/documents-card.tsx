@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { relativeFromNow } from '@/lib/ui/date'
 import { MergeDocumentsDialog } from '@/components/merge-documents-dialog'
+import { StalenessBadge } from '@/components/staleness-badge'
 
 type DocumentKind =
   | 'master_cv'
@@ -170,8 +171,11 @@ export function DocumentsCard({ applicationId, documents }: DocumentsCardProps) 
                       </Badge>
                       <span className="truncate font-medium">{doc.title}</span>
                     </div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">
-                      v{doc.version} · {relativeFromNow(doc.createdAt)}
+                    <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>
+                        v{doc.version} · {relativeFromNow(doc.createdAt)}
+                      </span>
+                      <StalenessBadge documentId={doc.id} />
                     </div>
                   </div>
                   <DropdownMenu>

@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { relativeFromNow } from '@/lib/ui/date'
+import { StalenessBadge } from '@/components/staleness-badge'
 
 type DocumentKind =
   | 'master_cv'
@@ -189,6 +190,7 @@ export function DocumentsTable({ documents, currentFilter }: DocumentsTableProps
                   <th className="px-4 py-3">Title</th>
                   <th className="px-4 py-3">Application</th>
                   <th className="px-4 py-3">Version</th>
+                  <th className="px-4 py-3">Freshness</th>
                   <th className="px-4 py-3">Created</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
@@ -219,6 +221,9 @@ export function DocumentsTable({ documents, currentFilter }: DocumentsTableProps
                         )}
                       </td>
                       <td className="px-4 py-3 text-xs">v{doc.version}</td>
+                      <td className="px-4 py-3">
+                        <StalenessBadge documentId={doc.id} />
+                      </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">
                         {relativeFromNow(doc.createdAt)}
                       </td>
