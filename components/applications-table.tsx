@@ -41,6 +41,8 @@ type SortDir = 'asc' | 'desc'
 
 interface ApplicationsTableProps {
   rows: AppRow[]
+  /** Pre-selected status chip, e.g. from ?status= links on the journey strip. */
+  initialFilter?: 'all' | ApplicationStatus
 }
 
 const FILTERS: { label: string; value: 'all' | ApplicationStatus }[] = [
@@ -57,9 +59,9 @@ function compare(a: string | number | null, b: string | number | null, dir: Sort
   return 0
 }
 
-export function ApplicationsTable({ rows }: ApplicationsTableProps) {
+export function ApplicationsTable({ rows, initialFilter = 'all' }: ApplicationsTableProps) {
   const router = useRouter()
-  const [filter, setFilter] = React.useState<'all' | ApplicationStatus>('all')
+  const [filter, setFilter] = React.useState<'all' | ApplicationStatus>(initialFilter)
   const [sortKey, setSortKey] = React.useState<SortKey>('nextActionAt')
   const [sortDir, setSortDir] = React.useState<SortDir>('asc')
 

@@ -18,6 +18,11 @@ import { FreshDiscoveries, type FreshDiscoveryItem } from '@/components/fresh-di
 import { FunnelWidget } from '@/components/funnel-widget'
 import { buildFunnelCounts } from '@/lib/dashboard/funnel'
 import { SyncStatus } from '@/components/sync-status'
+import { SetupChecklist } from '@/components/setup-checklist'
+import { NextBestAction } from '@/components/next-best-action'
+import { JourneyStrip } from '@/components/journey-strip'
+import { DashboardSection } from '@/components/dashboard-section'
+import { getJourneyCounts, getNextBestAction, getSetupChecklist } from '@/lib/journey/service'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import {
@@ -63,7 +68,7 @@ export default async function DashboardPage() {
   // Sync-status widget inputs — one round-trip per input, all keyed by
   // userId so this stays cheap. Executed in parallel with the discovery
   // query and dashboard aggregations below.
-  const [googleAccount, profile, emailCountRow] = await Promise.all([
+  const [googleAccount, profile, emailCountRow, checklist, nextAction, journeyCounts] = await Promise.all([
     db.query.accounts.findFirst({
       where: and(eq(accounts.userId, userId), eq(accounts.provider, 'google')),
       columns: { scope: true },
@@ -79,6 +84,9 @@ export default async function DashboardPage() {
           gte(activities.createdAt, new Date(now.getTime() - DAY_MS)),
         ),
       ),
+    getSetupChecklist(userId),
+    getNextBestAction(userId, now),
+    getJourneyCounts(userId),
   ])
   const grantedScopes = googleAccount?.scope?.split(' ').filter(Boolean) ?? []
   const gmailConnected = grantedScopes.includes(GMAIL_SCOPE)
@@ -211,8 +219,8 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Dashboard"
-        description="Your pipeline at a glance."
+        title="Home"
+        description="Where you are in your search, and what to do next."
         actions={
           <Button asChild size="sm">
             <Link href="/applications/new">
@@ -222,27 +230,31 @@ export default async function DashboardPage() {
           </Button>
         }
       />
-      <NeedsAttention
-        items={attention}
-        followups={followups}
-        todos={todoNudges}
-        totalApplications={rows.length}
-        now={now.getTime()}
-      />
-      <SyncStatus
-        connected={gmailConnected}
-        syncedGmailAt={profile?.syncedGmailAt?.toISOString() ?? null}
-        emailsToday={emailsToday}
-        needsFollowUp={attention.length}
-      />
-      <FreshDiscoveries items={fresh} />
-      <FunnelWidget counts={funnelCounts} />
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          Pipeline
-        </h2>
+      <SetupChecklist checklist={checklist} />
+      <NextBestAction action={nextAction} />
+      <JourneyStrip counts={journeyCounts} />
+      <DashboardSection title="This week">
+        <NeedsAttention
+          items={attention}
+          followups={followups}
+          todos={todoNudges}
+          totalApplications={rows.length}
+          now={now.getTime()}
+        />
+      </DashboardSection>
+      <DashboardSection title="Pipeline">
         <Kanban columns={columns} />
-      </section>
+        <FunnelWidget counts={funnelCounts} />
+      </DashboardSection>
+      <DashboardSection title="Signals">
+        <FreshDiscoveries items={fresh} />
+        <SyncStatus
+          connected={gmailConnected}
+          syncedGmailAt={profile?.syncedGmailAt?.toISOString() ?? null}
+          emailsToday={emailsToday}
+          needsFollowUp={attention.length}
+        />
+      </DashboardSection>
     </div>
   )
 }
