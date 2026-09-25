@@ -140,6 +140,10 @@ async function buildTable(metric: ExportMetric, userId: string): Promise<CsvTabl
           'completion_tokens',
           'avg_latency_ms',
           'estimated_cost_usd',
+          // v10 — quality feedback columns.
+          'skip_rate',
+          'avg_rating',
+          'rating_count',
         ],
         rows: stats.rows.map((r) => [
           r.provider,
@@ -149,6 +153,9 @@ async function buildTable(metric: ExportMetric, userId: string): Promise<CsvTabl
           r.completionTokens,
           r.avgLatencyMs,
           Number(r.estimatedCostUsd.toFixed(6)),
+          Number(r.skipRate.toFixed(4)),
+          r.ratingAvg == null ? '' : r.ratingAvg,
+          r.ratingCount,
         ]),
       }
     }

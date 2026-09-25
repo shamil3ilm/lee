@@ -477,4 +477,67 @@ describe('aiUsageStats', () => {
     expect(stats.totalEstimatedCostUsd).toBe(0)
     expect(stats.rows[0]!.estimatedCostUsd).toBe(0)
   })
+
+  // v10 — signal-check + rating aggregates
+  it('surfaces signal-skip rate + average rating per (provider, kind)', async () => {
+    const u = await makeUser()
+    await db.insert(aiCallLogs).values([
+      {
+        userId: u.id,
+        provider: 'gemini',
+        kind: 'tailored_cv',
+        status: 'ok',
+        signalCheckPassed: true,
+        userRating: 5,
+      },
+      {
+        userId: u.id,
+        provider: 'gemini',
+        kind: 'tailored_cv',
+        status: 'ok',
+        signalCheckPassed: true,
+        userRating: 1,
+      },
+      {
+        userId: u.id,
+        provider: 'unknown',
+        kind: 'tailored_cv',
+        status: 'skipped',
+        signalCheckPassed: false,
+        signalCheckCode: 'no_master_cv',
+      },
+    ])
+    const stats = await aiUsageStats(u.id, 30)
+    const cvRow = stats.rows.find(
+      (r) => r.provider === 'gemini' && r.kind === 'tailored_cv',
+    )!
+    expect(cvRow.ratingAvg).toBe(3)
+    expect(cvRow.ratingCount).toBe(2)
+    expect(cvRow.skipRate).toBe(0)
+
+    const skipRow = stats.rows.find(
+      (r) => r.provider === 'unknown' && r.kind === 'tailored_cv',
+    )!
+    expect(skipRow.skipRate).toBe(1)
+    expect(stats.signalSkipRate).toBeCloseTo(1 / 3, 4)
+    expect(stats.ratingAvg).toBe(3)
+    const cvBucket = stats.signalCheckByKind.find((b) => b.kind === 'tailored_cv')!
+    expect(cvBucket.proceeded).toBe(2)
+    expect(cvBucket.skipped).toBe(1)
+  })
+
+  it('leaves ratingAvg null and skipRate 0 when there is nothing to aggregate', async () => {
+    const u = await makeUser()
+    await db.insert(aiCallLogs).values({
+      userId: u.id,
+      provider: 'gemini',
+      kind: 'parse_job',
+      status: 'ok',
+    })
+    const stats = await aiUsageStats(u.id, 30)
+    expect(stats.ratingAvg).toBeNull()
+    expect(stats.signalSkipRate).toBe(0)
+    expect(stats.rows[0]!.ratingAvg).toBeNull()
+    expect(stats.rows[0]!.skipRate).toBe(0)
+  })
 })

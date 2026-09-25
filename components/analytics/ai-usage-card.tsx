@@ -28,6 +28,19 @@ const CHART_CONFIG: ChartConfig = {
   cost: { label: 'Est. cost ($)', color: 'hsl(217 91% 60%)' },
 }
 
+const SIGNAL_CHART_CONFIG: ChartConfig = {
+  proceeded: { label: 'Proceeded', color: 'hsl(142 71% 45%)' },
+  skipped: { label: 'Skipped', color: 'hsl(0 84% 60%)' },
+}
+
+function formatPct(v: number): string {
+  return `${(v * 100).toFixed(v < 0.01 ? 1 : 0)}%`
+}
+
+function formatRating(v: number | null): string {
+  return v == null ? '—' : v.toFixed(2)
+}
+
 function formatCost(v: number): string {
   if (v === 0) return '$0.00'
   if (v < 0.01) return '<$0.01'
@@ -101,6 +114,25 @@ export function AIUsageCard({ data, className }: AIUsageCardProps) {
                 </span>{' '}
                 tokens
               </span>
+              <span>
+                <span
+                  className={cn(
+                    'tabular-nums text-foreground',
+                    data.signalSkipRate > 0.25 && 'text-rose-500',
+                  )}
+                >
+                  {formatPct(data.signalSkipRate)}
+                </span>{' '}
+                skipped
+              </span>
+              {data.ratingAvg != null ? (
+                <span>
+                  <span className="tabular-nums text-foreground">
+                    {formatRating(data.ratingAvg)}
+                  </span>{' '}
+                  avg rating
+                </span>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -132,7 +164,7 @@ export function AIUsageCard({ data, className }: AIUsageCardProps) {
                 horizontal scroller with a min-width so columns stay readable.
               */}
               <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-xs">
+              <table className="w-full min-w-[820px] text-xs">
                 <thead className="bg-muted/40">
                   <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground">
                     <th className="px-3 py-2 font-semibold">Provider</th>
@@ -142,6 +174,8 @@ export function AIUsageCard({ data, className }: AIUsageCardProps) {
                     <th className="px-3 py-2 text-right font-semibold">Completion</th>
                     <th className="px-3 py-2 text-right font-semibold">Avg latency</th>
                     <th className="px-3 py-2 text-right font-semibold">Est. cost</th>
+                    <th className="px-3 py-2 text-right font-semibold">Skip %</th>
+                    <th className="px-3 py-2 text-right font-semibold">Avg rating</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -164,12 +198,76 @@ export function AIUsageCard({ data, className }: AIUsageCardProps) {
                       <td className="px-3 py-1.5 text-right tabular-nums">
                         {formatCost(r.estimatedCostUsd)}
                       </td>
+                      <td
+                        className={cn(
+                          'px-3 py-1.5 text-right tabular-nums',
+                          r.skipRate > 0.25 ? 'text-rose-500' : 'text-muted-foreground',
+                        )}
+                      >
+                        {formatPct(r.skipRate)}
+                      </td>
+                      <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
+                        {formatRating(r.ratingAvg)}
+                        {r.ratingCount > 0 ? (
+                          <span className="ml-1 text-[10px] opacity-60">
+                            ({r.ratingCount})
+                          </span>
+                        ) : null}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               </div>
             </div>
+
+            {data.signalCheckByKind.some((b) => b.skipped > 0) ? (
+              <div>
+                <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Signal checks — proceeded vs skipped (last 30 days)
+                </div>
+                <div className="h-40 w-full">
+                  <ChartContainer config={SIGNAL_CHART_CONFIG} className="h-full w-full">
+                    <BarChart
+                      data={data.signalCheckByKind}
+                      margin={{ top: 4, right: 8, left: -18, bottom: 0 }}
+                    >
+                      <CartesianGrid vertical={false} />
+                      <XAxis
+                        dataKey="kind"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={6}
+                        interval={0}
+                        angle={-30}
+                        height={70}
+                        textAnchor="end"
+                        fontSize={10}
+                      />
+                      <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        width={30}
+                        tickFormatter={(v: number) => formatNumber(v)}
+                      />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar
+                        dataKey="proceeded"
+                        stackId="s"
+                        fill="var(--color-proceeded)"
+                        radius={[0, 0, 0, 0]}
+                      />
+                      <Bar
+                        dataKey="skipped"
+                        stackId="s"
+                        fill="var(--color-skipped)"
+                        radius={[2, 2, 0, 0]}
+                      />
+                    </BarChart>
+                  </ChartContainer>
+                </div>
+              </div>
+            ) : null}
 
             <div>
               <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">

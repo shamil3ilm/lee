@@ -384,12 +384,26 @@ export interface AIUsageRow {
   completionTokens: number
   avgLatencyMs: number
   estimatedCostUsd: number
+  // v10 — signal-check + rating aggregates per (provider, kind).
+  // `skipRate` in [0, 1]; `ratingAvg` null when no ratings exist.
+  skipRate: number
+  ratingAvg: number | null
+  ratingCount: number
 }
 
 export interface AIDailyCostBar {
   date: string // YYYY-MM-DD
   calls: number
   cost: number
+}
+
+export interface AISignalCheckBar {
+  // Per-kind aggregate of proceeded (signal check passed OR no gate) vs
+  // skipped (gate refused the call). Groups by `kind` alone — the chart
+  // doesn't care about provider for skip analytics.
+  kind: string
+  proceeded: number
+  skipped: number
 }
 
 export interface AIUsageStats {
@@ -399,6 +413,11 @@ export interface AIUsageStats {
   totalCompletionTokens: number
   totalEstimatedCostUsd: number
   byDay: AIDailyCostBar[]
+  // v10 — overall skip rate + average rating so header widgets and analytics
+  // callers can show a single top-line metric without re-aggregating.
+  signalSkipRate: number
+  ratingAvg: number | null
+  signalCheckByKind: AISignalCheckBar[]
 }
 
 /**
@@ -450,7 +469,9 @@ function estimateCostUsd(provider: string, promptTokens: number, completionToken
 export async function aiUsageStats(userId: string, days = 30): Promise<AIUsageStats> {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
 
-  // Per-(provider, kind) aggregation
+  // Per-(provider, kind) aggregation. v10 extends this to pull skip counts
+  // and rating averages in the same pass so the per-row breakdown table
+  // can render skip % + avg rating without extra round trips.
   const groupRows = await db
     .select({
       provider: aiCallLogs.provider,
@@ -459,6 +480,9 @@ export async function aiUsageStats(userId: string, days = 30): Promise<AIUsageSt
       promptTokens: sql<number>`coalesce(sum(${aiCallLogs.promptTokens}), 0)::int`,
       completionTokens: sql<number>`coalesce(sum(${aiCallLogs.completionTokens}), 0)::int`,
       avgLatencyMs: sql<number>`coalesce(avg(${aiCallLogs.latencyMs}), 0)::int`,
+      skipped: sql<number>`sum(case when ${aiCallLogs.signalCheckPassed} = false then 1 else 0 end)::int`,
+      ratingAvg: sql<number | null>`avg(${aiCallLogs.userRating})::float`,
+      ratingCount: sql<number>`count(${aiCallLogs.userRating})::int`,
     })
     .from(aiCallLogs)
     .where(sql`${aiCallLogs.userId} = ${userId} and ${aiCallLogs.createdAt} >= ${since}`)
@@ -468,14 +492,24 @@ export async function aiUsageStats(userId: string, days = 30): Promise<AIUsageSt
     .map((r) => {
       const promptTokens = Number(r.promptTokens)
       const completionTokens = Number(r.completionTokens)
+      const calls = Number(r.calls)
+      const skipped = Number(r.skipped)
+      const ratingCount = Number(r.ratingCount)
+      const ratingAvgRaw = r.ratingAvg == null ? null : Number(r.ratingAvg)
       return {
         provider: r.provider,
         kind: r.kind,
-        calls: Number(r.calls),
+        calls,
         promptTokens,
         completionTokens,
         avgLatencyMs: Number(r.avgLatencyMs),
         estimatedCostUsd: estimateCostUsd(r.provider, promptTokens, completionTokens),
+        skipRate: calls > 0 ? skipped / calls : 0,
+        ratingAvg:
+          ratingCount > 0 && ratingAvgRaw != null
+            ? Math.round(ratingAvgRaw * 100) / 100
+            : null,
+        ratingCount,
       }
     })
     .sort((a, b) => b.estimatedCostUsd - a.estimatedCostUsd || b.calls - a.calls)
@@ -531,13 +565,47 @@ export async function aiUsageStats(userId: string, days = 30): Promise<AIUsageSt
     cursor.setUTCDate(cursor.getUTCDate() + 1)
   }
 
+  // v10 — compute overall skip rate and average rating across the window.
+  // Grouped-by-kind breakdown for the stacked bar chart.
+  const skipRows = await db
+    .select({
+      kind: aiCallLogs.kind,
+      total: sql<number>`count(*)::int`,
+      skipped: sql<number>`sum(case when ${aiCallLogs.signalCheckPassed} = false then 1 else 0 end)::int`,
+    })
+    .from(aiCallLogs)
+    .where(sql`${aiCallLogs.userId} = ${userId} and ${aiCallLogs.createdAt} >= ${since}`)
+    .groupBy(aiCallLogs.kind)
+  const signalCheckByKind: AISignalCheckBar[] = skipRows
+    .map((r) => {
+      const total = Number(r.total)
+      const skipped = Number(r.skipped)
+      return { kind: r.kind, proceeded: total - skipped, skipped }
+    })
+    .sort((a, b) => b.skipped + b.proceeded - (a.skipped + a.proceeded))
+
+  const totalCalls = rows.reduce((s, r) => s + r.calls, 0)
+  const totalSkipped = signalCheckByKind.reduce((s, r) => s + r.skipped, 0)
+  const signalSkipRate = totalCalls > 0 ? totalSkipped / totalCalls : 0
+
+  const totalRatingSum = rows.reduce(
+    (s, r) => s + (r.ratingAvg != null ? r.ratingAvg * r.ratingCount : 0),
+    0,
+  )
+  const totalRatingCount = rows.reduce((s, r) => s + r.ratingCount, 0)
+  const ratingAvg =
+    totalRatingCount > 0 ? Math.round((totalRatingSum / totalRatingCount) * 100) / 100 : null
+
   return {
     rows,
-    totalCalls: rows.reduce((s, r) => s + r.calls, 0),
+    totalCalls,
     totalPromptTokens: rows.reduce((s, r) => s + r.promptTokens, 0),
     totalCompletionTokens: rows.reduce((s, r) => s + r.completionTokens, 0),
     totalEstimatedCostUsd: rows.reduce((s, r) => s + r.estimatedCostUsd, 0),
     byDay,
+    signalSkipRate,
+    ratingAvg,
+    signalCheckByKind,
   }
 }
 
