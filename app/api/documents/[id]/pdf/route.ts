@@ -5,6 +5,7 @@ import { renderCvPdf, renderCoverLetterPdf, renderPrepPackPdf } from '@/lib/pdf/
 import {
   coverLetterSchema,
   interviewPrepPackSchema,
+  latexDocumentContentSchema,
   masterCvSchema,
   outreachDraftSchema,
   tailoredCvSchema,
@@ -15,6 +16,7 @@ import {
   type TailoredCV,
 } from '@/lib/documents/types'
 import { getMasterCV } from '@/lib/documents/master'
+import { compileLatex, truncateLog } from '@/lib/latex/compile'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -39,6 +41,60 @@ export async function GET(
     const { id } = await ctx.params
     const doc = await documentsQ.getById(userId, id)
     if (!doc) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
+
+    // LaTeX documents route through the compile service instead of the
+    // React-PDF pipeline. Recompile on every GET but edge-cache the
+    // response for a minute so the iframe preview doesn't hammer the
+    // upstream service.
+    if (doc.kind === 'latex_cv' || doc.kind === 'latex_cover_letter') {
+      const content = latexDocumentContentSchema.parse(doc.content)
+      if (!content.source.trim()) {
+        return NextResponse.json({ error: 'LaTeX source is empty.' }, { status: 422 })
+      }
+      const result = await compileLatex(content.source)
+      if (result.ok) {
+        // Best-effort side effect: update compile status. Never let a DB
+        // failure block returning the fresh PDF bytes.
+        try {
+          await documentsQ.update(userId, id, {
+            content: {
+              ...content,
+              compiledAt: new Date().toISOString(),
+              compileError: undefined,
+              compileLog: undefined,
+            },
+          })
+        } catch (dbErr) {
+          logger.error('failed to persist latex compiledAt', {
+            err: dbErr instanceof Error ? dbErr.message : String(dbErr),
+          })
+        }
+        const filename = `${safeFilename(doc.title)}.pdf`
+        return new Response(new Uint8Array(result.pdf), {
+          status: 200,
+          headers: {
+            'content-type': 'application/pdf',
+            'content-disposition': `inline; filename="${filename}"`,
+            'cache-control': 'public, max-age=60',
+          },
+        })
+      }
+      const log = truncateLog(result.log)
+      try {
+        await documentsQ.update(userId, id, {
+          content: {
+            ...content,
+            compileError: `Compile failed (status ${result.status})`,
+            compileLog: log,
+          },
+        })
+      } catch (dbErr) {
+        logger.error('failed to persist latex compileError', {
+          err: dbErr instanceof Error ? dbErr.message : String(dbErr),
+        })
+      }
+      return NextResponse.json({ error: 'Compile failed', log }, { status: 422 })
+    }
 
     // Outreach kinds are short-form text — serve as .txt (no PDF template).
     if (
