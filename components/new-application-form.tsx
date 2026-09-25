@@ -18,10 +18,16 @@ import {
 } from '@/components/ui/select'
 import { addFromUrl, addManually } from '@/app/(authed)/applications/new/actions'
 
-function SubmitButton({ label }: { label: string }) {
+function SubmitButton({
+  label,
+  buttonRef,
+}: {
+  label: string
+  buttonRef?: React.Ref<HTMLButtonElement>
+}) {
   const { pending } = useFormStatus()
   return (
-    <Button type="submit" disabled={pending}>
+    <Button type="submit" disabled={pending} ref={buttonRef}>
       {pending ? <Loader2 className="size-4 animate-spin" /> : null}
       {pending ? 'Parsing…' : label}
     </Button>
@@ -29,13 +35,29 @@ function SubmitButton({ label }: { label: string }) {
 }
 
 interface NewApplicationFormProps {
+  /** Pre-fills the paste-URL input; typically comes from a `?url=` query param. */
   prefillUrl?: string
+  /**
+   * When true and a `prefillUrl` was supplied, moves focus to the submit
+   * button on mount so a single Enter completes the add. Never auto-clicks —
+   * the user still confirms intent.
+   */
+  autoSubmit?: boolean
 }
 
-export function NewApplicationForm({ prefillUrl }: NewApplicationFormProps) {
+export function NewApplicationForm({ prefillUrl, autoSubmit }: NewApplicationFormProps) {
   const router = useRouter()
   const [tab, setTab] = React.useState<'url' | 'manual'>('url')
   const [failedUrl, setFailedUrl] = React.useState<string | undefined>(prefillUrl)
+  const submitRef = React.useRef<HTMLButtonElement | null>(null)
+
+  // If the caller pre-filled a URL, shift focus off the input so pressing
+  // Enter submits immediately (matches the ⌘K quick-add expectation).
+  React.useEffect(() => {
+    if (!autoSubmit || !prefillUrl) return
+    const t = setTimeout(() => submitRef.current?.focus(), 40)
+    return () => clearTimeout(t)
+  }, [autoSubmit, prefillUrl])
 
   async function handleUrl(fd: FormData): Promise<void> {
     const result = await addFromUrl(fd)
@@ -77,14 +99,14 @@ export function NewApplicationForm({ prefillUrl }: NewApplicationFormProps) {
               type="url"
               placeholder="https://…"
               required
-              autoFocus
+              autoFocus={!prefillUrl}
               defaultValue={failedUrl}
             />
             <p className="text-xs text-muted-foreground">
               We fetch the page, parse it with AI, and create a saved application.
             </p>
           </div>
-          <SubmitButton label="Parse and save" />
+          <SubmitButton label="Parse and save" buttonRef={submitRef} />
         </form>
       </TabsContent>
 
