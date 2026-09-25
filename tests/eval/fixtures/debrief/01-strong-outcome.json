@@ -1,0 +1,13 @@
+{
+  "name": "Strong tech-screen debrief",
+  "notes": "Interviewer said 'we'll be in touch by Friday'. Notes read strong. Expected outcomeConfidence: likely_advance.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": "@factory:application",
+    "stage": {
+      "@factory": "stage",
+      "overrides": { "kind": "tech_screen", "title": "Technical Screen" }
+    },
+    "quickNotes": "60 min tech screen with Sarah (senior IC on Payments Infra).\n- Coding: implement idempotent charge handler. Nailed it — used token + status FSM. She wrote 'nice' in the shared doc.\n- Follow-up: what happens if the token store is partitioned mid-write. I proposed writing token first with a TTL, then charge, then flipping status. She agreed.\n- Behavioral: 'tell me about a hard rollback' — used the Careem Kafka→gRPC story with concrete metrics.\n- Time management: finished 5 min early.\n- Closing: 'we'll be in touch by Friday to schedule the loop'.\n- Overall vibe: strong."
+  }
+}

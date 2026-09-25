@@ -1,0 +1,9 @@
+{
+  "name": "Tech screen prep",
+  "notes": "Mostly technical questions + 1-2 behavioral.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": "@factory:application",
+    "stageKind": "tech_screen"
+  }
+}

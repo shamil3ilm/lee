@@ -1,0 +1,7 @@
+{
+  "name": "Benefits-heavy JD",
+  "notes": "Salary range explicit, benefits enumerated. Tests salary + benefits parsing precision.",
+  "inputs": {
+    "text": "Staff Platform Engineer — Vercel (Remote, US/EU)\n\nVercel is the frontend cloud powering the world's most successful teams. We're hiring a Staff Platform Engineer for the runtime team.\n\nYou'll:\n- Build the multi-tenant Node.js and Edge Function runtime that serves 1B+ requests per day.\n- Design isolation, observability, and cost-attribution for customer workloads.\n- Mentor senior ICs across the platform org.\n\nRequired:\n- 8+ years in production infrastructure.\n- Deep V8/Node.js internals.\n- Experience running multi-tenant compute at scale.\n\nCompensation: $220,000–$290,000 USD base + equity + performance bonus. Range varies by location.\n\nFull benefits list:\n- 100% remote (US and EU timezones).\n- Comprehensive health, dental, vision (100% employee, 100% dependents).\n- Four-day work week (Fridays off, quarterly rotation).\n- $3,000/year learning budget.\n- $2,500 home-office equipment stipend.\n- $200/month gym stipend.\n- $150/month meal stipend.\n- 20 weeks parental leave, all parents.\n- Visa sponsorship for global hires (US H1B, EU Blue Card).\n- Full relocation package.\n- Unlimited PTO (minimum 25 days encouraged)."
+  }
+}

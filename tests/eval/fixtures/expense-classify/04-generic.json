@@ -1,0 +1,8 @@
+{
+  "name": "Generic ambiguous expense",
+  "notes": "Ambiguous — exercises the fallback path.",
+  "inputs": {
+    "description": "Payment to vendor",
+    "vendor": "General Trading LLC"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "Senior backend engineer — matching role",
+  "notes": "Master CV is Shamil's default; application is a matching senior backend engineer role at Stripe. Expected: highlighted_skills draws from primary, experience order preserved (both prior roles are relevant).",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": {
+      "@factory": "application",
+      "overrides": {
+        "role": "Senior Backend Engineer",
+        "company": "Stripe",
+        "descriptionMd": "Ship in TypeScript on Node.js with Postgres and some Go for the highest-throughput services. Own systems end-to-end.",
+        "techStack": ["typescript", "postgres", "go"]
+      }
+    }
+  }
+}

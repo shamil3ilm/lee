@@ -1,0 +1,16 @@
+{
+  "name": "Frontend React role — mismatched backend master CV",
+  "notes": "Master CV is heavy on PHP + backend; role is React frontend. Expected: highlighted_skills prioritises typescript over php, summary_rewrite=true.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": {
+      "@factory": "application",
+      "overrides": {
+        "role": "Senior Frontend Engineer",
+        "company": "Linear",
+        "descriptionMd": "Own the Linear web app front-to-back in React and TypeScript. Deep browser performance knowledge required.",
+        "techStack": ["typescript", "react", "next.js"]
+      }
+    }
+  }
+}

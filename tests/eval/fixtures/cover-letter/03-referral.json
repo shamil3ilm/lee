@@ -1,0 +1,15 @@
+{
+  "name": "Referral through a former colleague",
+  "notes": "Application implies referral context. Should be short, specific, tie to team.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": {
+      "@factory": "application",
+      "overrides": {
+        "role": "Staff Backend Engineer",
+        "company": "Deel",
+        "descriptionMd": "Global payroll platform. TypeScript + Postgres. Ship features for a global-first customer base."
+      }
+    }
+  }
+}

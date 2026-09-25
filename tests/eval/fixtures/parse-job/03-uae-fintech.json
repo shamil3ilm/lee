@@ -1,0 +1,7 @@
+{
+  "name": "UAE fintech onsite role",
+  "notes": "Onsite in Dubai, fintech, includes visa sponsorship. Tests location + benefits parsing.",
+  "inputs": {
+    "text": "Senior Full-Stack Engineer — Careem Pay (Dubai, UAE, on-site)\n\nCareem Pay is the fintech arm of Careem, MENA's leading super-app. We're hiring a Senior Full-Stack Engineer for the wallet and P2P transfers squad. This role is on-site at our Dubai Internet City office.\n\nThe role:\n- Own end-to-end features across our Node.js + TypeScript backend and our Next.js merchant dashboard.\n- Partner with our regulatory team on Central Bank of the UAE compliance for new payment products.\n- Ship to millions of users across UAE, Saudi Arabia, Egypt, Pakistan, and Jordan.\n\nMust-have:\n- 5+ years of production TypeScript.\n- Experience with regulated financial services (PSP, e-money, or banking).\n- Comfortable with Postgres, Redis, and event-driven architectures (Kafka).\n\nWhat we offer:\n- Competitive AED-denominated compensation.\n- Full UAE work visa + medical insurance for employee and dependents.\n- Relocation package for hires from outside UAE.\n- Annual home-country flights.\n- 30 days annual leave.\n- Restricted stock units in Careem's parent (Uber).\n\nDress code business casual. Standard working week Monday–Friday."
+  }
+}

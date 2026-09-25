@@ -1,0 +1,9 @@
+{
+  "name": "Behavioral round prep",
+  "notes": "All behavioral questions.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": "@factory:application",
+    "stageKind": "behavioral"
+  }
+}

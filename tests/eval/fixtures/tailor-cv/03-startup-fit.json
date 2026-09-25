@@ -1,0 +1,16 @@
+{
+  "name": "Small startup founding engineer role",
+  "notes": "Startup ~10 people; role is founding-engineer-style breadth. Expected: summary emphasises ownership + range.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": {
+      "@factory": "application",
+      "overrides": {
+        "role": "Founding Engineer",
+        "company": "Neuvector",
+        "descriptionMd": "Seed-stage security startup. You'll be the second engineering hire. Ship product surface + infra + on-call all in one role.",
+        "techStack": ["typescript", "postgres", "kubernetes"]
+      }
+    }
+  }
+}

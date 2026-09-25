@@ -1,0 +1,13 @@
+{
+  "name": "Weak tech-screen debrief",
+  "notes": "Ran out of time; interviewer non-committal. Expected outcomeConfidence: likely_rejected.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": "@factory:application",
+    "stage": {
+      "@factory": "stage",
+      "overrides": { "kind": "tech_screen" }
+    },
+    "quickNotes": "45 min tech screen.\n- Coding: LRU cache. Got the interface right but the eviction logic was buggy — didn't finish before the buzzer.\n- Follow-up: 'how would you make this thread-safe' — panicked, mumbled about mutexes without a design.\n- Interviewer said 'we'll let you know' — no timeline.\n- Interviewer camera off the whole time.\n- Vibe: cold."
+  }
+}

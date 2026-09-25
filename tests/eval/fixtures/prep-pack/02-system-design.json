@@ -1,0 +1,9 @@
+{
+  "name": "System design prep",
+  "notes": "All system_design questions.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": "@factory:application",
+    "stageKind": "system_design"
+  }
+}

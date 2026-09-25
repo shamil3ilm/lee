@@ -1,0 +1,7 @@
+{
+  "name": "Vague minimal signal JD",
+  "notes": "Deliberately minimal — signal check should flag this and refuse to score (real path); parse job itself should still parse a title + company.",
+  "inputs": {
+    "text": "Engineer needed. Contact us to learn more."
+  }
+}

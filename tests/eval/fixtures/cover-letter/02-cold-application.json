@@ -1,0 +1,15 @@
+{
+  "name": "Cold application — first contact",
+  "notes": "No prior relationship. Should show ability to introduce candidate + tie CV bullets to JD.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": {
+      "@factory": "application",
+      "overrides": {
+        "role": "Backend Engineer",
+        "company": "Cloudflare",
+        "descriptionMd": "Ship Rust and Go on the Workers runtime team."
+      }
+    }
+  }
+}

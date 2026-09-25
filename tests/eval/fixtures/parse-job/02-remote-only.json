@@ -1,0 +1,7 @@
+{
+  "name": "Remote-only mid-level role",
+  "notes": "Clearly remote-first, mid-level, no salary in text so parser must leave it null.",
+  "inputs": {
+    "text": "Backend Engineer (Remote, worldwide) — GitLab\n\nWe are a fully-distributed company hiring a Backend Engineer to join our CI/CD group. This role is 100% remote — GitLab has never had an office. You'll work asynchronously with a team spread across 12 timezones.\n\nWhat you'll do:\n- Ship Ruby on Rails features to the CI runner orchestrator used by 10M+ developers.\n- Write RFC-style design docs for cross-team changes.\n- Rotate through a light on-call for the CI edge (about one week per quarter).\n\nRequirements:\n- 3+ years of Ruby on Rails in production.\n- Comfortable in an async, doc-heavy engineering culture.\n\nBenefits:\n- 100% remote, forever.\n- Flexible PTO.\n- Home-office stipend.\n- Equity in a public company.\n\nCompensation is anchored to San Francisco pay bands and adjusted per location; specifics discussed in first call."
+  }
+}

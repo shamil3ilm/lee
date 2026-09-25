@@ -1,0 +1,8 @@
+{
+  "name": "Netflix subscription — subscriptions/streaming",
+  "notes": "Deterministic clear-cut example.",
+  "inputs": {
+    "description": "Netflix monthly subscription",
+    "vendor": "Netflix"
+  }
+}

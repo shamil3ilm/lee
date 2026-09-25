@@ -1,0 +1,10 @@
+{
+  "name": "LinkedIn connection request — formal tone",
+  "notes": "Body must be <= 300 chars. Formal tone.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": "@factory:application",
+    "kind": "linkedin_connection",
+    "tone": "formal"
+  }
+}

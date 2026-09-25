@@ -1,0 +1,10 @@
+{
+  "name": "LinkedIn follow-up message — friendly tone",
+  "notes": "500-1500 chars, 3-5 short paragraphs.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": "@factory:application",
+    "kind": "linkedin_message",
+    "tone": "friendly"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Follow-up email — 21 days since apply",
+  "notes": "Clear reiteration framing at day 21.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": "@factory:application",
+    "kind": "followup_email",
+    "tone": "formal",
+    "daysSince": 21
+  }
+}

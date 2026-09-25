@@ -1,0 +1,8 @@
+{
+  "name": "Uber — transport",
+  "notes": "Common ride-share.",
+  "inputs": {
+    "description": "Uber ride to office",
+    "vendor": "Uber"
+  }
+}

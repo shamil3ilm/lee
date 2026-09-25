@@ -1,0 +1,15 @@
+{
+  "name": "Warm recruiter — has already spoken with the team",
+  "notes": "Cover letter references prior conversation. Expected: greeting to Hiring Manager (no contact name in application), 3-4 paragraphs.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": {
+      "@factory": "application",
+      "overrides": {
+        "role": "Senior Backend Engineer",
+        "company": "Stripe",
+        "descriptionMd": "Payments Infrastructure team. Ship Node.js + Postgres services at scale."
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Follow-up email — 14 days since apply",
+  "notes": "Value-add framing at day 14.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": "@factory:application",
+    "kind": "followup_email",
+    "tone": "friendly",
+    "daysSince": 14
+  }
+}

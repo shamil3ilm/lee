@@ -1,0 +1,10 @@
+{
+  "name": "Recruiter reply — formal tone",
+  "notes": "150-400 words, includes subject, 1-2 concrete questions.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": "@factory:application",
+    "kind": "recruiter_reply",
+    "tone": "formal"
+  }
+}

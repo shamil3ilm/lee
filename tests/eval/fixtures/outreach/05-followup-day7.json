@@ -1,0 +1,11 @@
+{
+  "name": "Follow-up email — 7 days since apply",
+  "notes": "Gentle check-in framing at day 7.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": "@factory:application",
+    "kind": "followup_email",
+    "tone": "friendly",
+    "daysSince": 7
+  }
+}

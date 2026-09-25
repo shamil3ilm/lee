@@ -1,0 +1,8 @@
+{
+  "name": "DEWA — utilities/electricity",
+  "notes": "UAE-specific utility vendor.",
+  "inputs": {
+    "description": "DEWA bill October",
+    "vendor": "DEWA"
+  }
+}

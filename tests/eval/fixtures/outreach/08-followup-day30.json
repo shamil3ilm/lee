@@ -1,0 +1,11 @@
+{
+  "name": "Follow-up email — 30 days since apply",
+  "notes": "Close-the-loop framing at day 30.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": "@factory:application",
+    "kind": "followup_email",
+    "tone": "formal",
+    "daysSince": 30
+  }
+}

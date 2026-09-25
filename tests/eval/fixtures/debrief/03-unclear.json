@@ -1,0 +1,13 @@
+{
+  "name": "Unclear signal debrief",
+  "notes": "Mixed signals — some strong answers, some weak. Expected outcomeConfidence: unclear.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": "@factory:application",
+    "stage": {
+      "@factory": "stage",
+      "overrides": { "kind": "behavioral" }
+    },
+    "quickNotes": "45 min behavioral with hiring manager.\n- Tell me about your biggest impact — used the batch payments migration story. Went well, he asked follow-ups on metrics.\n- Tell me about a conflict with a peer — I rambled and forgot to close with what I learned. Weak.\n- Why us — solid answer tying to their public infra RFCs.\n- Closing: 'we have a few more candidates to see this week, will circle back'.\n- Overall: mixed."
+  }
+}
