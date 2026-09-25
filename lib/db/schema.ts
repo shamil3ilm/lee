@@ -329,6 +329,19 @@ export const userProfile = pgTable('user_profile', {
   // until the first send; used as a same-week idempotency guard.
   weeklyDigestEnabled: boolean('weekly_digest_enabled').notNull().default(true),
   digestLastSentAt: timestamp('digest_last_sent_at', { withTimezone: true }),
+  // v6.2 — per-discovery-cycle notifications. Independent of the Monday-only
+  // weekly digest above; these fire after every cron pass when the cycle
+  // ingests a new discovery whose match score clears `notifyDiscoveryMinScore`.
+  // Email is opt-in (defaults to false — reuses the gmail.send scope but many
+  // users won't want another inbox notification), browser is opt-in-by-default
+  // (defaults to true — same permission as the existing todo poller).
+  notifyDiscoveryEmail: boolean('notify_discovery_email').notNull().default(false),
+  notifyDiscoveryBrowser: boolean('notify_discovery_browser').notNull().default(true),
+  notifyDiscoveryMinScore: smallint('notify_discovery_min_score').notNull().default(75),
+  // Watermark for the email channel — the service uses it to compute the
+  // "since" window so a user who was silent for 3 days gets one summary email
+  // per cycle rather than a flood. Null → first send picks a 24h window.
+  discoveryEmailLastSentAt: timestamp('discovery_email_last_sent_at', { withTimezone: true }),
   // v4.1 per-user IANA timezone. Used for calendar events, digest scheduling,
   // and any date rendering that must reflect the user's local time regardless
   // of the server region. Defaults to Asia/Dubai (Shamil's home tz) so
