@@ -1,4 +1,4 @@
-import { and, eq, gte, lte, sql } from 'drizzle-orm'
+import { and, eq, gte, sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import {
   activities,

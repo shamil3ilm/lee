@@ -66,6 +66,9 @@ export default async function ApplicationDetail({
 }) {
   const { id } = await params
   const userId = await requireUserId()
+  // Snapshot once per request so `Date.now()` isn't called at the JSX site
+  // (react-hooks/purity flags impure calls in component bodies).
+  const now = new Date().getTime()
   const app = await appsQ.getById(userId, id)
   if (!app) notFound()
 
@@ -252,7 +255,7 @@ export default async function ApplicationDetail({
             </CardContent>
           </Card>
 
-          <TodosCard applicationId={app.id} todos={todos} />
+          <TodosCard applicationId={app.id} todos={todos} now={now} />
 
           <DocumentsCard applicationId={app.id} documents={cvDocs} />
 

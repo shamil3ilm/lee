@@ -40,16 +40,14 @@ export function DiscoveryInbox(props: DiscoveryInboxProps) {
   const isJobs = props.kind === 'jobs'
   const items = props.items
 
-  React.useEffect(() => {
-    // If the list re-renders (e.g. after a bulk dismiss), drop selections
-    // whose id no longer exists to avoid stale checkboxes.
-    setSelected((prev) => {
-      const next = new Set<string>()
-      const ids = new Set(items.map((i) => i.id))
-      for (const id of prev) if (ids.has(id)) next.add(id)
-      return next
-    })
-  }, [items])
+  // Derive the effective selection during render so stale ids that no longer
+  // exist in `items` are ignored on read — no setState-in-effect required.
+  const effectiveSelected = React.useMemo(() => {
+    const ids = new Set(items.map((i) => i.id))
+    const next = new Set<string>()
+    for (const id of selected) if (ids.has(id)) next.add(id)
+    return next
+  }, [selected, items])
 
   function toggle(id: string): void {
     setSelected((prev) => {
@@ -61,7 +59,7 @@ export function DiscoveryInbox(props: DiscoveryInboxProps) {
   }
 
   function handleDismissSelected(): void {
-    const ids = Array.from(selected)
+    const ids = Array.from(effectiveSelected)
     if (ids.length === 0) return
     startTransition(async () => {
       const result = await dismissMultiple(ids)
@@ -109,14 +107,14 @@ export function DiscoveryInbox(props: DiscoveryInboxProps) {
       {isJobs ? (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2 text-xs">
           <div className="flex items-center gap-2 text-muted-foreground">
-            {selected.size > 0 ? (
-              <span>{selected.size} selected</span>
+            {effectiveSelected.size > 0 ? (
+              <span>{effectiveSelected.size} selected</span>
             ) : (
               <span>Select rows to bulk-dismiss.</span>
             )}
           </div>
           <div className="flex items-center gap-2">
-            {selected.size > 0 ? (
+            {effectiveSelected.size > 0 ? (
               <Button
                 size="sm"
                 variant="outline"
@@ -144,7 +142,7 @@ export function DiscoveryInbox(props: DiscoveryInboxProps) {
             <JobDiscoveryRow
               key={it.id}
               item={it}
-              selected={selected.has(it.id)}
+              selected={effectiveSelected.has(it.id)}
               onToggleSelect={() => toggle(it.id)}
             />
           ))

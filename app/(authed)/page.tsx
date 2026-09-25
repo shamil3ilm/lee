@@ -227,6 +227,7 @@ export default async function DashboardPage() {
         followups={followups}
         todos={todoNudges}
         totalApplications={rows.length}
+        now={now.getTime()}
       />
       <SyncStatus
         connected={gmailConnected}

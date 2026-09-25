@@ -1,5 +1,6 @@
 'use client'
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { CheckCircle2, ExternalLink, Loader2, Mail, Plug, Calendar as CalendarIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -42,6 +43,7 @@ export function IntegrationsPanel({
   syncedGmailAt,
   syncedCalendarAt,
 }: IntegrationsPanelProps) {
+  const router = useRouter()
   const [syncing, startSync] = useTransition()
   const [lastGmailSync, setLastGmailSync] = useState<string | null>(syncedGmailAt)
 
@@ -53,7 +55,7 @@ export function IntegrationsPanel({
     // Sign the user out then send them straight back to the Google
     // consent screen. Passing `prompt=consent` on the provider config
     // means the second sign-in will re-collect any newly-added scopes.
-    window.location.href = '/api/auth/signout?callbackUrl=/api/auth/signin/google'
+    router.push('/api/auth/signout?callbackUrl=/api/auth/signin/google')
   }
 
   function syncNow(): void {

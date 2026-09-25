@@ -16,6 +16,8 @@ import { TodoRow } from '@/components/todo-row'
 interface TodosCardProps {
   applicationId: string
   todos: Todo[]
+  /** `Date.now()` snapshot from the server component; used for overdue math. */
+  now: number
 }
 
 /**
@@ -23,7 +25,7 @@ interface TodosCardProps {
  * linked to this application only; "+ Add" opens a dialog with a pre-linked
  * quick-add form.
  */
-export function TodosCard({ applicationId, todos }: TodosCardProps) {
+export function TodosCard({ applicationId, todos, now }: TodosCardProps) {
   const [addOpen, setAddOpen] = useState(false)
   const openCount = todos.filter((t) => t.status === 'open').length
 
@@ -55,7 +57,7 @@ export function TodosCard({ applicationId, todos }: TodosCardProps) {
         ) : (
           <ul className="space-y-2">
             {todos.map((t) => (
-              <TodoRow key={t.id} todo={t} />
+              <TodoRow key={t.id} todo={t} now={now} />
             ))}
           </ul>
         )}

@@ -72,28 +72,46 @@ function looksLikeUrl(q: string): boolean {
   return /^https?:\/\/\S+$/i.test(q.trim())
 }
 
+/**
+ * The outer wrapper owns only the Dialog + open state. The body is rendered
+ * conditionally on `open` so it MOUNTS fresh every time the palette opens.
+ * That gives us reset-on-open (query, results, activeIndex) without a
+ * setState-in-effect (which trips react-hooks/set-state-in-effect).
+ */
 export function CommandMenuDialog({ open, onOpenChange }: CommandMenuDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg p-0 sm:max-w-xl">
+        <DialogTitle className="sr-only">Command menu</DialogTitle>
+        {open ? <CommandMenuBody onOpenChange={onOpenChange} /> : null}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function CommandMenuBody({
+  onOpenChange,
+}: {
+  onOpenChange: (open: boolean) => void
+}): React.ReactElement {
   const router = useRouter()
   const [query, setQuery] = React.useState('')
   const [debouncedQuery, setDebouncedQuery] = React.useState('')
-  const [results, setResults] = React.useState<SearchResults>(EMPTY_RESULTS)
-  const [loading, setLoading] = React.useState(false)
+  // `results` is tagged with the query it belongs to. Loading is DERIVED:
+  // if `resultsQuery` !== the current debounced query, we are still waiting
+  // on the network — no setState-in-effect needed to track a loading flag.
+  const [results, setResults] = React.useState<{
+    query: string
+    data: SearchResults
+  }>({ query: '', data: EMPTY_RESULTS })
   const [activeIndex, setActiveIndex] = React.useState(0)
   const inputRef = React.useRef<HTMLInputElement | null>(null)
 
-  // Reset every time the dialog opens so the palette always starts fresh.
+  // Autofocus after Radix mounts the content.
   React.useEffect(() => {
-    if (open) {
-      setQuery('')
-      setDebouncedQuery('')
-      setResults(EMPTY_RESULTS)
-      setActiveIndex(0)
-      // Autofocus after Radix mounts the content.
-      const t = setTimeout(() => inputRef.current?.focus(), 20)
-      return () => clearTimeout(t)
-    }
-    return undefined
-  }, [open])
+    const t = setTimeout(() => inputRef.current?.focus(), 20)
+    return () => clearTimeout(t)
+  }, [])
 
   // 300ms debounce on the query input.
   React.useEffect(() => {
@@ -101,17 +119,16 @@ export function CommandMenuDialog({ open, onOpenChange }: CommandMenuDialogProps
     return () => clearTimeout(t)
   }, [query])
 
-  // Fetch when debounced query changes.
+  // Whether we should actually run a search. Short queries render an empty
+  // result set derived below without touching state inside an effect.
+  const shouldSearch = debouncedQuery.trim().length >= 2
+
+  // Fetch when debounced query changes. All setStates are inside the fetch
+  // callbacks (rule allows setState in external-event callbacks).
   React.useEffect(() => {
+    if (!shouldSearch) return undefined
     const q = debouncedQuery.trim()
-    if (q.length < 2) {
-      setResults(EMPTY_RESULTS)
-      setActiveIndex(0)
-      setLoading(false)
-      return
-    }
     let cancelled = false
-    setLoading(true)
     fetch('/api/search', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -123,20 +140,24 @@ export function CommandMenuDialog({ open, onOpenChange }: CommandMenuDialogProps
       })
       .then((data) => {
         if (cancelled) return
-        setResults(data)
+        setResults({ query: q, data })
         setActiveIndex(0)
       })
       .catch(() => {
         if (cancelled) return
-        setResults(EMPTY_RESULTS)
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
+        setResults({ query: q, data: EMPTY_RESULTS })
       })
     return () => {
       cancelled = true
     }
-  }, [debouncedQuery])
+  }, [debouncedQuery, shouldSearch])
+
+  // Derived view: when the query is too short, we always show the empty set
+  // regardless of any leftover `results` from a previous longer query.
+  // `loading` = the results we hold are for a different (older) query.
+  const effectiveResults: SearchResults = shouldSearch ? results.data : EMPTY_RESULTS
+  const effectiveLoading =
+    shouldSearch && results.query !== debouncedQuery.trim()
 
   const closeAndPush = React.useCallback(
     (href: string): void => {
@@ -198,13 +219,13 @@ export function CommandMenuDialog({ open, onOpenChange }: CommandMenuDialogProps
     return base
   }, [closeAndPush, query])
 
-  const flatHits = React.useMemo(() => flatten(results), [results])
+  const flatHits = React.useMemo(() => flatten(effectiveResults), [effectiveResults])
   // Combined ordering: actions FIRST, then per-kind hits. activeIndex maps
   // onto this concatenated list so ↑↓ traverses actions and hits uniformly.
   const totalItems = actions.length + flatHits.length
 
   const showEmpty =
-    !loading && debouncedQuery.trim().length >= 2 && flatHits.length === 0
+    !effectiveLoading && shouldSearch && flatHits.length === 0
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
     if (totalItems === 0) return
@@ -229,121 +250,118 @@ export function CommandMenuDialog({ open, onOpenChange }: CommandMenuDialogProps
   // agree on the "active" row.
   let renderedIndex = 0
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg p-0 sm:max-w-xl">
-        <DialogHeader className="border-b p-3">
-          <DialogTitle className="sr-only">Command menu</DialogTitle>
-          <div className="flex items-center gap-2">
-            <Search className="size-4 shrink-0 text-muted-foreground" />
-            <input
-              ref={inputRef}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={onKeyDown}
-              placeholder="Search or paste a URL…"
-              className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-              aria-label="Search"
-            />
+    <>
+      <DialogHeader className="border-b p-3">
+        <div className="flex items-center gap-2">
+          <Search className="size-4 shrink-0 text-muted-foreground" />
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder="Search or paste a URL…"
+            className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            aria-label="Search"
+          />
+        </div>
+      </DialogHeader>
+      <div className="max-h-96 overflow-y-auto p-1">
+        {/* Actions section — always visible at top. */}
+        <div className="pb-1">
+          <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Actions
           </div>
-        </DialogHeader>
-        <div className="max-h-96 overflow-y-auto p-1">
-          {/* Actions section — always visible at top. */}
-          <div className="pb-1">
-            <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Actions
-            </div>
-            {actions.map((a) => {
-              const idx = renderedIndex
-              renderedIndex += 1
-              const isActive = idx === activeIndex
-              const Icon = a.icon
-              return (
-                <button
-                  key={a.id}
-                  type="button"
-                  onMouseEnter={() => setActiveIndex(idx)}
-                  onClick={a.onSelect}
-                  className={cn(
-                    'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm',
-                    isActive ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/60',
-                  )}
-                >
-                  <Icon className="size-4 shrink-0 text-muted-foreground" />
-                  <span className="flex-1 truncate">{a.label}</span>
-                  {a.subtitle ? (
-                    <span className="truncate text-xs text-muted-foreground">
-                      {a.subtitle}
-                    </span>
-                  ) : null}
-                </button>
-              )
-            })}
-          </div>
+          {actions.map((a) => {
+            const idx = renderedIndex
+            renderedIndex += 1
+            const isActive = idx === activeIndex
+            const Icon = a.icon
+            return (
+              <button
+                key={a.id}
+                type="button"
+                onMouseEnter={() => setActiveIndex(idx)}
+                onClick={a.onSelect}
+                className={cn(
+                  'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm',
+                  isActive ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/60',
+                )}
+              >
+                <Icon className="size-4 shrink-0 text-muted-foreground" />
+                <span className="flex-1 truncate">{a.label}</span>
+                {a.subtitle ? (
+                  <span className="truncate text-xs text-muted-foreground">
+                    {a.subtitle}
+                  </span>
+                ) : null}
+              </button>
+            )
+          })}
+        </div>
 
-          {/* Search results (only after 2+ chars typed). */}
-          {loading && debouncedQuery.trim().length >= 2 ? (
-            <div className="p-6 text-center text-xs text-muted-foreground">Searching…</div>
-          ) : null}
-          {!loading && debouncedQuery.trim().length < 2 ? (
-            <div className="px-3 py-4 text-center text-[11px] text-muted-foreground">
-              Type at least 2 characters to search — or pick an action above.
-            </div>
-          ) : null}
-          {showEmpty ? (
-            <div className="p-6 text-center text-xs text-muted-foreground">
-              No results for &quot;{debouncedQuery}&quot;.
-            </div>
-          ) : null}
-          {!loading && flatHits.length > 0
-            ? KIND_ORDER.map((kind) => {
-                const hits = groupOf(results, kind)
-                if (hits.length === 0) return null
-                return (
-                  <div key={kind} className="pb-1">
-                    <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      {KIND_LABEL[kind]}
-                    </div>
-                    {hits.map((hit) => {
-                      const idx = renderedIndex
-                      renderedIndex += 1
-                      const isActive = idx === activeIndex
-                      return (
-                        <button
-                          key={`${hit.kind}-${hit.id}`}
-                          type="button"
-                          onMouseEnter={() => setActiveIndex(idx)}
-                          onClick={() => navigateTo(hit)}
-                          className={cn(
-                            'flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm',
-                            isActive
-                              ? 'bg-accent text-accent-foreground'
-                              : 'hover:bg-accent/60',
-                          )}
-                        >
-                          <span className="truncate">{hit.title}</span>
-                          {hit.subtitle ? (
-                            <span className="truncate text-xs text-muted-foreground">
-                              {hit.subtitle}
-                            </span>
-                          ) : null}
-                        </button>
-                      )
-                    })}
+        {/* Search results (only after 2+ chars typed). */}
+        {effectiveLoading && shouldSearch ? (
+          <div className="p-6 text-center text-xs text-muted-foreground">Searching…</div>
+        ) : null}
+        {!effectiveLoading && !shouldSearch ? (
+          <div className="px-3 py-4 text-center text-[11px] text-muted-foreground">
+            Type at least 2 characters to search — or pick an action above.
+          </div>
+        ) : null}
+        {showEmpty ? (
+          <div className="p-6 text-center text-xs text-muted-foreground">
+            No results for &quot;{debouncedQuery}&quot;.
+          </div>
+        ) : null}
+        {!effectiveLoading && flatHits.length > 0
+          ? KIND_ORDER.map((kind) => {
+              const hits = groupOf(effectiveResults, kind)
+              if (hits.length === 0) return null
+              return (
+                <div key={kind} className="pb-1">
+                  <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {KIND_LABEL[kind]}
                   </div>
-                )
-              })
-            : null}
-        </div>
-        <div className="flex items-center justify-between border-t px-3 py-2 text-[10px] text-muted-foreground">
-          <span>
-            <kbd className="rounded border bg-muted px-1 font-mono">↑↓</kbd> navigate
-            <span className="mx-2">·</span>
-            <kbd className="rounded border bg-muted px-1 font-mono">Enter</kbd> open
-            <span className="mx-2">·</span>
-            <kbd className="rounded border bg-muted px-1 font-mono">Esc</kbd> close
-          </span>
-        </div>
-      </DialogContent>
-    </Dialog>
+                  {hits.map((hit) => {
+                    const idx = renderedIndex
+                    renderedIndex += 1
+                    const isActive = idx === activeIndex
+                    return (
+                      <button
+                        key={`${hit.kind}-${hit.id}`}
+                        type="button"
+                        onMouseEnter={() => setActiveIndex(idx)}
+                        onClick={() => navigateTo(hit)}
+                        className={cn(
+                          'flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm',
+                          isActive
+                            ? 'bg-accent text-accent-foreground'
+                            : 'hover:bg-accent/60',
+                        )}
+                      >
+                        <span className="truncate">{hit.title}</span>
+                        {hit.subtitle ? (
+                          <span className="truncate text-xs text-muted-foreground">
+                            {hit.subtitle}
+                          </span>
+                        ) : null}
+                      </button>
+                    )
+                  })}
+                </div>
+              )
+            })
+          : null}
+      </div>
+      <div className="flex items-center justify-between border-t px-3 py-2 text-[10px] text-muted-foreground">
+        <span>
+          <kbd className="rounded border bg-muted px-1 font-mono">↑↓</kbd> navigate
+          <span className="mx-2">·</span>
+          <kbd className="rounded border bg-muted px-1 font-mono">Enter</kbd> open
+          <span className="mx-2">·</span>
+          <kbd className="rounded border bg-muted px-1 font-mono">Esc</kbd> close
+        </span>
+      </div>
+    </>
   )
 }

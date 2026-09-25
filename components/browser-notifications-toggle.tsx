@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { toast } from 'sonner'
 import { Bell, BellOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -7,8 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   isSupported,
   permissionState,
+  permissionStateServerSnapshot,
   requestPermission,
   showNotification,
+  subscribePermissionState,
   type NotificationPermissionState,
 } from '@/lib/notifications/browser'
 
@@ -18,18 +20,17 @@ import {
  * Renders a support hint when the API is unavailable.
  */
 export function BrowserNotificationsToggle() {
-  const [state, setState] = useState<NotificationPermissionState>('default')
+  const state = useSyncExternalStore<NotificationPermissionState>(
+    subscribePermissionState,
+    permissionState,
+    permissionStateServerSnapshot,
+  )
   const [busy, setBusy] = useState(false)
-
-  useEffect(() => {
-    setState(permissionState())
-  }, [])
 
   async function enable(): Promise<void> {
     setBusy(true)
     try {
       const next = await requestPermission()
-      setState(next)
       if (next === 'granted') {
         toast.success('Browser notifications enabled')
       } else if (next === 'denied') {

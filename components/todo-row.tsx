@@ -13,6 +13,12 @@ import { cn } from '@/lib/utils'
 interface TodoRowProps {
   todo: Todo
   applicationLabel?: string | null
+  /**
+   * Snapshot of `Date.now()` from the (server) parent so overdue can be
+   * computed without calling `Date.now()` inside render (impure per
+   * react-hooks/purity).
+   */
+  now: number
 }
 
 const PRIORITY_LABEL: Record<number, string> = {
@@ -35,13 +41,13 @@ const PRIORITY_VARIANT = {
  * items — undo via re-create is trivial and the button sits behind an
  * intent icon so accidental taps are rare).
  */
-export function TodoRow({ todo, applicationLabel }: TodoRowProps) {
+export function TodoRow({ todo, applicationLabel, now }: TodoRowProps) {
   const router = useRouter()
   const [pending, setPending] = useState(false)
   const [removing, setRemoving] = useState(false)
   const isDone = todo.status === 'done'
   const overdue =
-    todo.dueAt !== null && !isDone && new Date(todo.dueAt).getTime() < Date.now()
+    todo.dueAt !== null && !isDone && new Date(todo.dueAt).getTime() < now
 
   async function toggle(): Promise<void> {
     setPending(true)

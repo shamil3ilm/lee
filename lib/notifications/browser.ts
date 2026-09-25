@@ -19,6 +19,34 @@ export function permissionState(): NotificationPermissionState {
 }
 
 /**
+ * Subscribe to permission-state changes. Emits after `requestPermission`
+ * completes. Returns an unsubscribe function.
+ *
+ * Exists so React components can adopt `useSyncExternalStore` to read the
+ * permission state without a mount-time `setState` in an effect (which
+ * triggers the react-hooks/set-state-in-effect rule).
+ */
+const permissionListeners = new Set<() => void>()
+
+export function subscribePermissionState(listener: () => void): () => void {
+  permissionListeners.add(listener)
+  return () => {
+    permissionListeners.delete(listener)
+  }
+}
+
+function notifyPermissionChange(): void {
+  for (const l of permissionListeners) l()
+}
+
+/**
+ * SSR-safe snapshot for `useSyncExternalStore`.
+ */
+export function permissionStateServerSnapshot(): NotificationPermissionState {
+  return 'default'
+}
+
+/**
  * Prompt the user for permission. No-op when already granted/denied — the
  * browser caches the choice per origin. Returns the resulting state.
  */
@@ -28,6 +56,7 @@ export async function requestPermission(): Promise<NotificationPermissionState> 
     return window.Notification.permission as NotificationPermissionState
   }
   const result = await window.Notification.requestPermission()
+  notifyPermissionChange()
   return result as NotificationPermissionState
 }
 

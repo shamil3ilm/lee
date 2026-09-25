@@ -166,8 +166,7 @@ export function LatexTemplatePicker({ templates, hasMaster }: LatexTemplatePicke
             <div
               aria-hidden
               className="flex h-full w-full items-center justify-center p-3 transition-transform duration-200 group-hover:scale-[1.02]"
-              // eslint-disable-next-line react/no-danger -- SVG is authored in
-              // lib/latex/previews.ts; getter validates the prefix.
+              // SVG is authored in lib/latex/previews.ts; getter validates the prefix.
               dangerouslySetInnerHTML={{ __html: safePreview }}
             />
           ) : (

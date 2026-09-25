@@ -23,6 +23,9 @@ interface TodosPageProps {
 export default async function TodosPage({ searchParams }: TodosPageProps) {
   const userId = await requireUserId()
   const params = await searchParams
+  // Snapshot once per request so `Date.now()` isn't called during a
+  // "render" (react-hooks/purity flags direct impure calls at JSX sites).
+  const now = new Date().getTime()
   const rawStatus = typeof params.status === 'string' ? params.status : undefined
   const status: todosQ.TodoStatus = todosQ.isTodoStatus(rawStatus ?? '')
     ? (rawStatus as todosQ.TodoStatus)
@@ -97,7 +100,7 @@ export default async function TodosPage({ searchParams }: TodosPageProps) {
             <p>No completed todos yet.</p>
           </div>
         ) : (
-          <TodosList todos={todos} applicationLabels={applicationLabels} />
+          <TodosList todos={todos} applicationLabels={applicationLabels} now={now} />
         )}
       </div>
     </div>

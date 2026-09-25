@@ -9,6 +9,8 @@ interface TodosListProps {
   applicationLabels?: Record<string, string>
   /** Hide the "linked application" chip (used on application detail). */
   hideApplicationChip?: boolean
+  /** `Date.now()` snapshot from the server component; used for overdue math. */
+  now: number
 }
 
 type Bucket =
@@ -48,6 +50,7 @@ export function TodosList({
   todos,
   applicationLabels = {},
   hideApplicationChip = false,
+  now,
 }: TodosListProps) {
   if (todos.length === 0) {
     return (
@@ -59,10 +62,10 @@ export function TodosList({
     )
   }
 
-  const now = new Date()
+  const nowDate = new Date(now)
   const byBucket = new Map<Bucket['key'], Todo[]>()
   for (const t of todos) {
-    const key = bucketFor(t, now)
+    const key = bucketFor(t, nowDate)
     const arr = byBucket.get(key) ?? []
     arr.push(t)
     byBucket.set(key, arr)
@@ -88,6 +91,7 @@ export function TodosList({
                 <TodoRow
                   key={t.id}
                   todo={t}
+                  now={now}
                   applicationLabel={
                     hideApplicationChip
                       ? undefined

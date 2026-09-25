@@ -158,9 +158,17 @@ export function MergeDocumentsDialog({
     [documents],
   )
 
-  useEffect(() => {
+  // Reset the title when the parent-provided `defaultTitle` changes.
+  // Uses the "adjust state during render on prop change" pattern documented
+  // at https://react.dev/reference/react/useState#storing-information-from-previous-renders
+  // — a second state cell tracks the last-seen defaultTitle so we can
+  // detect the change without a ref (react-hooks/refs disallows ref reads
+  // during render) or an effect (react-hooks/set-state-in-effect).
+  const [prevDefaultTitle, setPrevDefaultTitle] = useState(defaultTitle)
+  if (prevDefaultTitle !== defaultTitle) {
+    setPrevDefaultTitle(defaultTitle)
     setTitle(defaultTitle ?? '')
-  }, [defaultTitle])
+  }
 
   // Load assets for every document once the dialog opens.
   useEffect(() => {

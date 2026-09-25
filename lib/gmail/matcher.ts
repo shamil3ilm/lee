@@ -10,7 +10,6 @@ import {
 import {
   extractAllEmailAddresses,
   extractDomain,
-  extractEmailAddress,
   extractHeader,
   type GmailMessage,
   type GmailThreadFull,

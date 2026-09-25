@@ -1,5 +1,5 @@
 'use client'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { AlertTriangle, Loader2, RefreshCw, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -42,6 +42,23 @@ function setDismissed(documentId: string): void {
   } catch {
     /* private-mode / disabled storage → no-op */
   }
+  notifyDismissChange()
+}
+
+// In-memory listener registry so `useSyncExternalStore` can react when
+// `setDismissed` mutates sessionStorage. sessionStorage does NOT fire
+// `storage` events in the same tab, so we plumb notifications ourselves.
+const dismissListeners = new Set<() => void>()
+
+function subscribeDismissChange(listener: () => void): () => void {
+  dismissListeners.add(listener)
+  return () => {
+    dismissListeners.delete(listener)
+  }
+}
+
+function notifyDismissChange(): void {
+  for (const l of dismissListeners) l()
 }
 
 export function StalenessBanner({
@@ -51,11 +68,14 @@ export function StalenessBanner({
   className,
 }: StalenessBannerProps) {
   const [result, setResult] = useState<StalenessResult | null>(null)
-  const [dismissed, setDismissedState] = useState<boolean>(false)
+  const dismissed = useSyncExternalStore(
+    subscribeDismissChange,
+    () => isDismissed(documentId),
+    () => false,
+  )
   const [busy, setBusy] = useState<'regen' | 'copy' | null>(null)
 
   useEffect(() => {
-    setDismissedState(isDismissed(documentId))
     let cancelled = false
     const controller = new AbortController()
     fetch(`/api/documents/${documentId}/staleness`, { signal: controller.signal })
@@ -74,7 +94,7 @@ export function StalenessBanner({
 
   const handleDismiss = useCallback(() => {
     setDismissed(documentId)
-    setDismissedState(true)
+    // useSyncExternalStore + notifyDismissChange re-reads sessionStorage.
   }, [documentId])
 
   const handleRegenerate = useCallback(async () => {

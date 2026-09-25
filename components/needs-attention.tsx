@@ -57,6 +57,13 @@ interface NeedsAttentionProps {
   todos?: TodoNudge[]
   /** Total applications the user has, used to distinguish "brand new" from "all caught up". */
   totalApplications: number
+  /**
+   * Snapshot of `Date.now()` taken by the server component so children can
+   * compute "overdue" without calling `Date.now()` during render (impure per
+   * react-hooks/purity). The dashboard is `dynamic = 'force-dynamic'` so this
+   * is regenerated on every request.
+   */
+  now: number
 }
 
 export function NeedsAttention({
@@ -64,6 +71,7 @@ export function NeedsAttention({
   followups = [],
   todos = [],
   totalApplications,
+  now,
 }: NeedsAttentionProps) {
   const totalCount = items.length + followups.length + todos.length
 
@@ -111,7 +119,7 @@ export function NeedsAttention({
               <FollowupRow key={`fup-${f.applicationId}-${f.suggestedInterval}`} nudge={f} />
             ))}
             {todos.map((t) => (
-              <TodoNudgeRow key={`todo-${t.id}`} todo={t} />
+              <TodoNudgeRow key={`todo-${t.id}`} todo={t} now={now} />
             ))}
           </ul>
         )}
@@ -193,8 +201,14 @@ function FollowupRow({ nudge }: { nudge: FollowupNudge }): React.ReactElement {
   )
 }
 
-function TodoNudgeRow({ todo }: { todo: TodoNudge }): React.ReactElement {
-  const overdue = todo.dueAt !== null && new Date(todo.dueAt).getTime() < Date.now()
+function TodoNudgeRow({
+  todo,
+  now,
+}: {
+  todo: TodoNudge
+  now: number
+}): React.ReactElement {
+  const overdue = todo.dueAt !== null && new Date(todo.dueAt).getTime() < now
   const href = todo.applicationId ? `/applications/${todo.applicationId}` : '/todos'
   return (
     <li>
