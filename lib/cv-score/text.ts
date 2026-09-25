@@ -32,11 +32,17 @@ export function wordCount(s: string): number {
   return words(s).length
 }
 
-/** Crude stemmer: enough to make "migrated"/"migration"/"migrating" collide. */
+/**
+ * Light stemmer: plural → singular, then -ing / -ed, then a trailing -e, so
+ * "services"/"service", "designed"/"design" and "engineers"/"engineer" meet.
+ */
 export function stem(w: string): string {
   let x = w.toLowerCase().replace(/[^a-z0-9+#]/g, '')
-  if (x.length > 5) x = x.replace(/(ations?|ings?|ments?|ers?|ed|es|ly)$/, '')
-  else if (x.length > 3) x = x.replace(/s$/, '')
+  if (x.length > 4 && x.endsWith('ies')) x = `${x.slice(0, -3)}y`
+  else if (x.length > 3 && x.endsWith('s') && !x.endsWith('ss')) x = x.slice(0, -1)
+  if (x.length > 5 && x.endsWith('ing')) x = x.slice(0, -3)
+  else if (x.length > 4 && x.endsWith('ed')) x = x.slice(0, -2)
+  if (x.length > 4 && x.endsWith('e')) x = x.slice(0, -1)
   return x
 }
 

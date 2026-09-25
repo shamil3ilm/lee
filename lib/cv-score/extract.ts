@@ -187,9 +187,9 @@ function splitSkills(lines: string[]): string[] {
   const out: string[] = []
   for (const raw of lines) {
     const line = raw.replace(BULLET_RE, '')
-    const body = line.includes(':') ? line.slice(line.indexOf(':') + 1) : line
-    for (const piece of body.split(/[,;|•·]| \/ /)) {
-      const t = piece.trim().replace(/\.$/, '')
+    for (const piece of line.split(/[,;|•·]| \/ /)) {
+      // "Databases: Postgres" → "Postgres" (category labels aren't skills).
+      const t = piece.replace(/^[^:]{1,30}:\s*/, '').trim().replace(/\.$/, '')
       if (t && t.length <= 40) out.push(t)
     }
   }

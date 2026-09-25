@@ -13,6 +13,7 @@
  */
 import { canonicalize, familyOf, findSkillsInText } from '../synonyms'
 import { makeFinding } from '../findings'
+import { niceToHaveFromDescription } from '../jd'
 import { looseNormalize } from '../text'
 import type { CvFinding, DimensionResult, JobTarget, ScorableCv, ScoreContext, SkippedDimension } from '../types'
 
@@ -49,8 +50,9 @@ export function jdTerms(target: JobTarget): JdTerms {
     const c = canonicalize(t)
     if (c) required.add(c)
   }
-  const niceText = target.niceToHave.join('\n')
-  const niceLines = new Set(target.niceToHave.map((l) => looseNormalize(l)))
+  const niceAll = [...target.niceToHave, ...niceToHaveFromDescription(target.descriptionMd)]
+  const niceText = niceAll.join('\n')
+  const niceLines = new Set(niceAll.map((l) => looseNormalize(l)))
   const descNoNice = target.descriptionMd
     .split('\n')
     .filter((l) => !niceLines.has(looseNormalize(l.replace(/^\s*[-*•]\s*/, ''))))

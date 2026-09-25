@@ -168,6 +168,9 @@ export function isKnownSkill(canonical: string): boolean {
 export function findSkillsInText(text: string): Map<string, number> {
   const counts = new Map<string, number>()
   if (!text) return counts
+  // Overlapping alias hits ("Apache Kafka" + "Kafka") count once: collect
+  // spans per canonical term and count only non-overlapping ones.
+  const spans = new Map<string, [number, number][]>()
   for (const { canonical, pattern, alias } of FREE_TEXT_INDEX) {
     pattern.lastIndex = 0
     let m: RegExpExecArray | null
@@ -176,8 +179,22 @@ export function findSkillsInText(text: string): Map<string, number> {
         const after = text.slice(m.index + 2, m.index + 8).toLowerCase()
         if (/^[\s-]*(to|live|ahead)\b/.test(after)) continue
       }
-      counts.set(canonical, (counts.get(canonical) ?? 0) + 1)
+      const list = spans.get(canonical) ?? []
+      list.push([m.index, m.index + m[0].length])
+      spans.set(canonical, list)
     }
+  }
+  for (const [canonical, list] of spans) {
+    const sorted = [...list].sort((a, b) => a[0] - b[0] || b[1] - a[1])
+    let n = 0
+    let end = -1
+    for (const [s, e] of sorted) {
+      if (s >= end) {
+        n++
+        end = e
+      } else if (e > end) end = e
+    }
+    counts.set(canonical, n)
   }
   return counts
 }

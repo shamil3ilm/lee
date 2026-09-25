@@ -1,10 +1,10 @@
 /**
  * v12.0 — ATS parseability (format half of the ATS headline score).
  *
- * Points (sum 100): text extractable 20 · standard headings 20 · contact 20 ·
+ * Points (sum 100): text extractable 15 · standard headings 15 · contact 20 ·
  * single column 15 · file type 10 · no tables/images-as-text 10 ·
- * special characters 5. Keyword presence for a target JD is blended in by
- * the headline composer (headlines.ts), not here.
+ * special characters 5 · no keyword stuffing 10. Keyword presence for a
+ * target JD is blended in by the headline composer (headlines.ts).
  */
 import { makeFinding } from '../findings'
 import { findSkillsInText } from '../synonyms'
@@ -24,6 +24,7 @@ export interface AtsDetails {
 
 const STUFF_REPEAT = 8
 const STUFF_SKILLS_LISTED = 40
+const CRITICAL_CAP = 60
 
 function hasSection(cv: ScorableCv, key: string): boolean {
   return (cv.meta.sectionOrder ?? []).includes(key)
@@ -48,16 +49,16 @@ export function scoreAts(cv: ScorableCv): DimensionResult<AtsDetails> {
 
   // 1. Text extractable
   const chars = cv.plainText.replace(/\s+/g, ' ').trim().length
-  if (chars >= 400) add('text', 'Text extractable', 20, 20)
+  if (chars >= 400) add('text', 'Text extractable', 15, 15)
   else if (chars >= 200) {
-    add('text', 'Text extractable', 10, 20)
+    add('text', 'Text extractable', 8, 15)
     findings.push(makeFinding('ats', {
       severity: 'major',
       message: `Only ${chars} characters of text could be extracted`,
       suggestion: 'Export the CV as a text-based PDF or DOCX (not a scan or image).',
     }))
   } else {
-    add('text', 'Text extractable', 0, 20)
+    add('text', 'Text extractable', 0, 15)
     findings.push(makeFinding('ats', {
       severity: 'critical',
       message: 'Almost no text could be extracted — an ATS will see a blank CV',
@@ -69,7 +70,7 @@ export function scoreAts(cv: ScorableCv): DimensionResult<AtsDetails> {
   const hasExp = hasSection(cv, 'experience') || (cv.meta.structured === true && cv.roles.length > 0)
   const hasSkills = hasSection(cv, 'skills')
   const hasEdu = hasSection(cv, 'education')
-  add('headings', 'Standard section headings', (hasExp ? 10 : 0) + (hasSkills ? 5 : 0) + (hasEdu ? 5 : 0), 20)
+  add('headings', 'Standard section headings', (hasExp ? 9 : 0) + (hasSkills ? 3 : 0) + (hasEdu ? 3 : 0), 15)
   if (!hasExp) {
     findings.push(makeFinding('ats', {
       severity: 'major',
@@ -167,6 +168,7 @@ export function scoreAts(cv: ScorableCv): DimensionResult<AtsDetails> {
 
   // Keyword stuffing (reported here, penalised in the ATS headline blend).
   const stuffing = detectStuffing(cv)
+  add('stuffing', 'No keyword stuffing', stuffing.stuffed ? 0 : 10, 10)
   if (stuffing.stuffed) {
     findings.push(makeFinding('ats', {
       severity: 'major',
@@ -177,6 +179,9 @@ export function scoreAts(cv: ScorableCv): DimensionResult<AtsDetails> {
     }))
   }
 
-  const score = checks.reduce((s, ch) => s + ch.points, 0)
+  // A critical problem (no email, no extractable text) caps the score — an
+  // otherwise tidy CV an ATS can't contact or read is not a "B".
+  const sum = checks.reduce((s, ch) => s + ch.points, 0)
+  const score = findings.some((f) => f.severity === 'critical') ? Math.min(sum, CRITICAL_CAP) : sum
   return { score, details: { checks, stuffing }, findings }
 }
