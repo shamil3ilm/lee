@@ -1,12 +1,16 @@
 import {
   aiUsageStats,
+  budgetAdherenceHistory,
   budgetVsActual,
   discoveryCalibration,
+  expenseCategoryTrend,
+  monthOverMonthByCategory,
   monthlyExpenses,
   responseTimeDistribution,
   sourceFunnel,
   statusDistribution,
   timeToOutcome,
+  topVendors,
   weeklyActivity,
 } from '@/lib/analytics/service'
 
@@ -27,6 +31,10 @@ export const EXPORT_METRICS = [
   'ai-usage',
   'monthly-expenses',
   'budget-vs-actual',
+  'month-over-month',
+  'expense-category-trend',
+  'top-vendors',
+  'budget-adherence-history',
 ] as const
 
 export type ExportMetric = (typeof EXPORT_METRICS)[number]
@@ -168,6 +176,50 @@ async function buildTable(metric: ExportMetric, userId: string): Promise<CsvTabl
       return {
         columns: ['category', 'budget_cents', 'actual_cents', 'currency'],
         rows: rows.map((r) => [r.category, r.budgetCents, r.actualCents, r.currency]),
+      }
+    }
+    case 'month-over-month': {
+      const now = new Date()
+      const current = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`
+      const prevDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1))
+      const previous = `${prevDate.getUTCFullYear()}-${String(prevDate.getUTCMonth() + 1).padStart(2, '0')}`
+      const rows = await monthOverMonthByCategory(userId, current, previous)
+      return {
+        columns: [
+          'category',
+          'current_cents',
+          'previous_cents',
+          'delta_cents',
+          'delta_percent',
+        ],
+        rows: rows.map((r) => [
+          r.category,
+          r.currentCents,
+          r.previousCents,
+          r.deltaCents,
+          r.deltaPercent === null ? '' : r.deltaPercent,
+        ]),
+      }
+    }
+    case 'expense-category-trend': {
+      const rows = await expenseCategoryTrend(userId, 6)
+      return {
+        columns: ['month', 'category', 'total_cents'],
+        rows: rows.map((r) => [r.month, r.category, r.totalCents]),
+      }
+    }
+    case 'top-vendors': {
+      const rows = await topVendors(userId, 3, 10)
+      return {
+        columns: ['vendor', 'total_cents', 'count'],
+        rows: rows.map((r) => [r.vendor, r.totalCents, r.count]),
+      }
+    }
+    case 'budget-adherence-history': {
+      const cells = await budgetAdherenceHistory(userId, 12)
+      return {
+        columns: ['month', 'category', 'budget_cents', 'spent_cents', 'adherence'],
+        rows: cells.map((c) => [c.month, c.category, c.budgetCents, c.spentCents, c.adherence]),
       }
     }
   }
