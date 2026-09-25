@@ -9,6 +9,7 @@ import { buildDistillGithubPrompt } from './prompts/distill-github'
 import { buildOutreachLinkedInConnectionPrompt } from './prompts/outreach-linkedin-connection'
 import { buildOutreachLinkedInMessagePrompt } from './prompts/outreach-linkedin-message'
 import { buildOutreachRecruiterReplyPrompt } from './prompts/outreach-recruiter-reply'
+import { buildFollowupPrompt } from './prompts/outreach-followup'
 import { buildInterviewPrepPrompt } from './prompts/interview-prep'
 import { buildGenerateLatexCVPrompt } from './prompts/generate-latex-cv'
 import {
@@ -196,6 +197,7 @@ export class GeminiProvider implements AIProvider {
     application: ApplicationWithJob
     kind: OutreachKind
     tone: OutreachTone
+    daysSince?: number
   }): Promise<OutreachDraft> {
     const prompt = buildOutreachPrompt(input)
     const raw = await this.generate(prompt)
@@ -239,6 +241,7 @@ function buildOutreachPrompt(input: {
   application: ApplicationWithJob
   kind: OutreachKind
   tone: OutreachTone
+  daysSince?: number
 }): string {
   switch (input.kind) {
     case 'linkedin_connection':
@@ -247,5 +250,18 @@ function buildOutreachPrompt(input: {
       return buildOutreachLinkedInMessagePrompt(input)
     case 'recruiter_reply':
       return buildOutreachRecruiterReplyPrompt(input)
+    case 'followup_email':
+      // Guard: daysSince must be present for followup_email. Callers upstream
+      // (generateOutreachDraft) compute it from appliedAt when omitted, so
+      // reaching here with undefined is a programmer error.
+      if (input.daysSince === undefined) {
+        throw new Error('followup_email requires daysSince')
+      }
+      return buildFollowupPrompt({
+        master: input.master,
+        application: input.application,
+        tone: input.tone,
+        daysSince: input.daysSince,
+      })
   }
 }

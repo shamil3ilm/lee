@@ -132,11 +132,22 @@ export const outreachKindSchema = z.enum([
   'linkedin_connection',
   'linkedin_message',
   'recruiter_reply',
+  'followup_email',
 ])
 export type OutreachKind = z.infer<typeof outreachKindSchema>
 
 export const outreachToneSchema = z.enum(['formal', 'friendly', 'enthusiastic'])
 export type OutreachTone = z.infer<typeof outreachToneSchema>
+
+// v4.2 — timed follow-ups after applying. Only these intervals get pre-crafted
+// framings; the number is captured on the draft so the UI can group by day.
+export const followupIntervalSchema = z.union([
+  z.literal(7),
+  z.literal(14),
+  z.literal(21),
+  z.literal(30),
+])
+export type FollowupInterval = z.infer<typeof followupIntervalSchema>
 
 export const outreachDraftSchema = z.object({
   kind: outreachKindSchema,
@@ -146,6 +157,9 @@ export const outreachDraftSchema = z.object({
   tone: outreachToneSchema,
   wordCount: z.number().int().nonnegative(),
   notes: z.string().optional(),
+  // Present only when kind='followup_email'. Not enforced against
+  // followupIntervalSchema so a stale draft with an odd number still round-trips.
+  daysSince: z.number().int().nonnegative().optional(),
 })
 
 export type OutreachDraft = z.infer<typeof outreachDraftSchema>

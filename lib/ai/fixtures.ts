@@ -41,6 +41,7 @@ export class FixtureAIProvider implements AIProvider {
         application: ApplicationWithJob
         kind: OutreachKind
         tone: OutreachTone
+        daysSince?: number
       }) => OutreachDraft
       generateInterviewPrepPack?: (input: {
         master: MasterCV
@@ -121,6 +122,7 @@ export class FixtureAIProvider implements AIProvider {
     application: ApplicationWithJob
     kind: OutreachKind
     tone: OutreachTone
+    daysSince?: number
   }): Promise<OutreachDraft> {
     if (this.fixtures.draftOutreach) return this.fixtures.draftOutreach(input)
     return pseudoOutreach(input)
@@ -251,8 +253,9 @@ function pseudoOutreach(input: {
   application: ApplicationWithJob
   kind: OutreachKind
   tone: OutreachTone
+  daysSince?: number
 }): OutreachDraft {
-  const { master, application, kind, tone } = input
+  const { master, application, kind, tone, daysSince } = input
   const company = application.job.company?.name ?? 'your team'
   const role = application.job.title
   const first = master.experience[0]
@@ -268,6 +271,16 @@ function pseudoOutreach(input: {
       subject: `Re: ${role} at ${company}`,
       body: `Hi,\n\nThanks for reaching out about the ${role} role — yes, very interested. Recent context: ${anchor} where I ${first?.bullets[0] ?? 'shipped several relevant projects'}.\n\nA couple of questions before we schedule:\n1. What's the team's split between platform work and product enablement?\n2. Is there a comp range you can share for this level?\n\nI can jump on a 30-min call any afternoon this week — happy to hold a slot or grab time from a Calendly link.\n\nThanks,\n${master.basics.name}`,
     },
+    followup_email: {
+      subject: `Following up: ${role}`,
+      body: pseudoFollowupBody({
+        role,
+        company,
+        anchor,
+        daysSince: daysSince ?? 7,
+        senderName: master.basics.name,
+      }),
+    },
   }
   const draft = bodies[kind]
   return {
@@ -278,6 +291,29 @@ function pseudoOutreach(input: {
     tone,
     wordCount: draft.body.trim().split(/\s+/).length,
     notes: `pseudo-outreach ${kind} tone=${tone}`,
+    ...(kind === 'followup_email' ? { daysSince: daysSince ?? 7 } : {}),
+  }
+}
+
+function pseudoFollowupBody(x: {
+  role: string
+  company: string
+  anchor: string
+  daysSince: number
+  senderName: string
+}): string {
+  const { role, company, anchor, daysSince, senderName } = x
+  switch (daysSince) {
+    case 7:
+      return `Hi,\n\nQuick check-in — I applied for the ${role} role at ${company} a week ago and wanted to see if there's any update on next steps. Happy to re-send anything or answer questions.\n\nThanks,\n${senderName}`
+    case 14:
+      return `Hi,\n\nStill very interested in the ${role} role. Two weeks in, I wanted to share something concrete: in ${anchor} I worked on directly relevant systems and would be glad to walk through the design if useful.\n\nNo pressure — I know these loops take time.\n\nThanks,\n${senderName}`
+    case 21:
+      return `Hi,\n\nThree weeks since I applied for the ${role} role at ${company}. The work I did in ${anchor} lines up closely with the JD, and I remain very interested.\n\nCould you let me know if the role is still open and roughly when you expect to move to next-round decisions?\n\nThanks,\n${senderName}`
+    case 30:
+      return `Hi,\n\nA month on and I haven't heard back, so wanted to close the loop rather than keep either of us guessing. If the role is still active I'd love a quick note; if it's moved on, please keep me in mind for future openings.\n\nThanks for your time,\n${senderName}`
+    default:
+      return `Hi,\n\nFollowing up on my application for the ${role} role at ${company} (${daysSince} days ago). Let me know if there's an update on next steps.\n\nThanks,\n${senderName}`
   }
 }
 

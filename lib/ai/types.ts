@@ -92,11 +92,14 @@ export interface AIProvider {
   }): Promise<CoverLetter>
   distillGithubProjects(input: { repos: GitHubRepo[] }): Promise<CvProjects>
   // v4 additions — outreach + interview prep.
+  // v4.2 — `daysSince` is required only when kind='followup_email'; the
+  // dispatch inside each provider routes to buildFollowupPrompt then.
   draftOutreach(input: {
     master: MasterCV
     application: ApplicationWithJob
     kind: OutreachKind
     tone: OutreachTone
+    daysSince?: number
   }): Promise<OutreachDraft>
   generateInterviewPrepPack(input: {
     master: MasterCV

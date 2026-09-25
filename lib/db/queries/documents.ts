@@ -11,6 +11,7 @@ export type DocumentKind =
   | 'outreach_linkedin_connection'
   | 'outreach_linkedin_message'
   | 'outreach_recruiter_reply'
+  | 'outreach_followup_email'
   | 'interview_prep_pack'
   | 'latex_cv'
   | 'latex_cover_letter'

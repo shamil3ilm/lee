@@ -8,6 +8,7 @@ import { buildDistillGithubPrompt } from './prompts/distill-github'
 import { buildOutreachLinkedInConnectionPrompt } from './prompts/outreach-linkedin-connection'
 import { buildOutreachLinkedInMessagePrompt } from './prompts/outreach-linkedin-message'
 import { buildOutreachRecruiterReplyPrompt } from './prompts/outreach-recruiter-reply'
+import { buildFollowupPrompt } from './prompts/outreach-followup'
 import { buildInterviewPrepPrompt } from './prompts/interview-prep'
 import { buildGenerateLatexCVPrompt } from './prompts/generate-latex-cv'
 import {
@@ -204,6 +205,7 @@ export class GroqProvider implements AIProvider {
     application: ApplicationWithJob
     kind: OutreachKind
     tone: OutreachTone
+    daysSince?: number
   }): Promise<OutreachDraft> {
     const prompt = buildOutreachPromptGroq(input)
     const raw = await this.generate(prompt)
@@ -245,6 +247,7 @@ function buildOutreachPromptGroq(input: {
   application: ApplicationWithJob
   kind: OutreachKind
   tone: OutreachTone
+  daysSince?: number
 }): string {
   switch (input.kind) {
     case 'linkedin_connection':
@@ -253,5 +256,15 @@ function buildOutreachPromptGroq(input: {
       return buildOutreachLinkedInMessagePrompt(input)
     case 'recruiter_reply':
       return buildOutreachRecruiterReplyPrompt(input)
+    case 'followup_email':
+      if (input.daysSince === undefined) {
+        throw new Error('followup_email requires daysSince')
+      }
+      return buildFollowupPrompt({
+        master: input.master,
+        application: input.application,
+        tone: input.tone,
+        daysSince: input.daysSince,
+      })
   }
 }
