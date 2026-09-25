@@ -7,7 +7,11 @@ import { db } from '@/lib/db/client'
 import { accounts, activities, discoveries } from '@/lib/db/schema'
 import { getProfile } from '@/lib/profile/service'
 import { Kanban, type KanbanCard } from '@/components/kanban'
-import { NeedsAttention, type AttentionItem } from '@/components/needs-attention'
+import {
+  NeedsAttention,
+  type AttentionItem,
+  type FollowupNudge,
+} from '@/components/needs-attention'
 import { FreshDiscoveries, type FreshDiscoveryItem } from '@/components/fresh-discoveries'
 import { FunnelWidget } from '@/components/funnel-widget'
 import { buildFunnelCounts } from '@/lib/dashboard/funnel'
@@ -43,6 +47,11 @@ const FRESH_WINDOW_MS = 24 * 60 * 60 * 1000
 
 const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly'
 const DAY_MS = 24 * 60 * 60 * 1000
+
+// v4.2 — how far back to look for `followup_recommended` activities. Cron
+// emits at most one per app per 24h; a week keeps the surface useful without
+// dredging up nudges the user has already seen and ignored.
+const FOLLOWUP_LOOKBACK_MS = 7 * DAY_MS
 
 export default async function DashboardPage() {
   const userId = await requireUserId()
@@ -140,6 +149,49 @@ export default async function DashboardPage() {
     nextActionAt: r.nextActionAt ? r.nextActionAt.toISOString() : null,
   }))
 
+  // v4.2 — pull the latest `followup_recommended` per application from the
+  // last 7 days. Cron dedups within 24h so we typically get 1 row per app;
+  // sorting desc + first-wins per applicationId picks the most recent bucket.
+  const followupRows = await db
+    .select({
+      applicationId: activities.applicationId,
+      payload: activities.payload,
+      createdAt: activities.createdAt,
+    })
+    .from(activities)
+    .where(
+      and(
+        eq(activities.userId, userId),
+        eq(activities.kind, 'followup_recommended'),
+        gte(activities.createdAt, new Date(now.getTime() - FOLLOWUP_LOOKBACK_MS)),
+      ),
+    )
+    .orderBy(activities.createdAt)
+  // Reduce to latest-per-application; the query returns oldest→newest so the
+  // last assignment wins.
+  const rowsByAppId = new Map<string, (typeof followupRows)[number]>()
+  for (const r of followupRows) rowsByAppId.set(r.applicationId, r)
+  const rowById = new Map(rows.map((r) => [r.id, r] as const))
+  const followups: FollowupNudge[] = []
+  for (const [applicationId, row] of rowsByAppId) {
+    const app = rowById.get(applicationId)
+    if (!app) continue
+    const payload = row.payload as {
+      daysSince?: number
+      suggestedInterval?: number
+    }
+    const interval = payload?.suggestedInterval
+    if (interval !== 7 && interval !== 14 && interval !== 21 && interval !== 30) continue
+    followups.push({
+      applicationId,
+      jobTitle: app.job.title,
+      companyName: app.job.company?.name ?? null,
+      daysSince: payload?.daysSince ?? interval,
+      suggestedInterval: interval,
+      recommendedAt: row.createdAt.toISOString(),
+    })
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -154,7 +206,11 @@ export default async function DashboardPage() {
           </Button>
         }
       />
-      <NeedsAttention items={attention} totalApplications={rows.length} />
+      <NeedsAttention
+        items={attention}
+        followups={followups}
+        totalApplications={rows.length}
+      />
       <SyncStatus
         connected={gmailConnected}
         syncedGmailAt={profile?.syncedGmailAt?.toISOString() ?? null}

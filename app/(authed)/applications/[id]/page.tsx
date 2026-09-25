@@ -237,7 +237,11 @@ export default async function ApplicationDetail({
 
           <DocumentsCard applicationId={app.id} documents={cvDocs} />
 
-          <OutreachCard applicationId={app.id} outreachDocs={outreachDocs} />
+          <OutreachCard
+            applicationId={app.id}
+            outreachDocs={outreachDocs}
+            appliedAt={app.appliedAt ? app.appliedAt.toISOString() : null}
+          />
 
           <PrepPackCard
             applicationId={app.id}

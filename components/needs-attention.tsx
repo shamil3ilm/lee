@@ -1,5 +1,9 @@
+'use client'
+import { useState } from 'react'
 import Link from 'next/link'
-import { Bell, CheckCircle2, Sparkles } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
+import { Bell, CheckCircle2, Clock, Loader2, Sparkles } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,13 +22,32 @@ export interface AttentionItem {
   nextActionAt: string | null
 }
 
+// v4.2 — surfaced from the `followup_recommended` activity written by the
+// cron sweep. Kept as a separate item type so the row can render a distinct
+// icon + inline "Draft follow-up" action.
+export interface FollowupNudge {
+  applicationId: string
+  jobTitle: string
+  companyName: string | null
+  daysSince: number
+  suggestedInterval: 7 | 14 | 21 | 30
+  recommendedAt: string
+}
+
 interface NeedsAttentionProps {
   items: AttentionItem[]
+  followups?: FollowupNudge[]
   /** Total applications the user has, used to distinguish "brand new" from "all caught up". */
   totalApplications: number
 }
 
-export function NeedsAttention({ items, totalApplications }: NeedsAttentionProps) {
+export function NeedsAttention({
+  items,
+  followups = [],
+  totalApplications,
+}: NeedsAttentionProps) {
+  const totalCount = items.length + followups.length
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
@@ -32,15 +55,15 @@ export function NeedsAttention({ items, totalApplications }: NeedsAttentionProps
           <Bell className="size-4 text-muted-foreground" />
           <CardTitle className="text-sm font-semibold">Needs attention</CardTitle>
         </div>
-        <Badge variant="secondary">{items.length}</Badge>
+        <Badge variant="secondary">{totalCount}</Badge>
       </CardHeader>
       <CardContent className="pt-0">
-        {items.length === 0 ? (
+        {totalCount === 0 ? (
           <EmptyBlock isBrandNew={totalApplications === 0} totalApplications={totalApplications} />
         ) : (
           <ul className="max-h-96 divide-y overflow-y-auto">
             {items.map((it) => (
-              <li key={it.id}>
+              <li key={`att-${it.id}`}>
                 <Link
                   href={`/applications/${it.id}`}
                   className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors hover:bg-accent/60 sm:grid-cols-[1fr_120px_auto] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -65,10 +88,77 @@ export function NeedsAttention({ items, totalApplications }: NeedsAttentionProps
                 </Link>
               </li>
             ))}
+            {followups.map((f) => (
+              <FollowupRow key={`fup-${f.applicationId}-${f.suggestedInterval}`} nudge={f} />
+            ))}
           </ul>
         )}
       </CardContent>
     </Card>
+  )
+}
+
+function FollowupRow({ nudge }: { nudge: FollowupNudge }): React.ReactElement {
+  const router = useRouter()
+  const [drafting, setDrafting] = useState(false)
+
+  async function draft(): Promise<void> {
+    setDrafting(true)
+    try {
+      const res = await fetch(
+        `/api/applications/${nudge.applicationId}/documents/generate-followup`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ daysSince: nudge.suggestedInterval }),
+        },
+      )
+      const json = (await res.json().catch(() => ({}))) as {
+        documentId?: string
+        error?: string
+      }
+      if (res.ok && json.documentId) {
+        toast.success(`Day ${nudge.suggestedInterval} follow-up drafted`)
+        router.refresh()
+      } else {
+        toast.error(json.error ?? 'Could not draft follow-up.')
+      }
+    } catch {
+      toast.error('Network error — could not draft follow-up.')
+    } finally {
+      setDrafting(false)
+    }
+  }
+
+  return (
+    <li>
+      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-md px-2 py-2 text-sm hover:bg-accent/40">
+        <Clock className="size-4 shrink-0 text-violet-500" />
+        <Link
+          href={`/applications/${nudge.applicationId}?tab=followup`}
+          className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          <div className="truncate font-medium">
+            Follow up: {nudge.companyName ?? 'Unknown'}
+          </div>
+          <div className="truncate text-xs text-muted-foreground">
+            {nudge.jobTitle} · day {nudge.daysSince}
+          </div>
+        </Link>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            void draft()
+          }}
+          disabled={drafting}
+        >
+          {drafting ? <Loader2 className="size-3 animate-spin" /> : null}
+          Draft follow-up
+        </Button>
+      </div>
+    </li>
   )
 }
 
