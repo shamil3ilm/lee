@@ -200,4 +200,50 @@ describe('generateOutreachDraft', () => {
       }),
     ).rejects.toThrow(/applied-at/i)
   })
+
+  // -------------------------------------------------------------------------
+  // v9 — state snapshot
+  // -------------------------------------------------------------------------
+
+  it('embeds a v9 stateSnapshot for a linkedin_connection outreach', async () => {
+    const { u, app } = await seed('outreach-snap-linkedin@x.com')
+    await saveMasterCV(u.id, makeCv())
+    const ai = new FixtureAIProvider()
+    const doc = await generateOutreachDraft({
+      userId: u.id,
+      applicationId: app.id,
+      kind: 'linkedin_connection',
+      tone: 'friendly',
+      ai,
+    })
+    const content = doc.content as {
+      stateSnapshot?: { hashes: Record<string, string>; fields: Record<string, unknown> }
+    }
+    expect(content.stateSnapshot?.hashes.application).toMatch(/^[a-f0-9]{64}$/)
+    expect(content.stateSnapshot?.hashes.job).toMatch(/^[a-f0-9]{64}$/)
+    expect(content.stateSnapshot?.fields.jobTitle).toBe('Staff Payments Engineer')
+  })
+
+  it('embeds a followup-shaped snapshot with daysSince + latest activity', async () => {
+    const u = await makeUser('outreach-snap-followup@x.com')
+    const co = await makeCompany(u.id, { name: 'Stripe' })
+    const j = await makeJob(u.id, co.id, { title: 'Staff Payments Engineer' })
+    const appliedAt = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    const app = await makeApplication(u.id, j.id, { status: 'applied', appliedAt })
+    await saveMasterCV(u.id, makeCv())
+    const ai = new FixtureAIProvider()
+    const doc = await generateOutreachDraft({
+      userId: u.id,
+      applicationId: app.id,
+      kind: 'followup_email',
+      tone: 'friendly',
+      daysSince: 7,
+      ai,
+    })
+    const content = doc.content as {
+      stateSnapshot?: { hashes: Record<string, string>; fields: Record<string, unknown> }
+    }
+    expect(content.stateSnapshot?.hashes.latest_activity).toMatch(/^[a-f0-9]{64}$/)
+    expect(content.stateSnapshot?.fields.daysSince).toBe(7)
+  })
 })

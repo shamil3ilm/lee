@@ -96,6 +96,23 @@ describe('generateAIDebrief', () => {
     )
   })
 
+  it('embeds a v9 stateSnapshot in content', async () => {
+    const { u, stage } = await seed('debrief-snap@x.com')
+    await saveMasterCV(u.id, makeCv())
+    await saveQuickDebrief({
+      userId: u.id,
+      stageId: stage.id,
+      notesMd: '- Q?',
+    })
+    const ai = new FixtureAIProvider()
+    const doc = await generateAIDebrief({ userId: u.id, stageId: stage.id, ai })
+    const content = doc.content as {
+      stateSnapshot?: { hashes: Record<string, string>; fields: Record<string, unknown> }
+    }
+    expect(content.stateSnapshot?.hashes.stage).toMatch(/^[a-f0-9]{64}$/)
+    expect(content.stateSnapshot?.fields.stageKind).toBe('tech_screen')
+  })
+
   it('increments version on repeat generation', async () => {
     const { u, app, stage } = await seed('debrief-ai-2@x.com')
     await saveMasterCV(u.id, makeCv())

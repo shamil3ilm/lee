@@ -1,8 +1,16 @@
 import * as applicationsQ from '@/lib/db/queries/applications'
+import * as activitiesQ from '@/lib/db/queries/activities'
 import * as documentsQ from '@/lib/db/queries/documents'
 import { getMasterCV } from './master'
 import { outreachDraftSchema, type OutreachKind, type OutreachTone } from './types'
 import { ApplicationNotFoundError, MasterCVNotFoundError } from './errors'
+import {
+  snapshotForFollowup,
+  snapshotForOutreach,
+  type ApplicationRecord,
+  type JobRecord,
+} from '@/lib/staleness/snapshot'
+import type { StateSnapshot } from '@/lib/staleness/types'
 import type { AIProvider } from '@/lib/ai/types'
 import type { Document, DocumentKind } from '@/lib/db/queries/documents'
 
@@ -93,11 +101,41 @@ export async function generateOutreachDraft(input: {
   const title =
     `${KIND_LABELS[input.kind]}${daySuffix} - ${application.job.title} @ ${company}`.slice(0, 200)
 
+  // v9 — snapshot the state used to generate this draft. Follow-ups get a
+  // richer snapshot (activity fingerprint) so the check util can detect an
+  // inbound email that arrived after the draft was rendered; the other
+  // outreach kinds use the generic app + job + master snapshot.
+  const appRecord: ApplicationRecord = {
+    id: application.id,
+    status: application.status,
+    appliedAt: application.appliedAt,
+    jobId: application.jobId,
+    updatedAt: application.updatedAt,
+    companyId: application.job.companyId ?? null,
+    companyName: application.job.company?.name ?? null,
+    jobTitle: application.job.title,
+  }
+  const jobRecord: JobRecord = {
+    id: application.job.id,
+    title: application.job.title,
+    descriptionMd: application.job.descriptionMd,
+    parsedMeta: application.job.parsedMeta,
+    benefits: application.job.benefits,
+    updatedAt: application.job.updatedAt,
+  }
+  let stateSnapshot: StateSnapshot
+  if (input.kind === 'followup_email') {
+    const recent = await activitiesQ.list(input.userId, input.applicationId, { limit: 1 })
+    stateSnapshot = snapshotForFollowup(appRecord, recent[0] ?? null, daysSince ?? 0)
+  } else {
+    stateSnapshot = snapshotForOutreach(appRecord, jobRecord, master)
+  }
+
   return documentsQ.create(input.userId, {
     applicationId: input.applicationId,
     kind: documentKind,
     version,
     title,
-    content: validated,
+    content: { ...validated, stateSnapshot },
   })
 }

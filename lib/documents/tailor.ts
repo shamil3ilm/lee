@@ -3,6 +3,7 @@ import * as documentsQ from '@/lib/db/queries/documents'
 import { getMasterCV } from './master'
 import { tailoredCvSchema } from './types'
 import { ApplicationNotFoundError, MasterCVNotFoundError } from './errors'
+import { snapshotForTailoredCV } from '@/lib/staleness/snapshot'
 import type { AIProvider } from '@/lib/ai/types'
 import type { Document } from '@/lib/db/queries/documents'
 
@@ -35,11 +36,35 @@ export async function generateTailoredCV(input: {
   const company = application.job.company?.name ?? 'unknown'
   const title = `CV — ${application.job.title} @ ${company}`.slice(0, 200)
 
+  // v9 — persist the state fingerprint so the check util can detect drift
+  // (e.g. job.parsedMeta re-parsed, master CV bumped) after the fact.
+  const stateSnapshot = snapshotForTailoredCV(
+    {
+      id: application.id,
+      status: application.status,
+      appliedAt: application.appliedAt,
+      jobId: application.jobId,
+      updatedAt: application.updatedAt,
+      companyId: application.job.companyId ?? null,
+      companyName: application.job.company?.name ?? null,
+      jobTitle: application.job.title,
+    },
+    {
+      id: application.job.id,
+      title: application.job.title,
+      descriptionMd: application.job.descriptionMd,
+      parsedMeta: application.job.parsedMeta,
+      benefits: application.job.benefits,
+      updatedAt: application.job.updatedAt,
+    },
+    master,
+  )
+
   return documentsQ.create(input.userId, {
     applicationId: input.applicationId,
     kind: 'tailored_cv',
     version,
     title,
-    content: validated,
+    content: { ...validated, stateSnapshot },
   })
 }

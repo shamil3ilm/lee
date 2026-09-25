@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth'
 import * as documentsQ from '@/lib/db/queries/documents'
 import * as appsQ from '@/lib/db/queries/applications'
 import { mergePdfs, type MergeSource } from '@/lib/documents/merge'
+import { snapshotForMerged } from '@/lib/staleness/snapshot'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -86,6 +87,19 @@ export async function POST(req: Request): Promise<NextResponse> {
       parsed.data.applicationId ?? null,
       'merged_pdf',
     )
+
+    // v9 — snapshot the source-document versions at merge time so a later
+    // regeneration of any source (e.g. a new tailored CV version) can be
+    // surfaced as drift. Asset sources have no version so we only pull rows
+    // for the `document` sources.
+    const docSourceIds = parsed.data.sources
+      .filter((s) => s.kind === 'document')
+      .map((s) => s.id)
+    const sourceDocs = (
+      await Promise.all(docSourceIds.map((id) => documentsQ.getById(userId, id)))
+    ).filter((d): d is NonNullable<typeof d> => d !== null)
+    const stateSnapshot = snapshotForMerged(sourceDocs)
+
     const doc = await documentsQ.create(userId, {
       applicationId: parsed.data.applicationId ?? null,
       kind: 'merged_pdf',
@@ -94,6 +108,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       content: {
         sourceRefs: parsed.data.sources,
         mergedAt: new Date().toISOString(),
+        stateSnapshot,
       },
     })
     return NextResponse.json(

@@ -7,6 +7,7 @@ import * as stagesQ from '@/lib/db/queries/stages'
 import { getMasterCV } from './master'
 import { interviewDebriefSchema } from './types'
 import { ApplicationNotFoundError, MasterCVNotFoundError } from './errors'
+import { snapshotForDebrief } from '@/lib/staleness/snapshot'
 import type { AIProvider } from '@/lib/ai/types'
 import type { Document } from '@/lib/db/queries/documents'
 
@@ -105,11 +106,33 @@ export async function generateAIDebrief(input: {
     'interview_debrief',
   )
 
+  const stateSnapshot = snapshotForDebrief(
+    stage,
+    {
+      id: application.id,
+      status: application.status,
+      appliedAt: application.appliedAt,
+      jobId: application.jobId,
+      updatedAt: application.updatedAt,
+      companyId: application.job.companyId ?? null,
+      companyName: application.job.company?.name ?? null,
+      jobTitle: application.job.title,
+    },
+    {
+      id: application.job.id,
+      title: application.job.title,
+      descriptionMd: application.job.descriptionMd,
+      parsedMeta: application.job.parsedMeta,
+      benefits: application.job.benefits,
+      updatedAt: application.job.updatedAt,
+    },
+  )
+
   return documentsQ.create(userId, {
     applicationId: application.id,
     kind: 'interview_debrief',
     version,
     title,
-    content: validated,
+    content: { ...validated, stateSnapshot },
   })
 }

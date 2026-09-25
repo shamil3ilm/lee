@@ -47,6 +47,24 @@ describe('generateTailoredCV', () => {
     expect(list).toHaveLength(1)
   })
 
+  it('embeds a v9 stateSnapshot in content', async () => {
+    const { u, app } = await seed('tailor-snap@x.com')
+    await saveMasterCV(u.id, makeCv())
+    const ai = new FixtureAIProvider()
+    const doc = await generateTailoredCV({ userId: u.id, applicationId: app.id, ai })
+    const content = doc.content as {
+      stateSnapshot?: {
+        capturedAt: string
+        hashes: Record<string, string>
+        fields: Record<string, unknown>
+      }
+    }
+    expect(content.stateSnapshot).toBeDefined()
+    expect(content.stateSnapshot?.hashes.application).toMatch(/^[a-f0-9]{64}$/)
+    expect(content.stateSnapshot?.hashes.job).toMatch(/^[a-f0-9]{64}$/)
+    expect(content.stateSnapshot?.hashes.master_cv).toMatch(/^[a-f0-9]{64}$/)
+  })
+
   it('increments version on repeat generation', async () => {
     const { u, app } = await seed('tailor-2@x.com')
     await saveMasterCV(u.id, makeCv())
@@ -90,6 +108,18 @@ describe('generateCoverLetter', () => {
     const content = doc.content as { paragraphs: string[]; senderName: string }
     expect(content.senderName).toBe('Ada Lovelace')
     expect(content.paragraphs.length).toBeGreaterThan(0)
+  })
+
+  it('embeds a v9 stateSnapshot in content', async () => {
+    const { u, app } = await seed('cover-snap@x.com')
+    await saveMasterCV(u.id, makeCv())
+    const ai = new FixtureAIProvider()
+    const doc = await generateCoverLetter({ userId: u.id, applicationId: app.id, ai })
+    const content = doc.content as {
+      stateSnapshot?: { hashes: Record<string, string> }
+    }
+    expect(content.stateSnapshot?.hashes.job_parsed_meta).toMatch(/^[a-f0-9]{64}$/)
+    expect(content.stateSnapshot?.hashes.master_cv).toMatch(/^[a-f0-9]{64}$/)
   })
 
   it('throws MasterCVNotFoundError when no master saved', async () => {

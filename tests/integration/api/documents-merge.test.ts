@@ -106,8 +106,15 @@ describe('POST /api/documents/merge', () => {
     const stored = await docsQ.getById(u.id, body.documentId)
     expect(stored?.kind).toBe('merged_pdf')
     expect(stored?.title).toBe('Package v1')
-    const content = stored?.content as { sourceRefs: Array<{ kind: string; id: string }> }
+    const content = stored?.content as {
+      sourceRefs: Array<{ kind: string; id: string }>
+      stateSnapshot?: { hashes: Record<string, string>; fields: Record<string, unknown> }
+    }
     expect(content.sourceRefs).toHaveLength(2)
+    // v9 — merged_pdf gets a snapshot with a sources fingerprint even when
+    // (as here) every source is an asset with no document version.
+    expect(content.stateSnapshot?.hashes.sources).toMatch(/^[a-f0-9]{64}$/)
+    expect(content.stateSnapshot?.fields.sourceIds).toEqual([])
   })
 
   it('returns 422 when a source id is unknown', async () => {

@@ -1,8 +1,12 @@
+import { and, eq } from 'drizzle-orm'
+import { db } from '@/lib/db/client'
+import { interviewStages } from '@/lib/db/schema'
 import * as applicationsQ from '@/lib/db/queries/applications'
 import * as documentsQ from '@/lib/db/queries/documents'
 import { getMasterCV } from './master'
 import { interviewPrepPackSchema } from './types'
 import { ApplicationNotFoundError, MasterCVNotFoundError } from './errors'
+import { snapshotForPrepPack, type StageRecord } from '@/lib/staleness/snapshot'
 import type { AIProvider } from '@/lib/ai/types'
 import type { Document } from '@/lib/db/queries/documents'
 
@@ -44,11 +48,71 @@ export async function generateInterviewPrepPack(input: {
     200,
   )
 
+  // v9 — snapshot the stage state. When the caller didn't provide a stageId
+  // (e.g. prep-by-kind before scheduling), synthesize a minimal stage record
+  // so the check util still has something to compare against.
+  const stageRecord = await loadStageRecord(input.userId, input.stageId, input.stageKind)
+  const stateSnapshot = snapshotForPrepPack(
+    {
+      id: application.id,
+      status: application.status,
+      appliedAt: application.appliedAt,
+      jobId: application.jobId,
+      updatedAt: application.updatedAt,
+      companyId: application.job.companyId ?? null,
+      companyName: application.job.company?.name ?? null,
+      jobTitle: application.job.title,
+    },
+    stageRecord,
+    {
+      id: application.job.id,
+      title: application.job.title,
+      descriptionMd: application.job.descriptionMd,
+      parsedMeta: application.job.parsedMeta,
+      benefits: application.job.benefits,
+      updatedAt: application.job.updatedAt,
+    },
+  )
+
   return documentsQ.create(input.userId, {
     applicationId: input.applicationId,
     kind: 'interview_prep_pack',
     version,
     title,
-    content: validated,
+    content: { ...validated, stateSnapshot },
   })
+}
+
+/**
+ * Best-effort stage lookup for the snapshot. When the caller passes a
+ * stageId that resolves, we snapshot the real record; otherwise we build a
+ * synthetic one with just the kind so `snapshotForPrepPack` still returns
+ * a comparable hash.
+ */
+// Guard the DB lookup with a shallow UUID sanity check so callers passing
+// synthetic stage ids (older tests, ad-hoc prep-by-kind) don't blow up the
+// snapshot with a Postgres 22P02.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+async function loadStageRecord(
+  userId: string,
+  stageId: string | undefined,
+  stageKind: string,
+): Promise<StageRecord> {
+  if (stageId && UUID_RE.test(stageId)) {
+    const stage = await db.query.interviewStages.findFirst({
+      where: and(eq(interviewStages.userId, userId), eq(interviewStages.id, stageId)),
+    })
+    if (stage) return stage
+  }
+  return {
+    id: stageId ?? `synthetic:${stageKind}`,
+    kind: stageKind,
+    title: null,
+    scheduledAt: null,
+    status: 'scheduled',
+    prepNotesMd: null,
+    googleEventId: null,
+    updatedAt: null,
+  }
 }

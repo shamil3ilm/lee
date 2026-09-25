@@ -53,6 +53,23 @@ describe('generateInterviewPrepPack', () => {
     expect(content.likelyQuestions.length).toBeGreaterThan(0)
   })
 
+  it('embeds a v9 stateSnapshot in content', async () => {
+    const { u, app } = await seed('prep-snap@x.com')
+    await saveMasterCV(u.id, makeCv())
+    const ai = new FixtureAIProvider()
+    const doc = await generateInterviewPrepPack({
+      userId: u.id,
+      applicationId: app.id,
+      stageKind: 'tech_screen',
+      ai,
+    })
+    const content = doc.content as {
+      stateSnapshot?: { hashes: Record<string, string>; fields: Record<string, unknown> }
+    }
+    expect(content.stateSnapshot?.hashes.stage).toMatch(/^[a-f0-9]{64}$/)
+    expect(content.stateSnapshot?.fields.stageKind).toBe('tech_screen')
+  })
+
   it('records the provided stageId', async () => {
     const { u, app } = await seed('prep-2@x.com')
     await saveMasterCV(u.id, makeCv())
