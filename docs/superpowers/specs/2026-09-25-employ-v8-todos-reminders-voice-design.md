@@ -138,9 +138,10 @@ export interface DecisionProvider {
 ```
 
 ### Implementations
-- `lib/decisions/laya-hf.ts` — HuggingFace Inference API call to hosted Laya checkpoint (`nandhakishoreconvai/laya-multilingual` or equivalent). Requires `HF_TOKEN` env var (free tier: 1000 requests/day). If the checkpoint isn't available on HF Inference, falls back to raising `LayaUnavailableError`.
-- `lib/decisions/heuristic.ts` — fallback: simple keyword-match categorization + regex-based booleans. Never fails, always deterministic. Lower quality.
-- `lib/decisions/index.ts` — `getDecisionProvider()` — env-driven: `DECISION_PROVIDER=laya` uses Laya with heuristic fallback on error; anything else uses heuristic.
+- `lib/decisions/groq.ts` — **default**. Uses the existing `GROQ_API_KEY` with `openai/gpt-oss-20b` model + `response_format: json_object`. Structured prompts: `choice` returns `{pick: enumValue, confidence: 0-1}`; `yesNo` returns `{answer: bool, confidence}`; `score` returns `{score: number}`. Free tier already covers all usage.
+- `lib/decisions/heuristic.ts` — deterministic keyword-match fallback. Used when Groq call fails or `DECISION_PROVIDER=heuristic` is set. Never fails, always instant, lower quality but zero latency + zero cost.
+- `lib/decisions/laya-hf.ts` — **deferred / opt-in**. HuggingFace Inference API impl for a hosted Laya checkpoint (`nandhakishoreconvai/laya-multilingual`). Only activated if `DECISION_PROVIDER=laya` AND `HF_TOKEN` is set. If HF doesn't host the checkpoint (likely), this impl throws on first use — kept as a stub so migrating later is a config change, not a rewrite.
+- `lib/decisions/index.ts` — `getDecisionProvider()` — env-driven: `DECISION_PROVIDER=groq` (default) uses Groq with heuristic fallback on error; `heuristic` uses heuristic directly; `laya` attempts HF Inference then falls back to heuristic.
 
 ### First use case: expense auto-categorization
 - New API route `POST /api/expenses/classify` — body `{description: string, vendor?: string}` → returns `{category, subcategory?, confidence}`
@@ -154,9 +155,12 @@ export interface DecisionProvider {
 - Follow-up timing (yesNo "should I follow up today?")
 
 ### Env vars
-- `HF_TOKEN` — HuggingFace API token (free at huggingface.co/settings/tokens)
-- `DECISION_PROVIDER` — `laya | heuristic` (default: `heuristic` for zero-config)
-- `LAYA_HF_MODEL` — override the HF model id (default: `nandhakishoreconvai/laya-multilingual`)
+- `DECISION_PROVIDER` — `groq | heuristic | laya` (default: `groq`, uses existing `GROQ_API_KEY`)
+- `HF_TOKEN` — HuggingFace API token, only needed if `DECISION_PROVIDER=laya` (free at huggingface.co/settings/tokens)
+- `LAYA_HF_MODEL` — override the HF model id when using Laya (default: `nandhakishoreconvai/laya-multilingual`)
+
+### Rationale
+Groq is the immediate default because we already have the API key, it's on the free tier, and it can do the same structured-choice task via JSON mode. Laya's per-call speed/cost advantage doesn't matter at personal-use volumes (dozens of decisions/day). Real Laya is deferred until either (a) HuggingFace hosts the checkpoint on their free Inference API, or (b) the user wants to self-host on HF Spaces / Modal — both are additive: the interface + heuristic fallback are already in place.
 
 ## 6. Constraints and non-goals
 - **No streaming transcription** in v8 (single-shot only)
