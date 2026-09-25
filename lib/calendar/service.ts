@@ -5,6 +5,7 @@ import { getGoogleTokens } from '@/lib/google/tokens'
 import * as appsQ from '@/lib/db/queries/applications'
 import * as stagesQ from '@/lib/db/queries/stages'
 import * as profileQ from '@/lib/db/queries/profile'
+import { DEFAULT_TIMEZONE } from '@/lib/ui/timezone'
 import {
   createEvent,
   deleteEvent,
@@ -12,8 +13,6 @@ import {
   type CalendarEventInput,
 } from './adapter'
 
-/** IANA timezone used when the user hasn't set one — Shamil's home tz. */
-const DEFAULT_TIMEZONE = 'Asia/Dubai'
 /** Fallback interview length in minutes when stage.durationMinutes is null. */
 const DEFAULT_DURATION_MINUTES = 60
 
@@ -30,6 +29,7 @@ export interface CalendarServiceAdapters {
 interface StageContext {
   stage: NonNullable<Awaited<ReturnType<typeof stagesQ.list>>>[number]
   application: NonNullable<Awaited<ReturnType<typeof appsQ.getById>>>
+  timezone: string
 }
 
 async function loadStageContext(
@@ -42,11 +42,13 @@ async function loadStageContext(
   if (!stage) return null
   const application = await appsQ.getById(userId, stage.applicationId)
   if (!application) return null
-  return { stage, application }
+  const profile = await profileQ.get(userId)
+  const timezone = profile?.timezone ?? DEFAULT_TIMEZONE
+  return { stage, application, timezone }
 }
 
 function buildEvent(ctx: StageContext): CalendarEventInput {
-  const { stage, application } = ctx
+  const { stage, application, timezone } = ctx
   const jobTitle = application.job?.title ?? 'Interview'
   const companyName = application.job?.company?.name ?? 'Company'
 
@@ -72,8 +74,8 @@ function buildEvent(ctx: StageContext): CalendarEventInput {
     summary: `Interview: ${jobTitle} @ ${companyName}`,
     description: descriptionLines.join('\n'),
     location: stage.meetingUrl ?? stage.location ?? undefined,
-    start: { dateTime: start.toISOString(), timeZone: DEFAULT_TIMEZONE },
-    end: { dateTime: end.toISOString(), timeZone: DEFAULT_TIMEZONE },
+    start: { dateTime: start.toISOString(), timeZone: timezone },
+    end: { dateTime: end.toISOString(), timeZone: timezone },
   }
 }
 

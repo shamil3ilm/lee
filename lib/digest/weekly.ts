@@ -12,6 +12,11 @@ import * as profileQ from '@/lib/db/queries/profile'
 import { sendEmail as defaultSendEmail } from '@/lib/gmail/send'
 import { renderWeeklyDigestHtml } from './email-template'
 import { logger } from '@/lib/logger'
+import {
+  DEFAULT_TIMEZONE,
+  isMondayInTz as isMondayInTzHelper,
+  sentThisTzWeek,
+} from '@/lib/ui/timezone'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -51,18 +56,28 @@ export interface PipelineSnapshot {
 // ---------------------------------------------------------------------------
 
 /**
- * True if the current UTC day-of-week is Monday. The digest cron runs daily;
- * this narrows sends to Monday only. Uses UTC so behavior does not shift by
- * server region.
+ * True if the current UTC day-of-week is Monday. Kept for backwards-compat
+ * with tests + any caller that hasn't been threaded through user tz. New
+ * code should call `isMondayInTz` with the user's stored timezone.
  */
 export function isMondayUtc(now: Date = new Date()): boolean {
   return now.getUTCDay() === 1
 }
 
 /**
+ * True if `now` is Monday when interpreted in the user's stored tz. When no
+ * tz is provided we fall back to the default (Asia/Dubai) — same behavior as
+ * pre-v4.1.
+ */
+export function isMondayInTz(tz: string | null | undefined, now: Date = new Date()): boolean {
+  return isMondayInTzHelper(tz ?? DEFAULT_TIMEZONE, now)
+}
+
+/**
  * True if `digestLastSentAt` falls within the current UTC week (Monday
  * 00:00:00 UTC through Sunday 23:59:59.999 UTC). Prevents a double-send if
- * the cron misfires twice on the same Monday.
+ * the cron misfires twice on the same Monday. Kept for backwards-compat;
+ * new call sites should use `alreadySentThisTzWeek` with the user's tz.
  */
 export function alreadySentThisWeek(
   profile: Pick<profileQ.UserProfile, 'digestLastSentAt'> | null,
@@ -76,6 +91,19 @@ export function alreadySentThisWeek(
   monday.setUTCDate(now.getUTCDate() - daysSinceMonday)
   monday.setUTCHours(0, 0, 0, 0)
   return profile.digestLastSentAt.getTime() >= monday.getTime()
+}
+
+/**
+ * Timezone-aware sibling of `alreadySentThisWeek` — uses Monday-local as the
+ * week boundary so a user in Asia/Dubai (UTC+4) doesn't double-receive on
+ * their Sunday evening when the cron fires just past UTC midnight.
+ */
+export function alreadySentThisTzWeek(
+  profile: Pick<profileQ.UserProfile, 'digestLastSentAt'> | null,
+  tz: string | null | undefined,
+  now: Date = new Date(),
+): boolean {
+  return sentThisTzWeek(profile?.digestLastSentAt ?? null, tz ?? DEFAULT_TIMEZONE, now)
 }
 
 // ---------------------------------------------------------------------------

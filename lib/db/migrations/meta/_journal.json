@@ -36,6 +36,13 @@
       "when": 1790260882509,
       "tag": "0004_elite_sway",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790315400948,
+      "tag": "0005_living_moonstone",
+      "breakpoints": true
     }
   ]
 }

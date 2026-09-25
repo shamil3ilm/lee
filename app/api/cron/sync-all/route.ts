@@ -9,8 +9,8 @@ import { syncGmail } from '@/lib/gmail/sync'
 import { NoGoogleAccountError } from '@/lib/google/tokens'
 import * as profileQ from '@/lib/db/queries/profile'
 import {
-  alreadySentThisWeek,
-  isMondayUtc,
+  alreadySentThisTzWeek,
+  isMondayInTz,
   sendWeeklyDigest,
 } from '@/lib/digest/weekly'
 import { logger } from '@/lib/logger'
@@ -104,23 +104,26 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // Weekly digest — Monday only, guarded by digestLastSentAt so an
-    // accidental re-run does not double-send. Same NoGoogleAccountError
-    // silently-skipped pattern as Gmail sync.
-    if (isMondayUtc()) {
-      try {
-        const profile = await profileQ.get(user.id)
-        if (profile?.weeklyDigestEnabled && !alreadySentThisWeek(profile)) {
-          await sendWeeklyDigest({ userId: user.id })
-          totals.digests_sent += 1
-        }
-      } catch (e) {
-        if (e instanceof NoGoogleAccountError) {
-          // Expected: no Gmail scope → cannot send. Skip silently.
-        } else {
-          const message = e instanceof Error ? e.message : String(e)
-          totals.errors.push(`user ${user.id} digest: ${message}`)
-        }
+    // Weekly digest — Monday-local (per user timezone) only, guarded by
+    // digestLastSentAt so an accidental re-run does not double-send. Same
+    // NoGoogleAccountError silently-skipped pattern as Gmail sync.
+    try {
+      const profile = await profileQ.get(user.id)
+      const tz = profile?.timezone
+      if (
+        profile?.weeklyDigestEnabled &&
+        isMondayInTz(tz) &&
+        !alreadySentThisTzWeek(profile, tz)
+      ) {
+        await sendWeeklyDigest({ userId: user.id })
+        totals.digests_sent += 1
+      }
+    } catch (e) {
+      if (e instanceof NoGoogleAccountError) {
+        // Expected: no Gmail scope → cannot send. Skip silently.
+      } else {
+        const message = e instanceof Error ? e.message : String(e)
+        totals.errors.push(`user ${user.id} digest: ${message}`)
       }
     }
   }

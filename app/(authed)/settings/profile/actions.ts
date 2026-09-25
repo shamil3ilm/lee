@@ -37,6 +37,7 @@ const scalarSchema = z.object({
   acceptRelocation: z.string().optional(),
   compFloorAnnual: z.coerce.number().int().nonnegative().optional().or(z.literal('')),
   compCurrency: z.string().optional(),
+  timezone: z.string().optional(),
 })
 
 export async function saveProfileAction(formData: FormData): Promise<ActionResult> {
@@ -53,6 +54,7 @@ export async function saveProfileAction(formData: FormData): Promise<ActionResul
     acceptRelocation: formData.get('acceptRelocation') ?? undefined,
     compFloorAnnual: formData.get('compFloorAnnual') ?? undefined,
     compCurrency: formData.get('compCurrency') ?? undefined,
+    timezone: formData.get('timezone') ?? undefined,
   })
 
   const patch: Partial<NewUserProfile> = {
@@ -67,6 +69,9 @@ export async function saveProfileAction(formData: FormData): Promise<ActionResul
     compFloorAnnual:
       typeof scalars.compFloorAnnual === 'number' ? scalars.compFloorAnnual : null,
     compCurrency: scalars.compCurrency || null,
+    // Only overwrite when the form actually sent a non-empty tz — omitting
+    // keeps the existing default without null-out risk.
+    ...(scalars.timezone ? { timezone: scalars.timezone } : {}),
     skills: csvToArray(formData.get('skills')),
     industries: csvToArray(formData.get('industries')),
     roleTypes: csvToArray(formData.get('roleTypes')),

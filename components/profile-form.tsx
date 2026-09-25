@@ -1,5 +1,5 @@
 'use client'
-import { useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { saveProfileAction } from '@/app/(authed)/settings/profile/actions'
 import type { UserProfile } from '@/lib/db/queries/profile'
@@ -16,6 +16,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Card, CardContent } from '@/components/ui/card'
+import {
+  DEFAULT_TIMEZONE,
+  detectBrowserTimezone,
+  listTimezones,
+} from '@/lib/ui/timezone'
 
 interface ProfileFormProps {
   profile: UserProfile | null
@@ -51,6 +56,8 @@ function json(v: unknown): string {
 
 export function ProfileForm({ profile }: ProfileFormProps) {
   const [pending, start] = useTransition()
+  const timezones = useMemo(() => listTimezones(), [])
+  const [timezone, setTimezone] = useState<string>(profile?.timezone ?? DEFAULT_TIMEZONE)
 
   function handleSubmit(fd: FormData): void {
     start(async () => {
@@ -58,6 +65,12 @@ export function ProfileForm({ profile }: ProfileFormProps) {
       if ('success' in result) toast.success('Profile saved')
       else toast.error(result.error)
     })
+  }
+
+  function handleDetectTimezone(): void {
+    const detected = detectBrowserTimezone()
+    setTimezone(detected)
+    toast.success(`Detected timezone: ${detected}`)
   }
 
   return (
@@ -118,6 +131,37 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                   placeholder="USD, AED…"
                   maxLength={3}
                 />
+                <div className="space-y-1.5 sm:col-span-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="timezone">Timezone</Label>
+                    <button
+                      type="button"
+                      onClick={handleDetectTimezone}
+                      className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                    >
+                      Auto-detect
+                    </button>
+                  </div>
+                  <Select
+                    name="timezone"
+                    value={timezone}
+                    onValueChange={setTimezone}
+                  >
+                    <SelectTrigger id="timezone">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      {timezones.map((tz) => (
+                        <SelectItem key={tz} value={tz}>
+                          {tz}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Used for calendar events and Monday-morning digest timing.
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>

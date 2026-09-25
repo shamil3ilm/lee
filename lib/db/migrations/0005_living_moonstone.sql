@@ -1,0 +1,1 @@
+ALTER TABLE "user_profile" ADD COLUMN "timezone" text DEFAULT 'Asia/Dubai' NOT NULL;

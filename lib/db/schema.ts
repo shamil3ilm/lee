@@ -308,6 +308,11 @@ export const userProfile = pgTable('user_profile', {
   // until the first send; used as a same-week idempotency guard.
   weeklyDigestEnabled: boolean('weekly_digest_enabled').notNull().default(true),
   digestLastSentAt: timestamp('digest_last_sent_at', { withTimezone: true }),
+  // v4.1 per-user IANA timezone. Used for calendar events, digest scheduling,
+  // and any date rendering that must reflect the user's local time regardless
+  // of the server region. Defaults to Asia/Dubai (Shamil's home tz) so
+  // existing rows behave identically to the previous hardcoded constant.
+  timezone: text('timezone').notNull().default('Asia/Dubai'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
