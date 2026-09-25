@@ -12,8 +12,16 @@ import { EXPENSE_CATEGORIES } from '@/lib/expenses/categories'
 
 const { ChainedDecisionProvider } = _internal
 
-describe('LayaHttpDecisionProvider stub', () => {
-  it('throws LayaUnavailableError from every method', async () => {
+describe('LayaHttpDecisionProvider — network failure surfaces as LayaUnavailableError', () => {
+  const originalFetch = globalThis.fetch
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+    vi.restoreAllMocks()
+  })
+
+  it('throws LayaUnavailableError when the Space is unreachable', async () => {
+    // Simulate fetch itself rejecting (e.g. DNS or connect refused).
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('ECONNREFUSED'))
     const p = new LayaHttpDecisionProvider('http://laya.example', 'x')
     await expect(
       p.choice({ text: 'x', options: ['a', 'b'] as const }),
@@ -76,9 +84,9 @@ describe('ChainedDecisionProvider fallback', () => {
   })
 })
 
-// Explicit test for the `laya` env path: laya-http throws → chain falls
-// through to Groq → heuristic. This verifies v8.1 will slot in cleanly by
-// simulating a laya provider that always throws.
+// Explicit test for the `laya` env path: laya-http fails → chain falls
+// through to Groq → heuristic. Verifies the v8.1 real HTTP client still
+// composes cleanly when the Space is broken/unavailable.
 describe('composed provider — laya path fallback chain', () => {
   const originalFetch = globalThis.fetch
   afterEach(() => {
@@ -86,10 +94,13 @@ describe('composed provider — laya path fallback chain', () => {
     vi.restoreAllMocks()
   })
 
-  it('laya throws → groq succeeds → returns groq result', async () => {
-    // Simulate Groq returning a valid JSON choice.
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(
+  it('laya network fails → groq succeeds → returns groq result', async () => {
+    // Route fetch by URL: Laya endpoint rejects at the socket, Groq returns
+    // a valid JSON choice.
+    vi.spyOn(globalThis, 'fetch').mockImplementation((async (url: string) => {
+      const u = String(url)
+      if (u.includes('laya.example')) throw new Error('ECONNREFUSED')
+      return new Response(
         JSON.stringify({
           choices: [
             {
@@ -100,8 +111,9 @@ describe('composed provider — laya path fallback chain', () => {
           ],
         }),
         { status: 200 },
-      ),
-    )
+      )
+    }) as typeof fetch)
+
     const chain = new ChainedDecisionProvider([
       new LayaHttpDecisionProvider('http://laya.example'),
       new GroqDecisionProvider('test-key'),
@@ -113,9 +125,6 @@ describe('composed provider — laya path fallback chain', () => {
     })
     expect(res.pick).toBe('shopping')
     expect(res.confidence).toBe(0.8)
-    // Fetch was called exactly once — by Groq — because laya throws
-    // synchronously before touching the network.
-    expect(vi.mocked(globalThis.fetch)).toHaveBeenCalledTimes(1)
   })
 
   it('laya + groq both fail → heuristic still returns a pick', async () => {

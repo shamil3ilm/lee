@@ -10,42 +10,241 @@ import type {
 import { LayaUnavailableError } from './types'
 
 /**
- * Laya decision provider — HTTP client for a future self-hosted Laya Space.
+ * Laya decision provider — HTTP client for the public Laya Gradio Space
+ * (or any compatible endpoint set via LAYA_ENDPOINT).
  *
- * v8: STUB ONLY. Every method throws LayaUnavailableError; the composed
- * provider in ./index.ts catches this and falls back to Groq → heuristic
- * so the DECISION_PROVIDER=laya env path is safe to set even before the
- * Space is deployed.
+ * v8.1: real implementation. Talks to a Gradio 6.x Space using the
+ * two-step call pattern:
  *
- * TODO(v8.1): implement fetch to LAYA_ENDPOINT.
- * Expected contract: `POST {endpoint}/v1/systemone` with a Jev-compatible
- * body — `{ "system_one": { "input": <text>, "options": [...] } }` etc.
- * Optional Bearer auth via `LAYA_API_KEY`. Response returns the pick /
- * answer / score with a confidence score. When implemented, mirror the
- * validation shape used in ./groq.ts so caller behaviour is identical.
+ *   1. POST /gradio_api/call/{fn_name}  { data: [...] } → { event_id }
+ *   2. GET  /gradio_api/call/{fn_name}/{event_id}       → SSE stream
+ *
+ * The default endpoint is the public demo Space
+ * `https://convaiinnovations-laya-demo.hf.space`; override with the
+ * LAYA_ENDPOINT env var to point at a self-hosted mirror.
+ *
+ * Every error path throws `LayaUnavailableError` so the composed chain
+ * provider in ./index.ts cleanly falls back to Groq → heuristic without
+ * callers needing to catch. Do not throw anything else from this class.
  */
+
+const DEFAULT_ENDPOINT = 'https://convaiinnovations-laya-demo.hf.space'
+const FUNCTION_NAME = 'run_playground'
+
+type LayaAnswer = {
+  pick?: string
+  probability?: number
+  confidence?: number
+  value?: number
+  score?: number
+}
+
+type LayaRaw =
+  | { answers?: Record<string, LayaAnswer> }
+  | Record<string, LayaAnswer>
+  | LayaAnswer[]
+
 export class LayaHttpDecisionProvider implements DecisionProvider {
-  constructor(
-    // Present but unused today. Kept in the signature so v8.1 slots in
-    // without changing call sites.
-    private readonly endpoint: string,
-    private readonly apiKey?: string,
-  ) {
-    // Silence unused-private-property warnings in strict builds while
-    // preserving the intended API surface.
-    void this.endpoint
-    void this.apiKey
+  private readonly endpoint: string
+  private readonly apiKey?: string
+
+  constructor(endpoint?: string, apiKey?: string) {
+    this.endpoint = (endpoint ?? DEFAULT_ENDPOINT).replace(/\/$/, '')
+    this.apiKey = apiKey
   }
 
-  async choice<T extends string>(_input: ChoiceInput<T>): Promise<ChoiceResult<T>> {
-    throw new LayaUnavailableError()
+  async choice<T extends string>(input: ChoiceInput<T> & {
+    optionDescriptions?: Partial<Record<T, string>>
+  }): Promise<ChoiceResult<T>> {
+    const criteria: Record<string, string> = {}
+    for (const opt of input.options) {
+      criteria[opt] = input.optionDescriptions?.[opt] ?? `Category: ${opt}`
+    }
+    const questions = {
+      answer: {
+        type: 'choice',
+        instructions:
+          'Which option best fits?' +
+          (input.context ? ' Context: ' + input.context : ''),
+        criteria,
+      },
+    }
+    const raw = await this.callPlayground(input.text, questions)
+    const answer = extractAnswer(raw)
+    if (!answer || typeof answer.pick !== 'string') {
+      throw new LayaUnavailableError(
+        'unexpected response shape: ' + safeStringify(raw).slice(0, 200),
+      )
+    }
+    const pick = answer.pick as T
+    if (!(input.options as readonly string[]).includes(pick)) {
+      throw new LayaUnavailableError(`pick "${pick}" not in options`)
+    }
+    const confidence = numberOr(
+      answer.confidence ?? answer.probability,
+      0.5,
+    )
+    return { pick, confidence }
   }
 
-  async yesNo(_input: YesNoInput): Promise<YesNoResult> {
-    throw new LayaUnavailableError()
+  async yesNo(input: YesNoInput): Promise<YesNoResult> {
+    const questions = {
+      answer: {
+        type: 'noul',
+        instructions: input.question,
+      },
+    }
+    const raw = await this.callPlayground(input.text, questions)
+    const a = extractAnswer(raw)
+    if (!a) throw new LayaUnavailableError('no answer in response')
+    const prob = numberOr(a.probability ?? a.confidence, 0.5)
+    return { answer: prob >= 0.5, confidence: Math.abs(prob - 0.5) * 2 }
   }
 
-  async score(_input: ScoreInput): Promise<ScoreResult> {
-    throw new LayaUnavailableError()
+  async score(input: ScoreInput): Promise<ScoreResult> {
+    const [min, max] = input.scale ?? [0, 5]
+    const levels: string[] = []
+    // Gradio 'score' expects a list of level descriptions. Keep it small so
+    // Laya doesn't have to reason over 100 buckets by default.
+    const steps = Math.max(1, Math.min(20, Math.round(max - min) + 1))
+    for (let i = 0; i < steps; i++) {
+      const v = min + ((max - min) * i) / Math.max(1, steps - 1)
+      levels.push(`Level ${v}`)
+    }
+    const questions = {
+      answer: {
+        type: 'score',
+        instructions: input.rubric,
+        criteria: levels,
+      },
+    }
+    const raw = await this.callPlayground(input.text, questions)
+    const a = extractAnswer(raw)
+    const score = numberOr(a?.value ?? a?.score, min)
+    return { score }
+  }
+
+  private async callPlayground(stateText: string, questions: unknown): Promise<LayaRaw> {
+    const url = `${this.endpoint}/gradio_api/call/${FUNCTION_NAME}`
+    const headers: Record<string, string> = {
+      'content-type': 'application/json',
+    }
+    if (this.apiKey) headers.authorization = `Bearer ${this.apiKey}`
+
+    // Step 1: POST the call → { event_id }
+    let postRes: Response
+    try {
+      postRes = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ data: [stateText, JSON.stringify(questions)] }),
+      })
+    } catch (e) {
+      throw new LayaUnavailableError(`laya network error: ${getMessage(e)}`)
+    }
+    if (!postRes.ok) {
+      const body = await safeText(postRes)
+      throw new LayaUnavailableError(`laya POST ${postRes.status}: ${body.slice(0, 200)}`)
+    }
+    let eventId: string | undefined
+    try {
+      const json = (await postRes.json()) as { event_id?: string }
+      eventId = json.event_id
+    } catch (e) {
+      throw new LayaUnavailableError(`laya POST bad JSON: ${getMessage(e)}`)
+    }
+    if (!eventId) throw new LayaUnavailableError('laya POST missing event_id')
+
+    // Step 2: GET SSE stream and parse the final data frame.
+    let getRes: Response
+    try {
+      getRes = await fetch(`${url}/${eventId}`, { headers })
+    } catch (e) {
+      throw new LayaUnavailableError(`laya GET network error: ${getMessage(e)}`)
+    }
+    if (!getRes.ok) {
+      const body = await safeText(getRes)
+      throw new LayaUnavailableError(`laya GET ${getRes.status}: ${body.slice(0, 200)}`)
+    }
+    const text = await safeText(getRes)
+
+    // Gradio SSE frames look like:
+    //   event: <name>
+    //   data: <json>
+    //
+    // The final `complete` (or last non-empty) `data:` line carries the tuple
+    // [rows_dataframe, raw_json_string]. Parse the last `data:` line to be
+    // resilient across Gradio patch versions that emit different event names.
+    const dataLines = text
+      .split('\n')
+      .map((l) => l.trimEnd())
+      .filter((l) => l.startsWith('data:'))
+    if (dataLines.length === 0) {
+      throw new LayaUnavailableError('laya SSE: no data frames')
+    }
+    const lastData = dataLines[dataLines.length - 1]!
+    let payload: unknown
+    try {
+      payload = JSON.parse(lastData.slice('data:'.length).trim())
+    } catch (e) {
+      throw new LayaUnavailableError(`laya SSE bad JSON: ${getMessage(e)}`)
+    }
+
+    // Payload is typically [rows_dataframe, raw_json_string]. We want the raw
+    // JSON parsed. Accept an already-parsed object as a fallback for future
+    // Gradio versions.
+    const rawSlot: unknown = Array.isArray(payload) ? payload[1] : payload
+    if (rawSlot == null) {
+      throw new LayaUnavailableError('laya SSE: raw_json slot empty')
+    }
+    if (typeof rawSlot !== 'string') {
+      return rawSlot as LayaRaw
+    }
+    try {
+      return JSON.parse(rawSlot) as LayaRaw
+    } catch (e) {
+      throw new LayaUnavailableError(
+        `laya SSE raw_json not parseable: ${getMessage(e)} — ${rawSlot.slice(0, 200)}`,
+      )
+    }
+  }
+}
+
+/**
+ * Extract the first answer from Laya's response, tolerant of two shapes:
+ *   { answers: { answer: {...} } }   ← common
+ *   { answer: {...} }                 ← flat
+ *   [ {...} ]                          ← positional fallback
+ */
+function extractAnswer(raw: LayaRaw | undefined): LayaAnswer | undefined {
+  if (!raw) return undefined
+  if (Array.isArray(raw)) return raw[0]
+  const bag = (raw as { answers?: Record<string, LayaAnswer> }).answers ?? (raw as Record<string, LayaAnswer>)
+  if (!bag || typeof bag !== 'object') return undefined
+  return bag.answer ?? Object.values(bag)[0]
+}
+
+function numberOr(v: unknown, fallback: number): number {
+  const n = typeof v === 'number' ? v : Number(v)
+  return Number.isFinite(n) ? n : fallback
+}
+
+function getMessage(e: unknown): string {
+  return e instanceof Error ? e.message : String(e)
+}
+
+async function safeText(res: Response): Promise<string> {
+  try {
+    return await res.text()
+  } catch {
+    return ''
+  }
+}
+
+function safeStringify(v: unknown): string {
+  try {
+    return JSON.stringify(v)
+  } catch {
+    return String(v)
   }
 }

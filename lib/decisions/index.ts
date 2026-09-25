@@ -68,9 +68,9 @@ export function getDecisionProvider(): DecisionProvider {
 
   const chain: DecisionProvider[] = []
   if (provider === 'laya') {
-    if (env.LAYA_ENDPOINT) {
-      chain.push(new LayaHttpDecisionProvider(env.LAYA_ENDPOINT, env.LAYA_API_KEY))
-    }
+    // v8.1: LayaHttpDecisionProvider defaults to the public demo Space when
+    // no endpoint is set, so we no longer gate on env.LAYA_ENDPOINT here.
+    chain.push(new LayaHttpDecisionProvider(env.LAYA_ENDPOINT, env.LAYA_API_KEY))
   }
   if (env.GROQ_API_KEY) {
     chain.push(new GroqDecisionProvider(env.GROQ_API_KEY))
