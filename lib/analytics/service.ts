@@ -1,6 +1,8 @@
 import { eq, sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { activities, aiCallLogs, applications, discoveries } from '@/lib/db/schema'
+import * as expensesQ from '@/lib/db/queries/expenses'
+import * as budgetsQ from '@/lib/db/queries/expenseBudgets'
 
 /**
  * Normalize the row-set that a Drizzle `db.execute()` returns. postgres-js
@@ -543,6 +545,88 @@ function dayIsoDate(value: Date | string): string {
   return utc.toISOString().slice(0, 10)
 }
 
+// ---------------------------------------------------------------------------
+// v7 — Expense analytics. Thin wrappers around the expenses/budgets query
+// layer, shaped to feed straight into the analytics cards & CSV export.
+// ---------------------------------------------------------------------------
+
+export interface MonthlyExpenseCategoryPoint {
+  category: string
+  totalCents: number
+}
+
+export interface MonthlyExpenseBar {
+  month: string // YYYY-MM
+  totalCents: number
+  perCategory: MonthlyExpenseCategoryPoint[]
+}
+
+/**
+ * Total spend per (month, category) over the last N calendar months. Wraps
+ * expenses.sumByMonth so the analytics-card component doesn't reach into
+ * the queries directly.
+ */
+export async function monthlyExpenses(
+  userId: string,
+  months = 6,
+): Promise<MonthlyExpenseBar[]> {
+  return expensesQ.sumByMonth(userId, months)
+}
+
+export interface BudgetVsActualRow {
+  category: string
+  budgetCents: number
+  actualCents: number
+  currency: string
+}
+
+/** Returns `YYYY-MM` for the current month in UTC. */
+function currentMonthKey(): string {
+  const d = new Date()
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+/**
+ * Compare each category's monthly budget cap against month-to-date spend.
+ * Includes every category with either a budget OR any spend that month so
+ * over-budget items surface even when the user never set a cap.
+ */
+export async function budgetVsActual(
+  userId: string,
+  month?: string,
+): Promise<BudgetVsActualRow[]> {
+  const monthKey = month ?? currentMonthKey()
+  const [budgets, actuals] = await Promise.all([
+    budgetsQ.list(userId),
+    expensesQ.sumByCategory(userId, monthKey),
+  ])
+  const byCategory = new Map<string, BudgetVsActualRow>()
+  for (const b of budgets) {
+    byCategory.set(b.category, {
+      category: b.category,
+      budgetCents: b.monthlyCapCents,
+      actualCents: 0,
+      currency: b.currency,
+    })
+  }
+  for (const a of actuals) {
+    const existing = byCategory.get(a.category)
+    if (existing) {
+      existing.actualCents = a.totalCents
+    } else {
+      byCategory.set(a.category, {
+        category: a.category,
+        budgetCents: 0,
+        actualCents: a.totalCents,
+        currency: 'AED',
+      })
+    }
+  }
+  return Array.from(byCategory.values()).sort(
+    (a, b) => b.actualCents - a.actualCents || b.budgetCents - a.budgetCents,
+  )
+}
+
 // Re-exported so tests can exercise the pure helpers directly and the CSV
 // route can reuse the same bucket labels without duplicating them.
 export const _internal = {
@@ -555,4 +639,5 @@ export const _internal = {
   weekStartIsoDate,
   AI_PRICES,
   PROVIDER_DEFAULT_MODEL,
+  currentMonthKey,
 }

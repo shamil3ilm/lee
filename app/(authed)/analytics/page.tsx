@@ -2,7 +2,9 @@ import { requireUserId } from '@/lib/auth/require-session'
 import { PageHeader } from '@/components/page-header'
 import {
   aiUsageStats,
+  budgetVsActual,
   discoveryCalibration,
+  monthlyExpenses,
   responseTimeDistribution,
   sourceFunnel,
   statusDistribution,
@@ -16,6 +18,8 @@ import { DiscoveryCalibrationCard } from '@/components/analytics/discovery-calib
 import { WeeklyActivityCard } from '@/components/analytics/weekly-activity-card'
 import { StatusDistributionCard } from '@/components/analytics/status-distribution-card'
 import { AIUsageCard } from '@/components/analytics/ai-usage-card'
+import { MonthlyExpensesCard } from '@/components/analytics/monthly-expenses-card'
+import { BudgetVsActualCard } from '@/components/analytics/budget-vs-actual-card'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,7 +31,17 @@ export const dynamic = 'force-dynamic'
 export default async function AnalyticsPage() {
   const userId = await requireUserId()
 
-  const [funnel, response, outcome, calibration, weekly, status, aiUsage] = await Promise.all([
+  const [
+    funnel,
+    response,
+    outcome,
+    calibration,
+    weekly,
+    status,
+    aiUsage,
+    expensesByMonth,
+    budgets,
+  ] = await Promise.all([
     sourceFunnel(userId),
     responseTimeDistribution(userId),
     timeToOutcome(userId),
@@ -35,6 +49,8 @@ export default async function AnalyticsPage() {
     weeklyActivity(userId, 12),
     statusDistribution(userId),
     aiUsageStats(userId, 30),
+    monthlyExpenses(userId, 6),
+    budgetVsActual(userId),
   ])
 
   return (
@@ -50,6 +66,8 @@ export default async function AnalyticsPage() {
         <DiscoveryCalibrationCard data={calibration} />
         <WeeklyActivityCard data={weekly} />
         <StatusDistributionCard data={status} />
+        <MonthlyExpensesCard data={expensesByMonth} />
+        <BudgetVsActualCard data={budgets} />
         <AIUsageCard data={aiUsage} className="xl:col-span-3" />
       </div>
     </div>

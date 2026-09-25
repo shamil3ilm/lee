@@ -1,6 +1,8 @@
 import {
   aiUsageStats,
+  budgetVsActual,
   discoveryCalibration,
+  monthlyExpenses,
   responseTimeDistribution,
   sourceFunnel,
   statusDistribution,
@@ -23,6 +25,8 @@ export const EXPORT_METRICS = [
   'weekly-activity',
   'status-distribution',
   'ai-usage',
+  'monthly-expenses',
+  'budget-vs-actual',
 ] as const
 
 export type ExportMetric = (typeof EXPORT_METRICS)[number]
@@ -138,6 +142,32 @@ async function buildTable(metric: ExportMetric, userId: string): Promise<CsvTabl
           r.avgLatencyMs,
           Number(r.estimatedCostUsd.toFixed(6)),
         ]),
+      }
+    }
+    case 'monthly-expenses': {
+      const bars = await monthlyExpenses(userId, 6)
+      // Long-format so pivoting downstream stays trivial regardless of how
+      // many categories appear across the window.
+      const rows: (string | number)[][] = []
+      for (const bar of bars) {
+        if (bar.perCategory.length === 0) {
+          rows.push([bar.month, '', 0])
+          continue
+        }
+        for (const c of bar.perCategory) {
+          rows.push([bar.month, c.category, c.totalCents])
+        }
+      }
+      return {
+        columns: ['month', 'category', 'total_cents'],
+        rows,
+      }
+    }
+    case 'budget-vs-actual': {
+      const rows = await budgetVsActual(userId)
+      return {
+        columns: ['category', 'budget_cents', 'actual_cents', 'currency'],
+        rows: rows.map((r) => [r.category, r.budgetCents, r.actualCents, r.currency]),
       }
     }
   }
