@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import * as documentsQ from '@/lib/db/queries/documents'
+import * as assetsQ from '@/lib/db/queries/documentAssets'
 import { renderCvPdf, renderCoverLetterPdf, renderPrepPackPdf } from '@/lib/pdf/render'
 import {
   coverLetterSchema,
@@ -51,7 +52,18 @@ export async function GET(
       if (!content.source.trim()) {
         return NextResponse.json({ error: 'LaTeX source is empty.' }, { status: 422 })
       }
-      const result = await compileLatex(content.source)
+      // v5.2: bundle every asset owned by this document into the compile
+      // request so `\includegraphics{name}` and friends resolve without a
+      // second round-trip.
+      const assets = await assetsQ.listWithBytes(userId, id)
+      const result = await compileLatex({
+        source: content.source,
+        assets: assets.map((a) => ({
+          filename: a.filename,
+          mimeType: a.mimeType,
+          bytes: a.bytes,
+        })),
+      })
       if (result.ok) {
         // Best-effort side effect: update compile status. Never let a DB
         // failure block returning the fresh PDF bytes.
