@@ -575,6 +575,66 @@ export const documentAssetsRelations = relations(documentAssets, ({ one }) => ({
   }),
 }))
 
+// ---------------------------------------------------------------------------
+// v7 — Personal expense tracker. Adjacent to the job-hunt domain but standalone:
+// same user, same DB. `amount_cents` stores integer minor units (multiply by
+// currency's decimal exponent when displaying — AED / USD / EUR use 2). Two
+// indexes cover the hot paths on the /expenses page: (user, date) drives the
+// month filter and recent-transactions list; (user, category) drives the
+// per-category rollups and budget checks.
+// ---------------------------------------------------------------------------
+
+export const expenses = pgTable(
+  'expenses',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    // Date-only, no time component. Postgres `date` maps cleanly to a JS
+    // string like '2026-09-25' when read via postgres-js, which is what the
+    // UI wants — do NOT convert to a Date in queries so month filtering can
+    // stay a lexicographic string prefix comparison.
+    date: text('date').notNull(),
+    amountCents: integer('amount_cents').notNull(),
+    currency: text('currency').notNull().default('AED'),
+    // Top-level category — one of the enum values documented in the spec.
+    // Stored as text (not a Postgres enum) so adding a new category is a code
+    // change, not a migration. Freeform subcategory allows fine-grained
+    // classification (e.g. subscription/streaming, transport/uber).
+    category: text('category').notNull(),
+    subcategory: text('subcategory'),
+    vendor: text('vendor'),
+    description: text('description'),
+    recurring: boolean('recurring').notNull().default(false),
+    recurringPeriod: text('recurring_period'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    userDateIx: index('expenses_user_date_idx').on(t.userId, t.date),
+    userCategoryIx: index('expenses_user_category_idx').on(t.userId, t.category),
+  }),
+)
+
+export const expenseBudgets = pgTable(
+  'expense_budgets',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    category: text('category').notNull(),
+    monthlyCapCents: integer('monthly_cap_cents').notNull(),
+    currency: text('currency').notNull().default('AED'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    userCategoryUq: uniqueIndex('expense_budgets_user_category_uq').on(t.userId, t.category),
+  }),
+)
+
 export const aiCallLogs = pgTable('ai_call_logs', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),

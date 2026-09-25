@@ -50,6 +50,13 @@
       "when": 1790317163868,
       "tag": "0006_cynical_kylun",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790326433818,
+      "tag": "0007_acoustic_bushwacker",
+      "breakpoints": true
     }
   ]
 }

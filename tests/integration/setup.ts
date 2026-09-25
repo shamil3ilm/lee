@@ -7,6 +7,8 @@ import { db, isPglite, pgliteClient } from '@/lib/db/client'
 // App-level tables to truncate between tests. Ordered from child to parent
 // (though CASCADE handles the rest). Keep in sync with lib/db/schema.ts.
 const TABLES = [
+  'expense_budgets',
+  'expenses',
   'document_assets',
   'documents',
   'activities',
