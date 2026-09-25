@@ -8,6 +8,9 @@ import * as stagesQ from '@/lib/db/queries/stages'
 import * as applicationContactsQ from '@/lib/db/queries/applicationContacts'
 import * as documentsQ from '@/lib/db/queries/documents'
 import * as todosQ from '@/lib/db/queries/todos'
+import * as cvScoresQ from '@/lib/db/queries/cvScores'
+import { pickScoringDocument, toCvFitView, toDocScoreMap } from '@/lib/cv-score/fit'
+import { CvFitCard } from '@/components/cv-score/cv-fit-card'
 import { StatusPicker } from '@/components/status-picker'
 import { AddStageDialog } from '@/components/add-stage-dialog'
 import { DocumentsCard } from '@/components/documents-card'
@@ -24,6 +27,9 @@ import { STATUS_BADGE, STATUS_LABELS, type ApplicationStatus } from '@/lib/ui/st
 import { APPLICATION_STATUSES } from '@/lib/ui/status'
 
 export const dynamic = 'force-dynamic'
+
+// Enough history to find the previous same-mode score for the fit delta.
+const CV_FIT_HISTORY = 10
 
 function narrowStatus(s: string): ApplicationStatus {
   return (APPLICATION_STATUSES as readonly string[]).includes(s)
@@ -73,18 +79,26 @@ export default async function ApplicationDetail({
   const app = await appsQ.getById(userId, id)
   if (!app) notFound()
 
-  const [stages, activities, contacts, allDocs, todos] = await Promise.all([
+  const [stages, activities, contacts, allDocs, todos, scoreRows, masterCvs] = await Promise.all([
     stagesQ.list(userId, id),
     actQ.list(userId, id, { limit: 50 }),
     applicationContactsQ.listForApplication(userId, id),
     documentsQ.list(userId, { applicationId: id }),
     todosQ.list(userId, { applicationId: id }),
+    cvScoresQ.listByApplication(userId, id, CV_FIT_HISTORY),
+    documentsQ.list(userId, { kind: 'master_cv' }),
   ])
 
   // Split the app's documents so each card only sees the shapes it renders.
   const cvDocs = allDocs.filter((d) =>
     ['tailored_cv', 'cover_letter', 'master_cv'].includes(d.kind),
   )
+  const docScores = await cvScoresQ.latestByDocuments(
+    userId,
+    cvDocs.map((d) => d.id),
+  )
+  const cvFit = toCvFitView(scoreRows)
+  const scoringDoc = pickScoringDocument([...allDocs, ...masterCvs])
   const outreachDocs = allDocs.filter((d) => d.kind.startsWith('outreach_'))
   const prepDocs = allDocs.filter((d) => d.kind === 'interview_prep_pack')
   const debriefDocs = allDocs.filter((d) => d.kind === 'interview_debrief')
@@ -270,7 +284,17 @@ export default async function ApplicationDetail({
 
           <TodosCard applicationId={app.id} todos={todos} now={now} />
 
-          <DocumentsCard applicationId={app.id} documents={cvDocs} />
+          <CvFitCard
+            applicationId={app.id}
+            fit={cvFit}
+            scoringDocument={scoringDoc ? { id: scoringDoc.id, title: scoringDoc.title } : null}
+          />
+
+          <DocumentsCard
+            applicationId={app.id}
+            documents={cvDocs}
+            scores={toDocScoreMap(docScores)}
+          />
 
           <OutreachCard
             applicationId={app.id}

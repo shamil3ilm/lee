@@ -33,6 +33,8 @@ import {
 import { relativeFromNow } from '@/lib/ui/date'
 import { MergeDocumentsDialog } from '@/components/merge-documents-dialog'
 import { StalenessBadge } from '@/components/staleness-badge'
+import { CvScoreBadge } from '@/components/cv-score/cv-score-badge'
+import type { DocScore } from '@/lib/cv-score/fit'
 import { FeedbackButtons } from '@/components/feedback-buttons'
 import { logImplicitAction } from '@/lib/ui/implicit-signals'
 
@@ -47,6 +49,8 @@ type DocumentKind =
 interface DocumentsCardProps {
   applicationId: string
   documents: Document[]
+  /** Latest CV score per document id (CV rows only). */
+  scores?: Record<string, DocScore>
 }
 
 const KIND_LABELS: Record<DocumentKind, string> = {
@@ -85,7 +89,7 @@ function generateEndpoint(applicationId: string, kind: DocumentKind): string | n
   return null
 }
 
-export function DocumentsCard({ applicationId, documents }: DocumentsCardProps) {
+export function DocumentsCard({ applicationId, documents, scores = {} }: DocumentsCardProps) {
   const router = useRouter()
   const [busy, setBusy] = useState<null | 'tailored' | 'cover_letter'>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -193,6 +197,7 @@ export function DocumentsCard({ applicationId, documents }: DocumentsCardProps) 
                         {KIND_LABELS[kind] ?? kind}
                       </Badge>
                       <span className="truncate font-medium">{doc.title}</span>
+                      <CvScoreBadge documentId={doc.id} score={scores[doc.id]} />
                     </div>
                     <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
                       <span>

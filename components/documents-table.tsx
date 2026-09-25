@@ -19,6 +19,8 @@ import {
 import { cn } from '@/lib/utils'
 import { relativeFromNow } from '@/lib/ui/date'
 import { StalenessBadge } from '@/components/staleness-badge'
+import { CvScoreBadge } from '@/components/cv-score/cv-score-badge'
+import type { DocScore } from '@/lib/cv-score/fit'
 
 type DocumentKind =
   | 'master_cv'
@@ -50,6 +52,8 @@ type FilterValue =
 interface DocumentsTableProps {
   documents: Document[]
   currentFilter: FilterValue
+  /** Latest CV score per document id; unscored documents are absent. */
+  scores?: Record<string, DocScore>
 }
 
 const KIND_LABELS: Record<DocumentKind, string> = {
@@ -100,7 +104,7 @@ function isLatexKind(kind: DocumentKind): boolean {
   return kind === 'latex_cv' || kind === 'latex_cover_letter'
 }
 
-export function DocumentsTable({ documents, currentFilter }: DocumentsTableProps) {
+export function DocumentsTable({ documents, currentFilter, scores = {} }: DocumentsTableProps) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [confirmDelete, setConfirmDelete] = useState<Document | null>(null)
@@ -181,6 +185,7 @@ export function DocumentsTable({ documents, currentFilter }: DocumentsTableProps
                   <th className="px-4 py-3">Title</th>
                   <th className="px-4 py-3">Application</th>
                   <th className="px-4 py-3">Version</th>
+                  <th className="px-4 py-3">CV score</th>
                   <th className="px-4 py-3">Freshness</th>
                   <th className="px-4 py-3">Created</th>
                   <th className="px-4 py-3 text-right">Actions</th>
@@ -212,6 +217,13 @@ export function DocumentsTable({ documents, currentFilter }: DocumentsTableProps
                         )}
                       </td>
                       <td className="px-4 py-3 text-xs">v{doc.version}</td>
+                      <td className="px-4 py-3">
+                        <CvScoreBadge
+                          documentId={doc.id}
+                          score={scores[doc.id]}
+                          fallback={<span className="text-xs text-muted-foreground">—</span>}
+                        />
+                      </td>
                       <td className="px-4 py-3">
                         <StalenessBadge documentId={doc.id} />
                       </td>

@@ -3,6 +3,7 @@ import {
   AlarmClock,
   ArrowRight,
   Briefcase,
+  Gauge,
   MessageSquareText,
   NotebookPen,
   Send,
@@ -17,6 +18,7 @@ const ICONS: Record<NextActionKind, LucideIcon> = {
   interview_prep: NotebookPen,
   debrief: MessageSquareText,
   follow_up: Send,
+  cv_fit: Gauge,
   discovery: Sparkles,
   add_application: Briefcase,
 }

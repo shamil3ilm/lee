@@ -6,6 +6,7 @@ import {
   CheckSquare,
   FileCheck2,
   FileText,
+  Gauge,
   Home,
   Settings,
   Shapes,
@@ -53,6 +54,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/applications', label: 'Applications', icon: Briefcase },
       { href: '/documents', label: 'Documents', icon: FileCheck2 },
+      { href: '/cv-score', label: 'CV Score', icon: Gauge },
       { href: '/contacts', label: 'Contacts', icon: Users },
     ],
   },

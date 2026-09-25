@@ -74,7 +74,7 @@ export function SetupChecklist({ checklist }: SetupChecklistProps) {
               style={{ width: `${pct}%` }}
             />
           </div>
-          <ul className="grid gap-1 sm:grid-cols-2 lg:grid-cols-5">
+          <ul className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((item) => (
               <li key={item.key}>
                 <Link

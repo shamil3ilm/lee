@@ -4,6 +4,7 @@ import * as s from '@/lib/db/schema'
 import * as todosQ from '@/lib/db/queries/todos'
 import * as stagesQ from '@/lib/db/queries/stages'
 import * as documentsQ from '@/lib/db/queries/documents'
+import * as cvScoresQ from '@/lib/db/queries/cvScores'
 import { saveProfile } from '@/lib/profile/service'
 import {
   GMAIL_READ_SCOPE,
@@ -43,11 +44,12 @@ describe('getSetupChecklist', () => {
   it('reports every item as not done for a fresh user', async () => {
     const u = await makeUser()
     const res = await getSetupChecklist(u.id)
-    expect(res.total).toBe(5)
+    expect(res.total).toBe(6)
     expect(res.completed).toBe(0)
     expect(res.items.map((i) => i.key)).toEqual([
       'profile',
       'master_cv',
+      'cv_score',
       'source',
       'google',
       'application',
@@ -58,12 +60,22 @@ describe('getSetupChecklist', () => {
   it('marks every item done once the user is set up', async () => {
     const u = await makeUser()
     await saveProfile(u.id, { skills: ['go'] })
-    await documentsQ.create(u.id, { kind: 'master_cv', title: 'CV', content: {} })
+    const cv = await documentsQ.create(u.id, { kind: 'master_cv', title: 'CV', content: {} })
+    await cvScoresQ.create(u.id, {
+      documentId: cv.id,
+      sourceKind: 'master_cv',
+      overall: 72,
+      grade: 'C',
+      scores: {},
+      dimensions: {},
+      findings: [],
+      scorerVersion: 'test',
+    })
     await makeSource(u.id)
     await connectGoogle(u.id, `openid email ${GMAIL_READ_SCOPE}`)
     await makeApp(u.id)
     const res = await getSetupChecklist(u.id)
-    expect(res.completed).toBe(5)
+    expect(res.completed).toBe(6)
     expect(res.items.every((i) => i.done)).toBe(true)
   })
 

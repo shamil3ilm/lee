@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { FilePlus2, Layers } from 'lucide-react'
 import { requireUserId } from '@/lib/auth/require-session'
 import * as documentsQ from '@/lib/db/queries/documents'
+import * as cvScoresQ from '@/lib/db/queries/cvScores'
+import { toDocScoreMap } from '@/lib/cv-score/fit'
 import { PageHeader } from '@/components/page-header'
 import { DocumentsTable } from '@/components/documents-table'
 import { Button } from '@/components/ui/button'
@@ -21,6 +23,9 @@ const FILTER_VALUES = [
   'latex',
   'merged',
 ] as const
+
+// Kinds the CV scorer can score (see /cv-score).
+const CV_KINDS: ReadonlySet<string> = new Set(['master_cv', 'tailored_cv', 'latex_cv'])
 
 type FilterValue = 'all' | (typeof FILTER_VALUES)[number]
 
@@ -66,6 +71,10 @@ export default async function DocumentsLibraryPage({
                   )
                 : all.filter((d) => d.kind === filter)
 
+  // One batched query for every CV row on screen (no per-row lookups).
+  const cvIds = documents.filter((d) => CV_KINDS.has(d.kind)).map((d) => d.id)
+  const scores = toDocScoreMap(await cvScoresQ.latestByDocuments(userId, cvIds))
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -88,7 +97,7 @@ export default async function DocumentsLibraryPage({
           </>
         }
       />
-      <DocumentsTable documents={documents} currentFilter={filter} />
+      <DocumentsTable documents={documents} currentFilter={filter} scores={scores} />
     </div>
   )
 }

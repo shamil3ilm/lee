@@ -1,4 +1,4 @@
-import { and, desc, eq } from 'drizzle-orm'
+import { and, desc, eq, inArray } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import { cvScores } from '@/lib/db/schema'
 
@@ -95,4 +95,47 @@ export async function history(
     .orderBy(desc(cvScores.createdAt))
     .limit(limit)
   return [...rows].reverse()
+}
+
+/** The slim per-document view the documents library badges need. */
+export interface CvScoreSummary {
+  documentId: string
+  overall: number
+  grade: string
+  mode: string
+  createdAt: Date
+}
+
+/**
+ * Latest score per document in ONE query (DISTINCT ON), so list pages can
+ * badge every CV row without an N+1. Documents never scored are absent.
+ */
+export async function latestByDocuments(
+  userId: string,
+  documentIds: readonly string[],
+  client: DbClient = db,
+): Promise<CvScoreSummary[]> {
+  if (documentIds.length === 0) return []
+  const rows = await client
+    .selectDistinctOn([cvScores.documentId], {
+      documentId: cvScores.documentId,
+      overall: cvScores.overall,
+      grade: cvScores.grade,
+      mode: cvScores.mode,
+      createdAt: cvScores.createdAt,
+    })
+    .from(cvScores)
+    .where(and(eq(cvScores.userId, userId), inArray(cvScores.documentId, [...documentIds])))
+    .orderBy(cvScores.documentId, desc(cvScores.createdAt))
+  return rows.flatMap((r) => (r.documentId ? [{ ...r, documentId: r.documentId }] : []))
+}
+
+/** True once the user has scored any CV at all. */
+export async function hasAny(userId: string, client: DbClient = db): Promise<boolean> {
+  const rows = await client
+    .select({ id: cvScores.id })
+    .from(cvScores)
+    .where(eq(cvScores.userId, userId))
+    .limit(1)
+  return rows.length > 0
 }

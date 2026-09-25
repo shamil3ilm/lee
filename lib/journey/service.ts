@@ -11,6 +11,8 @@ import {
   userProfile,
 } from '@/lib/db/schema'
 import { findFollowupCandidates } from '@/lib/followups/service'
+import * as cvScoresQ from '@/lib/db/queries/cvScores'
+import { findLowestCvFit } from './cv-fit'
 import type { NormalizedJob } from '@/lib/discovery/adapters/types'
 
 /**
@@ -30,7 +32,7 @@ export const DEBRIEF_LOOKBACK_MS = 14 * 24 * HOUR_MS
 // Setup checklist
 // ---------------------------------------------------------------------------
 
-export type SetupItemKey = 'profile' | 'master_cv' | 'source' | 'google' | 'application'
+export type SetupItemKey = 'profile' | 'master_cv' | 'cv_score' | 'source' | 'google' | 'application'
 
 export interface SetupItem {
   key: SetupItemKey
@@ -51,7 +53,7 @@ async function exists(query: Promise<unknown[]>): Promise<boolean> {
 }
 
 export async function getSetupChecklist(userId: string): Promise<SetupChecklist> {
-  const [profile, hasMasterCv, hasSource, google, hasApplication] = await Promise.all([
+  const [profile, hasMasterCv, hasCvScore, hasSource, google, hasApplication] = await Promise.all([
     db.query.userProfile.findFirst({
       where: eq(userProfile.userId, userId),
       columns: { skills: true, headline: true },
@@ -63,6 +65,7 @@ export async function getSetupChecklist(userId: string): Promise<SetupChecklist>
         .where(and(eq(documents.userId, userId), eq(documents.kind, 'master_cv')))
         .limit(1),
     ),
+    cvScoresQ.hasAny(userId),
     exists(db.select({ id: sources.id }).from(sources).where(eq(sources.userId, userId)).limit(1)),
     db.query.accounts.findFirst({
       where: and(eq(accounts.userId, userId), eq(accounts.provider, 'google')),
@@ -84,6 +87,7 @@ export async function getSetupChecklist(userId: string): Promise<SetupChecklist>
   const items: SetupItem[] = [
     { key: 'profile', label: 'Import your profile', done: profileImported, href: '/settings/profile' },
     { key: 'master_cv', label: 'Save your master CV', done: hasMasterCv, href: '/settings/cv' },
+    { key: 'cv_score', label: 'Score your CV', done: hasCvScore, href: '/cv-score' },
     { key: 'source', label: 'Add a discovery source', done: hasSource, href: '/settings/sources' },
     { key: 'google', label: 'Connect Google', done: googleConnected, href: '/settings/integrations' },
     {
@@ -105,6 +109,7 @@ export type NextActionKind =
   | 'interview_prep'
   | 'debrief'
   | 'follow_up'
+  | 'cv_fit'
   | 'discovery'
   | 'add_application'
 
@@ -208,6 +213,18 @@ async function followUpAction(userId: string, now: Date): Promise<NextBestAction
   }
 }
 
+async function cvFitAction(userId: string): Promise<NextBestAction | null> {
+  const low = await findLowestCvFit(userId)
+  if (!low) return null
+  return {
+    kind: 'cv_fit',
+    title: `Your CV scores ${low.overall} for ${low.companyName ?? low.jobTitle} — tailor before applying`,
+    description: `${roleLabel(low.jobTitle, low.companyName)} — tailor your CV to the job, then score it again.`,
+    href: `/applications/${low.applicationId}`,
+    ctaLabel: 'Tailor CV',
+  }
+}
+
 async function discoveryAction(userId: string): Promise<NextBestAction | null> {
   const profile = await db.query.userProfile.findFirst({
     where: eq(userProfile.userId, userId),
@@ -248,7 +265,9 @@ const FALLBACK_ACTION: NextBestAction = {
 
 /**
  * First match wins, in spec §2.7 priority order. Each probe is only run when
- * every higher-priority probe came back empty.
+ * every higher-priority probe came back empty. The v12 CV-fit nudge sits
+ * after follow-ups (time-sensitive, already applied) and before new
+ * discoveries: finish preparing roles you saved before adding more.
  */
 export async function getNextBestAction(userId: string, now: Date): Promise<NextBestAction> {
   const probes: Array<() => Promise<NextBestAction | null>> = [
@@ -256,6 +275,7 @@ export async function getNextBestAction(userId: string, now: Date): Promise<Next
     () => interviewPrepAction(userId, now),
     () => debriefAction(userId, now),
     () => followUpAction(userId, now),
+    () => cvFitAction(userId),
     () => discoveryAction(userId),
   ]
   for (const probe of probes) {
