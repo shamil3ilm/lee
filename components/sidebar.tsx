@@ -1,87 +1,31 @@
 'use client'
-import Image from 'next/image'
 import Link from 'next/link'
+import { useCallback, useLayoutEffect, useMemo, useSyncExternalStore } from 'react'
 import { usePathname } from 'next/navigation'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import {
-  Home,
-  Briefcase,
-  Building2,
-  Users,
-  Settings,
-  FileText,
-  FileCheck2,
-  Sparkles,
-  Rss,
-  Plug,
-  Bell,
-  BarChart3,
-  Wallet,
-  Target,
-  Upload,
-  Layers,
-  CheckSquare,
-  Beaker,
-  type LucideIcon,
-} from 'lucide-react'
+  ALL_NAV_HREFS,
+  HOME_ITEM,
+  NAV_GROUPS,
+  SETTINGS_ITEM,
+  type NavBadges,
+} from '@/components/nav/nav-config'
+import { SidebarGroup } from '@/components/nav/sidebar-group'
+import { SidebarLink } from '@/components/nav/sidebar-link'
+import { RailToggle } from '@/components/nav/rail-toggle'
+import { SidebarUser } from '@/components/nav/sidebar-user'
+import { isGroupOpen, parseGroupState, pickActiveHref } from '@/lib/ui/nav-active'
+import {
+  applyRailAttribute,
+  getGroupsServerSnapshot,
+  getGroupsSnapshot,
+  getRailServerSnapshot,
+  getRailSnapshot,
+  setGroupsRaw,
+  setRail,
+  subscribeSidebar,
+} from '@/lib/ui/sidebar-store'
 import { cn } from '@/lib/utils'
-
-interface NavItem {
-  href: string
-  label: string
-  icon: LucideIcon
-}
-
-interface NavSection {
-  label: string
-  items: NavItem[]
-}
-
-const SECTIONS: NavSection[] = [
-  {
-    label: 'Pipeline',
-    items: [
-      { href: '/', label: 'Dashboard', icon: Home },
-      { href: '/analytics', label: 'Analytics', icon: BarChart3 },
-      { href: '/applications', label: 'Applications', icon: Briefcase },
-      { href: '/todos', label: 'Todos', icon: CheckSquare },
-      { href: '/documents', label: 'Documents', icon: FileCheck2 },
-      { href: '/documents/merge', label: 'Merge', icon: Layers },
-      { href: '/discoveries', label: 'Discovery', icon: Sparkles },
-    ],
-  },
-  {
-    label: 'Directory',
-    items: [
-      { href: '/companies', label: 'Companies', icon: Building2 },
-      { href: '/contacts', label: 'Contacts', icon: Users },
-    ],
-  },
-  {
-    label: 'Expenses',
-    items: [
-      { href: '/expenses', label: 'Overview', icon: Wallet },
-      { href: '/expenses/budgets', label: 'Budgets', icon: Target },
-      { href: '/expenses/import', label: 'Import', icon: Upload },
-    ],
-  },
-  {
-    label: 'Personal',
-    items: [
-      { href: '/settings/profile', label: 'Profile', icon: Settings },
-      { href: '/settings/integrations', label: 'Integrations', icon: Plug },
-      { href: '/settings/notifications', label: 'Notifications', icon: Bell },
-      { href: '/settings/cv', label: 'CV', icon: FileText },
-      { href: '/settings/sources', label: 'Sources', icon: Rss },
-      { href: '/digest', label: 'Digest', icon: FileText },
-    ],
-  },
-  {
-    label: 'Playground',
-    items: [
-      { href: '/playground/decisions', label: 'Decisions', icon: Beaker },
-    ],
-  },
-]
 
 interface SidebarProps {
   className?: string
@@ -89,102 +33,100 @@ interface SidebarProps {
   email?: string | null
   name?: string | null
   image?: string | null
+  badges?: NavBadges
+  /** Desktop only: allow collapsing to an icon rail. Off inside the mobile drawer. */
+  railEnabled?: boolean
 }
 
-function initials(email: string, name?: string | null): string {
-  const base = name?.trim() || email
-  const parts = base.split(/[\s@.]+/).filter(Boolean)
-  const first = parts[0]?.[0] ?? '?'
-  const second = parts[1]?.[0] ?? ''
-  return (first + second).toUpperCase()
-}
-
-export function Sidebar({ className, onNavigate, email, name, image }: SidebarProps) {
+export function Sidebar({
+  className,
+  onNavigate,
+  email,
+  name,
+  image,
+  badges = {},
+  railEnabled = false,
+}: SidebarProps) {
   const pathname = usePathname()
+  const activeHref = pickActiveHref(pathname, ALL_NAV_HREFS)
 
-  // Collect every nav href once so `isActive` can pick the LONGEST-matching
-  // href for the current path. Prevents the Overview entry (`/expenses`)
-  // from also lighting up when the user is on `/expenses/budgets` — the
-  // more specific sub-page wins.
-  const allHrefs = SECTIONS.flatMap((s) => s.items.map((i) => i.href))
+  const railStored = useSyncExternalStore(subscribeSidebar, getRailSnapshot, getRailServerSnapshot)
+  const rail = railEnabled && railStored
 
-  const isActive = (href: string): boolean => {
-    if (href === '/') return pathname === '/'
-    const matches = allHrefs.filter(
-      (h) => h !== '/' && (pathname === h || pathname.startsWith(`${h}/`)),
-    )
-    if (matches.length === 0) return false
-    const best = matches.reduce((longest, h) => (h.length > longest.length ? h : longest))
-    return href === best
-  }
+  const groupsRaw = useSyncExternalStore(
+    subscribeSidebar,
+    getGroupsSnapshot,
+    getGroupsServerSnapshot,
+  )
+  const groupState = useMemo(() => parseGroupState(groupsRaw), [groupsRaw])
+
+  // Dev Strict Mode can re-render the shell without the attribute the boot
+  // script set; re-apply from storage before paint. Reads storage directly
+  // (not the hydration snapshot) so it never undoes the boot script.
+  useLayoutEffect(() => {
+    if (railEnabled) applyRailAttribute(getRailSnapshot())
+  }, [railEnabled])
+
+  const toggleGroup = useCallback(
+    (key: string) => {
+      const containsActive = NAV_GROUPS.some(
+        (g) => g.key === key && g.items.some((i) => i.href === activeHref),
+      )
+      const current = isGroupOpen(key, groupState, containsActive)
+      setGroupsRaw(JSON.stringify({ ...groupState, [key]: !current }))
+    },
+    [activeHref, groupState],
+  )
 
   return (
-    <aside className={cn('flex h-full flex-col border-r bg-background', className)}>
-      <div className="flex h-14 items-center border-b px-5">
-        <Link
-          href="/"
-          onClick={onNavigate}
-          className="text-base font-semibold tracking-tight"
+    <TooltipProvider delayDuration={200}>
+      <aside className={cn('flex h-full flex-col border-r bg-background', className)}>
+        <div className="flex h-14 items-center justify-between gap-2 border-b px-5 group-data-[sidebar=rail]/shell:justify-center group-data-[sidebar=rail]/shell:px-2">
+          <Link
+            href="/"
+            onClick={onNavigate}
+            className="text-base font-semibold tracking-tight group-data-[sidebar=rail]/shell:hidden"
+          >
+            Employ
+          </Link>
+          {railEnabled ? <RailToggle rail={rail} onToggle={() => setRail(!rail)} /> : null}
+        </div>
+        <nav
+          aria-label="Main"
+          className="flex-1 space-y-3 overflow-y-auto px-3 py-4 group-data-[sidebar=rail]/shell:px-2"
         >
-          Employ
-        </Link>
-      </div>
-      <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
-        {SECTIONS.map((section) => (
-          <div key={section.label}>
-            <div className="mb-1 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {section.label}
-            </div>
-            <div className="space-y-0.5">
-              {section.items.map(({ href, label, icon: Icon }) => {
-                const active = isActive(href)
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    onClick={onNavigate}
-                    className={cn(
-                      'flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-                      active
-                        ? 'bg-accent font-semibold text-accent-foreground shadow-sm'
-                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-                    )}
-                  >
-                    <Icon className="size-4" />
-                    <span>{label}</span>
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-        ))}
-      </nav>
-      {email ? (
-        <footer className="mt-auto border-t p-3">
-          <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm">
-            {image ? (
-              <Image
-                src={image}
-                alt=""
-                width={28}
-                height={28}
-                className="h-7 w-7 rounded-full object-cover ring-1 ring-border"
-                unoptimized
+          <SidebarLink
+            item={HOME_ITEM}
+            active={activeHref === HOME_ITEM.href}
+            rail={rail}
+            onNavigate={onNavigate}
+          />
+          {NAV_GROUPS.map((group) => {
+            const containsActive = group.items.some((i) => i.href === activeHref)
+            return (
+              <SidebarGroup
+                key={group.key}
+                group={group}
+                open={isGroupOpen(group.key, groupState, containsActive)}
+                activeHref={activeHref}
+                badges={badges}
+                rail={rail}
+                onToggle={toggleGroup}
+                onNavigate={onNavigate}
               />
-            ) : (
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary text-[11px] font-medium text-secondary-foreground">
-                {initials(email, name)}
-              </span>
-            )}
-            <div className="min-w-0 flex-1">
-              {name ? (
-                <div className="truncate text-xs font-medium">{name}</div>
-              ) : null}
-              <div className="truncate text-xs text-muted-foreground">{email}</div>
-            </div>
-          </div>
+            )
+          })}
+        </nav>
+        <footer className="mt-auto space-y-1 border-t p-3 group-data-[sidebar=rail]/shell:px-2">
+          <SidebarLink
+            item={SETTINGS_ITEM}
+            active={activeHref === SETTINGS_ITEM.href}
+            rail={rail}
+            onNavigate={onNavigate}
+          />
+          {email ? <SidebarUser email={email} name={name} image={image} /> : null}
         </footer>
-      ) : null}
-    </aside>
+      </aside>
+    </TooltipProvider>
   )
 }

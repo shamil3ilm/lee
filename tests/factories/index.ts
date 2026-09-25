@@ -63,3 +63,35 @@ export async function makeApplication(
   if (!a) throw new Error('failed to create application')
   return a
 }
+
+export async function makeSource(
+  userId: string,
+  overrides: Partial<typeof s.sources.$inferInsert> = {},
+) {
+  const [row] = await db
+    .insert(s.sources)
+    .values({ userId, name: 'HN', kind: 'hn', config: {}, ...overrides })
+    .returning()
+  if (!row) throw new Error('failed to create source')
+  return row
+}
+
+export async function makeDiscovery(
+  userId: string,
+  sourceId: string,
+  overrides: Partial<typeof s.discoveries.$inferInsert> = {},
+) {
+  const [row] = await db
+    .insert(s.discoveries)
+    .values({
+      userId,
+      sourceId,
+      sourceJobId: randomUUID(),
+      raw: {},
+      normalized: { title: 'Engineer', companyName: 'Acme' },
+      ...overrides,
+    })
+    .returning()
+  if (!row) throw new Error('failed to create discovery')
+  return row
+}

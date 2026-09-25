@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, isNull, lt, or, sql } from 'drizzle-orm'
+import { and, count, eq, gte, inArray, isNull, lt, or, sql } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import { discoveries } from '@/lib/db/schema'
 
@@ -201,4 +201,13 @@ export async function dismissOlderThan(
     )
     .returning()
   return rows.length
+}
+
+/** Count of unreviewed (`status='new'`) discoveries — powers the nav badge. */
+export async function countNew(userId: string, client: DbClient = db): Promise<number> {
+  const [row] = await client
+    .select({ c: count() })
+    .from(discoveries)
+    .where(and(eq(discoveries.userId, userId), eq(discoveries.status, 'new')))
+  return Number(row?.c ?? 0)
 }

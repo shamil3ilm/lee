@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, isNull, lte, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gte, isNull, lt, lte, sql } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import { todos } from '@/lib/db/schema'
 
@@ -226,6 +226,19 @@ export async function listDueBetween(
     )
     .orderBy(asc(todos.dueAt))
   return rows
+}
+
+/** Count of open todos whose due date is strictly before `now` — nav badge. */
+export async function countOverdue(
+  userId: string,
+  now: Date,
+  client: DbClient = db,
+): Promise<number> {
+  const [row] = await client
+    .select({ c: count() })
+    .from(todos)
+    .where(and(eq(todos.userId, userId), eq(todos.status, 'open'), lt(todos.dueAt, now)))
+  return Number(row?.c ?? 0)
 }
 
 // Sentinel export so consumers can quickly build "no-due" filters without
