@@ -1,4 +1,9 @@
 import type { NextConfig } from "next";
+import { assertTestLoginNotInProduction } from "./lib/auth/test-login-guard";
+
+// v17 §9.1 — fail `next build` / `next start` loudly if the local-only E2E
+// test sign-in flag leaks into a production or Vercel environment.
+assertTestLoginNotInProduction(process.env);
 
 const nextConfig: NextConfig = {
   // @electric-sql/pglite ships a WASM binary that Next's server bundler

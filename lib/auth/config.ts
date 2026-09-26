@@ -9,6 +9,18 @@ import { db } from '@/lib/db/client'
 import { users, accounts, sessions, verificationTokens } from '@/lib/db/schema'
 import { edgeAuthConfig } from './edge-config'
 import { logger } from '@/lib/logger'
+import type { TestLogin } from './test-login-provider'
+
+// v17 §9.1 — local-only E2E test sign-in. The literal NODE_ENV check is
+// folded to `false` by `next build`, so the dynamic import (and the provider
+// module with the test identity) is dropped from production bundles. Inside
+// the branch, loadTestLogin() still requires E2E_TEST_LOGIN=1 and no VERCEL,
+// and throws if the flag is set in a production-like env.
+let testLogin: TestLogin | null = null
+if (process.env.NODE_ENV !== 'production') {
+  const { loadTestLogin } = await import('./test-login-provider')
+  testLogin = loadTestLogin()
+}
 
 // Full Node-runtime config. Inherits JWT session strategy from
 // `edgeAuthConfig` (see note there). The adapter is still needed so Auth.js
@@ -21,6 +33,18 @@ import { logger } from '@/lib/logger'
 // non-existent "user"/"account" tables and fails with Postgres 42P01.
 export const authConfig = {
   ...edgeAuthConfig,
+  providers: testLogin
+    ? [...edgeAuthConfig.providers, testLogin.provider]
+    : edgeAuthConfig.providers,
+  callbacks: {
+    ...edgeAuthConfig.callbacks,
+    async signIn(params) {
+      // The test identity is not ALLOWED_EMAIL; admit it only via its own
+      // provider. Every other sign-in keeps the edge allow-list check.
+      if (testLogin?.isTestLoginSignIn(params)) return true
+      return edgeAuthConfig.callbacks.signIn(params)
+    },
+  },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   adapter: DrizzleAdapter(db as any, {
     usersTable: users,
