@@ -1,5 +1,13 @@
 const DAY_MS = 24 * 60 * 60 * 1000
 
+/**
+ * Fixed locale for rendered dates. Client components are server-rendered
+ * first; formatting with the runtime default locale produced "Sep 27" on the
+ * server and "27 Sept" in an en-IN/en-GB browser, which failed hydration and
+ * forced React to re-render the whole tree (v17 §9.1 visual QA).
+ */
+export const DISPLAY_LOCALE = 'en-US'
+
 export function relativeFromNow(date: Date | string): string {
   const target = typeof date === 'string' ? new Date(date) : date
   const now = new Date()
@@ -25,12 +33,12 @@ export function relativeFromNow(date: Date | string): string {
 
 export function shortDate(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  return d.toLocaleDateString(DISPLAY_LOCALE, { month: 'short', day: 'numeric' })
 }
 
 export function shortDateTime(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString(DISPLAY_LOCALE, {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',

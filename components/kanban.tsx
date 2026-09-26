@@ -88,6 +88,9 @@ export function Kanban({ columns }: KanbanProps) {
     setGrouped(toGrouped(columns))
   }
 
+  // Stable id so dnd-kit's aria-describedby ids match between SSR and
+  // hydration (its internal counter differs per render pass).
+  const dndId = React.useId()
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor),
@@ -140,7 +143,7 @@ export function Kanban({ columns }: KanbanProps) {
   }
 
   return (
-    <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+    <DndContext id={dndId} sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
       {/*
         Responsive layout:
         - <md (mobile): horizontal snap scroll, columns 85vw wide
@@ -252,10 +255,10 @@ function KanbanCardView({ card, isOverlay }: KanbanCardViewProps) {
     >
       <div className="font-medium leading-tight">{card.companyName ?? 'Unknown'}</div>
       <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{card.title}</div>
-      <div className="mt-2 flex items-center justify-between">
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-1">
         <InterestStars level={card.interestLevel} />
         {card.nextActionAt && isWithinDays(card.nextActionAt, 7) ? (
-          <Badge variant="outline" className="text-[10px]">
+          <Badge variant="outline" className="shrink-0 whitespace-nowrap text-[10px]">
             {relativeFromNow(card.nextActionAt)}
           </Badge>
         ) : null}

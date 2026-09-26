@@ -6,7 +6,7 @@ import { CheckCircle2, ExternalLink, Loader2, Mail, Plug, Calendar as CalendarIc
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { relativeFromNow } from '@/lib/ui/date'
+import { DISPLAY_LOCALE, relativeFromNow } from '@/lib/ui/date'
 
 interface IntegrationsPanelProps {
   email: string | null
@@ -152,7 +152,7 @@ export function IntegrationsPanel({
               <div className="text-xs text-muted-foreground">
                 Last synced:{' '}
                 {lastGmailSync ? (
-                  <span title={new Date(lastGmailSync).toLocaleString()}>
+                  <span title={new Date(lastGmailSync).toLocaleString(DISPLAY_LOCALE)} suppressHydrationWarning>
                     {relativeFromNow(lastGmailSync)}
                   </span>
                 ) : (
@@ -182,7 +182,7 @@ export function IntegrationsPanel({
               <div className="text-xs text-muted-foreground">
                 Last event pushed:{' '}
                 {syncedCalendarAt ? (
-                  <span title={new Date(syncedCalendarAt).toLocaleString()}>
+                  <span title={new Date(syncedCalendarAt).toLocaleString(DISPLAY_LOCALE)} suppressHydrationWarning>
                     {relativeFromNow(syncedCalendarAt)}
                   </span>
                 ) : (

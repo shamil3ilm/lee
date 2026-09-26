@@ -5,7 +5,6 @@ import { Bell, BellOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  isSupported,
   permissionState,
   permissionStateServerSnapshot,
   requestPermission,
@@ -52,7 +51,9 @@ export function BrowserNotificationsToggle() {
     if (!n) toast.error('Could not fire test notification.')
   }
 
-  const unsupported = state === 'unsupported' || !isSupported()
+  // Derive from the store only: calling isSupported() during render is
+  // false on the server and true in the browser, which broke hydration.
+  const unsupported = state === 'unsupported'
 
   return (
     <Card>

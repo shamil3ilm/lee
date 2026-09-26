@@ -1,4 +1,5 @@
 'use client'
+import { DISPLAY_LOCALE } from '@/lib/ui/date'
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
 import type { HistoryPoint } from './client'
@@ -20,7 +21,7 @@ export function HistoryChart({ points }: { points: HistoryPoint[] }) {
   }
   const data = points.map((p, i) => ({
     run: `#${i + 1}`,
-    label: new Date(p.createdAt).toLocaleDateString(),
+    label: new Date(p.createdAt).toLocaleDateString(DISPLAY_LOCALE),
     total: p.scores.total ?? p.overall,
     ats: p.scores.ats ?? null,
     impact: p.scores.impact ?? null,

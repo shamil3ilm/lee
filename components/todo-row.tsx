@@ -7,7 +7,7 @@ import { Briefcase, Loader2, Trash2 } from 'lucide-react'
 import type { Todo } from '@/lib/db/queries/todos'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { relativeFromNow } from '@/lib/ui/date'
+import { DISPLAY_LOCALE, relativeFromNow } from '@/lib/ui/date'
 import { cn } from '@/lib/utils'
 
 interface TodoRowProps {
@@ -145,7 +145,8 @@ export function TodoRow({ todo, applicationLabel, now }: TodoRowProps) {
                   ? 'border-red-200 bg-red-50 text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200'
                   : 'border-border',
               )}
-              title={new Date(todo.dueAt).toLocaleString()}
+              title={new Date(todo.dueAt).toLocaleString(DISPLAY_LOCALE)}
+              suppressHydrationWarning
             >
               {overdue ? 'overdue' : 'due'} · {relativeFromNow(todo.dueAt)}
             </span>

@@ -5,7 +5,7 @@ import { AlertTriangle, Loader2, Mail, Send } from 'lucide-react'
 import { toggleDigestAction } from '@/app/(authed)/settings/notifications/actions'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { relativeFromNow } from '@/lib/ui/date'
+import { DISPLAY_LOCALE, relativeFromNow } from '@/lib/ui/date'
 
 interface NotificationsPanelProps {
   weeklyDigestEnabled: boolean
@@ -123,7 +123,7 @@ export function NotificationsPanel({
         <div className="text-xs text-muted-foreground">
           Last sent:{' '}
           {lastSent ? (
-            <span title={new Date(lastSent).toLocaleString()}>
+            <span title={new Date(lastSent).toLocaleString(DISPLAY_LOCALE)} suppressHydrationWarning>
               {relativeFromNow(lastSent)}
             </span>
           ) : (

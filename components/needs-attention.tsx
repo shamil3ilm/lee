@@ -14,7 +14,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { relativeFromNow, shortDate } from '@/lib/ui/date'
+import { DISPLAY_LOCALE, relativeFromNow, shortDate } from '@/lib/ui/date'
 import {
   STATUS_BADGE,
   STATUS_LABELS,
@@ -223,7 +223,7 @@ function TodoNudgeRow({
             {todo.dueAt ? (
               <>
                 {overdue ? 'Overdue · ' : 'Today · '}
-                {new Date(todo.dueAt).toLocaleDateString(undefined, {
+                {new Date(todo.dueAt).toLocaleDateString(DISPLAY_LOCALE, {
                   month: 'short',
                   day: 'numeric',
                 })}
