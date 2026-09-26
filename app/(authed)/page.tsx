@@ -12,6 +12,7 @@ import {
   ThisWeekWidget,
   WidgetSkeleton,
 } from '@/components/dashboard/widgets'
+import { UsageBanner } from '@/components/dashboard/usage-banner'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 
@@ -42,6 +43,9 @@ export default async function DashboardPage() {
           </Button>
         }
       />
+      <Suspense fallback={null}>
+        <UsageBanner userId={userId} />
+      </Suspense>
       <Suspense fallback={null}>
         <SetupChecklistWidget userId={userId} />
       </Suspense>
