@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import * as documentsQ from '@/lib/db/queries/documents'
-import * as assetsQ from '@/lib/db/queries/documentAssets'
 import {
   renderCvPdf,
   renderCoverLetterPdf,
@@ -25,12 +24,88 @@ import {
   type TailoredCV,
 } from '@/lib/documents/types'
 import { getMasterCV } from '@/lib/documents/master'
-import { compileLatex, truncateLog } from '@/lib/latex/compile'
+import { truncateLog } from '@/lib/latex/compile'
+import { compileDocumentPdf, documentCacheKey } from '@/lib/latex/pdf-cache'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 export const maxDuration = 30
+
+const LATEX_CACHE_CONTROL = 'private, max-age=60'
+
+/** True when an If-None-Match header lists `etag` (or `*`). */
+function etagMatches(header: string | null, etag: string): boolean {
+  if (!header) return false
+  return header.split(',').some((t) => {
+    const v = t.trim().replace(/^W\//, '')
+    return v === etag || v === '*'
+  })
+}
+
+async function latexPdfResponse(
+  req: Request,
+  userId: string,
+  id: string,
+  title: string,
+  rawContent: unknown,
+): Promise<Response> {
+  const content = latexDocumentContentSchema.parse(rawContent)
+  if (!content.source.trim()) {
+    return NextResponse.json({ error: 'LaTeX source is empty.' }, { status: 422 })
+  }
+
+  // The key is computed from metadata only, so a revalidation that matches
+  // the browser's copy costs one small query and no bytes.
+  const { cacheKey } = await documentCacheKey(userId, id, content.source)
+  const etag = `"${cacheKey}"`
+  if (etagMatches(req.headers.get('if-none-match'), etag)) {
+    return new Response(null, {
+      status: 304,
+      headers: { etag, 'cache-control': LATEX_CACHE_CONTROL },
+    })
+  }
+
+  const result = await compileDocumentPdf({ userId, documentId: id, source: content.source })
+  if (result.ok) {
+    // Only clear a stale error; never rewrite the row just because it was viewed.
+    if (content.compileError !== undefined || content.compileLog !== undefined) {
+      await persistCompileStatus(userId, id, {
+        ...content,
+        compileError: undefined,
+        compileLog: undefined,
+      })
+    }
+    return new Response(new Uint8Array(result.pdf), {
+      status: 200,
+      headers: {
+        'content-type': 'application/pdf',
+        'content-disposition': `inline; filename="${safeFilename(title)}.pdf"`,
+        'content-length': String(result.pdf.byteLength),
+        'cache-control': LATEX_CACHE_CONTROL,
+        etag: `"${result.cacheKey}"`,
+      },
+    })
+  }
+
+  const log = truncateLog(result.log)
+  const compileError = `Compile failed (status ${result.status})`
+  if (content.compileError !== compileError || content.compileLog !== log) {
+    await persistCompileStatus(userId, id, { ...content, compileError, compileLog: log })
+  }
+  return NextResponse.json({ error: 'Compile failed', log }, { status: 422 })
+}
+
+/** Best effort: a DB failure must never block returning the PDF / error. */
+async function persistCompileStatus(userId: string, id: string, content: unknown): Promise<void> {
+  try {
+    await documentsQ.update(userId, id, { content })
+  } catch (dbErr) {
+    logger.error('failed to persist latex compile status', {
+      err: dbErr instanceof Error ? dbErr.message : String(dbErr),
+    })
+  }
+}
 
 function safeFilename(title: string): string {
   return title
@@ -40,7 +115,7 @@ function safeFilename(title: string): string {
 }
 
 export async function GET(
-  _req: Request,
+  req: Request,
   ctx: { params: Promise<{ id: string }> },
 ): Promise<Response> {
   try {
@@ -52,68 +127,11 @@ export async function GET(
     if (!doc) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
 
     // LaTeX documents route through the compile service instead of the
-    // React-PDF pipeline. Recompile on every GET but edge-cache the
-    // response for a minute so the iframe preview doesn't hammer the
-    // upstream service.
+    // React-PDF pipeline, behind a compiled-PDF cache keyed by the source +
+    // asset hashes (lib/latex/pdf-cache.ts). A view never rewrites the
+    // document row unless the stored compile error actually changes.
     if (doc.kind === 'latex_cv' || doc.kind === 'latex_cover_letter') {
-      const content = latexDocumentContentSchema.parse(doc.content)
-      if (!content.source.trim()) {
-        return NextResponse.json({ error: 'LaTeX source is empty.' }, { status: 422 })
-      }
-      // v5.2: bundle every asset owned by this document into the compile
-      // request so `\includegraphics{name}` and friends resolve without a
-      // second round-trip.
-      const assets = await assetsQ.listWithBytes(userId, id)
-      const result = await compileLatex({
-        source: content.source,
-        assets: assets.map((a) => ({
-          filename: a.filename,
-          mimeType: a.mimeType,
-          bytes: a.bytes,
-        })),
-      })
-      if (result.ok) {
-        // Best-effort side effect: update compile status. Never let a DB
-        // failure block returning the fresh PDF bytes.
-        try {
-          await documentsQ.update(userId, id, {
-            content: {
-              ...content,
-              compiledAt: new Date().toISOString(),
-              compileError: undefined,
-              compileLog: undefined,
-            },
-          })
-        } catch (dbErr) {
-          logger.error('failed to persist latex compiledAt', {
-            err: dbErr instanceof Error ? dbErr.message : String(dbErr),
-          })
-        }
-        const filename = `${safeFilename(doc.title)}.pdf`
-        return new Response(new Uint8Array(result.pdf), {
-          status: 200,
-          headers: {
-            'content-type': 'application/pdf',
-            'content-disposition': `inline; filename="${filename}"`,
-            'cache-control': 'private, max-age=60',
-          },
-        })
-      }
-      const log = truncateLog(result.log)
-      try {
-        await documentsQ.update(userId, id, {
-          content: {
-            ...content,
-            compileError: `Compile failed (status ${result.status})`,
-            compileLog: log,
-          },
-        })
-      } catch (dbErr) {
-        logger.error('failed to persist latex compileError', {
-          err: dbErr instanceof Error ? dbErr.message : String(dbErr),
-        })
-      }
-      return NextResponse.json({ error: 'Compile failed', log }, { status: 422 })
+      return latexPdfResponse(req, userId, id, doc.title, doc.content)
     }
 
     // Outreach kinds are short-form text — serve as .txt (no PDF template).

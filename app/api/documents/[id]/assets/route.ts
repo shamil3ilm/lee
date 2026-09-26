@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import * as documentsQ from '@/lib/db/queries/documents'
 import * as assetsQ from '@/lib/db/queries/documentAssets'
+import { getAssetStore } from '@/lib/storage/asset-store'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -78,18 +79,21 @@ export async function POST(
       return NextResponse.json({ error: 'No files uploaded.' }, { status: 400 })
     }
 
+    // Bytes go through the asset store, which enforces the per-user storage
+    // quota (ASSET_QUOTA_BYTES) on top of the per-file / per-document caps.
+    const store = getAssetStore()
     const created: assetsQ.AssetMetadata[] = []
     const errors: { filename: string; error: string }[] = []
     for (const file of files) {
       try {
         const bytes = Buffer.from(await file.arrayBuffer())
-        const asset = await assetsQ.create(userId, id, {
-          filename: file.name,
-          mimeType: file.type || 'application/octet-stream',
-          sizeBytes: bytes.byteLength,
+        const { asset } = await store.put(
+          userId,
+          { kind: 'document-asset', documentId: id, filename: file.name },
           bytes,
-        })
-        created.push(asset)
+          { mimeType: file.type || 'application/octet-stream' },
+        )
+        if (asset) created.push(asset)
       } catch (err) {
         if (err instanceof assetsQ.AssetValidationError) {
           errors.push({ filename: file.name, error: err.message })
