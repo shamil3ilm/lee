@@ -11,7 +11,9 @@ import { makeUser } from '@/tests/factories'
  * row id (`onLogged`, used for foreign keys) still get it inline.
  */
 const originalFetch = globalThis.fetch
-let scheduled: Array<Promise<unknown>> = []
+let scheduled: Array<() => Promise<void>> = []
+/** "End the response": run every after() callback registered so far, like Next does. */
+const flush = () => Promise.all(scheduled.splice(0).map((t) => t()))
 
 function groqOk(): typeof fetch {
   return (async () =>
@@ -27,7 +29,7 @@ function groqOk(): typeof fetch {
 function mockRequestScope(): void {
   vi.doMock('next/server', async (orig) => ({
     ...(await orig<typeof import('next/server')>()),
-    after: (task: Promise<unknown>) => {
+    after: (task: () => Promise<void>) => {
       scheduled.push(task)
     },
   }))
@@ -62,7 +64,9 @@ describe('deferred AI call logging', () => {
     const { GroqProvider } = await import('@/lib/ai/groq')
     await new GroqProvider('k').parseJob('job text').catch(() => null)
     expect(scheduled).toHaveLength(1)
-    await Promise.all(scheduled)
+    // Nothing written while the response is still being produced.
+    expect(await logRows()).toHaveLength(0)
+    await flush()
     const rows = await logRows()
     expect(rows).toHaveLength(1)
     expect(rows[0]?.status).toBe('ok')
@@ -103,7 +107,7 @@ describe('deferred AI call logging', () => {
     await new GeminiProvider('k').parseJob('job text').catch(() => null)
     vi.doUnmock('@google/generative-ai')
     expect(scheduled).toHaveLength(1)
-    await Promise.all(scheduled)
+    await flush()
     const rows = await logRows()
     expect(rows.map((r) => r.provider)).toEqual(['gemini'])
   })
@@ -122,7 +126,7 @@ describe('deferred AI call logging', () => {
     const r = await new LayaHttpDecisionProvider('https://laya.test').yesNo({ question: 'q', text: 't' })
     expect(r.answer).toBe(true)
     expect(scheduled).toHaveLength(1)
-    await Promise.all(scheduled)
+    await flush()
     const rows = await logRows()
     expect(rows.map((x) => x.kind)).toEqual(['decision_yesno'])
   })
@@ -141,9 +145,9 @@ describe('deferred AI call logging', () => {
       .values({ userId: u.id, kind: 'cover_letter', title: 't', content: {} })
       .returning()
     await linkLatestCallToDocument(u.id, doc!.id, 'cover_letter')
-    await Promise.all(scheduled)
+    await flush()
     // Nested deferrals (link waits for the log) may schedule more work.
-    await Promise.all(scheduled)
+    await flush()
     const rows = await logRows()
     expect(rows).toHaveLength(1)
     expect(rows[0]?.documentId).toBe(doc!.id)

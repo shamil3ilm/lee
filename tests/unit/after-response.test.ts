@@ -5,8 +5,19 @@ afterEach(() => {
   vi.resetModules()
 })
 
+/** Stand-in for Next's after(): collects callbacks; the test "ends the response". */
+function mockRequestScope(): Array<() => Promise<void>> {
+  const scheduled: Array<() => Promise<void>> = []
+  vi.doMock('next/server', () => ({
+    after: (task: () => Promise<void>) => {
+      scheduled.push(task)
+    },
+  }))
+  return scheduled
+}
+
 describe('runAfterResponse', () => {
-  it('awaits the task when there is no request scope (cron, tests, scripts)', async () => {
+  it('runs the task inline when there is no request scope (cron, tests, scripts)', async () => {
     const { runAfterResponse } = await import('@/lib/server/after-response')
     let done = false
     await runAfterResponse('t', async () => {
@@ -16,28 +27,17 @@ describe('runAfterResponse', () => {
     expect(done).toBe(true)
   })
 
-  it('hands the task to after() and returns without waiting inside a request', async () => {
-    const scheduled: Array<Promise<unknown>> = []
-    vi.doMock('next/server', () => ({
-      after: (task: Promise<unknown>) => {
-        scheduled.push(task)
-      },
-    }))
+  it('inside a request, registers the task with after() and does not start it', async () => {
+    const scheduled = mockRequestScope()
     const { runAfterResponse } = await import('@/lib/server/after-response')
-    let release!: () => void
-    let done = false
+    let started = false
     await runAfterResponse('t', async () => {
-      await new Promise<void>((r) => {
-        release = r
-      })
-      done = true
+      started = true
     })
-    // Returned while the task is still blocked.
-    expect(done).toBe(false)
+    expect(started).toBe(false)
     expect(scheduled).toHaveLength(1)
-    release()
-    await scheduled[0]
-    expect(done).toBe(true)
+    await scheduled[0]!()
+    expect(started).toBe(true)
   })
 
   it('never throws when the task fails', async () => {
@@ -49,16 +49,21 @@ describe('runAfterResponse', () => {
     ).resolves.toBeUndefined()
   })
 
-  it('settleDeferred waits for every task still in flight', async () => {
-    vi.doMock('next/server', () => ({ after: () => {} }))
+  it('waitForEarlier waits for tasks scheduled before it, even when they run concurrently', async () => {
+    const scheduled = mockRequestScope()
     const { runAfterResponse, settleDeferred } = await import('@/lib/server/after-response')
-    let done = false
-    await runAfterResponse('t', async () => {
-      await new Promise((r) => setTimeout(r, 10))
-      done = true
+    const order: string[] = []
+    await runAfterResponse('first', async () => {
+      await new Promise((r) => setTimeout(r, 15))
+      order.push('first')
     })
-    expect(done).toBe(false)
+    await runAfterResponse('second', async ({ waitForEarlier }) => {
+      await waitForEarlier()
+      order.push('second')
+    })
+    // after() starts all callbacks together once the response closes.
+    await Promise.all(scheduled.map((t) => t()))
     await settleDeferred()
-    expect(done).toBe(true)
+    expect(order).toEqual(['first', 'second'])
   })
 })

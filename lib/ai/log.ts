@@ -1,7 +1,7 @@
 import { and, desc, eq, isNull, sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { aiCallLogs } from '@/lib/db/schema'
-import { runAfterResponse, settleDeferred } from '@/lib/server/after-response'
+import { runAfterResponse } from '@/lib/server/after-response'
 
 /**
  * v10 logging helpers. Providers still write their own success rows during
@@ -89,12 +89,10 @@ export async function linkLatestCallToDocument(
   documentId: string,
   kind: string,
 ): Promise<void> {
-  // The provider's log insert may itself still be in flight (it runs after
-  // the response inside a request), so wait for every deferred write started
-  // before this point, then link — also off the response path.
-  const priorWrites = settleDeferred()
-  await runAfterResponse('ai_link_document', async () => {
-    await priorWrites
+  // The provider's log insert is itself deferred until after the response,
+  // so link after it: wait for every deferred write scheduled before this.
+  await runAfterResponse('ai_link_document', async ({ waitForEarlier }) => {
+    await waitForEarlier()
     await linkLatest(userId, documentId, kind)
   })
 }

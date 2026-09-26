@@ -105,10 +105,16 @@ describe('Scam Shield batching', () => {
   })
 
   it('ensureJobAssessment renders the stored row and re-assesses after the response inside a request', async () => {
-    const scheduled: Array<Promise<unknown>> = []
+    const scheduled: Array<() => Promise<void>> = []
+    let ran = 0
+    const flush = async () => {
+      const tasks = scheduled.slice(ran)
+      ran = scheduled.length
+      await Promise.all(tasks.map((t) => t()))
+    }
     vi.doMock('next/server', async (orig) => ({
       ...(await orig<typeof import('next/server')>()),
-      after: (task: Promise<unknown>) => {
+      after: (task: () => Promise<void>) => {
         scheduled.push(task)
       },
     }))
@@ -121,7 +127,7 @@ describe('Scam Shield batching', () => {
     // No stored row yet: nothing to render, assessment scheduled, not awaited.
     expect(await ensureJobAssessment(u.id, job.id)).toBeNull()
     expect(scheduled).toHaveLength(1)
-    await Promise.all(scheduled)
+    await flush()
     const stored = await riskQ.get(u.id, 'job', job.id)
     expect(stored?.rulesVersion).toBe(RULES_VERSION)
 
@@ -133,7 +139,7 @@ describe('Scam Shield batching', () => {
     const rendered = await ensureJobAssessment(u.id, job.id)
     expect(rendered?.rulesVersion).toBe('scam-0.0.1')
     expect(scheduled).toHaveLength(2)
-    await Promise.all(scheduled)
+    await flush()
     expect((await riskQ.get(u.id, 'job', job.id))?.rulesVersion).toBe(RULES_VERSION)
 
     // Fresh row: no write scheduled at all.
