@@ -11,6 +11,7 @@ const TABLES = [
   'usage_alerts',
   'usage_settings',
   'usage_snapshots',
+  'user_defaults',
   'queue_user_state',
   'queue_jobs',
   'job_risk_assessments',

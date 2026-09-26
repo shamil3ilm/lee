@@ -3,7 +3,10 @@ import { useState } from 'react'
 import { Sparkles } from 'lucide-react'
 import { AddSourceDialog } from '@/components/add-source-dialog'
 import { Button } from '@/components/ui/button'
+import { DEFAULT_SOURCES } from '@/lib/defaults/catalog'
 
+// One-click starters come from the same verified catalog as the account
+// defaults (lib/defaults/catalog.ts), so broken slugs can't drift in here.
 interface Starter {
   id: string
   label: string
@@ -13,14 +16,14 @@ interface Starter {
   name?: string
 }
 
-const STARTERS: Starter[] = [
-  { id: 'stripe', label: 'Stripe (Greenhouse)', kind: 'greenhouse', company: 'stripe', name: 'Stripe (Greenhouse)' },
-  { id: 'notion', label: 'Notion (Greenhouse)', kind: 'greenhouse', company: 'notion', name: 'Notion (Greenhouse)' },
-  { id: 'ramp', label: 'Ramp (Ashby)', kind: 'ashby', company: 'ramp', name: 'Ramp (Ashby)' },
-  { id: 'remoteok', label: 'RemoteOK (all remote)', kind: 'remoteok', name: 'RemoteOK' },
-  { id: 'yc', label: 'YC Companies', kind: 'yc_directory', name: 'Y Combinator directory' },
-  { id: 'hn', label: "HN Who's Hiring", kind: 'hn_whoishiring', name: "HN Who's Hiring" },
-]
+const STARTERS: Starter[] = DEFAULT_SOURCES.map((d) => ({
+  id: d.key,
+  label: d.name,
+  kind: d.kind,
+  company: d.config.company,
+  url: d.config.url,
+  name: d.name,
+}))
 
 export function PopularStarters(): React.ReactElement {
   const [selected, setSelected] = useState<Starter | null>(null)

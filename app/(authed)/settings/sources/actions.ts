@@ -6,6 +6,7 @@ import * as sourcesQ from '@/lib/db/queries/sources'
 import { getAdapter, listAdapterKinds } from '@/lib/discovery/adapters'
 import { BOARD_SLUG_RE, sourceKindNeeds } from '@/lib/discovery/source-kinds'
 import { logger } from '@/lib/logger'
+import { queueFirstPoll } from '@/lib/queue/first-poll'
 
 export type ActionResult = { success: true } | { error: string }
 
@@ -56,12 +57,19 @@ export async function addSource(formData: FormData): Promise<ActionResult> {
     }
     const { config, summary } = buildConfig(kind, company, url)
     const finalName = name?.trim() || `${kind} — ${summary}`
-    await sourcesQ.create(userId, {
+    const created = await sourcesQ.create(userId, {
       name: finalName,
       kind,
       config,
       enabled: true,
     })
+    // First search now (right after the response) instead of at the next
+    // daily scheduler run. Best effort: the source is saved either way.
+    await queueFirstPoll(userId, created.id).catch((err: unknown) =>
+      logger.warn('addSource first poll not queued', {
+        err: err instanceof Error ? err.message : String(err),
+      }),
+    )
     revalidatePath('/settings/sources')
     revalidatePath('/discoveries')
     return { success: true }
@@ -86,6 +94,13 @@ export async function toggleSourceEnabled(
     if (!idSchema.safeParse(id).success) return { error: 'Source not found.' }
     const updated = await sourcesQ.update(userId, id, { enabled })
     if (!updated) return { error: 'Source not found.' }
+    if (enabled) {
+      await queueFirstPoll(userId, id).catch((err: unknown) =>
+        logger.warn('toggleSourceEnabled first poll not queued', {
+          err: err instanceof Error ? err.message : String(err),
+        }),
+      )
+    }
     revalidatePath('/settings/sources')
     return { success: true }
   } catch (err) {
