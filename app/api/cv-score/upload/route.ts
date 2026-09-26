@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { withAiUsage } from '@/lib/ai/usage'
+import { saveCvCopyToDrive } from '@/lib/drive/cv-copy'
 import { scoreCv } from '@/lib/cv-score/score'
 import { MAX_UPLOAD_BYTES } from '@/lib/cv-score/upload'
 import {
@@ -20,7 +21,9 @@ export const maxDuration = 30
 /**
  * v12.0 — POST /api/cv-score/upload
  * Multipart: `file` (PDF/DOCX/TXT/MD ≤ 5 MB), optional `applicationId`,
- * optional `includeAi` ("false" to skip the AI requirement check).
+ * optional `includeAi` ("false" to skip the AI requirement check),
+ * optional `saveToDrive` ("true" to keep a copy in Employ/CVs in the user's
+ * Google Drive; off by default, and without it nothing is stored).
  */
 export async function POST(req: Request): Promise<NextResponse> {
   try {
@@ -52,7 +55,18 @@ export async function POST(req: Request): Promise<NextResponse> {
         includeAi,
       }),
     )
-    return NextResponse.json({ result: { ...result, usage } })
+    if (form.get('saveToDrive') !== 'true') {
+      return NextResponse.json({ result: { ...result, usage } })
+    }
+    const driveCopy = await saveCvCopyToDrive({
+      userId,
+      scoreId: result.id,
+      name: file.name || 'cv',
+      mimeType: file.type,
+      bytes,
+    })
+    const driveFileId = driveCopy.saved ? driveCopy.driveFileId : null
+    return NextResponse.json({ result: { ...result, usage, driveFileId }, driveCopy })
   } catch (err) {
     return errorResponse(err, 'cv_score_upload_failed', 'Could not score the uploaded CV.')
   }

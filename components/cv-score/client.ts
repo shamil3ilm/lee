@@ -39,11 +39,22 @@ export function scoreDocument(documentId: string, applicationId: string | null):
   return call('/api/cv-score', jsonPost({ documentId, applicationId }), (j) => j.result as CvScoreRecord | undefined)
 }
 
-export function scoreUpload(file: File, applicationId: string | null): Promise<ApiResult<CvScoreRecord>> {
+export type DriveCopyStatus = { saved: true; driveFileId: string } | { saved: false; error: string; connect?: boolean }
+
+export type UploadScore = CvScoreRecord & { driveFileId?: string | null; driveCopy?: DriveCopyStatus }
+
+export function scoreUpload(
+  file: File,
+  applicationId: string | null,
+  saveToDrive = false,
+): Promise<ApiResult<UploadScore>> {
   const form = new FormData()
   form.set('file', file)
   if (applicationId) form.set('applicationId', applicationId)
-  return call('/api/cv-score/upload', { method: 'POST', body: form }, (j) => j.result as CvScoreRecord | undefined)
+  if (saveToDrive) form.set('saveToDrive', 'true')
+  return call('/api/cv-score/upload', { method: 'POST', body: form }, (j) =>
+    j.result ? ({ ...(j.result as CvScoreRecord), driveCopy: j.driveCopy as DriveCopyStatus | undefined } as UploadScore) : undefined,
+  )
 }
 
 export function compare(documentIdA: string, documentIdB: string, applicationId: string | null): Promise<ApiResult<CompareResult>> {
@@ -62,6 +73,8 @@ export interface HistoryPoint {
   mode: string
   sourceLabel: string
   scores: Record<string, number | null>
+  /** Saved copy of an uploaded CV in the user's Drive (A2), if any. */
+  driveFileId?: string | null
 }
 
 export function history(params: { documentId?: string | null; applicationId?: string | null }): Promise<ApiResult<HistoryPoint[]>> {

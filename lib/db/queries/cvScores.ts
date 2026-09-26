@@ -1,6 +1,8 @@
 import { and, desc, eq, inArray } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import { cvScores } from '@/lib/db/schema'
+import type * as schema from '@/lib/db/schema'
+import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 
 /**
  * v12.0 — cv_scores query layer. Every query is scoped by userId; a row owned
@@ -137,5 +139,21 @@ export async function hasAny(userId: string, client: DbClient = db): Promise<boo
     .from(cvScores)
     .where(eq(cvScores.userId, userId))
     .limit(1)
+  return rows.length > 0
+}
+
+/** Link a score to the copy of its uploaded CV saved in Drive (A2). */
+export async function setDriveFile(
+  userId: string,
+  id: string,
+  driveFileId: string,
+  client: DbClient = db,
+): Promise<boolean> {
+  // Narrowed like documentAssets.ts: both drivers support partial returning.
+  const rows = await (client as unknown as PostgresJsDatabase<typeof schema>)
+    .update(cvScores)
+    .set({ driveFileId })
+    .where(and(eq(cvScores.userId, userId), eq(cvScores.id, id)))
+    .returning({ id: cvScores.id })
   return rows.length > 0
 }

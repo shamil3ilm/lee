@@ -37,6 +37,7 @@ export async function GET(req: Request): Promise<NextResponse> {
         overall: r.overall,
         grade: r.grade,
         scorerVersion: r.scorerVersion,
+        driveFileId: r.driveFileId,
         scores: Object.fromEntries(Object.entries(scores).map(([k, v]) => [k, v?.score ?? null])),
       }
     })
