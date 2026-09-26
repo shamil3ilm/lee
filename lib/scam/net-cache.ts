@@ -24,6 +24,31 @@ export interface NetOptions {
   now?: Date
   deps?: NetDeps
   budget?: NetBudget
+  /**
+   * Cache rows already loaded for a whole batch (see `preloadNetCache`).
+   * When set, no per-input cache query is made.
+   */
+  preloaded?: ReadonlyMap<string, DomainCacheRow>
+}
+
+/**
+ * One cache query for every domain a batch of inputs will look at, so a
+ * batch assessment in 'cache' mode costs one SELECT instead of one per item.
+ * Returns undefined when network facts are off.
+ */
+export async function preloadNetCache(
+  inputs: readonly ScamInput[],
+  mode: NetMode,
+): Promise<ReadonlyMap<string, DomainCacheRow> | undefined> {
+  if (mode === 'off') return undefined
+  try {
+    const domains = new Set<string>()
+    for (const input of inputs) for (const d of lookupCandidates(input).domains) domains.add(d)
+    return await cacheQ.getMany([...domains])
+  } catch (err) {
+    logger.warn('scam.net_preload_failed', { err: err instanceof Error ? err.message : String(err) })
+    return undefined
+  }
 }
 
 const DAY = 86_400_000
@@ -79,7 +104,7 @@ export async function resolveNetContext(input: ScamInput, opts: NetOptions): Pro
   try {
     const { domains, mailDomains } = lookupCandidates(input)
     if (domains.length === 0) return null
-    const cached = await cacheQ.getMany(domains)
+    const cached: ReadonlyMap<string, DomainCacheRow> = opts.preloaded ?? (await cacheQ.getMany(domains))
     const rows = new Map(cached)
     if (opts.mode === 'fetch') {
       for (const domain of domains) {
