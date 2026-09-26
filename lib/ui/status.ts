@@ -1,3 +1,5 @@
+import { TONE_TEXT, type StageTone } from '@/lib/ui/tones'
+
 export const APPLICATION_STATUSES = [
   'saved',
   'applied',
@@ -20,6 +22,11 @@ export const STATUS_LABELS: Record<ApplicationStatus, string> = {
   withdrawn: 'Withdrawn',
 }
 
+/**
+ * Badge variant names. The legacy colour names (slate, blue, …) are kept as
+ * aliases so older call sites keep compiling; they now resolve to the brand
+ * tone tokens (see components/ui/badge.tsx and lib/ui/tones.ts).
+ */
 export type BadgeVariant =
   | 'slate'
   | 'blue'
@@ -28,25 +35,33 @@ export type BadgeVariant =
   | 'emerald'
   | 'rose'
   | 'neutral'
+  | 'info'
+  | 'success'
+  | 'warning'
+  | 'danger'
+  | StageTone
 
-export const STATUS_BADGE: Record<ApplicationStatus, BadgeVariant> = {
-  saved: 'slate',
-  applied: 'blue',
-  screen: 'indigo',
-  interview: 'violet',
-  offer: 'emerald',
-  rejected: 'rose',
-  withdrawn: 'neutral',
+/** Each pipeline stage's tone: badges, kanban columns and charts agree. */
+export const STATUS_TONE: Record<ApplicationStatus, StageTone> = {
+  saved: 'saved',
+  applied: 'applied',
+  screen: 'screen',
+  interview: 'interview',
+  offer: 'offer',
+  rejected: 'rejected',
+  withdrawn: 'withdrawn',
 }
 
+export const STATUS_BADGE: Record<ApplicationStatus, BadgeVariant> = STATUS_TONE
+
 export const STATUS_ACCENT: Record<ApplicationStatus, string> = {
-  saved: 'text-slate-500 dark:text-slate-400',
-  applied: 'text-blue-600 dark:text-blue-400',
-  screen: 'text-indigo-600 dark:text-indigo-400',
-  interview: 'text-violet-600 dark:text-violet-400',
-  offer: 'text-emerald-600 dark:text-emerald-400',
-  rejected: 'text-rose-600 dark:text-rose-400',
-  withdrawn: 'text-neutral-500 dark:text-neutral-400',
+  saved: TONE_TEXT.saved,
+  applied: TONE_TEXT.applied,
+  screen: TONE_TEXT.screen,
+  interview: TONE_TEXT.interview,
+  offer: TONE_TEXT.offer,
+  rejected: TONE_TEXT.rejected,
+  withdrawn: TONE_TEXT.withdrawn,
 }
 
 export const ACTIVE_STATUSES: readonly ApplicationStatus[] = [

@@ -2,22 +2,40 @@ import * as React from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
+/**
+ * Status and label pill. Tone variants (info, success, warning, danger,
+ * neutral, and the pipeline stages) come from the brand tokens so a status
+ * reads the same colour on every page. The legacy colour names (slate,
+ * blue, indigo, violet, emerald, rose) are aliases for the matching tone.
+ */
 const badgeVariants = cva(
-  'inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+  'inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
   {
     variants: {
       variant: {
-        default: 'border-transparent bg-primary text-primary-foreground shadow',
+        default: 'border-transparent bg-primary text-primary-foreground',
         secondary: 'border-transparent bg-secondary text-secondary-foreground',
-        destructive: 'border-transparent bg-destructive text-destructive-foreground shadow',
+        destructive: 'border-transparent bg-destructive text-destructive-foreground',
         outline: 'text-foreground',
-        slate: 'border-transparent bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
-        blue: 'border-transparent bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
-        indigo: 'border-transparent bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300',
-        violet: 'border-transparent bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300',
-        emerald: 'border-transparent bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
-        rose: 'border-transparent bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
-        neutral: 'border-transparent bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400',
+        neutral: 'border-transparent bg-neutral-soft text-neutral',
+        info: 'border-transparent bg-info-soft text-info',
+        success: 'border-transparent bg-success-soft text-success',
+        warning: 'border-transparent bg-warning-soft text-warning',
+        danger: 'border-transparent bg-danger-soft text-danger',
+        saved: 'border-transparent bg-stage-saved-soft text-stage-saved',
+        applied: 'border-transparent bg-stage-applied-soft text-stage-applied',
+        screen: 'border-transparent bg-stage-screen-soft text-stage-screen',
+        interview: 'border-transparent bg-stage-interview-soft text-stage-interview',
+        offer: 'border-transparent bg-stage-offer-soft text-stage-offer',
+        rejected: 'border-transparent bg-stage-rejected-soft text-stage-rejected',
+        withdrawn: 'border-transparent bg-stage-withdrawn-soft text-stage-withdrawn',
+        // Legacy aliases.
+        slate: 'border-transparent bg-stage-saved-soft text-stage-saved',
+        blue: 'border-transparent bg-stage-applied-soft text-stage-applied',
+        indigo: 'border-transparent bg-stage-screen-soft text-stage-screen',
+        violet: 'border-transparent bg-stage-interview-soft text-stage-interview',
+        emerald: 'border-transparent bg-success-soft text-success',
+        rose: 'border-transparent bg-danger-soft text-danger',
       },
     },
     defaultVariants: {
