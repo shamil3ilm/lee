@@ -95,7 +95,7 @@ export async function GET(
           headers: {
             'content-type': 'application/pdf',
             'content-disposition': `inline; filename="${filename}"`,
-            'cache-control': 'public, max-age=60',
+            'cache-control': 'private, max-age=60',
           },
         })
       }

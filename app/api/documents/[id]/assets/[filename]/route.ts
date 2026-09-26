@@ -43,7 +43,7 @@ export async function GET(
       headers: {
         'content-type': asset.mimeType,
         'content-length': String(asset.sizeBytes),
-        'cache-control': 'public, max-age=3600',
+        'cache-control': 'private, max-age=3600',
       },
     })
   } catch (err) {

@@ -183,7 +183,7 @@ describe('GET /api/documents/[id]/assets/[filename]', () => {
     )
     expect(res.status).toBe(200)
     expect(res.headers.get('content-type')).toBe('image/png')
-    expect(res.headers.get('cache-control')).toContain('max-age=3600')
+    expect(res.headers.get('cache-control')).toBe('private, max-age=3600')
     const bytes = new Uint8Array(await res.arrayBuffer())
     expect([...bytes]).toEqual([0x89, 0x50, 0x4e, 0x47])
   })
