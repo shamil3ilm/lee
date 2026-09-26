@@ -1,8 +1,20 @@
 'use client'
 import { Search } from 'lucide-react'
 import * as React from 'react'
+import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
-import { CommandMenuDialog } from '@/components/command-menu-dialog'
+
+// The palette (search, quick actions, result rendering) is fetched on first
+// open, by click or by the hotkey, instead of shipping in every authed page's
+// first-load bundle. Hover/focus on the chip warms the chunk.
+const CommandMenuDialog = dynamic(
+  () => import('@/components/command-menu-dialog').then((m) => m.CommandMenuDialog),
+  { ssr: false },
+)
+
+function preloadDialog(): void {
+  void import('@/components/command-menu-dialog')
+}
 
 /**
  * Toolbar chip + ⌘K / Ctrl+K global hotkey that opens the command palette
@@ -10,13 +22,21 @@ import { CommandMenuDialog } from '@/components/command-menu-dialog'
  * state; this component is just the launcher.
  */
 export function CommandMenuButton() {
-  const [open, setOpen] = React.useState(false)
+  const [open, setOpenState] = React.useState(false)
+  // Becomes true on first open and stays true, so the dialog mounts (and
+  // its chunk loads) only once it is actually wanted.
+  const [requested, setRequested] = React.useState(false)
+  const setOpen = React.useCallback((next: boolean) => {
+    if (next) setRequested(true)
+    setOpenState(next)
+  }, [])
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
-        setOpen((v) => !v)
+        setRequested(true)
+        setOpenState((v) => !v)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -30,6 +50,8 @@ export function CommandMenuButton() {
         variant="ghost"
         size="icon"
         onClick={() => setOpen(true)}
+        onPointerEnter={preloadDialog}
+        onFocus={preloadDialog}
         className="sm:hidden"
         aria-label="Open command menu"
       >
@@ -40,6 +62,8 @@ export function CommandMenuButton() {
         variant="outline"
         size="sm"
         onClick={() => setOpen(true)}
+        onPointerEnter={preloadDialog}
+        onFocus={preloadDialog}
         className="hidden h-8 gap-2 text-xs text-muted-foreground sm:inline-flex"
         aria-label="Open command menu"
       >
@@ -49,7 +73,7 @@ export function CommandMenuButton() {
           <span className="text-xs">⌘</span>K
         </kbd>
       </Button>
-      <CommandMenuDialog open={open} onOpenChange={setOpen} />
+      {requested ? <CommandMenuDialog open={open} onOpenChange={setOpen} /> : null}
     </>
   )
 }
