@@ -88,9 +88,10 @@ export function CompanyActions({ companyId, companyName, onEdit }: CompanyAction
           <DialogHeader>
             <DialogTitle>Delete {companyName}?</DialogTitle>
             <DialogDescription>
-              This permanently deletes the company. Linked applications, jobs, and contacts
-              may be updated (contacts are unlinked; jobs stay for applications you already
-              have). This cannot be undone.
+              This permanently deletes the company. Its contacts are kept but unlinked. A
+              company that still has applications can&apos;t be deleted: move them to another
+              company (Edit details on the application) or delete them first. This cannot be
+              undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

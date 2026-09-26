@@ -1,6 +1,6 @@
-import { and, eq } from 'drizzle-orm'
+import { and, count, eq } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
-import { companies, contacts, jobs } from '@/lib/db/schema'
+import { applications, companies, contacts, jobs } from '@/lib/db/schema'
 
 export type Company = typeof companies.$inferSelect
 export type NewCompany = typeof companies.$inferInsert
@@ -104,6 +104,20 @@ export async function update(
     .where(and(eq(companies.userId, userId), eq(companies.id, id)))
     .returning()
   return updated
+}
+
+/** How many of the user's applications point at a job of this company. */
+export async function countApplications(
+  userId: string,
+  companyId: string,
+  client: DbClient = db,
+): Promise<number> {
+  const [row] = await client
+    .select({ n: count() })
+    .from(applications)
+    .innerJoin(jobs, eq(applications.jobId, jobs.id))
+    .where(and(eq(applications.userId, userId), eq(jobs.userId, userId), eq(jobs.companyId, companyId)))
+  return Number(row?.n ?? 0)
 }
 
 export async function remove(

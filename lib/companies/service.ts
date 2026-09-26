@@ -103,6 +103,21 @@ export async function removeFromWatchlist(
   return companiesQ.update(userId, id, { isWatched: false })
 }
 
-export async function deleteCompany(userId: string, id: string): Promise<boolean> {
-  return companiesQ.remove(userId, id)
+export type DeleteCompanyResult =
+  | { ok: true }
+  | { ok: false; reason: 'not_found' }
+  | { ok: false; reason: 'has_applications'; count: number }
+
+/**
+ * Delete a company — refused while any application still points at one of
+ * its jobs. Jobs' company_id is `set null` on delete, so allowing it would
+ * silently strip the company from live applications. The user reassigns
+ * (Edit details on the application) or deletes those applications first.
+ * Contacts are unlinked (set null) and discovery sources stay.
+ */
+export async function deleteCompany(userId: string, id: string): Promise<DeleteCompanyResult> {
+  const count = await companiesQ.countApplications(userId, id)
+  if (count > 0) return { ok: false, reason: 'has_applications', count }
+  const ok = await companiesQ.remove(userId, id)
+  return ok ? { ok: true } : { ok: false, reason: 'not_found' }
 }

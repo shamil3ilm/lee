@@ -106,8 +106,16 @@ export async function removeFromWatchlist(id: string): Promise<ActionResult> {
 export async function deleteCompany(id: string): Promise<ActionResult> {
   try {
     const userId = await requireUserId()
-    const ok = await svcDeleteCompany(userId, id)
-    if (!ok) return { error: 'Company not found.' }
+    const result = await svcDeleteCompany(userId, id)
+    if (!result.ok) {
+      if (result.reason === 'has_applications') {
+        const n = result.count
+        return {
+          error: `This company has ${n} application${n === 1 ? '' : 's'}. Move ${n === 1 ? 'it' : 'them'} to another company (Edit details on the application) or delete ${n === 1 ? 'it' : 'them'} first.`,
+        }
+      }
+      return { error: 'Company not found.' }
+    }
     revalidatePath('/companies')
   } catch (err) {
     logger.error('deleteCompany failed', {
