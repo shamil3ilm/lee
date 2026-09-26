@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { CheckSquare, Plus } from 'lucide-react'
 import type { Todo } from '@/lib/db/queries/todos'
+import { isActiveTodoStatus } from '@/lib/todos/status'
 import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,7 +29,7 @@ interface TodosCardProps {
  */
 export function TodosCard({ applicationId, todos, now }: TodosCardProps) {
   const [addOpen, setAddOpen] = useState(false)
-  const openCount = todos.filter((t) => t.status === 'open').length
+  const openCount = todos.filter((t) => isActiveTodoStatus(t.status)).length
 
   return (
     <Card>

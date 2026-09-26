@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import * as todosQ from '@/lib/db/queries/todos'
+import { TODO_STATUSES, isActiveTodoStatus } from '@/lib/todos/status'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -20,7 +21,7 @@ const patchSchema = z
   .object({
     title: z.string().min(1).max(300).optional(),
     notesMd: z.string().max(10_000).optional().nullable(),
-    status: z.enum(['open', 'done', 'archived']).optional(),
+    status: z.enum(TODO_STATUSES).optional(),
     priority: z.number().int().min(0).max(3).optional(),
     dueAt: isoDateOrNull,
     applicationId: z.string().uuid().optional().nullable(),
@@ -68,10 +69,12 @@ export async function PATCH(
 
     // If the patch flips status to `done`, also stamp completedAt so the row
     // is consistent whether the caller used the shortcut or a plain PATCH.
+    // Any active status (open, in progress, waiting) clears it; archiving
+    // keeps whatever the row had.
     const completedAtPatch =
       patch.status === 'done'
         ? { completedAt: new Date() }
-        : patch.status === 'open'
+        : patch.status && isActiveTodoStatus(patch.status)
           ? { completedAt: null }
           : {}
 

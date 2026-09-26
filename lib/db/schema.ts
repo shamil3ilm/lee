@@ -739,7 +739,7 @@ export const todos = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     title: text('title').notNull(),
     notesMd: text('notes_md'),
-    // 'open' | 'done' | 'archived'
+    // 'open' | 'in_progress' | 'waiting' | 'done' | 'archived' (lib/todos/status.ts)
     status: text('status').notNull().default('open'),
     // 0 = none, 1 = low, 2 = med, 3 = high
     priority: smallint('priority').notNull().default(0),

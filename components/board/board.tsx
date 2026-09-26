@@ -130,6 +130,10 @@ export function Board<C extends string, T extends BoardItem>(props: BoardProps<C
       ) : (
         <StaticBoard {...props} grouped={grouped} onMoveTo={move} />
       )}
+      <p className="mt-2 text-xs text-muted-foreground">
+        Drag cards between columns or use a card&apos;s menu. With a keyboard: focus a card, press
+        Space, choose a column with the arrow keys, press Space again.
+      </p>
     </div>
   )
 }

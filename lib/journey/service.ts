@@ -14,6 +14,7 @@ import {
 import { findFollowupCandidates } from '@/lib/followups/service'
 import * as cvScoresQ from '@/lib/db/queries/cvScores'
 import { findLowestCvFit } from './cv-fit'
+import { todoIsActiveSql } from '@/lib/db/queries/todos'
 
 /**
  * v11 journey dashboard — pure server logic. Every time-dependent function
@@ -143,7 +144,7 @@ async function overdueTodoAction(userId: string, now: Date): Promise<NextBestAct
   const [todo] = await db
     .select({ title: todos.title, dueAt: todos.dueAt })
     .from(todos)
-    .where(and(eq(todos.userId, userId), eq(todos.status, 'open'), lt(todos.dueAt, now)))
+    .where(and(eq(todos.userId, userId), todoIsActiveSql(), lt(todos.dueAt, now)))
     .orderBy(desc(todos.priority), asc(todos.dueAt))
     .limit(1)
   if (!todo) return null

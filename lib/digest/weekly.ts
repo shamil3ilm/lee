@@ -21,6 +21,7 @@ import {
   isMondayInTz as isMondayInTzHelper,
   sentThisTzWeek,
 } from '@/lib/ui/timezone'
+import { todoIsActiveSql } from '@/lib/db/queries/todos'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -271,7 +272,7 @@ export async function gatherPipelineSnapshot(
     .where(
       and(
         eq(todos.userId, userId),
-        eq(todos.status, 'open'),
+        todoIsActiveSql(),
         isNotNull(todos.dueAt),
         lte(todos.dueAt, in7),
       ),

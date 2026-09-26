@@ -1,19 +1,33 @@
-import { and, asc, count, desc, eq, gte, isNull, lt, lte, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gte, inArray, isNull, lt, lte, sql } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import { applications, companies, contacts, interviewStages, todos } from '@/lib/db/schema'
+import {
+  TODO_ACTIVE_STATUSES,
+  type TodoBoardStatus,
+  type TodoStatus,
+} from '@/lib/todos/status'
+
+export {
+  TODO_STATUSES,
+  TODO_ACTIVE_STATUSES,
+  TODO_BOARD_STATUSES,
+  isTodoStatus,
+  isActiveTodoStatus,
+  type TodoStatus,
+} from '@/lib/todos/status'
 
 export type Todo = typeof todos.$inferSelect
 export type NewTodo = typeof todos.$inferInsert
 
-export type TodoStatus = 'open' | 'done' | 'archived'
-export const TODO_STATUSES: readonly TodoStatus[] = ['open', 'done', 'archived']
-
-export function isTodoStatus(v: string): v is TodoStatus {
-  return (TODO_STATUSES as readonly string[]).includes(v)
+/** SQL filter: the todo is active work (open, in progress or waiting). */
+export function todoIsActiveSql() {
+  return inArray(todos.status, [...TODO_ACTIVE_STATUSES])
 }
 
 export interface ListTodosOpts {
   status?: TodoStatus
+  /** Any of these statuses (ignored when `status` is set). */
+  statuses?: readonly TodoStatus[]
   applicationId?: string
   // Filter to todos due within the given number of hours from `now` (also
   // includes overdue open todos).
@@ -110,6 +124,9 @@ export async function list(
 ): Promise<Todo[]> {
   const filters = [eq(todos.userId, userId)]
   if (opts.status) filters.push(eq(todos.status, opts.status))
+  else if (opts.statuses && opts.statuses.length > 0) {
+    filters.push(inArray(todos.status, [...opts.statuses]))
+  }
   if (opts.applicationId) filters.push(eq(todos.applicationId, opts.applicationId))
   if (opts.dueWithin) {
     const now = opts.dueWithin.now ?? new Date()
@@ -186,7 +203,8 @@ export async function markDone(
 }
 
 /**
- * Flip status open ↔ done. If currently 'archived' returns row unchanged.
+ * Flip status done → open, and any active status (open, in progress,
+ * waiting) → done. If currently 'archived' returns row unchanged.
  * When flipping to 'done' also stamps `completedAt`; flipping to 'open'
  * clears it so re-completing later regenerates the timestamp.
  */
@@ -235,7 +253,7 @@ export async function listDueByEnd(
     .where(
       and(
         eq(todos.userId, userId),
-        eq(todos.status, 'open'),
+        todoIsActiveSql(),
         lte(todos.dueAt, end),
       ),
     )
@@ -260,7 +278,7 @@ export async function listDueBetween(
     .where(
       and(
         eq(todos.userId, userId),
-        eq(todos.status, 'open'),
+        todoIsActiveSql(),
         gte(todos.dueAt, start),
         lte(todos.dueAt, end),
       ),
@@ -278,8 +296,58 @@ export async function countOverdue(
   const [row] = await client
     .select({ c: count() })
     .from(todos)
-    .where(and(eq(todos.userId, userId), eq(todos.status, 'open'), lt(todos.dueAt, now)))
+    .where(and(eq(todos.userId, userId), todoIsActiveSql(), lt(todos.dueAt, now)))
   return Number(row?.c ?? 0)
+}
+
+/** Board columns: every active todo plus the most recently finished ones. */
+export async function listForBoard(
+  userId: string,
+  opts: { doneLimit?: number } = {},
+  client: DbClient = db,
+): Promise<Todo[]> {
+  const [active, done] = await Promise.all([
+    list(userId, { statuses: TODO_ACTIVE_STATUSES }, client),
+    client
+      .select()
+      .from(todos)
+      .where(and(eq(todos.userId, userId), eq(todos.status, 'done')))
+      .orderBy(desc(todos.completedAt), desc(todos.updatedAt))
+      .limit(opts.doneLimit ?? 30),
+  ])
+  return [...active, ...done]
+}
+
+/** Count of done todos (the board caps its Done column). */
+export async function countDone(userId: string, client: DbClient = db): Promise<number> {
+  const [row] = await client
+    .select({ c: count() })
+    .from(todos)
+    .where(and(eq(todos.userId, userId), eq(todos.status, 'done')))
+  return Number(row?.c ?? 0)
+}
+
+/**
+ * Move a todo to a board column. Stamps `completedAt` when it becomes done
+ * (keeping the original stamp if it already was) and clears it when it
+ * leaves done. Scoped by user; returns null when the todo isn't theirs.
+ */
+export async function setBoardStatus(
+  userId: string,
+  id: string,
+  status: TodoBoardStatus,
+  client: DbClient = db,
+): Promise<Todo | null> {
+  const [row] = await client
+    .update(todos)
+    .set({
+      status,
+      completedAt: status === 'done' ? sql`coalesce(${todos.completedAt}, now())` : null,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(todos.userId, userId), eq(todos.id, id)))
+    .returning()
+  return row ?? null
 }
 
 // Sentinel export so consumers can quickly build "no-due" filters without

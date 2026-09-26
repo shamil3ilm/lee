@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { DISPLAY_LOCALE, relativeFromNow } from '@/lib/ui/date'
 import { cn } from '@/lib/utils'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { TODO_STATUS_LABELS, TODO_STATUS_TONE } from '@/lib/todos/status'
 
 const TodoEditDialog = dynamic(
   () => import('@/components/todo-edit-dialog').then((m) => m.TodoEditDialog),
@@ -144,6 +145,11 @@ export function TodoRow({ todo, applicationLabel, now }: TodoRowProps) {
               className="text-[10px]"
             >
               {PRIORITY_LABEL[todo.priority] ?? PRIORITY_LABEL[0]}
+            </Badge>
+          ) : null}
+          {todo.status === 'in_progress' || todo.status === 'waiting' ? (
+            <Badge variant={TODO_STATUS_TONE[todo.status]} className="text-[10px]">
+              {TODO_STATUS_LABELS[todo.status]}
             </Badge>
           ) : null}
           {todo.dueAt ? (
