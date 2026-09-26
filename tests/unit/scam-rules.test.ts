@@ -113,6 +113,7 @@ describe('channel signals', () => {
     'WhatsApp only: +91 98xxxxxx10',
     'Send your CV on WhatsApp to 9876543210.',
     'Apply now: https://t.me/jobs_hr_desk',
+    'To join, WhatsApp your name and city to 98xxxxxx21.',
   ])('messaging-only fires: %s', (d) => fires('channel.messaging_only', d))
 
   it('messaging-only fires on a wa.me apply link', () => {
@@ -121,6 +122,7 @@ describe('channel signals', () => {
 
   it.each([
     'Build WhatsApp Business API integrations with Twilio.',
+    'Send WhatsApp notifications at scale with Kafka.',
     'We never contact candidates on Telegram or WhatsApp.',
   ])('messaging-only silent: %s', (d) => silent('channel.messaging_only', d))
 

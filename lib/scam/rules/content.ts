@@ -78,7 +78,7 @@ function payTooHigh(fields: ScamFields): EvidenceSpan[] {
 // ---------------------------------------------------------------------------
 
 const EARN =
-  /\b(?:earn|earning|income|make|payout|get\s+paid)\b[^.\n]{0,40}(?:daily|per\s+day|every\s+day|weekly|per\s+week|\/\s*day|a\s+day|instantly|same\s+day)\b|\bdaily\s+(?:payouts?|payments?|income|earnings?)\b|\bweekly\s+payouts?\b/
+  /\b(?:earn|earning|income|make|payout|get\s+paid)\b[^!?\n]{0,40}(?:daily|per\s+day|every\s+day|weekly|per\s+week|\/\s*day|a\s+day|instantly|same\s+day)\b|\bdaily\s+(?:payouts?|payments?|income|earnings?)\b|\bweekly\s+payouts?\b/
 const NO_EXP =
   /\bno\s+(?:prior\s+)?(?:experience|skills?|qualifications?)\s*(?:needed|required|necessary)?|\bfreshers?\s+(?:can|welcome)|\bany(?:one)?\s+can\s+(?:apply|do|join)\b|\bhousewi(?:fe|ves)\b/
 const WFH =

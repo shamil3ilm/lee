@@ -8,7 +8,8 @@ const MESSAGING = [
   new RegExp(String.raw`\b(?:contact|message|msg|text|reach|ping|dm|apply|chat|connect|write)\b[^.\n]{0,25}\b${APP}\b`),
   new RegExp(String.raw`\b(?:send|share|forward)\s+(?:your\s+)?(?:cv|resume|bio-?data|details|documents)\b[^.\n]{0,25}\b${APP}\b`),
   new RegExp(String.raw`\bjoin\s+(?:our\s+)?${APP}\s+(?:channel|group)\b`),
-  new RegExp(String.raw`\b${APP}\s*(?:only|no\.?|number|:|@|\+)`),
+  new RegExp(String.raw`\b${APP}\s*(?:only\b|no\.?(?=[\s:\d])|number\b|:|@|\+|\d)`),
+  /\bwhats\s?app\s+(?:your|us|me|at|to)\b/,
   /(?:t\.me|telegram\.me|wa\.me|chat\.whatsapp\.com)\/\S+/,
 ]
 

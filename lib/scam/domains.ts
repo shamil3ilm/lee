@@ -37,7 +37,8 @@ const JOB_PLATFORM_DOMAINS = [
   'workatastartup.com', 'remoteok.com', 'weworkremotely.com', 'bayt.com',
   'naukrigulf.com', 'gulftalent.com', 'dubizzle.com', 'otta.com', 'welcometothejungle.com',
   'builtin.com', 'dice.com', 'ziprecruiter.com', 'simplyhired.com', 'hackernews.com',
-  'news.ycombinator.com', 'github.com', 'google.com',
+  'news.ycombinator.com', 'github.com', 'google.com', 'internshala.com', 'apna.co',
+  'workindia.in', 'unstop.com', 'indeed.co.in',
 ]
 
 export const URL_SHORTENERS = new Set([
