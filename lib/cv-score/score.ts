@@ -9,6 +9,7 @@
 import { writeSkipLog } from '@/lib/ai/log'
 import type { AIProvider } from '@/lib/ai/types'
 import * as applicationsQ from '@/lib/db/queries/applications'
+import type { ApplicationWithJob } from '@/lib/db/queries/applications'
 import * as cvScoresQ from '@/lib/db/queries/cvScores'
 import * as profileQ from '@/lib/db/queries/profile'
 import { computeCvScore } from './compute'
@@ -37,6 +38,13 @@ export interface ScoreCvInput {
   /** Persist a cv_scores row (default true). */
   persist?: boolean
   now?: Date
+  /**
+   * Preloaded application (with job + company) for `applicationId`, so
+   * batch callers do not re-fetch it per item. Must belong to `userId`.
+   */
+  application?: ApplicationWithJob
+  /** Preloaded scoring context (profile), shared across a batch. */
+  context?: ScoreContext
 }
 
 export interface CvScoreRecord extends CvScoreResult {
@@ -83,8 +91,14 @@ export async function scoreContextFor(userId: string, canAutofix: boolean, now?:
 
 export async function scoreCv(input: ScoreCvInput): Promise<CvScoreRecord> {
   const loaded = await resolveSource(input.userId, input.source)
-  const target = await loadTarget(input.userId, input.applicationId)
-  const ctx = await scoreContextFor(input.userId, loaded.kind === 'master_cv', input.now)
+  const preloadedApp =
+    input.application && input.application.id === input.applicationId && input.application.userId === input.userId
+      ? input.application
+      : null
+  const target = preloadedApp
+    ? jobTargetFromApplication(preloadedApp)
+    : await loadTarget(input.userId, input.applicationId)
+  const ctx = input.context ?? (await scoreContextFor(input.userId, loaded.kind === 'master_cv', input.now))
   const cv = cvToScorable(loaded.input)
 
   let requirementFit: DimensionOutcome | undefined
