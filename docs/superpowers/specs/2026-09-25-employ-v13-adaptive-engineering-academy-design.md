@@ -111,6 +111,44 @@ Correctness via result-set diff; efficiency via PGlite `EXPLAIN (ANALYZE)` cost/
 
 **Safety:** offensive exercises target only in-browser sandboxed toy apps; every one ends with remediation.
 
+### 5.1 Extension (2026-09-26): cyber security, pipelines, packages, servers, conflicts
+New skill-graph domains (data in `skills.json`, same levels 0–5, same adaptive engine and evaluation):
+
+| Domain | Skills (examples) |
+|---|---|
+| Cyber security — defensive | log triage and detection rules, alert investigation, incident forensics timeline, hardening, secure headers/CSP/CORS review, secrets rotation |
+| Cyber security — offensive (sandboxed) | web exploitation beyond OWASP basics (JWT/session flaws, deserialization, race-condition abuse, business-logic flaws), privilege escalation in a sandboxed VM, recon only against in-app targets |
+| Cryptography in practice | hashing vs encryption, password storage, TLS handshake, JWT signing pitfalls, key management |
+| Cloud & identity | IAM policy evaluation, least privilege, misconfigured buckets/roles, OAuth/OIDC flows |
+| Supply chain | typosquatting, malicious install scripts, lockfile integrity, provenance and signing, SBOMs |
+| Pipelines — CI/CD | workflow design, caching, matrices, secrets, artifacts, flaky tests, deploy strategies (blue/green, canary, rollback), migrations in pipelines |
+| Pipelines — data | ETL/ELT, idempotent reruns, backfills, late and duplicate data, schema evolution, DAG scheduling |
+| Packages & dependencies | semver ranges, lockfiles, peer/diamond dependency conflicts, ESM/CJS packaging and `exports` maps, vulnerability triage, upgrades |
+| Servers & infrastructure | Linux (processes, permissions, systemd, disk, logs, cron), networking (DNS, ports, firewalls, HTTP/TLS), web servers and reverse proxies, containers (Dockerfile, image size, non-root), Kubernetes basics (probes, resources, CrashLoopBackOff) |
+| Conflicts — technical | git text conflicts, **semantic conflicts** (merges cleanly, breaks behaviour), migration-number and lockfile conflicts, concurrent edits (optimistic locking, CRDT/OT concepts) |
+| Conflicts — people | code-review disagreements, scope pushback, incident blame, estimates under pressure — handled professionally |
+
+New exercise formats:
+
+| Format | What you do | Scored on | Runs on (free, in-browser) |
+|---|---|---|---|
+| **Blue-team triage** | Investigate a stream of simulated logs/alerts, write a detection rule, build the incident timeline | true/false positives, time to detect, timeline accuracy | generated log datasets |
+| **Hardening review** | Fix a vulnerable config (headers, CORS, cookies, IAM policy, Dockerfile) | issues fixed, nothing broken, least privilege | static analyzers + policy evaluator in TS |
+| **Pipeline debugger** | A failing CI workflow (YAML) with logs: fix ordering, caching, secrets, matrix, flaky step; then design a safe deploy with rollback | pipeline passes in the simulator, duration, cost, safety checks | GitHub-Actions-style simulator (parses YAML, runs a step graph with scripted outcomes) |
+| **Data pipeline lab** | Build a DAG that survives reruns, late/duplicate data and a backfill | exactly-once results, runtime | DAG runner over PGlite |
+| **Dependency resolver** | Resolve semver/peer conflicts, pick safe upgrades, triage advisories, spot a typosquat or malicious postinstall | resolvable tree, vulnerabilities removed, breaking changes avoided | simulated registry; real advisories from the free OSV API (osv.dev) |
+| **Package author** | Publish-ready library: `exports` map, ESM/CJS, types, semver bump from a changelog | consumers in the test matrix import correctly | simulated consumers |
+| **Server lab** | Real Linux shell: service down, disk full, bad permissions, port clash, broken nginx config, runaway process, cron job | service healthy, root cause, commands used, time | **v86** (x86 emulator in WebAssembly, BSD-licensed) running a small Linux image, cached after first load; lighter simulated shell for quick drills |
+| **Container & cluster doctor** | Shrink and secure a Dockerfile; fix pods stuck in CrashLoopBackOff/Pending | image size, security findings, pods healthy | Dockerfile linter rules + Kubernetes state simulator |
+| **Conflict resolver** | Git text conflicts (existing), semantic conflicts caught by tests, colliding migration numbers, lockfile conflicts | tests green, history clean, no lost changes | isomorphic-git + in-browser test runner |
+| **People-conflict scenario** | Role-play a code-review disagreement or scope pushback with an AI counterpart | rubric: clarity, empathy, outcome, trade-offs stated | AI evaluator with a published rubric |
+| **Real-history drills** | Replay bugs from Employ's own history (the order-dependent test leak, the Laya `noul` parsing bug, the double-0013 migration clash) | same as debugging | repo history snapshots |
+
+**Safety (applies to all security content):**
+- Offensive work targets only sandboxed in-browser apps and the local v86 VM, never real hosts.
+- There are no scanners or payloads aimed at the internet, and every exploit ends with the fix.
+- Network access from the VM is disabled.
+
 ## 6. Never the same twice
 
 - **Parameterized templates**: each exercise template declares generators (input shapes, constraints, schemas, traffic profiles, incident timelines) → fresh variant each time.
@@ -180,6 +218,10 @@ Skill graph, templates and achievement catalog: versioned JSON under `content/ac
 - **13.5 Incident drills + code review + security CTF + git scenarios**
 - **13.6 Generation** — parameterized templates everywhere + validated AI variants + difficulty calibration
 - **13.7 Path, capstones, boss battles, stats page, journey integrations**
+- **13.8 Security expansion**: blue-team triage, hardening review, crypto, cloud IAM, supply-chain drills
+- **13.9 Delivery**: pipeline debugger, data pipeline lab, dependency resolver, package author
+- **13.10 Infrastructure**: server lab (v86 + simulated shell), container & cluster doctor
+- **13.11 Conflicts**: semantic, migration and lockfile conflicts; people-conflict scenarios; real-history drills
 
 ## 13. Constraints
 - Zero cost; in-browser execution; strict worker timeouts and memory caps
