@@ -11,6 +11,8 @@ import {
   updateContact as svcUpdateContact,
 } from '@/lib/contacts/service'
 import { isContactLinkRole } from '@/lib/contacts/roles'
+import { CONTACT_STAGES, storedContactStage } from '@/lib/contacts/pipeline'
+import * as contactsQ from '@/lib/db/queries/contacts'
 import { logger } from '@/lib/logger'
 
 export type ActionResult = { success: true } | { error: string }
@@ -144,4 +146,32 @@ export async function unlinkContactAction(
   role: string,
 ): Promise<ActionResult> {
   return runLink('unlink', applicationId, contactId, role)
+}
+
+const moveSchema = z.object({
+  contactId: z.string().uuid(),
+  stage: z.enum(CONTACT_STAGES),
+})
+
+/**
+ * Networking board: To contact / Contacted / Replied / Meeting / Referral.
+ * Zod-validated and scoped to the signed-in user.
+ */
+export async function moveContact(contactId: string, stage: string): Promise<ActionResult> {
+  const parsed = moveSchema.safeParse({ contactId, stage })
+  if (!parsed.success) return { error: 'Invalid move.' }
+  try {
+    const userId = await requireUserId()
+    const row = await contactsQ.setPipelineStage(
+      userId,
+      parsed.data.contactId,
+      storedContactStage(parsed.data.stage),
+    )
+    if (!row) return { error: 'Contact not found.' }
+    revalidateContacts()
+    return { success: true }
+  } catch (err) {
+    logger.error('moveContact failed', { err: errMessage(err) })
+    return { error: 'Could not move the contact.' }
+  }
 }

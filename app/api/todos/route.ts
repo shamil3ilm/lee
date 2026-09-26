@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import * as todosQ from '@/lib/db/queries/todos'
+import { TODO_STATUSES } from '@/lib/todos/status'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -21,7 +22,7 @@ const isoDateOrNull = z
 const createSchema = z.object({
   title: z.string().min(1, 'title required').max(300),
   notesMd: z.string().max(10_000).optional().nullable(),
-  status: z.enum(['open', 'done', 'archived']).optional(),
+  status: z.enum(TODO_STATUSES).optional(),
   priority: z.number().int().min(0).max(3).optional(),
   dueAt: isoDateOrNull,
   applicationId: z.string().uuid().optional().nullable(),

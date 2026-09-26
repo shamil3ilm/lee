@@ -71,10 +71,10 @@ const QUESTION_CATEGORY_ORDER: ReadonlyArray<LikelyQuestion['category']> = [
   'salary',
 ]
 
-const DIFFICULTY_BADGE: Record<LikelyQuestion['difficulty'], 'emerald' | 'blue' | 'rose'> = {
-  easy: 'emerald',
-  medium: 'blue',
-  hard: 'rose',
+const DIFFICULTY_BADGE: Record<LikelyQuestion['difficulty'], 'success' | 'info' | 'danger'> = {
+  easy: 'success',
+  medium: 'info',
+  hard: 'danger',
 }
 
 function readPack(doc: Document): InterviewPrepPack | null {

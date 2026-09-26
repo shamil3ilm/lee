@@ -86,11 +86,11 @@ export function AutofixDialog({ preview, onClose, onApplied }: AutofixDialogProp
                       </span>
                       {c.kind === 'rewrite_bullet' ? (
                         <>
-                          <span className="block rounded bg-rose-500/10 px-2 py-1 line-through decoration-rose-500/60">{c.before}</span>
-                          <span className="block rounded bg-emerald-500/10 px-2 py-1">{c.after}</span>
+                          <span className="block rounded bg-danger/10 px-2 py-1 line-through decoration-danger/60">{c.before}</span>
+                          <span className="block rounded bg-success/10 px-2 py-1">{c.after}</span>
                         </>
                       ) : (
-                        <span className="block rounded bg-emerald-500/10 px-2 py-1">+ {c.term}</span>
+                        <span className="block rounded bg-success/10 px-2 py-1">+ {c.term}</span>
                       )}
                     </span>
                   </label>

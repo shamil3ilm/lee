@@ -545,7 +545,7 @@ export function DecisionPlayground({ defaultLayaEndpoint }: DecisionPlaygroundPr
         ) : (
           <>
             {disagreement ? (
-              <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+              <div className="rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-xs text-warning">
                 Providers disagreed on the answer.
               </div>
             ) : null}
@@ -586,7 +586,7 @@ function ResultCard({
     <Card
       className={cn(
         highlight && row.ok
-          ? 'border-amber-300 dark:border-amber-800'
+          ? 'border-warning/30'
           : undefined,
       )}
     >

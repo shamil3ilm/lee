@@ -32,7 +32,7 @@ export function RecentRuns({ runs, now }: RecentRunsProps) {
             <span className="min-w-0 flex-1 truncate text-sm">{r.promptPreview || '(empty prompt)'}</span>
             <span className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
               {r.blind ? (
-                <Badge variant={r.voted ? 'emerald' : 'violet'}>{r.voted ? 'voted' : 'blind'}</Badge>
+                <Badge variant={r.voted ? 'success' : 'neutral'}>{r.voted ? 'voted' : 'blind'}</Badge>
               ) : null}
               <span>{r.modelCount} models</span>
               <span>{relative(new Date(r.createdAt), now)}</span>

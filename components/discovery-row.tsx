@@ -111,7 +111,7 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
   const n = item.normalized
-  const isActionable = item.status === 'new'
+  const isActionable = item.status === 'new' || item.status === 'shortlisted'
 
   const handleSave = (): void => {
     startTransition(async () => {
@@ -411,13 +411,13 @@ function ReasoningBlock({
       ) : null}
       {reasoning?.strengths && reasoning.strengths.length > 0 ? (
         <div>
-          <div className="mb-1 font-semibold text-emerald-700 dark:text-emerald-400">
+          <div className="mb-1 font-semibold text-success">
             Strengths
           </div>
           <ul className="space-y-1">
             {reasoning.strengths.map((s, i) => (
               <li key={i} className="flex items-start gap-1.5">
-                <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-emerald-500" />
+                <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-success" />
                 <span>{s}</span>
               </li>
             ))}
@@ -426,13 +426,13 @@ function ReasoningBlock({
       ) : null}
       {reasoning?.red_flags && reasoning.red_flags.length > 0 ? (
         <div>
-          <div className="mb-1 font-semibold text-rose-700 dark:text-rose-400">
+          <div className="mb-1 font-semibold text-danger">
             Red flags
           </div>
           <ul className="space-y-1">
             {reasoning.red_flags.map((s, i) => (
               <li key={i} className="flex items-start gap-1.5">
-                <XCircle className="mt-0.5 size-3.5 shrink-0 text-rose-500" />
+                <XCircle className="mt-0.5 size-3.5 shrink-0 text-danger" />
                 <span>{s}</span>
               </li>
             ))}

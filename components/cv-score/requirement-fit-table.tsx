@@ -5,7 +5,7 @@ import { UsageBadge } from '@/components/ai/usage-badge'
 import type { AiUsage } from '@/lib/ai/usage-types'
 import type { RequirementFitDetails } from '@/lib/cv-score/requirement-fit'
 
-const STATUS_TONE = { met: 'emerald', partial: 'violet', missing: 'rose' } as const
+const STATUS_TONE = { met: 'success', partial: 'warning', missing: 'danger' } as const
 
 interface RequirementFitTableProps {
   details: RequirementFitDetails
@@ -39,11 +39,11 @@ export function RequirementFitTable({ details, aiCallId, usage }: RequirementFit
                     <p className={it.evidenceVerified ? '' : 'text-muted-foreground line-through'}>“{it.evidence}”</p>
                   ) : null}
                   {it.evidenceVerified ? (
-                    <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                    <span className="inline-flex items-center gap-1 text-success">
                       <CheckCircle2 className="size-3.5" /> quote verified in your CV
                     </span>
                   ) : it.downgradedFrom ? (
-                    <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                    <span className="inline-flex items-center gap-1 text-warning">
                       <ShieldAlert className="size-3.5" /> quote not found — downgraded from {it.downgradedFrom}
                     </span>
                   ) : null}

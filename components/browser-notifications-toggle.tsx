@@ -71,7 +71,7 @@ export function BrowserNotificationsToggle() {
         </p>
 
         {unsupported ? (
-          <div className="flex items-start gap-2 rounded-md border border-yellow-200 bg-yellow-50 p-3 text-xs text-yellow-900 dark:border-yellow-900/50 dark:bg-yellow-950/40 dark:text-yellow-200">
+          <div className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning-soft p-3 text-xs text-warning">
             <BellOff className="mt-0.5 size-4 shrink-0" />
             <div>
               This browser does not support the Notifications API. Try a
@@ -127,19 +127,19 @@ function StatusChip({ state }: { state: NotificationPermissionState }) {
     granted: {
       label: 'Enabled',
       className:
-        'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
+        'bg-success-soft text-success',
     },
     denied: {
       label: 'Blocked',
-      className: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
+      className: 'bg-danger-soft text-danger',
     },
     default: {
       label: 'Not requested',
-      className: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300',
+      className: 'bg-neutral-soft text-neutral',
     },
     unsupported: {
       label: 'Unsupported',
-      className: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300',
+      className: 'bg-neutral-soft text-neutral',
     },
   }
   const info = map[state]

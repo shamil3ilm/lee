@@ -85,7 +85,7 @@ export function SetupChecklist({ checklist }: SetupChecklistProps) {
                   )}
                 >
                   {item.done ? (
-                    <CheckCircle2 className="size-4 shrink-0 text-emerald-600" aria-hidden />
+                    <CheckCircle2 className="size-4 shrink-0 text-success" aria-hidden />
                   ) : (
                     <Circle className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                   )}

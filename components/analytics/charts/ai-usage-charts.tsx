@@ -1,4 +1,6 @@
 'use client'
+import { CHART_PRIMARY, categorical } from '@/lib/ui/chart-palette'
+import { toneColor } from '@/lib/ui/tones'
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import {
   ChartContainer,
@@ -10,12 +12,12 @@ import type { AIUsageStats } from '@/lib/analytics/service'
 import { formatCost, formatNumber } from '../ai-usage-format'
 
 const CHART_CONFIG: ChartConfig = {
-  cost: { label: 'Est. cost ($)', color: 'hsl(217 91% 60%)' },
+  cost: { label: 'Est. cost ($)', color: CHART_PRIMARY },
 }
 
 const SIGNAL_CHART_CONFIG: ChartConfig = {
-  proceeded: { label: 'Proceeded', color: 'hsl(142 71% 45%)' },
-  skipped: { label: 'Skipped', color: 'hsl(0 84% 60%)' },
+  proceeded: { label: 'Proceeded', color: toneColor('success') },
+  skipped: { label: 'Skipped', color: toneColor('danger') },
 }
 
 export function SignalCheckChart({ data }: { data: AIUsageStats['signalCheckByKind'] }) {
@@ -79,8 +81,8 @@ export function DailyCostChart({ data }: { data: DailyCostDatum[] }) {
 }
 
 const TOKENS_CHART_CONFIG: ChartConfig = {
-  inputTokens: { label: 'Input tokens', color: 'hsl(217 91% 60%)' },
-  outputTokens: { label: 'Output tokens', color: 'hsl(262 83% 58%)' },
+  inputTokens: { label: 'Input tokens', color: categorical(0) },
+  outputTokens: { label: 'Output tokens', color: categorical(2) },
 }
 
 export interface DailyTokensDatum {

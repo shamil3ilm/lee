@@ -134,6 +134,9 @@ export const contacts = pgTable(
     linkedinUrl: text('linkedin_url'),
     role: text('role'),
     notes: text('notes'),
+    // Networking board column: 'contacted' | 'replied' | 'meeting' |
+    // 'referral' (lib/contacts/pipeline.ts). null = not contacted yet.
+    pipelineStage: text('pipeline_stage'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -776,7 +779,7 @@ export const todos = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     title: text('title').notNull(),
     notesMd: text('notes_md'),
-    // 'open' | 'done' | 'archived'
+    // 'open' | 'in_progress' | 'waiting' | 'done' | 'archived' (lib/todos/status.ts)
     status: text('status').notNull().default('open'),
     // 0 = none, 1 = low, 2 = med, 3 = high
     priority: smallint('priority').notNull().default(0),

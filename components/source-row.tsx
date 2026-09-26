@@ -94,7 +94,7 @@ export function SourceRow({ source }: { source: SourceRowItem }) {
               <TooltipProvider delayDuration={100}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400">
+                    <span className="inline-flex items-center gap-1 text-danger">
                       <AlertTriangle className="size-3.5" />
                       {source.errorCount} error{source.errorCount === 1 ? '' : 's'}
                     </span>
@@ -125,7 +125,7 @@ export function SourceRow({ source }: { source: SourceRowItem }) {
             >
               <span
                 className={[
-                  'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
+                  'inline-block h-4 w-4 transform rounded-full bg-card shadow ring-1 ring-border transition-transform',
                   enabled ? 'translate-x-4' : 'translate-x-0.5',
                 ].join(' ')}
               />
@@ -149,7 +149,7 @@ export function SourceRow({ source }: { source: SourceRowItem }) {
                 Edit
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="text-rose-600 focus:text-rose-600 dark:text-rose-400"
+                className="text-danger focus:text-danger"
                 onSelect={() => setConfirmOpen(true)}
               >
                 <Trash2 className="size-4" />

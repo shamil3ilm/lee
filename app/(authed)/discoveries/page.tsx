@@ -21,6 +21,10 @@ import type {
 } from '@/components/discovery-row'
 import type { NormalizedCompany } from '@/lib/discovery/adapters/types'
 import { cn } from '@/lib/utils'
+import { BoardViewToggle } from '@/components/board/view-toggle'
+import type { DiscoveryBoardColumn, DiscoveryBoardItem } from '@/components/discoveries-board'
+import { LazyDiscoveriesBoard } from '@/components/board/lazy'
+import { parseBoardView, viewHref, type BoardView } from '@/lib/board/view'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,6 +35,7 @@ interface DiscoveriesPageProps {
     minScore?: string
     sort?: string
     page?: string
+    view?: string
   }>
 }
 
@@ -39,7 +44,7 @@ function parseTab(raw: string | undefined): 'jobs' | 'companies' {
 }
 
 function parseStatus(raw: string | undefined): DiscoveryStatusFilter {
-  if (raw === 'saved' || raw === 'dismissed' || raw === 'quarantined') return raw
+  if (raw === 'shortlisted' || raw === 'saved' || raw === 'dismissed' || raw === 'quarantined') return raw
   return 'new'
 }
 
@@ -73,12 +78,32 @@ export default async function DiscoveriesPage({
   const sp = await searchParams
   const tab = parseTab(sp.tab)
   const parsedStatus = parseStatus(sp.status)
-  // Quarantine is a job-discovery concept; companies fall back to the inbox.
-  const status = tab === 'companies' && parsedStatus === 'quarantined' ? 'new' : parsedStatus
+  // Quarantine and the shortlist are job-discovery concepts; companies fall
+  // back to the inbox.
+  const status =
+    tab === 'companies' && (parsedStatus === 'quarantined' || parsedStatus === 'shortlisted')
+      ? 'new'
+      : parsedStatus
   const minScore = parseMinScore(sp.minScore)
   const sort = parseSort(sp.sort)
   const page = parsePage(sp.page)
   const offset = (page - 1) * PAGE_SIZE
+  const { view, explicit } = parseBoardView(sp.view, 'list')
+
+  if (tab === 'jobs' && view === 'board') {
+    const board = await loadBoard(userId)
+    return (
+      <div className="space-y-4">
+        <PageHeader
+          title="Discovery"
+          description="Triage AI-scored roles: shortlist, apply or dismiss."
+          actions={<ViewToggle sp={sp} view={view} explicit={explicit} />}
+        />
+        <TabBar tab={tab} />
+        <LazyDiscoveriesBoard items={board.items} totals={board.totals} />
+      </div>
+    )
+  }
 
   // Sources and the tab's rows are independent — fetch them together.
   const [sources, jobs, companies] = await Promise.all([
@@ -88,7 +113,7 @@ export default async function DiscoveriesPage({
       : Promise.resolve(null),
     tab === 'companies'
       ? companyDiscoveriesQ.list(userId, {
-          status: status === 'quarantined' ? 'new' : status,
+          status: status === 'quarantined' || status === 'shortlisted' ? 'new' : status,
           minScore: minScore > 0 ? minScore : undefined,
           // One extra row tells us whether a next page exists.
           limit: PAGE_SIZE + 1,
@@ -142,6 +167,7 @@ export default async function DiscoveriesPage({
       <PageHeader
         title="Discovery"
         description="AI-scored jobs and companies from your sources."
+        actions={tab === 'jobs' ? <ViewToggle sp={sp} view={view} explicit={explicit} /> : undefined}
       />
       <TabBar tab={tab} />
       <DiscoveryFilters
@@ -190,6 +216,77 @@ async function loadJobs(
     rows.slice(0, PAGE_SIZE).map((d) => d.id),
   )
   return { rows, risks, quarantinedCount }
+}
+
+/** Cards per board column; the footer links to the full list. */
+const BOARD_COLUMN_LIMIT = 25
+
+/**
+ * Triage board data: each column capped (four lean, indexed queries in
+ * parallel) plus one grouped count. Quarantined rows are excluded, as in
+ * the inbox; the same bounded Scam Shield catch-up runs first.
+ */
+async function loadBoard(userId: string): Promise<{
+  items: Record<DiscoveryBoardColumn, DiscoveryBoardItem[]>
+  totals: Record<DiscoveryBoardColumn, number>
+}> {
+  await safely('discoveries_view', () => reassessStaleDiscoveries(userId, { limit: REASSESS_ON_VIEW }))
+  const columns: DiscoveryBoardColumn[] = ['new', 'shortlisted', 'saved', 'dismissed']
+  const [lists, totals] = await Promise.all([
+    Promise.all(
+      columns.map((status) =>
+        discoveriesQ.list(userId, {
+          status,
+          quarantine: 'exclude',
+          // Triage columns by fit; outcome columns by recency.
+          sort: status === 'new' || status === 'shortlisted' ? 'combined' : 'posted',
+          limit: BOARD_COLUMN_LIMIT,
+        }),
+      ),
+    ),
+    discoveriesQ.countByStatus(userId),
+  ])
+  const items = Object.fromEntries(
+    columns.map((status, i) => [
+      status,
+      lists[i]!.map(
+        (d): DiscoveryBoardItem => ({
+          id: d.id,
+          version: d.updatedAt.toISOString(),
+          status,
+          title: d.title ?? 'Untitled',
+          companyName: d.companyName ?? 'Unknown',
+          location: d.location,
+          remoteType: d.remoteType,
+          matchScore: d.matchScore,
+          applyUrl: d.applyUrl,
+          savedApplicationId: d.savedApplicationId,
+        }),
+      ),
+    ]),
+  ) as Record<DiscoveryBoardColumn, DiscoveryBoardItem[]>
+  return { items, totals }
+}
+
+function ViewToggle({
+  sp,
+  view,
+  explicit,
+}: {
+  sp: Record<string, string | undefined>
+  view: BoardView
+  explicit: boolean
+}): React.ReactElement {
+  return (
+    <BoardViewToggle
+      page="discoveries"
+      current={view}
+      defaultView="list"
+      explicit={explicit}
+      boardHref={viewHref('/discoveries', { tab: 'jobs' }, 'board')}
+      listHref={viewHref('/discoveries', sp, 'list')}
+    />
+  )
 }
 
 function toCompanySummary(value: unknown): DiscoveryCompanySummary {

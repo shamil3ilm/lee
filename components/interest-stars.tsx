@@ -37,7 +37,7 @@ export function InterestStars({
         const filled = i < value
         const commonIcon = cn(
           iconSize,
-          filled ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/40',
+          filled ? 'fill-warning text-warning' : 'text-muted-foreground/40',
         )
         if (!interactive) {
           return <Star key={i} className={commonIcon} />

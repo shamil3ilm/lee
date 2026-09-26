@@ -1,5 +1,5 @@
 {
-  "id": "ba4175f4-fc9b-46d8-934b-da0306275339",
+  "id": "02e1c4f4-cef5-489c-b057-919c309a6bcd",
   "prevId": "daf02268-f096-4892-a7cd-7c534274e520",
   "version": "7",
   "dialect": "postgresql",
@@ -1245,6 +1245,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "pipeline_stage": {
+          "name": "pipeline_stage",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -1412,12 +1418,6 @@
         "ai_call_id": {
           "name": "ai_call_id",
           "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "drive_file_id": {
-          "name": "drive_file_id",
-          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -1825,26 +1825,13 @@
           "name": "bytes",
           "type": "bytea",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "sha256": {
           "name": "sha256",
           "type": "text",
           "primaryKey": false,
           "notNull": false
-        },
-        "drive_file_id": {
-          "name": "drive_file_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "drive_picked": {
-          "name": "drive_picked",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
         },
         "created_at": {
           "name": "created_at",
@@ -1923,12 +1910,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "document_assets_has_copy": {
-          "name": "document_assets_has_copy",
-          "value": "\"document_assets\".\"bytes\" is not null or \"document_assets\".\"drive_file_id\" is not null"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.document_pdf_cache": {
@@ -1963,13 +1945,7 @@
           "name": "bytes",
           "type": "bytea",
           "primaryKey": false,
-          "notNull": false
-        },
-        "drive_file_id": {
-          "name": "drive_file_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "created_at": {
           "name": "created_at",
@@ -2011,12 +1987,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "document_pdf_cache_has_copy": {
-          "name": "document_pdf_cache_has_copy",
-          "value": "\"document_pdf_cache\".\"bytes\" is not null or \"document_pdf_cache\".\"drive_file_id\" is not null"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.documents": {
@@ -2174,66 +2145,6 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.drive_folders": {
-      "name": "drive_folders",
-      "schema": "",
-      "columns": {
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "folder_key": {
-          "name": "folder_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "folder_id": {
-          "name": "folder_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "drive_folders_user_id_users_id_fk": {
-          "name": "drive_folders_user_id_users_id_fk",
-          "tableFrom": "drive_folders",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "drive_folders_user_id_folder_key_pk": {
-          "name": "drive_folders_user_id_folder_key_pk",
-          "columns": [
-            "user_id",
-            "folder_key"
-          ]
-        }
-      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -4439,13 +4350,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": false
-        },
-        "drive_storage_enabled": {
-          "name": "drive_storage_enabled",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
         },
         "updated_at": {
           "name": "updated_at",

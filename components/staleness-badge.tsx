@@ -20,9 +20,9 @@ const LABEL: Record<Severity, string> = {
 }
 
 const DOT: Record<Severity, string> = {
-  fresh: 'bg-emerald-500',
-  minor: 'bg-amber-500',
-  critical: 'bg-rose-500',
+  fresh: 'bg-success',
+  minor: 'bg-warning',
+  critical: 'bg-danger',
 }
 
 const VARIANT: Record<Severity, 'emerald' | 'slate' | 'rose'> = {

@@ -5,8 +5,14 @@ import * as companiesQ from '@/lib/db/queries/companies'
 import { AddContactDialog } from '@/components/add-contact-dialog'
 import { ContactActions } from '@/components/contact-actions'
 import { PageHeader } from '@/components/page-header'
+import { EmptyState } from '@/components/empty-state'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { BoardViewToggle } from '@/components/board/view-toggle'
+import type { ContactBoardItem } from '@/components/contacts-board'
+import { LazyContactsBoard } from '@/components/board/lazy'
+import { parseBoardView } from '@/lib/board/view'
+import { CONTACT_STAGE_LABELS, CONTACT_STAGE_TONE, contactStageOf } from '@/lib/contacts/pipeline'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +30,7 @@ interface ContactRow {
   linkedinUrl: string | null
   notes: string | null
   companyId: string | null
+  pipelineStage: string | null
 }
 
 function groupByCompany(
@@ -43,8 +50,31 @@ function groupByCompany(
   return Array.from(groups.values()).sort((a, b) => a.label.localeCompare(b.label))
 }
 
-export default async function ContactsPage() {
+interface ContactsPageProps {
+  searchParams: Promise<{ view?: string | string[] }>
+}
+
+/** Same rows as the list, with company names resolved (no extra query). */
+function toBoardItems(
+  contacts: Array<contactsQ.Contact>,
+  companies: CompanyOption[],
+): ContactBoardItem[] {
+  const byId = new Map(companies.map((c) => [c.id, c.name] as const))
+  return contacts.map((c) => ({
+    id: c.id,
+    version: c.updatedAt.toISOString(),
+    name: c.name,
+    role: c.role,
+    email: c.email,
+    linkedinUrl: c.linkedinUrl,
+    companyName: c.companyId ? (byId.get(c.companyId) ?? null) : null,
+    stage: contactStageOf(c.pipelineStage),
+  }))
+}
+
+export default async function ContactsPage({ searchParams }: ContactsPageProps) {
   const userId = await requireUserId()
+  const { view, explicit } = parseBoardView((await searchParams).view, 'list')
   const [contacts, companyNames] = await Promise.all([
     contactsQ.list(userId),
     companiesQ.listNames(userId),
@@ -62,15 +92,30 @@ export default async function ContactsPage() {
       <PageHeader
         title="Contacts"
         description={`${contacts.length} in your rolodex`}
-        actions={<AddContactDialog companies={companyOptions} />}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <BoardViewToggle
+              page="contacts"
+              current={view}
+              defaultView="list"
+              explicit={explicit}
+              boardHref="/contacts?view=board"
+              listHref="/contacts?view=list"
+            />
+            <AddContactDialog companies={companyOptions} />
+          </div>
+        }
       />
 
-      {contacts.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-16 text-center">
-          <Users className="size-6 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">No contacts yet.</p>
-          <AddContactDialog companies={companyOptions} />
-        </div>
+      {view === 'board' ? (
+        <LazyContactsBoard contacts={toBoardItems(contacts, companyNames)} />
+      ) : contacts.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title="No contacts yet."
+          description="Add recruiters, referrers and interviewers to keep your network in one place."
+          action={<AddContactDialog companies={companyOptions} />}
+        />
       ) : (
         <div className="space-y-6">
           {groups.map((g) => (
@@ -85,7 +130,14 @@ export default async function ContactsPage() {
                     <Card>
                       <CardContent className="flex items-start gap-2 py-3">
                         <div className="min-w-0 flex-1">
-                          <div className="font-medium">{c.name}</div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-medium">{c.name}</span>
+                            {c.pipelineStage ? (
+                              <Badge variant={CONTACT_STAGE_TONE[contactStageOf(c.pipelineStage)]} className="text-[10px]">
+                                {CONTACT_STAGE_LABELS[contactStageOf(c.pipelineStage)]}
+                              </Badge>
+                            ) : null}
+                          </div>
                           <div className="mt-0.5 text-xs text-muted-foreground">
                             {c.role ?? 'No role'}
                             {c.email ? (

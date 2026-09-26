@@ -24,7 +24,7 @@ function Delta({ value }: { value: number | null }) {
     <span
       className={cn(
         'text-xs font-medium tabular-nums',
-        up ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400',
+        up ? 'text-success' : 'text-danger',
       )}
     >
       {up ? '+' : ''}

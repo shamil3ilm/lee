@@ -70,15 +70,15 @@ export function BudgetAdherenceHistoryCard({ data }: BudgetAdherenceHistoryCardP
                     return (
                       <td
                         key={m}
-                        className="h-6 rounded bg-neutral-100 dark:bg-neutral-900"
+                        className="h-6 rounded bg-neutral-soft"
                         title={`${c} · ${m}: no data`}
                       />
                     )
                   }
                   const isOver = cell.adherence === 'over'
                   const className = isOver
-                    ? 'bg-rose-200/70 text-rose-900 dark:bg-rose-900/40 dark:text-rose-200'
-                    : 'bg-emerald-200/70 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-200'
+                    ? 'bg-danger-soft text-danger'
+                    : 'bg-success-soft text-success'
                   return (
                     <td
                       key={m}

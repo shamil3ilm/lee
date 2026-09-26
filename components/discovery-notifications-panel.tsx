@@ -139,7 +139,7 @@ export function DiscoveryNotificationsPanel({
         </p>
 
         {!hasGmailSendScope && emailEnabled ? (
-          <div className="flex items-start gap-2 rounded-md border border-yellow-200 bg-yellow-50 p-3 text-xs text-yellow-900 dark:border-yellow-900/50 dark:bg-yellow-950/40 dark:text-yellow-200">
+          <div className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning-soft p-3 text-xs text-warning">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" />
             <div>
               <p className="font-medium">Missing Gmail send permission</p>

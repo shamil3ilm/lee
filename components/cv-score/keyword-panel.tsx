@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge'
 import type { KeywordDetails, KeywordHit } from '@/lib/cv-score/dimensions/keywords'
 
-const TONE = { matched: 'emerald', partial: 'violet', missing: 'rose' } as const
+const TONE = { matched: 'success', partial: 'warning', missing: 'danger' } as const
 
 function Group({ title, hits }: { title: string; hits: KeywordHit[] }) {
   if (!hits.length) return null
@@ -36,9 +36,9 @@ export function KeywordPanel({ details }: { details: KeywordDetails }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-        <span><span className="font-semibold text-emerald-600">{details.matched.length}</span> matched</span>
-        <span><span className="font-semibold text-violet-600">{details.partial.length}</span> partial</span>
-        <span><span className="font-semibold text-rose-600">{details.missing.length}</span> missing</span>
+        <span><span className="font-semibold text-success">{details.matched.length}</span> matched</span>
+        <span><span className="font-semibold text-warning">{details.partial.length}</span> partial</span>
+        <span><span className="font-semibold text-danger">{details.missing.length}</span> missing</span>
       </div>
       <Group title="Required" hits={details.required} />
       <Group title="Nice to have" hits={details.niceToHave} />

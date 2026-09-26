@@ -1,4 +1,5 @@
 'use client'
+import { CHART_MUTED, CHART_PRIMARY } from '@/lib/ui/chart-palette'
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from 'recharts'
 import {
   ChartContainer,
@@ -9,8 +10,8 @@ import {
 import { formatMoney, formatMoneyAxis } from '@/lib/ui/money'
 
 const CONFIG: ChartConfig = {
-  previous: { label: 'Previous month', color: 'hsl(215 20% 55%)' },
-  current: { label: 'Current month', color: 'hsl(217 91% 60%)' },
+  previous: { label: 'Previous month', color: CHART_MUTED },
+  current: { label: 'Current month', color: CHART_PRIMARY },
 }
 
 export interface MonthOverMonthDatum {

@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { CheckSquare } from 'lucide-react'
 import type { Todo } from '@/lib/db/queries/todos'
+import { EmptyState } from '@/components/empty-state'
 import { TodoRow } from '@/components/todo-row'
 
 interface TodosListProps {
@@ -55,20 +56,22 @@ export function TodosList({
 }: TodosListProps) {
   if (todos.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-md border border-dashed py-10 text-sm text-muted-foreground">
-        <CheckSquare className="size-6" />
-        <p className="font-medium text-foreground">Inbox zero.</p>
-        <p>Add a todo above to get started.</p>
-        {hideApplicationChip ? null : (
-          <p>
-            Or review your{' '}
-            <Link href="/applications" className="text-primary hover:underline">
-              Applications
-            </Link>{' '}
-            for the next step to plan.
-          </p>
-        )}
-      </div>
+      <EmptyState
+        icon={CheckSquare}
+        title="Inbox zero."
+        description="Add a todo above to get started."
+        action={
+          hideApplicationChip ? null : (
+            <p className="text-xs text-muted-foreground">
+              Or review your{' '}
+              <Link href="/applications" className="text-primary hover:underline">
+                Applications
+              </Link>{' '}
+              for the next step to plan.
+            </p>
+          )
+        }
+      />
     )
   }
 

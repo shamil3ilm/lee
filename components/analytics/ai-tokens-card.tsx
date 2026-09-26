@@ -2,6 +2,7 @@
 import dynamic from 'next/dynamic'
 import { Cpu } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { EmptyState } from '@/components/empty-state'
 import { cn } from '@/lib/utils'
 import type { AiUsageBreakdown, AiUsageCounts } from '@/lib/analytics/ai-usage-breakdown'
 import type { QuotaStatus } from '@/lib/ai/quota-compute'
@@ -78,7 +79,7 @@ function BreakdownTable<T extends AiUsageCounts>({
                   <td
                     className={cn(
                       'px-3 py-1.5 text-right tabular-nums',
-                      r.errors > 0 ? 'text-rose-500' : 'text-muted-foreground',
+                      r.errors > 0 ? 'text-danger' : 'text-muted-foreground',
                     )}
                   >
                     {formatNumber(r.errors)}
@@ -86,7 +87,7 @@ function BreakdownTable<T extends AiUsageCounts>({
                   <td
                     className={cn(
                       'px-3 py-1.5 text-right tabular-nums',
-                      r.rateLimited > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground',
+                      r.rateLimited > 0 ? 'text-warning' : 'text-muted-foreground',
                     )}
                   >
                     {formatNumber(r.rateLimited)}
@@ -121,11 +122,11 @@ export function AITokensCard({ data, meters, estimatedCostUsd, className }: AITo
           <Stat value={formatNumber(t.inputTokens)} label="input tokens" />
           <Stat value={formatNumber(t.outputTokens)} label="output tokens" />
           <Stat value={formatNumber(t.calls)} label="calls" />
-          <Stat value={formatNumber(t.errors)} label="errors" tone={t.errors > 0 ? 'text-rose-500' : undefined} />
+          <Stat value={formatNumber(t.errors)} label="errors" tone={t.errors > 0 ? 'text-danger' : undefined} />
           <Stat
             value={formatNumber(t.rateLimited)}
             label="429s"
-            tone={t.rateLimited > 0 ? 'text-amber-600 dark:text-amber-400' : undefined}
+            tone={t.rateLimited > 0 ? 'text-warning' : undefined}
           />
           <Stat value={`${formatNumber(t.avgLatencyMs)}ms`} label="avg latency" />
           <span>
@@ -143,12 +144,7 @@ export function AITokensCard({ data, meters, estimatedCostUsd, className }: AITo
         </div>
 
         {isEmpty ? (
-          <div className="flex h-32 flex-col items-center justify-center gap-2 rounded-md border border-dashed text-center">
-            <Cpu className="size-5 text-muted-foreground" />
-            <p className="max-w-[260px] text-xs text-muted-foreground">
-              No AI calls in the last {data.days} days.
-            </p>
-          </div>
+          <EmptyState size="sm" icon={Cpu} title={`No AI calls in the last ${data.days} days.`} />
         ) : (
           <>
             <div>

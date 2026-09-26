@@ -172,7 +172,7 @@ function FollowupRow({ nudge }: { nudge: FollowupNudge }): React.ReactElement {
   return (
     <li>
       <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-md px-2 py-2 text-sm hover:bg-accent/40">
-        <Clock className="size-4 shrink-0 text-violet-500" />
+        <Clock className="size-4 shrink-0 text-stage-interview" />
         <Link
           href={`/applications/${nudge.applicationId}?tab=followup`}
           className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -216,7 +216,7 @@ function TodoNudgeRow({
         href={href}
         className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
-        <CheckSquare className="size-4 shrink-0 text-emerald-500" />
+        <CheckSquare className="size-4 shrink-0 text-success" />
         <div className="min-w-0">
           <div className="truncate font-medium">{todo.title}</div>
           <div className="truncate text-xs text-muted-foreground">
@@ -267,7 +267,7 @@ function EmptyBlock({ isBrandNew, totalApplications }: EmptyBlockProps) {
   }
   return (
     <div className="flex items-center gap-2 p-1">
-      <CheckCircle2 className="size-5 shrink-0 text-emerald-500" />
+      <CheckCircle2 className="size-5 shrink-0 text-success" />
       <p className="text-sm">
         <span className="font-medium">You&apos;re all caught up</span>
         <span className="text-muted-foreground">

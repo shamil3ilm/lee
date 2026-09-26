@@ -193,7 +193,7 @@ export function ModelPicker({ providers, selected, onChange, max = 6 }: ModelPic
               {isOpen && isKeyed(p) ? (
                 <div className="pb-2">
                   {state?.status === 'error' ? (
-                    <p className="px-3 py-1 text-xs text-rose-600">{state.error}</p>
+                    <p className="px-3 py-1 text-xs text-danger">{state.error}</p>
                   ) : null}
                   {state?.status === 'ready' && models.length === 0 ? (
                     <p className="px-3 py-1 text-xs text-muted-foreground">No models match.</p>
@@ -221,10 +221,10 @@ export function ModelPicker({ providers, selected, onChange, max = 6 }: ModelPic
                               {m.label !== m.id ? `${m.label}` : m.id}
                             </span>
                             {m.recommended ? (
-                              <Star className="size-3.5 shrink-0 fill-amber-400 text-amber-400" aria-label="Recommended" />
+                              <Star className="size-3.5 shrink-0 fill-warning text-warning" aria-label="Recommended" />
                             ) : null}
                             {m.free ? (
-                              <span className="shrink-0 text-[10px] font-medium uppercase text-emerald-600">free</span>
+                              <span className="shrink-0 text-[10px] font-medium uppercase text-success">free</span>
                             ) : null}
                             {m.contextLength ? (
                               <span className="hidden shrink-0 text-[10px] text-muted-foreground sm:inline">

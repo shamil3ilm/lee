@@ -5,22 +5,18 @@ import type { ChartConfig } from '@/components/ui/chart'
 import { AnalyticsCardShell } from './card-shell'
 import { ChartSkeleton } from './charts/chart-skeleton'
 import type { StatusSlice } from '@/lib/analytics/service'
-import { STATUS_LABELS, type ApplicationStatus } from '@/lib/ui/status'
+import { STATUS_LABELS, STATUS_TONE, type ApplicationStatus } from '@/lib/ui/status'
+import { toneColor } from '@/lib/ui/tones'
 
 interface StatusDistributionCardProps {
   data: StatusSlice[]
 }
 
-// Match the palette used by the FunnelWidget so the same status looks the
-// same across the app; unknown statuses fall through to a neutral colour.
-const STATUS_COLOR: Record<string, string> = {
-  saved: 'hsl(215 20% 65%)',
-  applied: 'hsl(217 91% 60%)',
-  screen: 'hsl(239 84% 67%)',
-  interview: 'hsl(258 90% 66%)',
-  offer: 'hsl(142 71% 45%)',
-  rejected: 'hsl(0 84% 60%)',
-  withdrawn: 'hsl(215 14% 45%)',
+// Status slices use the pipeline stage tones, so a status is the same
+// colour here, on badges, kanban columns and the funnel.
+function colorFor(status: string): string {
+  const tone = STATUS_TONE[status as ApplicationStatus]
+  return tone ? toneColor(tone) : toneColor('neutral')
 }
 
 const StatusDistributionChart = dynamic(
@@ -44,7 +40,7 @@ export function StatusDistributionCard({ data }: StatusDistributionCardProps) {
   for (const s of data) {
     config[s.status] = {
       label: labelFor(s.status),
-      color: STATUS_COLOR[s.status] ?? 'hsl(215 14% 45%)',
+      color: colorFor(s.status),
     }
   }
 
@@ -52,7 +48,7 @@ export function StatusDistributionCard({ data }: StatusDistributionCardProps) {
     status: s.status,
     count: s.count,
     label: labelFor(s.status),
-    fill: STATUS_COLOR[s.status] ?? 'hsl(215 14% 45%)',
+    fill: colorFor(s.status),
   }))
 
   return (

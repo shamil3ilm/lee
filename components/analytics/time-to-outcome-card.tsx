@@ -30,14 +30,14 @@ export function TimeToOutcomeCard({ data }: TimeToOutcomeCardProps) {
           median={data.offer.median}
           p90={data.offer.p90}
           count={data.offer.count}
-          accent="text-emerald-600 dark:text-emerald-400"
+          accent="text-success"
         />
         <OutcomeBlock
           label="Rejection"
           median={data.rejection.median}
           p90={data.rejection.p90}
           count={data.rejection.count}
-          accent="text-rose-600 dark:text-rose-400"
+          accent="text-danger"
         />
       </div>
     </AnalyticsCardShell>

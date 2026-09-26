@@ -23,23 +23,23 @@ const DIMENSION_LABEL: Record<QuotaDimension['key'], string> = {
 
 const LEVEL_BADGE: Record<
   QuotaLevel,
-  { label: string; variant: 'emerald' | 'outline' | 'rose' | 'neutral'; className?: string }
+  { label: string; variant: 'success' | 'outline' | 'danger' | 'neutral'; className?: string }
 > = {
-  ok: { label: 'OK', variant: 'emerald' },
+  ok: { label: 'OK', variant: 'success' },
   warn: {
     label: '≥70%',
     variant: 'outline',
-    className: 'border-amber-500 text-amber-700 dark:text-amber-400',
+    className: 'border-warning text-warning',
   },
-  critical: { label: '≥90%', variant: 'rose' },
-  exhausted: { label: 'Limit hit', variant: 'rose' },
+  critical: { label: '≥90%', variant: 'danger' },
+  exhausted: { label: 'Limit hit', variant: 'danger' },
   unknown: { label: 'Unknown', variant: 'neutral' },
 }
 
 function barTone(fraction: number): string {
-  if (fraction >= QUOTA_CRITICAL) return 'bg-rose-500'
-  if (fraction >= QUOTA_WARN) return 'bg-amber-500'
-  return 'bg-emerald-500'
+  if (fraction >= QUOTA_CRITICAL) return 'bg-danger'
+  if (fraction >= QUOTA_WARN) return 'bg-warning'
+  return 'bg-success'
 }
 
 function Meter({ d }: { d: QuotaDimension }) {
@@ -107,7 +107,7 @@ export function AiQuotaMeters({ meters }: AiQuotaMetersProps) {
                     <AlertTriangle
                       className={cn(
                         'size-3.5',
-                        m.level === 'warn' ? 'text-amber-500' : 'text-rose-500',
+                        m.level === 'warn' ? 'text-warning' : 'text-danger',
                       )}
                       aria-hidden
                     />

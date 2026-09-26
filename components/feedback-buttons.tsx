@@ -71,7 +71,7 @@ export function FeedbackButtons({
           size="icon"
           className={cn(
             'h-7 w-7',
-            rated === 'up' && 'border-emerald-500 text-emerald-600',
+            rated === 'up' && 'border-success text-success',
           )}
           disabled={busy !== null}
           onClick={() => {
@@ -92,7 +92,7 @@ export function FeedbackButtons({
           size="icon"
           className={cn(
             'h-7 w-7',
-            rated === 'down' && 'border-rose-500 text-rose-600',
+            rated === 'down' && 'border-danger text-danger',
           )}
           disabled={busy !== null}
           onClick={() => {

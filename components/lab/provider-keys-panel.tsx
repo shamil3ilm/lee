@@ -168,7 +168,7 @@ export function ProviderKeysPanel({ initialStatuses }: ProviderKeysPanelProps) {
                 </form>
               ) : null}
               {s.reachable !== null ? (
-                <p className={s.reachable ? 'text-xs text-emerald-600' : 'text-xs text-rose-600'}>
+                <p className={s.reachable ? 'text-xs text-success' : 'text-xs text-danger'}>
                   {s.reachable ? 'Reachable' : (s.reachError ?? 'Unreachable')}
                 </p>
               ) : null}
