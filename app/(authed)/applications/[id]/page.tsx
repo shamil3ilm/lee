@@ -25,6 +25,7 @@ import { DocumentsCard } from '@/components/documents-card'
 import { OutreachCard } from '@/components/outreach-card'
 import { PrepPackCard } from '@/components/prep-pack-card'
 import { TodosCard } from '@/components/todos-card'
+import { StagesBoard } from '@/components/stages-board'
 import { PageHeader } from '@/components/page-header'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { Timeline } from '@/components/timeline'
@@ -274,6 +275,30 @@ export default async function ApplicationDetail({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="min-w-0 space-y-6 lg:col-span-2">
+          {stages.length > 0 ? (
+            <Card>
+              <CardHeader className="flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-sm font-semibold">Interview stages</CardTitle>
+                <span className="text-xs text-muted-foreground">
+                  {stages.length} {stages.length === 1 ? 'stage' : 'stages'}
+                </span>
+              </CardHeader>
+              <CardContent>
+                <StagesBoard
+                  stages={stages.map((s) => ({
+                    id: s.id,
+                    version: s.updatedAt.toISOString(),
+                    kind: s.kind,
+                    title: s.title,
+                    status: s.status,
+                    scheduledAt: s.scheduledAt ? s.scheduledAt.toISOString() : null,
+                    meetingUrl: s.meetingUrl,
+                  }))}
+                />
+              </CardContent>
+            </Card>
+          ) : null}
+
           {app.job.descriptionMd ? (
             <Card>
               <CardHeader>

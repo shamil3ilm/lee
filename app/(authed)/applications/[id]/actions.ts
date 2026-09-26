@@ -11,13 +11,15 @@ import {
 } from '@/lib/applications/manage'
 import * as appsQ from '@/lib/db/queries/applications'
 import { STAGE_KIND_VALUES } from '@/lib/stages/kinds'
+import { STAGE_STATUSES } from '@/lib/stages/status'
 import { logger } from '@/lib/logger'
 
-// Stage status values that the UI is allowed to flip to. The DB accepts any
-// string (schema uses `text`), but limiting the surface keeps the UI honest
-// and the analytics buckets bounded.
-const STAGE_STATUSES = ['scheduled', 'completed', 'cancelled', 'no_show'] as const
-type StageStatus = (typeof STAGE_STATUSES)[number]
+// Stage status values that the UI is allowed to flip to live in
+// lib/stages/status.ts (shared with the stages board).
+const stageMoveSchema = z.object({
+  stageId: z.string().uuid(),
+  status: z.enum(STAGE_STATUSES),
+})
 
 export type ActionResult = { success: true } | { error: string }
 
@@ -89,15 +91,14 @@ export async function setStageStatus(
   stageId: string,
   status: string,
 ): Promise<ActionResult> {
+  const parsed = stageMoveSchema.safeParse({ stageId, status })
+  if (!parsed.success) return { error: 'Invalid stage status.' }
   try {
     const userId = await requireUserId()
-    if (!(STAGE_STATUSES as readonly string[]).includes(status)) {
-      return { error: 'Invalid stage status.' }
-    }
     const row = await updateStage({
       userId,
-      id: stageId,
-      patch: { status: status as StageStatus },
+      id: parsed.data.stageId,
+      patch: { status: parsed.data.status },
     })
     if (!row) return { error: 'Stage not found.' }
     revalidatePath(`/applications/${row.applicationId}`)
