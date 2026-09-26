@@ -42,30 +42,47 @@ export default async function DashboardPage() {
           </Button>
         }
       />
-      <Suspense fallback={null}>
+      {/* The setup checklist has no size until it resolves (it renders nothing
+          once setup is done), so everything below it waits inside one outer
+          boundary: nothing already on screen can be pushed down when it
+          appears (measured CLS 0.25 without this). Server components still
+          fetch in parallel; only the paint of the lower widgets is held. */}
+      <Suspense fallback={<DashboardBodySkeleton />}>
         <SetupChecklistWidget userId={userId} />
-      </Suspense>
-      <Suspense fallback={<WidgetSkeleton className="h-20" />}>
-        <NextBestActionWidget userId={userId} now={now} />
-      </Suspense>
-      <Suspense fallback={<WidgetSkeleton className="h-16" />}>
-        <JourneyStripWidget userId={userId} />
-      </Suspense>
-      <DashboardSection title="This week">
-        <Suspense fallback={<WidgetSkeleton className="h-32" />}>
-          <ThisWeekWidget userId={userId} now={now} />
+        <Suspense fallback={<WidgetSkeleton className="h-20" />}>
+          <NextBestActionWidget userId={userId} now={now} />
         </Suspense>
-      </DashboardSection>
-      <DashboardSection title="Pipeline">
-        <Suspense fallback={<WidgetSkeleton className="h-64" />}>
-          <PipelineWidget userId={userId} />
+        <Suspense fallback={<WidgetSkeleton className="h-16" />}>
+          <JourneyStripWidget userId={userId} />
         </Suspense>
-      </DashboardSection>
-      <DashboardSection title="Signals">
-        <Suspense fallback={<WidgetSkeleton className="h-32" />}>
-          <SignalsWidget userId={userId} now={now} />
-        </Suspense>
-      </DashboardSection>
+        <DashboardSection title="This week">
+          <Suspense fallback={<WidgetSkeleton className="h-32" />}>
+            <ThisWeekWidget userId={userId} now={now} />
+          </Suspense>
+        </DashboardSection>
+        <DashboardSection title="Pipeline">
+          <Suspense fallback={<WidgetSkeleton className="h-64" />}>
+            <PipelineWidget userId={userId} />
+          </Suspense>
+        </DashboardSection>
+        <DashboardSection title="Signals">
+          <Suspense fallback={<WidgetSkeleton className="h-32" />}>
+            <SignalsWidget userId={userId} now={now} />
+          </Suspense>
+        </DashboardSection>
+      </Suspense>
+    </div>
+  )
+}
+
+/** Stand-in for the widget stack while the setup checklist resolves. */
+function DashboardBodySkeleton() {
+  return (
+    <div className="space-y-6" aria-busy>
+      <WidgetSkeleton className="h-20" />
+      <WidgetSkeleton className="h-16" />
+      <WidgetSkeleton className="h-32" />
+      <WidgetSkeleton className="h-64" />
     </div>
   )
 }
