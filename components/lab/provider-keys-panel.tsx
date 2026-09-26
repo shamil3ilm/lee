@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { KeyStatusBadge } from '@/components/lab/key-status-badge'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import type { ProviderStatus } from '@/lib/lab/status'
 import type { ProviderId } from '@/lib/lab/providers/types'
 
@@ -15,7 +16,9 @@ import type { ProviderId } from '@/lib/lab/providers/types'
  * v14 — add / replace / remove provider API keys. Keys are sent once to the
  * server, validated there, stored encrypted, and never come back: the UI only
  * ever shows `••••last4`. Rendered only in Settings › AI (the single place
- * keys are managed); the Model Playground links there.
+ * keys are managed); the Model Playground links there. The Groq and Google
+ * keys saved here also power the app's own AI calls (documents, parsing,
+ * decisions, voice), overriding GROQ_API_KEY / GEMINI_API_KEY.
  */
 
 interface ProviderKeysPanelProps {
@@ -34,6 +37,7 @@ export function ProviderKeysPanel({ initialStatuses }: ProviderKeysPanelProps) {
   const [statuses, setStatuses] = useState<ProviderStatus[]>(initialStatuses)
   const [drafts, setDrafts] = useState<Partial<Record<ProviderId, string>>>({})
   const [busy, setBusy] = useState<Busy>(null)
+  const [removing, setRemoving] = useState<ProviderStatus | null>(null)
 
   function patch(provider: ProviderId, next: Partial<ProviderStatus>): void {
     setStatuses((prev) => prev.map((s) => (s.info.id === provider ? { ...s, ...next } : s)))
@@ -85,6 +89,7 @@ export function ProviderKeysPanel({ initialStatuses }: ProviderKeysPanelProps) {
       if (json?.providers) setStatuses(json.providers)
       else patch(provider, { keySource: 'none', last4: null, reachable: null })
       toast.success('Key removed.')
+      setRemoving(null)
       router.refresh()
     } catch {
       toast.error('Network error — key not removed.')
@@ -186,7 +191,7 @@ export function ProviderKeysPanel({ initialStatuses }: ProviderKeysPanelProps) {
                     variant="ghost"
                     size="sm"
                     disabled={busy !== null}
-                    onClick={() => void remove(s)}
+                    onClick={() => setRemoving(s)}
                   >
                     {isBusy('remove') ? <Loader2 className="animate-spin" /> : <Trash2 />}
                     Remove
@@ -211,6 +216,26 @@ export function ProviderKeysPanel({ initialStatuses }: ProviderKeysPanelProps) {
           </Card>
         )
       })}
+      <ConfirmDialog
+        open={removing !== null}
+        onOpenChange={(open) => {
+          if (!open) setRemoving(null)
+        }}
+        title={`Remove your ${removing?.info.label ?? ''} key?`}
+        description={
+          <p>
+            The saved key is deleted.
+            {removing?.info.envKey
+              ? ` The server default (${removing.info.envKey}) is used instead if one is set.`
+              : ' This provider stops working until you add a key again.'}
+          </p>
+        }
+        confirmLabel="Remove"
+        pending={busy?.action === 'remove'}
+        onConfirm={() => {
+          if (removing) void remove(removing)
+        }}
+      />
     </div>
   )
 }

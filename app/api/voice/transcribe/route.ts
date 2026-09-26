@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { env } from '@/lib/env'
+import { resolveAiKey } from '@/lib/settings/secrets'
 import { logger } from '@/lib/logger'
 import { fetchWithTimeout, GROQ_TRANSCRIBE_TIMEOUT_MS } from '@/lib/net/timeout'
 
@@ -19,7 +19,7 @@ const MAX_UPLOAD_BYTES = 20 * 1024 * 1024
  * POST /api/voice/transcribe
  * Multipart body with a `file` field (audio blob). Forwards the audio to
  * Groq's OpenAI-compatible whisper-large-v3 endpoint and returns
- * `{text: string}`. Uses the existing GROQ_API_KEY — no additional env.
+ * `{text: string}`. Uses the user's Groq key (Settings › AI), else GROQ_API_KEY.
  */
 export async function POST(req: Request): Promise<NextResponse> {
   try {
@@ -27,11 +27,12 @@ export async function POST(req: Request): Promise<NextResponse> {
     const userId = session?.user?.id
     if (!userId) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
 
-    const apiKey = env.GROQ_API_KEY
+    // The user's saved Groq key (Settings › AI), else GROQ_API_KEY.
+    const apiKey = await resolveAiKey(userId, 'groq')
     if (!apiKey) {
       logger.error('voice_transcribe_missing_key')
       return NextResponse.json(
-        { error: 'Voice transcription is not configured.' },
+        { error: 'Voice transcription needs a Groq key: add one in Settings › AI.' },
         { status: 503 },
       )
     }

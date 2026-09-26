@@ -3,6 +3,7 @@ import { HeuristicDecisionProvider } from './heuristic'
 import { GroqDecisionProvider } from './groq'
 import { LayaHttpDecisionProvider } from './laya-http'
 import * as profileQ from '@/lib/db/queries/profile'
+import { resolveAiKey, resolveServiceSecret } from '@/lib/settings/secrets'
 import type {
   ChoiceInput,
   ChoiceResult,
@@ -115,7 +116,7 @@ class ChainedDecisionProvider implements DecisionProvider {
  *   - `heuristic` → heuristic directly (never fails)
  *   - `laya`      → laya-http → Groq → heuristic
  *
- * When GROQ_API_KEY is missing but the caller asked for a Groq path, the
+ * When no Groq key (saved or env) is available but a Groq path was asked, the
  * factory silently downgrades to heuristic-only rather than crashing at
  * boot; individual calls stay functional with reduced quality.
  */
@@ -127,9 +128,15 @@ class ChainedDecisionProvider implements DecisionProvider {
  */
 const LAYA_MIN_ANSWER_PROBABILITY = 0.7
 
+interface DecisionKeys {
+  groqKey: string | null | undefined
+  layaKey: string | null | undefined
+}
+
 function buildDecisionProvider(
   kind: DecisionProviderKind,
   layaEndpoint: string | undefined,
+  keys: DecisionKeys,
 ): DecisionProvider {
   const heuristic = new HeuristicDecisionProvider()
   if (kind === 'heuristic') return heuristic
@@ -139,12 +146,12 @@ function buildDecisionProvider(
     // LayaHttpDecisionProvider defaults to the public demo Space when no
     // endpoint is set, so we no longer gate on layaEndpoint being present.
     chain.push({
-      provider: new LayaHttpDecisionProvider(layaEndpoint, env.LAYA_API_KEY),
+      provider: new LayaHttpDecisionProvider(layaEndpoint, keys.layaKey ?? undefined),
       minAnswerProbability: LAYA_MIN_ANSWER_PROBABILITY,
     })
   }
-  if (env.GROQ_API_KEY) {
-    chain.push({ provider: new GroqDecisionProvider(env.GROQ_API_KEY) })
+  if (keys.groqKey) {
+    chain.push({ provider: new GroqDecisionProvider(keys.groqKey) })
   }
   chain.push({ provider: heuristic, lastResort: true })
 
@@ -166,13 +173,19 @@ export async function getDecisionProviderForUser(
 ): Promise<DecisionProvider> {
   if (!userId) return getDecisionProvider()
 
-  const profile = await profileQ.get(userId).catch(() => null)
+  const [profile, groqKey, laya] = await Promise.all([
+    profileQ.get(userId).catch(() => null),
+    // Saved Settings › AI keys win; env keys are the fallback. A failed
+    // lookup degrades to env rather than breaking the decision call.
+    resolveAiKey(userId, 'groq').catch(() => env.GROQ_API_KEY ?? null),
+    resolveServiceSecret(userId, 'laya').catch(() => ({ key: env.LAYA_API_KEY ?? null })),
+  ])
   const rawKind = profile?.decisionProvider
   const kind: DecisionProviderKind = isDecisionProviderKind(rawKind)
     ? rawKind
     : (env.DECISION_PROVIDER ?? 'groq')
   const layaEndpoint = profile?.layaEndpoint ?? env.LAYA_ENDPOINT
-  return buildDecisionProvider(kind, layaEndpoint)
+  return buildDecisionProvider(kind, layaEndpoint, { groqKey, layaKey: laya.key })
 }
 
 /**
@@ -184,7 +197,10 @@ export async function getDecisionProviderForUser(
  */
 export function getDecisionProvider(): DecisionProvider {
   const kind: DecisionProviderKind = env.DECISION_PROVIDER ?? 'groq'
-  return buildDecisionProvider(kind, env.LAYA_ENDPOINT)
+  return buildDecisionProvider(kind, env.LAYA_ENDPOINT, {
+    groqKey: env.GROQ_API_KEY,
+    layaKey: env.LAYA_API_KEY,
+  })
 }
 
 export { HeuristicDecisionProvider, GroqDecisionProvider, LayaHttpDecisionProvider }

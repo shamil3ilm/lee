@@ -1,7 +1,7 @@
 import { fetchPage } from '@/lib/ingest/fetch'
+import { resolveServiceSecret } from '@/lib/settings/secrets'
 import { firecrawlFetch } from '@/lib/ingest/firecrawl'
 import { extractMainText } from '@/lib/ingest/html-clean'
-import { env } from '@/lib/env'
 import { db } from '@/lib/db/client'
 import * as jobsQ from '@/lib/db/queries/jobs'
 import * as companiesQ from '@/lib/db/queries/companies'
@@ -34,9 +34,12 @@ export async function createApplicationFromUrl(args: {
   // Fall back to Firecrawl (if configured) which executes JS and returns
   // markdown. If not configured, proceed with the short text and let the AI
   // do its best.
-  if (text.length < 500 && env.FIRECRAWL_API_KEY) {
-    const md = await firecrawlFetch(url)
-    if (md && md.length > text.length) text = md
+  if (text.length < 500) {
+    const { key } = await resolveServiceSecret(userId, 'firecrawl')
+    if (key) {
+      const md = await firecrawlFetch(url, key)
+      if (md && md.length > text.length) text = md
+    }
   }
   const parsed = await ai.parseJob(text)
   const domain = parsed.company_domain ?? new URL(page.finalUrl).hostname

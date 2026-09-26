@@ -264,7 +264,7 @@ describe('POST /api/decisions/playground', () => {
       const groq = body.results.find((r) => r.provider === 'groq')!
       const heur = body.results.find((r) => r.provider === 'heuristic')!
       expect(groq.ok).toBe(false)
-      expect(groq.error).toMatch(/GROQ_API_KEY/)
+      expect(groq.error).toMatch(/Groq key/)
       expect(heur.ok).toBe(true)
     } finally {
       if (orig !== undefined) process.env.GROQ_API_KEY = orig

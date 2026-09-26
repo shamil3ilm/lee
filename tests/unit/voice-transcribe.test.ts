@@ -8,12 +8,10 @@ vi.mock('@/lib/auth', () => ({
   auth: vi.fn(async () => ({ user: { id: 'u-1' } })),
 }))
 
-// The route reads env.GROQ_API_KEY. The env-setup file omits it (it's
-// optional) so seed it here for the OK path and clear it for the missing-key
-// path.
-vi.mock('@/lib/env', () => ({
-  env: { GROQ_API_KEY: 'test-groq-key' },
-}))
+// The route resolves the user's Groq key (Settings › AI, else env). Stub the
+// resolver so the forwarding tests don't depend on the key store.
+const resolveAiKeyMock = vi.hoisted(() => vi.fn(async () => 'test-groq-key' as string | null))
+vi.mock('@/lib/settings/secrets', () => ({ resolveAiKey: resolveAiKeyMock }))
 
 function makeFormData(): FormData {
   const form = new FormData()
@@ -57,6 +55,19 @@ describe('POST /api/voice/transcribe', () => {
     expect(String((init.headers as Record<string, string>).authorization)).toBe(
       'Bearer test-groq-key',
     )
+  })
+
+  it('returns 503 with a pointer to Settings when no Groq key is available', async () => {
+    resolveAiKeyMock.mockResolvedValueOnce(null)
+    const req = new Request('http://localhost/api/voice/transcribe', {
+      method: 'POST',
+      body: makeFormData(),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(503)
+    const body = (await res.json()) as { error: string }
+    expect(body.error).toMatch(/Settings › AI/)
+    expect(resolveAiKeyMock).toHaveBeenCalledWith('u-1', 'groq')
   })
 
   it('rejects when file field is missing', async () => {

@@ -60,9 +60,12 @@ the prompt so analytics can attribute rating deltas to the change.
    - `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`
    - `NEXTAUTH_URL` = `https://<your-vercel-app>.vercel.app`
    - `ALLOWED_EMAIL` = your Google email
-   - `AI_PROVIDER=gemini`, `GEMINI_API_KEY`
    - `CRON_SECRET` = `openssl rand -hex 32`
-   - (optional) `FIRECRAWL_API_KEY`
+   - (optional server defaults) `AI_PROVIDER`, `GEMINI_API_KEY`, `GROQ_API_KEY`,
+     `FIRECRAWL_API_KEY`, `DECISION_PROVIDER`, `LAYA_ENDPOINT`, `LAYA_API_KEY`.
+     These can all be set per user in the app instead (Settings › AI: model,
+     decision engine, and encrypted keys); a value saved there wins over the env
+     default. Sign-in, database, cron secret and site URL stay env-only.
 5. Deploy. First build runs `pnpm db:migrate` automatically.
 6. Sign in at `/signin`. Only `ALLOWED_EMAIL` can proceed.
 

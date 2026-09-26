@@ -17,7 +17,7 @@ describe('env schema', () => {
     expect(env.AI_PROVIDER).toBe('gemini')
   })
 
-  it('rejects gemini provider without GEMINI_API_KEY', () => {
+  it('boots without a provider key (keys can be saved per user in Settings › AI)', () => {
     expect(() =>
       parseEnv({
         DATABASE_URL: 'postgres://u:p@h:5432/d',
@@ -29,7 +29,7 @@ describe('env schema', () => {
         AI_PROVIDER: 'gemini',
         CRON_SECRET: 'x'.repeat(32),
       }),
-    ).toThrow(/GEMINI_API_KEY/)
+    ).not.toThrow()
   })
 
   it('accepts a pglite: DATABASE_URL', () => {

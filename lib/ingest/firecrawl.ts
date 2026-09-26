@@ -1,14 +1,14 @@
-import { env } from '@/lib/env'
 import { fetchWithTimeout, FIRECRAWL_TIMEOUT_MS } from '@/lib/net/timeout'
 
-export async function firecrawlFetch(url: string): Promise<string> {
-  if (!env.FIRECRAWL_API_KEY) throw new Error('FIRECRAWL_API_KEY not set')
+/** `apiKey` is the resolved key (Settings › AI, else FIRECRAWL_API_KEY). */
+export async function firecrawlFetch(url: string, apiKey: string): Promise<string> {
+  if (!apiKey) throw new Error('Firecrawl key not set')
   const res = await fetchWithTimeout(
     'https://api.firecrawl.dev/v1/scrape',
     {
       method: 'POST',
       headers: {
-        'authorization': `Bearer ${env.FIRECRAWL_API_KEY}`,
+        'authorization': `Bearer ${apiKey}`,
         'content-type': 'application/json',
       },
       body: JSON.stringify({ url, formats: ['markdown'] }),

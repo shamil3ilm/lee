@@ -30,7 +30,8 @@ import { runAfterResponse } from '@/lib/server/after-response'
  * callers needing to catch. Do not throw anything else from this class.
  */
 
-const DEFAULT_ENDPOINT = 'https://convaiinnovations-laya-demo.hf.space'
+export const DEFAULT_LAYA_ENDPOINT = 'https://convaiinnovations-laya-demo.hf.space'
+const DEFAULT_ENDPOINT = DEFAULT_LAYA_ENDPOINT
 const FUNCTION_NAME = 'run_playground'
 
 type LayaAnswer = {

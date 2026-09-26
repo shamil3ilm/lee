@@ -9,6 +9,7 @@ import {
   type DecisionProvider,
 } from '@/lib/decisions'
 import * as profileQ from '@/lib/db/queries/profile'
+import { resolveAiKey, resolveServiceSecret } from '@/lib/settings/secrets'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -107,16 +108,17 @@ interface ResultRow {
 function buildProvider(
   kind: ProviderKind,
   layaEndpoint: string | undefined,
+  keys: { groqKey: string | null; layaKey: string | null },
 ): DecisionProvider | { error: string } {
   if (kind === 'heuristic') return new HeuristicDecisionProvider()
   if (kind === 'groq') {
-    if (!env.GROQ_API_KEY) {
-      return { error: 'GROQ_API_KEY not configured on the server' }
+    if (!keys.groqKey) {
+      return { error: 'No Groq key: add one in Settings › AI.' }
     }
-    return new GroqDecisionProvider(env.GROQ_API_KEY)
+    return new GroqDecisionProvider(keys.groqKey)
   }
   // laya
-  return new LayaHttpDecisionProvider(layaEndpoint, env.LAYA_API_KEY)
+  return new LayaHttpDecisionProvider(layaEndpoint, keys.layaKey ?? undefined)
 }
 
 async function runOne(
@@ -223,9 +225,18 @@ export async function POST(req: Request): Promise<NextResponse> {
       layaEndpoint = profile?.layaEndpoint ?? env.LAYA_ENDPOINT
     }
 
+    // Saved Settings › AI keys first, env keys as the fallback.
+    const [groqKey, laya] = await Promise.all([
+      providers.includes('groq') ? resolveAiKey(userId, 'groq') : Promise.resolve(null),
+      providers.includes('laya')
+        ? resolveServiceSecret(userId, 'laya')
+        : Promise.resolve({ key: null }),
+    ])
+    const keys = { groqKey, layaKey: laya.key }
+
     const settled = await Promise.allSettled(
       providers.map(async (kind): Promise<ResultRow> => {
-        const built = buildProvider(kind, layaEndpoint)
+        const built = buildProvider(kind, layaEndpoint, keys)
         if ('error' in built) {
           return { provider: kind, ok: false, latencyMs: 0, error: built.error }
         }

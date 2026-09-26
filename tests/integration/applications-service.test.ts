@@ -65,11 +65,10 @@ describe('createApplicationFromUrl firecrawl fallback', () => {
     const longMd = 'Senior Platform Engineer at Zeta. ' + 'Great role. '.repeat(200)
     vi.mocked(firecrawlFetch).mockResolvedValueOnce(longMd)
 
-    // Ensure env has an API key for the fallback branch. env is validated at
-    // import time so we mutate the module-level export in place.
-    const envMod = await import('@/lib/env')
-    const prev = envMod.env.FIRECRAWL_API_KEY
-    ;(envMod.env as { FIRECRAWL_API_KEY?: string }).FIRECRAWL_API_KEY = 'test-key'
+    // The user's saved Settings › AI key is what the fallback uses (the env
+    // FIRECRAWL_API_KEY is only the default when none is saved).
+    const keysQ = await import('@/lib/db/queries/labProviderKeys')
+    await keysQ.upsert(u.id, 'firecrawl', 'fc-user-key-123456')
 
     const parseSpy = vi.fn((_text: string) => ({
       title: 'Senior Platform Engineer',
@@ -95,13 +94,16 @@ describe('createApplicationFromUrl firecrawl fallback', () => {
         url: 'https://spa.example.com/jobs/42',
         ai,
       })
-      expect(vi.mocked(firecrawlFetch)).toHaveBeenCalledWith('https://spa.example.com/jobs/42')
+      expect(vi.mocked(firecrawlFetch)).toHaveBeenCalledWith(
+        'https://spa.example.com/jobs/42',
+        'fc-user-key-123456',
+      )
       expect(parseSpy).toHaveBeenCalledTimes(1)
       const passed = parseSpy.mock.calls[0]![0]
       expect(passed).toContain('Senior Platform Engineer at Zeta')
       expect(passed.length).toBeGreaterThan(500)
     } finally {
-      ;(envMod.env as { FIRECRAWL_API_KEY?: string }).FIRECRAWL_API_KEY = prev
+      await keysQ.remove(u.id, 'firecrawl')
     }
   })
 })

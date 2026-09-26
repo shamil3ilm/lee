@@ -1,5 +1,10 @@
 import { z } from 'zod'
 
+// Provider API keys (GEMINI / GROQ / FIRECRAWL / LAYA) are optional at boot:
+// each user can save their own in Settings › AI (encrypted in the key store)
+// and the env values are only fallback defaults. A missing key surfaces as a
+// friendly "add a key in Settings › AI" error at call time, never as a boot
+// failure that forces an env change.
 export const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -32,20 +37,6 @@ export const envSchema = z
     DECISION_PROVIDER: z.enum(['groq', 'heuristic', 'laya']).optional().default('groq'),
     LAYA_ENDPOINT: z.string().url().optional(),
     LAYA_API_KEY: z.string().optional(),
-  })
-  .superRefine((data, ctx) => {
-    if (data.AI_PROVIDER === 'gemini' && !data.GEMINI_API_KEY) {
-      ctx.addIssue({ code: 'custom', message: 'GEMINI_API_KEY required when AI_PROVIDER=gemini' })
-    }
-    if (data.AI_PROVIDER === 'groq' && !data.GROQ_API_KEY) {
-      ctx.addIssue({ code: 'custom', message: 'GROQ_API_KEY required when AI_PROVIDER=groq' })
-    }
-    if (data.AI_PROVIDER === 'anthropic' && !data.ANTHROPIC_API_KEY) {
-      ctx.addIssue({ code: 'custom', message: 'ANTHROPIC_API_KEY required when AI_PROVIDER=anthropic' })
-    }
-    if (data.AI_PROVIDER === 'openai' && !data.OPENAI_API_KEY) {
-      ctx.addIssue({ code: 'custom', message: 'OPENAI_API_KEY required when AI_PROVIDER=openai' })
-    }
   })
 
 export type Env = z.infer<typeof envSchema>
