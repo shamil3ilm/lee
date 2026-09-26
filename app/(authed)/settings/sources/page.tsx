@@ -23,6 +23,12 @@ function configSummary(kind: string, config: SourceConfig): string {
     : '—'
 }
 
+function configValue(config: SourceConfig): string {
+  if (typeof config.company === 'string') return config.company
+  if (typeof config.url === 'string') return config.url
+  return ''
+}
+
 export default async function SourcesSettingsPage(): Promise<React.ReactElement> {
   const userId = await requireUserId()
   const sources = await sourcesQ.list(userId)
@@ -33,6 +39,7 @@ export default async function SourcesSettingsPage(): Promise<React.ReactElement>
     kind: s.kind,
     enabled: s.enabled,
     configSummary: configSummary(s.kind, (s.config ?? {}) as SourceConfig),
+    configValue: configValue((s.config ?? {}) as SourceConfig),
     lastPolledAt: s.lastPolledAt ? s.lastPolledAt.toISOString() : null,
     lastError: s.lastError,
     errorCount: s.errorCount,
@@ -58,7 +65,9 @@ export default async function SourcesSettingsPage(): Promise<React.ReactElement>
       ) : (
         <div className="space-y-2">
           {rows.map((r) => (
-            <SourceRow key={r.id} source={r} />
+            // Keyed on `enabled` too so an edit that flips it remounts the
+            // row's optimistic toggle state from fresh props.
+            <SourceRow key={`${r.id}-${r.enabled}`} source={r} />
           ))}
         </div>
       )}

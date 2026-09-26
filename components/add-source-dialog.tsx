@@ -23,28 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-
-interface KindMeta {
-  id: string
-  label: string
-  description: string
-  needs: 'company' | 'url' | 'none'
-  placeholder?: string
-}
-
-const KINDS: KindMeta[] = [
-  { id: 'greenhouse', label: 'Greenhouse', description: 'Company board on greenhouse.io', needs: 'company', placeholder: 'stripe' },
-  { id: 'lever', label: 'Lever', description: 'Company board on lever.co', needs: 'company', placeholder: 'netflix' },
-  { id: 'ashby', label: 'Ashby', description: 'Company board on ashbyhq.com', needs: 'company', placeholder: 'ramp' },
-  { id: 'workable', label: 'Workable', description: 'Company board on workable.com', needs: 'company', placeholder: 'company-slug' },
-  { id: 'remoteok', label: 'RemoteOK', description: 'All remote-friendly jobs on remoteok.com', needs: 'none' },
-  { id: 'hn_whoishiring', label: "HN Who's Hiring", description: 'Monthly HN "Who is hiring?" thread', needs: 'none' },
-  { id: 'yc_directory', label: 'YC Directory', description: 'Y Combinator company directory', needs: 'none' },
-  { id: 'rss', label: 'RSS feed', description: 'Any jobs RSS feed URL', needs: 'url', placeholder: 'https://example.com/jobs.rss' },
-  { id: 'jsonld', label: 'JSON-LD JobPosting', description: 'A page with JSON-LD JobPosting markup', needs: 'url', placeholder: 'https://example.com/careers' },
-]
-
-const KIND_BY_ID = new Map(KINDS.map((k) => [k.id, k] as const))
+import { SOURCE_KINDS as KINDS, getSourceKind, type SourceKindMeta } from '@/lib/discovery/source-kinds'
 
 interface AddSourceDialogProps {
   initialKind?: string
@@ -78,7 +57,7 @@ export function AddSourceDialog({
   const [kind, setKind] = useState<string>(initialKind)
   // KINDS is a non-empty constant, so this fallback is always defined; the
   // cast avoids repeated `meta ?? KINDS[0]` reads and satisfies noUncheckedIndex.
-  const meta: KindMeta = KIND_BY_ID.get(kind) ?? (KINDS[0] as KindMeta)
+  const meta: SourceKindMeta = getSourceKind(kind) ?? (KINDS[0] as SourceKindMeta)
 
   async function handleSubmit(fd: FormData): Promise<void> {
     fd.set('kind', kind)

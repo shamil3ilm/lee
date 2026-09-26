@@ -1,7 +1,8 @@
 'use client'
 import { useState, useTransition } from 'react'
+import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
-import { AlertTriangle, MoreVertical, Trash2 } from 'lucide-react'
+import { AlertTriangle, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -22,6 +23,12 @@ import {
   removeSource,
 } from '@/app/(authed)/settings/sources/actions'
 import { relativeFromNow } from '@/lib/ui/date'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+
+const SourceEditDialog = dynamic(
+  () => import('@/components/source-edit-dialog').then((m) => m.SourceEditDialog),
+  { ssr: false },
+)
 
 export interface SourceRowItem {
   id: string
@@ -29,6 +36,8 @@ export interface SourceRowItem {
   kind: string
   enabled: boolean
   configSummary: string
+  /** Board slug / feed URL, pre-filled in the edit form. */
+  configValue: string
   lastPolledAt: string | null
   lastError: string | null
   errorCount: number
@@ -50,14 +59,18 @@ export function SourceRow({ source }: { source: SourceRowItem }) {
     })
   }
 
+  const [editOpen, setEditOpen] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+
   const handleRemove = (): void => {
-    if (typeof window !== 'undefined' && !window.confirm(`Remove "${source.name}"?`)) {
-      return
-    }
     startTransition(async () => {
       const result = await removeSource(source.id)
-      if ('success' in result) toast.success('Source removed')
-      else toast.error(result.error)
+      if ('success' in result) {
+        toast.success('Source removed')
+        setConfirmOpen(false)
+      } else {
+        toast.error(result.error)
+      }
     })
   }
 
@@ -121,14 +134,23 @@ export function SourceRow({ source }: { source: SourceRowItem }) {
           </label>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label="More">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                aria-label={`Actions for ${source.name}`}
+              >
                 <MoreVertical className="size-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => setEditOpen(true)}>
+                <Pencil className="size-4" />
+                Edit
+              </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-rose-600 focus:text-rose-600 dark:text-rose-400"
-                onSelect={handleRemove}
+                onSelect={() => setConfirmOpen(true)}
               >
                 <Trash2 className="size-4" />
                 Remove
@@ -137,6 +159,36 @@ export function SourceRow({ source }: { source: SourceRowItem }) {
           </DropdownMenu>
         </div>
       </CardContent>
+      {editOpen ? (
+        <SourceEditDialog
+          source={{
+            id: source.id,
+            name: source.name,
+            kind: source.kind,
+            enabled,
+            configValue: source.configValue,
+          }}
+          open={editOpen}
+          onOpenChange={setEditOpen}
+        />
+      ) : null}
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={`Remove "${source.name}"?`}
+        description={
+          <>
+            <p>
+              This deletes the source and every discovery it found that is still in your inbox
+              (new or dismissed). Applications you already saved from it are kept.
+            </p>
+            <p>To pause it and keep its discoveries, turn it Off instead.</p>
+          </>
+        }
+        confirmLabel="Remove"
+        pending={isPending}
+        onConfirm={handleRemove}
+      />
     </Card>
   )
 }
