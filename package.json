@@ -16,7 +16,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx lib/db/migrate.ts",
     "db:studio": "drizzle-kit studio",
-    "db:seed:e2e": "tsx tests/e2e/seed.ts",
+    "e2e:seed": "tsx tests/e2e/seed.ts",
     "laya:compare": "tsx scripts/compare-decision-providers.ts",
     "eval": "tsx tests/eval/run.ts"
   },
