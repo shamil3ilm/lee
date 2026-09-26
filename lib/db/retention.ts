@@ -235,12 +235,37 @@ export async function pruneQueueJobs(
   }, opts.batchSize ?? RETENTION_BATCH_SIZE)
 }
 
+export const WEB_VITALS_RETENTION_DAYS = 90
+
+/**
+ * Delete web vitals aggregates (one row per user/day/route/metric) whose UTC
+ * day is more than `days` before `now`. Analytics › Performance shows at most
+ * the last 28 days, so 90 days leaves room for longer comparisons.
+ */
+export async function pruneWebVitals(
+  now: Date = new Date(),
+  opts: BatchOpts & { days?: number } = {},
+): Promise<number> {
+  const client = opts.client ?? db
+  const before = cutoff(now, opts.days ?? WEB_VITALS_RETENTION_DAYS).toISOString().slice(0, 10)
+  return inBatches(async (limit) => {
+    const res = await client.execute(sql`
+      delete from web_vitals_daily where (user_id, day, route, metric) in (
+        select user_id, day, route, metric from web_vitals_daily
+        where day < ${before}::date limit ${limit}
+      )
+    `)
+    return affected(res)
+  }, opts.batchSize ?? RETENTION_BATCH_SIZE)
+}
+
 export interface RetentionResult {
   tombstonedDiscoveries: number
   aiCallLogs: number
   gmailThreads: number
   compactedDiscoveries: number
   queueJobs: number
+  webVitals: number
 }
 
 /** Run every retention step in sequence (each step is independent). */
@@ -250,5 +275,6 @@ export async function runRetention(now: Date = new Date()): Promise<RetentionRes
   const gmailThreads = await pruneProcessedGmailThreads(now)
   const compactedDiscoveries = await compactDiscoveryPayloads(now)
   const queueJobs = await pruneQueueJobs(now)
-  return { tombstonedDiscoveries, aiCallLogs, gmailThreads, compactedDiscoveries, queueJobs }
+  const webVitals = await pruneWebVitals(now)
+  return { tombstonedDiscoveries, aiCallLogs, gmailThreads, compactedDiscoveries, queueJobs, webVitals }
 }

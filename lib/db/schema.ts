@@ -13,6 +13,8 @@ import {
   uniqueIndex,
   customType,
   check,
+  date,
+  doublePrecision,
 } from 'drizzle-orm/pg-core'
 import { relations, sql } from 'drizzle-orm'
 
@@ -1162,3 +1164,35 @@ export const queueUserState = pgTable('queue_user_state', {
   lastManualDrainAt: timestamp('last_manual_drain_at', { withTimezone: true }),
   lastDrainAt: timestamp('last_drain_at', { withTimezone: true }),
 })
+
+// ---------------------------------------------------------------------------
+// Web vitals (Analytics › Performance). Aggregates, never raw events, to stay
+// small on Neon Free: one row per (user, UTC day, route pattern, metric)
+// holding the sample count, the sum, and a fixed-bucket histogram whose
+// bucket bounds live in lib/vitals/metrics.ts (p75 is estimated from it).
+// `dims` counts samples per device class / connection / navigation type as
+// flat keys like "device:desktop". Rows are pruned after 90 days
+// (lib/db/retention.ts). Worst case ≈ 35 routes × 5 metrics × 90 days rows.
+// ---------------------------------------------------------------------------
+
+export const webVitalsDaily = pgTable(
+  'web_vitals_daily',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    day: date('day', { mode: 'string' }).notNull(),
+    route: text('route').notNull(),
+    metric: text('metric').notNull(),
+    count: integer('count').notNull().default(0),
+    sum: doublePrecision('sum').notNull().default(0),
+    histogram: integer('histogram').array().notNull(),
+    dims: jsonb('dims').$type<Record<string, number>>().notNull().default({}),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.day, t.route, t.metric] }),
+    // Retention deletes by day across users.
+    dayIx: index('web_vitals_daily_day_idx').on(t.day),
+  }),
+)
