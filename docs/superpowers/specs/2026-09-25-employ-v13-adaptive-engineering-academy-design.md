@@ -425,15 +425,47 @@ academy_user_state       (user_id, xp, rank, streak_days, last_active_date, time
 ```
 Skill graph, templates and achievement catalog: versioned JSON under `content/academy/`.
 
-## 11. Surfaces
+### 10.1 History & records (2026-09-26)
+Everything is kept, append-only, per user. Records are never overwritten or silently deleted.
 
-- `/learn` — Academy home: today's plan, rank + XP, streak, radar, due reviews, "for your upcoming interview"
-- `/learn/path` — tiered curriculum map with gates and capstones
-- `/learn/skills/[skill]` — level, history, recommended next items
-- `/learn/play/[attemptId]` — the workbench (prompt · editor/canvas/simulator · live metrics · evaluation panel)
-- `/learn/review` — spaced repetition
-- `/learn/stats` — trends: composite score, complexity optimality, latency, time-to-solve, quality over time
-- Existing `/playground/decisions` stays as a lab tool under Learn
+**What is recorded:**
+| Record | Table | Contents |
+|---|---|---|
+| Every attempt | `academy_attempts` (extended) | exercise/scenario, **content pack version and engine version**, seed, start/end time, hints used, device class, full evaluation breakdown (correctness, time, complexity, latency p50/p95/p99, quality, effectiveness), XP |
+| Replay data | `academy_attempt_replays` | the input and event log needed to **replay the exact run** deterministically: commands typed, code/config diffs, simulator events, fault timeline |
+| Personal notes | `academy_attempt_notes` | your own notes, tags and "lessons learned" per attempt |
+| Level history | `academy_rating_history` | a rating/level snapshot per skill after every attempt; rank promotions; checkpoint exam results; achievements |
+| Playground updates | `academy_content_changes` | every change to the Playground: content packs published/refreshed/retired, skills proposed/accepted/rejected (with the signals and sources behind them), engine versions and merged engine PRs (linked to git commits), which agent produced it and its validation result |
+| Weekly "What's new" | `academy_whats_new` | the archive of every weekly update feed |
+
+**Where you see it:**
+- `/playground/history`: a timeline of attempts, filterable by skill, domain, format, date and result.
+  - Each entry opens a **replay** of that exact run.
+  - Any two attempts can be compared side by side ("then vs now": time, score, complexity, latency).
+  - Notes are editable.
+- `/playground/changelog`: every update to the Playground itself (new scenarios, retired ones, engine versions, accepted skills), each with the reason it happened.
+- `/playground/skills/[skill]`: level-over-time chart, attempts, and best and latest runs.
+- `/playground/stats`: long-term trends.
+
+**Keeping records:**
+- **Export** the full history as JSON/CSV.
+- Generate a **learning record PDF**: skills and levels over time, milestones, notable scenarios with measured results. It can be attached to applications or used as evidence for CV suggestions (v17 §5).
+- A monthly summary appears in the digest.
+- History is included in backups and "export all my data" (v17 §9.2) and kept forever.
+- Only the user can delete it, and deletion is audited (v17 §9.5).
+- **Reproducibility:** because content packs and engine versions are recorded with each attempt, an old attempt replays on the exact version it was played on, even after the Playground has changed.
+
+## 11. Surfaces
+(Paths updated for the Playground rename, v17 §0.)
+- `/playground`: hub. Today's plan, rank and XP, streak, radar, due reviews, "for your upcoming interview".
+- `/playground/path`: tiered curriculum map with gates and capstones.
+- `/playground/skills/[skill]`: level over time, history, recommended next items.
+- `/playground/play/[attemptId]`: the workbench (prompt · editor/canvas/simulator · live metrics · evaluation panel).
+- `/playground/review`: spaced repetition.
+- `/playground/history`: attempt timeline, replays, then-vs-now comparisons, notes (§10.1).
+- `/playground/changelog`: every Playground update and why (§10.1).
+- `/playground/stats`: trends in composite score, complexity optimality, latency, time-to-solve and quality.
+- `/playground/models` and `/playground/decisions`: model and decision tools (existing).
 
 ## 12. Phasing
 
