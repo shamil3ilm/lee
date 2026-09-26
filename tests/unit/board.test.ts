@@ -30,7 +30,7 @@ describe('board move helpers', () => {
 
   it('moves immutably to the top of the target column and applies the transform', () => {
     const g = grouped()
-    const next = moveItem(g, 'b', 'todo', 'doing', (i, to) => ({ ...i, status: to }))
+    const next = moveItem<Col, Item>(g, 'b', 'todo', 'doing', (i, to) => ({ ...i, status: to }))
     expect(next.todo.map((i) => i.id)).toEqual(['a'])
     expect(next.doing.map((i) => i.id)).toEqual(['b', 'c'])
     expect(next.doing[0]!.status).toBe('doing')
@@ -42,16 +42,16 @@ describe('board move helpers', () => {
 
   it('is a no-op for same-column moves and unknown ids', () => {
     const g = grouped()
-    expect(moveItem(g, 'a', 'todo', 'todo')).toBe(g)
-    expect(moveItem(g, 'nope', 'todo', 'done')).toBe(g)
-    expect(moveItem(g, 'c', 'todo', 'done')).toBe(g)
+    expect(moveItem<Col, Item>(g, 'a', 'todo', 'todo')).toBe(g)
+    expect(moveItem<Col, Item>(g, 'nope', 'todo', 'done')).toBe(g)
+    expect(moveItem<Col, Item>(g, 'c', 'todo', 'done')).toBe(g)
   })
 
   it('builds a key that changes with ids, columns and versions', () => {
     const g = grouped()
     const k = groupedKey(g, COLS)
     expect(groupedKey(grouped(), COLS)).toBe(k)
-    expect(groupedKey(moveItem(g, 'a', 'todo', 'done'), COLS)).not.toBe(k)
+    expect(groupedKey(moveItem<Col, Item>(g, 'a', 'todo', 'done'), COLS)).not.toBe(k)
     const versioned = { ...g, doing: [{ id: 'c', status: 'doing' as const, version: '2' }] }
     expect(groupedKey(versioned, COLS)).not.toBe(k)
   })
