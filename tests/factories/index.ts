@@ -1,8 +1,22 @@
 import { randomUUID } from 'node:crypto'
 import { db } from '@/lib/db/client'
 import * as s from '@/lib/db/schema'
+import { DEFAULTS_VERSION } from '@/lib/defaults/catalog'
 
+/**
+ * A test user as an established account: the starter defaults count as
+ * already applied, so schedulers and Run now don't add the default job
+ * boards (or poll them over the network) in unrelated tests. Use
+ * `makeFreshUser` to test the defaults themselves.
+ */
 export async function makeUser(email = `test-${randomUUID()}@example.com`) {
+  const u = await makeFreshUser(email)
+  await db.insert(s.userDefaults).values({ userId: u.id, version: DEFAULTS_VERSION })
+  return u
+}
+
+/** A brand-new account that hasn't received the starter defaults yet. */
+export async function makeFreshUser(email = `test-${randomUUID()}@example.com`) {
   const [u] = await db.insert(s.users).values({ email, name: 'Test' }).returning()
   if (!u) throw new Error('failed to create user')
   return u

@@ -1162,3 +1162,14 @@ export const queueUserState = pgTable('queue_user_state', {
   lastManualDrainAt: timestamp('last_manual_drain_at', { withTimezone: true }),
   lastDrainAt: timestamp('last_drain_at', { withTimezone: true }),
 })
+
+// Which version of the starter defaults (lib/defaults/catalog.ts) a user has
+// received. Defaults are applied once per version, so a default the user
+// deleted is never re-added.
+export const userDefaults = pgTable('user_defaults', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  version: integer('version').notNull().default(0),
+  appliedAt: timestamp('applied_at', { withTimezone: true }).notNull().defaultNow(),
+})

@@ -10,6 +10,7 @@
 import { rm, mkdir, readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { E2E_DB_DIR, E2E_ENV } from './env'
+import { DEFAULTS_VERSION } from '../../lib/defaults/catalog'
 
 const env = process.env as Record<string, string | undefined>
 for (const [k, v] of Object.entries(E2E_ENV)) env[k] = v
@@ -65,6 +66,9 @@ async function main(): Promise<void> {
   const userId = user.id
 
   await db.insert(s.userProfile).values({ userId, ...data.PROFILE })
+  // The seed controls this account's data: mark the starter defaults as
+  // already applied so Run now / the scheduler don't add the default sources.
+  await db.insert(s.userDefaults).values({ userId, version: DEFAULTS_VERSION })
 
   // Companies + contacts
   const companyIds = new Map<string, string>()

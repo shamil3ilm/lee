@@ -10,6 +10,8 @@ import { users, accounts, sessions, verificationTokens } from '@/lib/db/schema'
 import { edgeAuthConfig } from './edge-config'
 import { logger } from '@/lib/logger'
 import type { TestLogin } from './test-login-provider'
+import { ensureDefaults } from '@/lib/defaults/ensure'
+import { runAfterResponse } from '@/lib/server/after-response'
 
 // v17 §9.1 — local-only E2E test sign-in. The literal NODE_ENV check is
 // folded to `false` by `next build`, so the dynamic import (and the provider
@@ -65,6 +67,10 @@ export const authConfig = {
     // effect end-to-end.
     async signIn({ user, account }) {
       if (!user?.id || account?.provider !== 'google') return
+      // Starter sources/companies (once per defaults version), after the
+      // response so sign-in isn't slowed. Never throws.
+      const userId = user.id
+      await runAfterResponse('apply starter defaults', () => ensureDefaults(userId))
       // Build patch conditionally so we don't wipe a still-valid refresh_token
       // if Google's response omits one (they only re-issue on consent prompt).
       const patch: Record<string, unknown> = {}

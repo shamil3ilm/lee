@@ -4,6 +4,7 @@ import { sources, users } from '@/lib/db/schema'
 import { MAX_ERRORS_BEFORE_SKIP } from '@/lib/discovery/service'
 import { JOB_PRIORITY, JOB_TYPES, jobKeys, utcDay } from './job-types'
 import { enqueueMany, type EnqueueSpec } from './queue'
+import { applyDefaults } from '@/lib/defaults/apply'
 
 export interface ScheduleResult {
   day: string
@@ -48,6 +49,8 @@ export async function scheduleUserToday(
   now: Date = new Date(),
 ): Promise<{ day: string; enqueued: number }> {
   const day = utcDay(now)
+  // Starter defaults first, so today's plan includes any new default sources.
+  await applyDefaults(userId)
   const active = await db
     .select({ id: sources.id })
     .from(sources)
@@ -89,6 +92,11 @@ export async function enqueueSourcePollNow(
  */
 export async function scheduleDailyJobs(now: Date = new Date()): Promise<ScheduleResult> {
   const day = utcDay(now)
+  // Starter defaults for anyone who hasn't received the current version yet
+  // (a no-op per user once applied). Sequential: one small transaction each.
+  for (const u of await db.select({ id: users.id }).from(users)) {
+    await applyDefaults(u.id)
+  }
   const [allUsers, activeSources] = await Promise.all([
     db.select({ id: users.id }).from(users),
     db
