@@ -13,7 +13,7 @@ import {
   PlayCircle,
   Save,
 } from 'lucide-react'
-import { loader, type OnMount } from '@monaco-editor/react'
+import type { OnMount } from '@monaco-editor/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -25,16 +25,19 @@ import { defaultSnippetForAsset } from '@/lib/latex/snippets'
 import { extractLatexHint } from '@/lib/latex/errors'
 
 // Pull Monaco's JS + workers from a CDN so we don't bundle ~2MB of editor
-// assets into the client chunk for this route. This only loads when a user
-// actually hits /documents/[id]/edit.
-loader.config({
-  paths: {
-    vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs',
-  },
-})
-
+// assets into the client chunk for this route. The wrapper package (and its
+// loader config) is itself imported lazily, so nothing Monaco-related is in
+// the route's first-load bundle; it loads only when the editor mounts.
 const MonacoEditor = dynamic(
-  () => import('@monaco-editor/react').then((m) => m.default),
+  () =>
+    import('@monaco-editor/react').then((m) => {
+      m.loader.config({
+        paths: {
+          vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs',
+        },
+      })
+      return m.default
+    }),
   {
     ssr: false,
     loading: () => (
