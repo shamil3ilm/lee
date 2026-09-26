@@ -4,6 +4,7 @@ import { queueJobs, queueUserState } from '@/lib/db/schema'
 import { drain, type DrainOptions } from './drain'
 import { jobLabel } from './job-types'
 import { JOB_STATUSES, type JobStatus } from './types'
+import { scheduleUserToday } from './scheduler'
 
 /** Owner-facing view of one failed job — no payload, lock or worker ids. */
 export interface JobFailureView {
@@ -88,7 +89,15 @@ export type RunNowResult =
  */
 export async function runNowForUser(
   userId: string,
-  opts: Pick<DrainOptions, 'registry'> & { now?: Date } = {},
+  opts: Pick<DrainOptions, 'registry'> & {
+    now?: Date
+    /**
+     * Queue today's work first so "Run now" does something even before the
+     * daily scheduler has run (a new account, or right after adding sources).
+     * Idempotent per UTC day. Injectable for tests.
+     */
+    scheduleToday?: (userId: string, now: Date) => Promise<unknown>
+  } = {},
 ): Promise<RunNowResult> {
   const now = opts.now ?? new Date()
   const since = new Date(now.getTime() - RUN_NOW_INTERVAL_MS)
@@ -102,6 +111,7 @@ export async function runNowForUser(
     })
     .returning()
   if (claimed.length === 0) return { status: 'throttled' }
+  await (opts.scheduleToday ?? scheduleUserToday)(userId, now)
   const r = await drain({
     userId,
     budgetMs: RUN_NOW_BUDGET_MS,

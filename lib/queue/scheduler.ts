@@ -39,6 +39,50 @@ export function planUserJobs(userId: string, sourceIds: readonly string[], day: 
 }
 
 /**
+ * Queue today's jobs for ONE user right away (the same plan as the daily
+ * scheduler). Used by "Run now" so a new account doesn't wait for the next
+ * 09:00 UTC scheduler run. Idempotent per UTC day via the job keys.
+ */
+export async function scheduleUserToday(
+  userId: string,
+  now: Date = new Date(),
+): Promise<{ day: string; enqueued: number }> {
+  const day = utcDay(now)
+  const active = await db
+    .select({ id: sources.id })
+    .from(sources)
+    .where(
+      and(eq(sources.userId, userId), eq(sources.enabled, true), lt(sources.errorCount, MAX_ERRORS_BEFORE_SKIP)),
+    )
+    .orderBy(sources.createdAt)
+  const { created } = await enqueueMany(planUserJobs(userId, active.map((s) => s.id), day, now))
+  return { day, enqueued: created }
+}
+
+/**
+ * Queue today's poll for a single source (e.g. right after it's added or
+ * re-enabled). Returns false when today's poll for it was already queued.
+ */
+export async function enqueueSourcePollNow(
+  userId: string,
+  sourceId: string,
+  now: Date = new Date(),
+): Promise<boolean> {
+  const day = utcDay(now)
+  const { created } = await enqueueMany([
+    {
+      userId,
+      runAfter: now,
+      type: JOB_TYPES.discoverySource,
+      payload: { sourceId },
+      idempotencyKey: jobKeys.discoverySource(userId, sourceId, day),
+      priority: JOB_PRIORITY[JOB_TYPES.discoverySource],
+    },
+  ])
+  return created > 0
+}
+
+/**
  * Daily scheduler: enqueue the day's jobs for every user in one statement.
  * Idempotent — a second call on the same UTC day (duplicate cron delivery,
  * the sync-all alias, a manual run) inserts nothing.

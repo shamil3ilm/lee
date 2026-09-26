@@ -3,10 +3,13 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { sources } from '@/lib/db/schema'
 import {
+  addSource,
   updateSource,
   removeSource,
   toggleSourceEnabled,
 } from '@/app/(authed)/settings/sources/actions'
+import { queueJobs } from '@/lib/db/schema'
+import { JOB_TYPES } from '@/lib/queue/job-types'
 import { makeUser, makeSource } from '@/tests/factories'
 
 const sessionMock = vi.hoisted(() => vi.fn())
@@ -133,5 +136,30 @@ describe('removeSource / toggleSourceEnabled scoping', () => {
     expect(await removeSource(theirs.id)).toEqual({ error: 'Source not found.' })
     expect(await toggleSourceEnabled(theirs.id, false)).toEqual({ error: 'Source not found.' })
     expect((await getSource(theirs.id))?.enabled).toBe(true)
+  })
+})
+
+describe('first poll is queued immediately', () => {
+  async function pollsFor(userId: string) {
+    return (await db.select().from(queueJobs).where(eq(queueJobs.userId, userId))).filter(
+      (j) => j.type === JOB_TYPES.discoverySource,
+    )
+  }
+
+  it('adding a source queues its first search (no wait for the daily scheduler)', async () => {
+    const me = await makeUser()
+    sessionMock.mockResolvedValue(me.id)
+    expect(await addSource(fd({ kind: 'remoteok' }))).toEqual({ success: true })
+    expect(await pollsFor(me.id)).toHaveLength(1)
+  })
+
+  it('re-enabling a source queues a search; disabling does not', async () => {
+    const me = await makeUser()
+    const src = await makeSource(me.id)
+    sessionMock.mockResolvedValue(me.id)
+    await toggleSourceEnabled(src.id, false)
+    expect(await pollsFor(me.id)).toHaveLength(0)
+    await toggleSourceEnabled(src.id, true)
+    expect(await pollsFor(me.id)).toHaveLength(1)
   })
 })

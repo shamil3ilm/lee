@@ -104,16 +104,40 @@ describe('runNowForUser', () => {
     await enqueue('user-task', {}, { userId: u.id })
     await enqueue('user-task', {}, { userId: other.id })
     const now = new Date()
-    const r = await runNowForUser(u.id, { registry, now })
+    const noSchedule = async () => {}
+    const r = await runNowForUser(u.id, { registry, now, scheduleToday: noSchedule })
     expect(r).toEqual({ status: 'ran', done: 1, failed: 0, remaining: 'none' })
     expect(ran).toEqual([u.id])
-    expect(await runNowForUser(u.id, { registry, now: new Date(now.getTime() + 1_000) })).toEqual({
+    expect(await runNowForUser(u.id, { registry, now: new Date(now.getTime() + 1_000), scheduleToday: noSchedule })).toEqual({
       status: 'throttled',
     })
     expect(
-      (await runNowForUser(u.id, { registry, now: new Date(now.getTime() + RUN_NOW_INTERVAL_MS) })).status,
+      (await runNowForUser(u.id, { registry, now: new Date(now.getTime() + RUN_NOW_INTERVAL_MS), scheduleToday: noSchedule })).status,
     ).toBe('ran')
     expect(await statusOf(other.id)).toEqual(['queued'])
+  })
+
+  it("queues today's work first, so it works before the daily scheduler has run", async () => {
+    const u = await makeUser()
+    expect(await statusOf(u.id)).toEqual([])
+    const scheduled: string[] = []
+    const r = await runNowForUser(u.id, {
+      registry,
+      now: new Date(),
+      scheduleToday: async (userId) => {
+        scheduled.push(userId)
+        await enqueue('user-task', {}, { userId })
+      },
+    })
+    expect(scheduled).toEqual([u.id])
+    expect(r).toMatchObject({ status: 'ran', done: 1 })
+  })
+
+  it('uses the real per-user scheduler by default', async () => {
+    const u = await makeUser()
+    await runNowForUser(u.id, { registry, now: new Date() })
+    const types = (await db.select().from(queueJobs).where(eq(queueJobs.userId, u.id))).map((j) => j.type)
+    expect(types).toContain(JOB_TYPES.followups)
   })
 })
 

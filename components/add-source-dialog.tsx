@@ -63,7 +63,7 @@ export function AddSourceDialog({
     fd.set('kind', kind)
     const result = await addSource(fd)
     if ('success' in result) {
-      toast.success('Source added')
+      toast.success('Source added — searching it now. New jobs appear in Discovery within a minute or two.')
       setOpen(false)
     } else {
       toast.error(result.error)
