@@ -11,6 +11,7 @@ export const JOB_TYPES = {
   discoverySource: 'discovery-source:user+source',
   discoveryEmail: 'discovery-email:user',
   scamReassess: 'scam-reassess:user',
+  usageSnapshot: 'usage-snapshot:all',
 } as const
 
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES]
@@ -23,6 +24,8 @@ export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES]
  */
 export const JOB_PRIORITY: Readonly<Record<JobType, number>> = {
   [JOB_TYPES.reminders]: 0,
+  // Early, so the day's throttles (lib/usage/throttle) apply to the jobs after it.
+  [JOB_TYPES.usageSnapshot]: 5,
   [JOB_TYPES.followups]: 10,
   [JOB_TYPES.gmailSync]: 20,
   [JOB_TYPES.digest]: 30,
@@ -40,6 +43,7 @@ export const JOB_LABELS: Readonly<Record<string, string>> = {
   [JOB_TYPES.discoverySource]: 'Discovery source poll',
   [JOB_TYPES.discoveryEmail]: 'Discovery email',
   [JOB_TYPES.scamReassess]: 'Scam Shield re-check',
+  [JOB_TYPES.usageSnapshot]: 'Usage snapshot',
 }
 
 export function jobLabel(type: string): string {
@@ -64,4 +68,5 @@ export const jobKeys = {
     `discovery-source:${userId}:${sourceId}:${day}`,
   discoveryEmail: (userId: string, day: string) => `discovery-email:${userId}:${day}`,
   scamReassess: (userId: string, day: string) => `scam-reassess:${userId}:${day}`,
+  usageSnapshot: (day: string) => `usage-snapshot:all:${day}`,
 } as const

@@ -9,6 +9,8 @@ import { NoGoogleAccountError } from '@/lib/google/tokens'
 import { sendDiscoveryEmailIfEnabled } from '@/lib/notifications/discovery'
 import { recordDueReminders } from '@/lib/reminders/service'
 import { reassessStaleDiscoveries } from '@/lib/scam/service'
+import { takeUsageSnapshot } from '@/lib/usage/snapshot'
+import { isThrottled } from '@/lib/usage/throttle'
 import { JOB_TYPES } from './job-types'
 import { createRegistry, defineHandler, type HandlerRegistry } from './registry'
 import type { JobResult } from './types'
@@ -99,7 +101,12 @@ const discoverySource = defineHandler({
   payload: z.object({ sourceId: z.string().uuid() }),
   timeoutMs: 120_000,
   minBudgetMs: 20_000,
-  async run({ job, payload, deadline }) {
+  async run({ job, payload, deadline }): Promise<JobResult> {
+    // Free-tier throttle: at ≥90% Neon compute/egress a source is polled at
+    // most once a day — a retry (attempt 2+) is skipped, not re-polled.
+    if (job.attempts > 1 && (await isThrottled('pause_nonessential'))) {
+      return { metrics: { discovery_paused_by_usage: 1 } }
+    }
     const ai = await getAIProviderForUser(userId(job))
     const r = await runDiscoveryForSource({
       userId: userId(job),
@@ -145,7 +152,26 @@ const scamReassess = defineHandler({
   payload: USER_PAYLOAD,
   timeoutMs: 45_000,
   async run({ job }): Promise<JobResult> {
+    // Non-essential: skipped while the free-tier throttle is on.
+    if (await isThrottled('pause_nonessential')) return { metrics: { scam_reassess_paused_by_usage: 1 } }
     return { metrics: { scam_reassessed: await reassessStaleDiscoveries(userId(job)) } }
+  },
+})
+
+const usageSnapshot = defineHandler({
+  type: JOB_TYPES.usageSnapshot,
+  scope: 'global',
+  payload: noPayload,
+  timeoutMs: 60_000,
+  async run(): Promise<JobResult> {
+    const r = await takeUsageSnapshot()
+    return {
+      metrics: {
+        usage_snapshots: 1,
+        usage_todos_created: r.todosCreated,
+        usage_throttles: r.throttles.length,
+      },
+    }
   },
 })
 
@@ -157,6 +183,7 @@ export const appHandlers = [
   discoverySource,
   discoveryEmail,
   scamReassess,
+  usageSnapshot,
 ] as const
 
 export const appRegistry: HandlerRegistry = createRegistry(appHandlers)

@@ -64,6 +64,13 @@ export async function scheduleDailyJobs(now: Date = new Date()): Promise<Schedul
       idempotencyKey: jobKeys.reminders(day),
       priority: JOB_PRIORITY[JOB_TYPES.reminders],
     },
+    {
+      type: JOB_TYPES.usageSnapshot,
+      userId: null,
+      runAfter: now,
+      idempotencyKey: jobKeys.usageSnapshot(day),
+      priority: JOB_PRIORITY[JOB_TYPES.usageSnapshot],
+    },
     ...allUsers.flatMap((u) => planUserJobs(u.id, byUser.get(u.id) ?? [], day, now)),
   ]
   const { created } = await enqueueMany(specs)

@@ -1162,3 +1162,63 @@ export const queueUserState = pgTable('queue_user_state', {
   lastManualDrainAt: timestamp('last_manual_drain_at', { withTimezone: true }),
   lastDrainAt: timestamp('last_drain_at', { withTimezone: true }),
 })
+
+// ---------------------------------------------------------------------------
+// Free-tier usage meter (v17 §9.6 item 7). One global row per UTC day with
+// every meter reading (lib/usage), written by the `usage-snapshot:all` job
+// or the throttled "Refresh now" button, so Settings › Usage and the
+// dashboard banner never call a vendor API on render.
+// ---------------------------------------------------------------------------
+export const usageSnapshots = pgTable('usage_snapshots', {
+  // UTC calendar day, yyyy-mm-dd.
+  day: text('day').primaryKey(),
+  takenAt: timestamp('taken_at', { withTimezone: true }).notNull().defaultNow(),
+  // UsageSnapshotData (lib/usage/types.ts): readings, per-user readings,
+  // largest tables, Neon compute state. A few KB at most.
+  data: jsonb('data').notNull().default({}),
+  // Throttle ids active after this snapshot (lib/usage/throttle.ts).
+  throttles: text('throttles').array().notNull().default([]),
+})
+
+// Once-per-threshold-per-month log of usage warnings; the unique key makes
+// the todo it creates idempotent.
+export const usageAlerts = pgTable(
+  'usage_alerts',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    // yyyy-mm (UTC)
+    period: text('period').notNull(),
+    meter: text('meter').notNull(),
+    // 70 | 90
+    threshold: smallint('threshold').notNull(),
+    fraction: real('fraction').notNull(),
+    todoId: uuid('todo_id').references(() => todos.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    onePerThresholdUq: uniqueIndex('usage_alerts_user_period_meter_threshold_uq').on(
+      t.userId,
+      t.period,
+      t.meter,
+      t.threshold,
+    ),
+  }),
+)
+
+// Per-user usage-meter settings: the optional Neon project id (the API key
+// itself lives encrypted in lab_provider_keys as `neon`), the month the
+// owner chose to resume paused jobs despite a ≥90% meter, and the
+// "Refresh now" throttle.
+export const usageSettings = pgTable('usage_settings', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  neonProjectId: text('neon_project_id'),
+  // yyyy-mm; throttles are lifted for this month only.
+  throttlesResumedPeriod: text('throttles_resumed_period'),
+  lastRefreshAt: timestamp('last_refresh_at', { withTimezone: true }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})

@@ -37,6 +37,8 @@ export const ATS_PROBE_TIMEOUT_MS = 5_000
 export const DISCOVERY_FETCH_TIMEOUT_MS = 15_000
 /** One Hacker News item fetch (the adapter makes up to 100 of these). */
 export const HN_ITEM_TIMEOUT_MS = 5_000
+/** One Neon API call (usage meter snapshot / key test). */
+export const NEON_API_TIMEOUT_MS = 8_000
 
 const TIMEOUT_TAG = Symbol.for('employ.outboundTimeout')
 

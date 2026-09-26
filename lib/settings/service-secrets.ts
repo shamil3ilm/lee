@@ -5,7 +5,7 @@
  * named by `envKey` is only the fallback default when the user has not
  * saved their own.
  */
-export const SERVICE_SECRET_IDS = ['firecrawl', 'laya'] as const
+export const SERVICE_SECRET_IDS = ['firecrawl', 'laya', 'neon'] as const
 
 export type ServiceSecretId = (typeof SERVICE_SECRET_IDS)[number]
 
@@ -13,7 +13,7 @@ export interface ServiceSecretInfo {
   id: ServiceSecretId
   label: string
   description: string
-  envKey: 'FIRECRAWL_API_KEY' | 'LAYA_API_KEY'
+  envKey: 'FIRECRAWL_API_KEY' | 'LAYA_API_KEY' | 'NEON_API_KEY'
   keyUrl?: string
   /** True when a cheap authenticated call can verify the key. */
   testable: boolean
@@ -35,6 +35,15 @@ export const SERVICE_SECRETS: readonly ServiceSecretInfo[] = [
     description:
       'Bearer token for a private Laya endpoint (decision engine). Not needed for the public demo Space.',
     envKey: 'LAYA_API_KEY',
+    testable: true,
+  },
+  {
+    id: 'neon',
+    label: 'Neon',
+    description:
+      'Optional, read-only use: lets Settings › Usage show compute (CU-hours), egress and compute state for your Neon project. Without it, only database size is measured.',
+    envKey: 'NEON_API_KEY',
+    keyUrl: 'https://neon.com/docs/manage/api-keys',
     testable: true,
   },
 ]
