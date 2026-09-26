@@ -22,6 +22,7 @@ import {
   sentThisTzWeek,
 } from '@/lib/ui/timezone'
 import { todoIsActiveSql } from '@/lib/db/queries/todos'
+import { usageWarningsForUser, type UsageWarning } from '@/lib/usage/alerts'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -77,6 +78,8 @@ export interface PipelineSnapshot {
     hasDebrief: boolean
     hasAIDebrief: boolean
   }[]
+  // v17 §9.6 — free-tier meters at 70 % / 90 % (latest usage snapshot).
+  usageWarnings?: UsageWarning[]
 }
 
 // ---------------------------------------------------------------------------
@@ -349,6 +352,12 @@ export async function gatherPipelineSnapshot(
     hasAIDebrief: debriefStageIdSet.has(r.stageId),
   }))
 
+  // Never let the usage read block the digest.
+  const usageWarnings = await usageWarningsForUser(userId, now, client).catch((err: unknown) => {
+    logger.warn('digest_usage_warnings_failed', { err: err instanceof Error ? err.message : String(err) })
+    return [] as UsageWarning[]
+  })
+
   return {
     userId,
     userEmail: user.email,
@@ -362,6 +371,7 @@ export async function gatherPipelineSnapshot(
     staleApplications,
     upcomingTodos,
     completedStagesThisWeek,
+    usageWarnings,
   }
 }
 

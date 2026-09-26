@@ -13,6 +13,8 @@ import {
   uniqueIndex,
   customType,
   check,
+  date,
+  doublePrecision,
 } from 'drizzle-orm/pg-core'
 import { relations, sql } from 'drizzle-orm'
 
@@ -1161,4 +1163,107 @@ export const queueUserState = pgTable('queue_user_state', {
   lastVisitDrainAt: timestamp('last_visit_drain_at', { withTimezone: true }),
   lastManualDrainAt: timestamp('last_manual_drain_at', { withTimezone: true }),
   lastDrainAt: timestamp('last_drain_at', { withTimezone: true }),
+})
+
+// ---------------------------------------------------------------------------
+// Web vitals (Analytics › Performance). Aggregates, never raw events, to stay
+// small on Neon Free: one row per (user, UTC day, route pattern, metric)
+// holding the sample count, the sum, and a fixed-bucket histogram whose
+// bucket bounds live in lib/vitals/metrics.ts (p75 is estimated from it).
+// `dims` counts samples per device class / connection / navigation type as
+// flat keys like "device:desktop". Rows are pruned after 90 days
+// (lib/db/retention.ts). Worst case ≈ 35 routes × 5 metrics × 90 days rows.
+// ---------------------------------------------------------------------------
+
+export const webVitalsDaily = pgTable(
+  'web_vitals_daily',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    day: date('day', { mode: 'string' }).notNull(),
+    route: text('route').notNull(),
+    metric: text('metric').notNull(),
+    count: integer('count').notNull().default(0),
+    sum: doublePrecision('sum').notNull().default(0),
+    histogram: integer('histogram').array().notNull(),
+    dims: jsonb('dims').$type<Record<string, number>>().notNull().default({}),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.day, t.route, t.metric] }),
+    // Retention deletes by day across users.
+    dayIx: index('web_vitals_daily_day_idx').on(t.day),
+  }),
+)
+
+// ---------------------------------------------------------------------------
+// Free-tier usage meter (v17 §9.6 item 7). One global row per UTC day with
+// every meter reading (lib/usage), written by the `usage-snapshot:all` job
+// or the throttled "Refresh now" button, so Settings › Usage and the
+// dashboard banner never call a vendor API on render.
+// ---------------------------------------------------------------------------
+export const usageSnapshots = pgTable('usage_snapshots', {
+  // UTC calendar day, yyyy-mm-dd.
+  day: text('day').primaryKey(),
+  takenAt: timestamp('taken_at', { withTimezone: true }).notNull().defaultNow(),
+  // UsageSnapshotData (lib/usage/types.ts): readings, per-user readings,
+  // largest tables, Neon compute state. A few KB at most.
+  data: jsonb('data').notNull().default({}),
+  // Throttle ids active after this snapshot (lib/usage/throttle.ts).
+  throttles: text('throttles').array().notNull().default([]),
+})
+
+// Once-per-threshold-per-month log of usage warnings; the unique key makes
+// the todo it creates idempotent.
+export const usageAlerts = pgTable(
+  'usage_alerts',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    // yyyy-mm (UTC)
+    period: text('period').notNull(),
+    meter: text('meter').notNull(),
+    // 70 | 90
+    threshold: smallint('threshold').notNull(),
+    fraction: real('fraction').notNull(),
+    todoId: uuid('todo_id').references(() => todos.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    onePerThresholdUq: uniqueIndex('usage_alerts_user_period_meter_threshold_uq').on(
+      t.userId,
+      t.period,
+      t.meter,
+      t.threshold,
+    ),
+  }),
+)
+
+// Per-user usage-meter settings: the optional Neon project id (the API key
+// itself lives encrypted in lab_provider_keys as `neon`), the month the
+// owner chose to resume paused jobs despite a ≥90% meter, and the
+// "Refresh now" throttle.
+export const usageSettings = pgTable('usage_settings', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  neonProjectId: text('neon_project_id'),
+  // yyyy-mm; throttles are lifted for this month only.
+  throttlesResumedPeriod: text('throttles_resumed_period'),
+  lastRefreshAt: timestamp('last_refresh_at', { withTimezone: true }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+// Which version of the starter defaults (lib/defaults/catalog.ts) a user has
+// received. Defaults are applied once per version, so a default the user
+// deleted is never re-added.
+export const userDefaults = pgTable('user_defaults', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  version: integer('version').notNull().default(0),
+  appliedAt: timestamp('applied_at', { withTimezone: true }).notNull().defaultNow(),
 })

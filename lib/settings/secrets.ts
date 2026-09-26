@@ -4,6 +4,7 @@ import { resolveKey } from '@/lib/lab/providers/registry'
 import { DEFAULT_LAYA_ENDPOINT } from '@/lib/decisions/laya-http'
 import { fetchWithTimeout } from '@/lib/net/timeout'
 import { assertSafeUrl } from '@/lib/ingest/ssrf'
+import { checkNeonKey, NeonApiError, neonErrorMessage } from '@/lib/usage/neon-api'
 import {
   SERVICE_SECRETS,
   getServiceSecretInfo,
@@ -72,6 +73,7 @@ export async function checkServiceKey(
   key: string,
   opts: { layaEndpoint?: string | null; fetchImpl?: typeof fetch } = {},
 ): Promise<CheckResult> {
+  if (id === 'neon') return checkNeon(key)
   const url =
     id === 'firecrawl'
       ? 'https://api.firecrawl.dev/v1/team/credit-usage'
@@ -101,6 +103,17 @@ export async function checkServiceKey(
     return { ok: false, error: `${label} did not accept the check.`, rejected: false }
   } catch {
     return { ok: false, error: `Could not reach ${label}.`, rejected: false }
+  }
+}
+
+/** Neon: GET /projects?limit=1 (read-only, never wakes the compute). */
+async function checkNeon(key: string): Promise<CheckResult> {
+  try {
+    await checkNeonKey(key)
+    return { ok: true, error: null, rejected: false }
+  } catch (e) {
+    const rejected = e instanceof NeonApiError && e.code === 'rejected'
+    return { ok: false, error: neonErrorMessage(e), rejected }
   }
 }
 

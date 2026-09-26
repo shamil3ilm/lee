@@ -5,6 +5,7 @@ import { users } from '@/lib/db/schema'
 import { runDiscoveryCycleForUser } from '@/lib/discovery/service'
 import { getAIProviderForUser } from '@/lib/ai'
 import { logger } from '@/lib/logger'
+import { isThrottled } from '@/lib/usage/throttle'
 
 // NOTE: this endpoint is NOT scheduled by vercel.json — discovery runs as
 // per-source `discovery-source:user+source` queue jobs (lib/queue, enqueued
@@ -30,6 +31,13 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const auth = req.headers.get('authorization') ?? ''
   if (auth !== `Bearer ${env.CRON_SECRET}`) {
     return new NextResponse('unauthorized', { status: 401 })
+  }
+
+  // Extra discovery polls are non-essential: while the free-tier throttle
+  // is on, only the daily queued poll runs (lib/usage/throttle).
+  if (await isThrottled('pause_nonessential')) {
+    logger.info('cron_discover_paused_by_usage')
+    return NextResponse.json({ skipped: 'paused_by_usage' })
   }
 
   const allUsers = await db.select().from(users)

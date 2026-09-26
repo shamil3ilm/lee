@@ -264,6 +264,7 @@ describe('runRetention', () => {
       gmailThreads: 1,
       compactedDiscoveries: 0,
       queueJobs: 1,
+      webVitals: 0,
     })
   })
 })

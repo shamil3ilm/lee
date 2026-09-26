@@ -3,23 +3,21 @@ import Link from 'next/link'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import type { NavItem } from './nav-config'
+import { NavBadge, NavBadgeSuffix } from './nav-badges'
 
 interface SidebarLinkProps {
   item: NavItem
   active: boolean
-  badge?: number
   /** Desktop rail currently engaged → wrap in a tooltip. */
   rail: boolean
   onNavigate?: () => void
 }
 
-// Hidden when the desktop shell is in rail mode. The mobile Sheet renders in
-// a portal outside the shell, so these variants never apply there.
+// Hidden when the desktop shell is in rail mode (see nav-badges.tsx too).
 const RAIL_HIDDEN = 'group-data-[sidebar=rail]/shell:hidden'
 
-export function SidebarLink({ item, active, badge, rail, onNavigate }: SidebarLinkProps) {
-  const { href, label, icon: Icon } = item
-  const showBadge = typeof badge === 'number' && badge > 0
+export function SidebarLink({ item, active, rail, onNavigate }: SidebarLinkProps) {
+  const { href, label, icon: Icon, badge: badgeKey } = item
   const link = (
     <Link
       href={href}
@@ -36,23 +34,7 @@ export function SidebarLink({ item, active, badge, rail, onNavigate }: SidebarLi
     >
       <Icon className="size-4 shrink-0" />
       <span className={cn('flex-1 truncate', RAIL_HIDDEN)}>{label}</span>
-      {showBadge ? (
-        <>
-          <span
-            className={cn(
-              'ml-auto rounded-full bg-primary px-1.5 text-[10px] font-semibold leading-4 text-primary-foreground tabular-nums',
-              RAIL_HIDDEN,
-            )}
-            aria-label={`${badge} pending`}
-          >
-            {badge > 99 ? '99+' : badge}
-          </span>
-          <span
-            aria-hidden
-            className="absolute right-2 top-1 hidden size-1.5 rounded-full bg-primary group-data-[sidebar=rail]/shell:block"
-          />
-        </>
-      ) : null}
+      {badgeKey ? <NavBadge badgeKey={badgeKey} /> : null}
     </Link>
   )
   if (!rail) return link
@@ -61,7 +43,7 @@ export function SidebarLink({ item, active, badge, rail, onNavigate }: SidebarLi
       <TooltipTrigger asChild>{link}</TooltipTrigger>
       <TooltipContent side="right">
         {label}
-        {showBadge ? ` (${badge})` : ''}
+        {badgeKey ? <NavBadgeSuffix badgeKey={badgeKey} /> : null}
       </TooltipContent>
     </Tooltip>
   )

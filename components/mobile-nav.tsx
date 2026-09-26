@@ -4,16 +4,14 @@ import { Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Sidebar } from '@/components/sidebar'
-import type { NavBadges } from '@/components/nav/nav-config'
 
 interface MobileNavProps {
   email?: string | null
   name?: string | null
   image?: string | null
-  badges?: NavBadges
 }
 
-export function MobileNav({ email, name, image, badges }: MobileNavProps) {
+export function MobileNav({ email, name, image }: MobileNavProps) {
   const [open, setOpen] = React.useState(false)
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -36,7 +34,6 @@ export function MobileNav({ email, name, image, badges }: MobileNavProps) {
           email={email}
           name={name}
           image={image}
-          badges={badges}
         />
       </SheetContent>
     </Sheet>

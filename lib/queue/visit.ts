@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { runAfterResponse } from '@/lib/server/after-response'
+import { isThrottled } from '@/lib/usage/throttle'
 import { drain, type DrainOptions } from './drain'
 
 /** At most this many of the visitor's due jobs per visit… */
@@ -50,11 +51,14 @@ export async function claimVisitDrainSlot(userId: string, now: Date = new Date()
  * or queries the DB on the render path. After the response is sent: one
  * cheap indexed check (claimVisitDrainSlot), and only when it wins, a drain
  * of at most VISIT_DRAIN_MAX_JOBS of THIS user's due jobs within
- * VISIT_DRAIN_BUDGET_MS. Never throws.
+ * VISIT_DRAIN_BUDGET_MS, unless the free-tier throttle is on. Never throws.
  */
 export function scheduleVisitDrain(userId: string, opts: Pick<DrainOptions, 'registry'> = {}): Promise<void> {
   return runAfterResponse('queue_visit_drain', async () => {
     if (!(await claimVisitDrainSlot(userId))) return
+    // Opportunistic drains are non-essential: skipped at ≥90% Neon
+    // compute/egress (lib/usage/throttle). Cron drains still run the jobs.
+    if (await isThrottled('pause_nonessential')) return
     await drain({
       userId,
       maxJobs: VISIT_DRAIN_MAX_JOBS,

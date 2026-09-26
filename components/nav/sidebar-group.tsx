@@ -1,14 +1,13 @@
 'use client'
 import { ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { NavBadges, NavGroup } from './nav-config'
+import type { NavGroup } from './nav-config'
 import { SidebarLink } from './sidebar-link'
 
 interface SidebarGroupProps {
   group: NavGroup
   open: boolean
   activeHref: string | null
-  badges: NavBadges
   rail: boolean
   onToggle: (key: string) => void
   onNavigate?: () => void
@@ -18,7 +17,6 @@ export function SidebarGroup({
   group,
   open,
   activeHref,
-  badges,
   rail,
   onToggle,
   onNavigate,
@@ -53,7 +51,6 @@ export function SidebarGroup({
             key={item.href}
             item={item}
             active={activeHref === item.href}
-            badge={item.badge ? badges[item.badge] : undefined}
             rail={rail}
             onNavigate={onNavigate}
           />

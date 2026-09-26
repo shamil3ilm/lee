@@ -8,7 +8,6 @@ import {
   HOME_ITEM,
   NAV_GROUPS,
   SETTINGS_ITEM,
-  type NavBadges,
 } from '@/components/nav/nav-config'
 import { SidebarGroup } from '@/components/nav/sidebar-group'
 import { SidebarLink } from '@/components/nav/sidebar-link'
@@ -35,7 +34,6 @@ interface SidebarProps {
   email?: string | null
   name?: string | null
   image?: string | null
-  badges?: NavBadges
   /** Desktop only: allow collapsing to an icon rail. Off inside the mobile drawer. */
   railEnabled?: boolean
 }
@@ -46,7 +44,6 @@ export function Sidebar({
   email,
   name,
   image,
-  badges = {},
   railEnabled = false,
 }: SidebarProps) {
   const pathname = usePathname()
@@ -120,7 +117,6 @@ export function Sidebar({
                 group={group}
                 open={isGroupOpen(group.key, groupState, containsActive)}
                 activeHref={activeHref}
-                badges={badges}
                 rail={rail}
                 onToggle={toggleGroup}
                 onNavigate={onNavigate}
