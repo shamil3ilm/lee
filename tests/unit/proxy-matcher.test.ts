@@ -78,4 +78,14 @@ describe('proxy handler', () => {
     expect(handler({ auth: null, nextUrl: at('/signin') })).toBeUndefined()
     expect(handler({ auth: null, nextUrl: at('/api/applications') })).toBeUndefined()
   })
+
+  it('keeps the public About and Privacy pages reachable signed out (Google consent screen links)', () => {
+    expect(handler({ auth: null, nextUrl: at('/about') })).toBeUndefined()
+    expect(handler({ auth: null, nextUrl: at('/privacy') })).toBeUndefined()
+  })
+
+  it('does not treat look-alike paths as public', () => {
+    expect(handler({ auth: null, nextUrl: at('/privacy-settings') })?.status).toBe(302)
+    expect(handler({ auth: null, nextUrl: at('/aboutx') })?.status).toBe(302)
+  })
 })

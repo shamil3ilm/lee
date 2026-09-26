@@ -10,13 +10,18 @@ import { edgeAuth } from '@/lib/auth/edge'
 // This is a fast-path redirect for signed-out page loads, not the security
 // boundary: app/(authed)/layout.tsx checks the session on every authed page,
 // and every API route authenticates itself.
+// Public pages Google's OAuth consent screen links to (homepage, privacy
+// policy). Exact paths only, so e.g. /privacy-settings stays private.
+const PUBLIC_PATHS = new Set(['/about', '/privacy'])
+
 export default edgeAuth((req) => {
   const isAuthed = !!req.auth
   const url = req.nextUrl
   const isSignin = url.pathname.startsWith('/signin')
+  const isPublic = PUBLIC_PATHS.has(url.pathname)
   // Defensive: the matcher already excludes /api.
   const isApi = url.pathname.startsWith('/api')
-  if (!isAuthed && !isSignin && !isApi) {
+  if (!isAuthed && !isSignin && !isPublic && !isApi) {
     return Response.redirect(new URL('/signin', url))
   }
 })

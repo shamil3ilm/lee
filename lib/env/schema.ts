@@ -22,6 +22,9 @@ export const envSchema = z
     AUTH_GOOGLE_SECRET: z.string().min(1),
     NEXTAUTH_URL: z.string().url(),
     ALLOWED_EMAIL: z.string().email(),
+    // Public contact shown on /privacy (Google consent screen requirement).
+    // Optional: unset = the page points to the consent screen's support email.
+    SUPPORT_EMAIL: z.string().email().optional(),
     AI_PROVIDER: z.enum(['gemini', 'groq', 'anthropic', 'openai']).default('gemini'),
     GEMINI_API_KEY: z.string().optional(),
     GROQ_API_KEY: z.string().optional(),

@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react'
+import Link from 'next/link'
 import { signIn } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -43,6 +44,15 @@ export default async function SignInPage() {
           {TestLoginForm ? <TestLoginForm /> : null}
         </CardContent>
       </Card>
+      <p className="mt-4 text-center text-xs text-muted-foreground">
+        <Link href="/about" className="hover:text-foreground">
+          About
+        </Link>
+        {' · '}
+        <Link href="/privacy" className="hover:text-foreground">
+          Privacy
+        </Link>
+      </p>
     </div>
   )
 }
