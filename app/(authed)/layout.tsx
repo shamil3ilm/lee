@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { getSession } from '@/lib/auth/require-session'
 import * as discoveriesQ from '@/lib/db/queries/discoveries'
 import * as todosQ from '@/lib/db/queries/todos'
 import { logger } from '@/lib/logger'
@@ -30,7 +30,7 @@ async function loadNavBadges(userId: string, now: Date): Promise<NavBadges> {
 }
 
 export default async function AuthedLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth()
+  const session = await getSession()
   if (!session?.user) redirect('/signin')
   const email = session.user.email ?? 'unknown'
   const name = session.user.name ?? null
