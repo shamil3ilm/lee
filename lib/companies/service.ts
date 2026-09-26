@@ -116,8 +116,12 @@ export type DeleteCompanyResult =
  * Contacts are unlinked (set null) and discovery sources stay.
  */
 export async function deleteCompany(userId: string, id: string): Promise<DeleteCompanyResult> {
-  const count = await companiesQ.countApplications(userId, id)
-  if (count > 0) return { ok: false, reason: 'has_applications', count }
-  const ok = await companiesQ.remove(userId, id)
-  return ok ? { ok: true } : { ok: false, reason: 'not_found' }
+  // One transaction so an application created between the check and the
+  // delete can't slip through.
+  return db.transaction(async (tx): Promise<DeleteCompanyResult> => {
+    const count = await companiesQ.countApplications(userId, id, tx)
+    if (count > 0) return { ok: false, reason: 'has_applications', count }
+    const ok = await companiesQ.remove(userId, id, tx)
+    return ok ? { ok: true } : { ok: false, reason: 'not_found' }
+  })
 }

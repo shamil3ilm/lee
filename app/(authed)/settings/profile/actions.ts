@@ -1,4 +1,5 @@
 'use server'
+import { assertSafeUrl } from '@/lib/ingest/ssrf'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { requireUserId } from '@/lib/auth/require-session'
@@ -160,6 +161,15 @@ export async function importProfileAction(
   }
 }
 
+function isSafeUrl(v: string): boolean {
+  try {
+    assertSafeUrl(v)
+    return true
+  } catch {
+    return false
+  }
+}
+
 const decisionProviderSchema = z.object({
   provider: z.enum(['', 'groq', 'heuristic', 'laya']),
   // Accept empty string OR a valid URL. Non-laya providers ignore this field
@@ -167,8 +177,10 @@ const decisionProviderSchema = z.object({
   layaEndpoint: z
     .string()
     .max(500)
-    .refine((v) => v === '' || /^https?:\/\//.test(v), {
-      message: 'Laya endpoint must be a http(s) URL',
+    .refine((v) => v === '' || isSafeUrl(v), {
+      // Server-side calls go to this host: public https only (no localhost
+      // or private/link-local IPs) so it can't reach internal services.
+      message: 'Laya endpoint must be a public https URL',
     }),
 })
 

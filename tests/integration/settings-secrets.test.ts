@@ -85,6 +85,23 @@ describe('saveServiceSecretAction', () => {
     expect((fetchMock.mock.calls[0] as unknown as [string])[0]).toBe('https://laya.example.com/config')
   })
 
+  it('never calls a private or localhost Laya endpoint (SSRF guard)', async () => {
+    const me = await makeUser()
+    sessionMock.mockResolvedValue(me.id)
+    const fetchMock = stubFetch(async () => new Response('{}', { status: 200 }))
+    for (const endpoint of ['http://169.254.169.254', 'https://localhost:8080', 'https://10.0.0.5', 'http://laya.example.com']) {
+      await profileQ.upsert(me.id, { layaEndpoint: endpoint })
+      const r = await saveServiceSecretAction('laya', 'laya-token-123456')
+      expect(r).toMatchObject({ success: true, verified: false })
+      expect('warning' in r && r.warning).toMatch(/public https URL/)
+      expect(await testServiceSecretAction('laya')).toEqual({
+        ok: false,
+        error: 'Laya endpoint must be a public https URL.',
+      })
+    }
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('validates the id and the key shape', async () => {
     const me = await makeUser()
     sessionMock.mockResolvedValue(me.id)
@@ -170,5 +187,25 @@ describe('testServiceSecretAction', () => {
     stubFetch(async () => new Response('{}', { status: 200 }))
     expect(await testServiceSecretAction('firecrawl')).toEqual({ ok: true, error: null })
     expect(await testServiceSecretAction('nope')).toEqual({ ok: false, error: 'Unknown setting.' })
+  })
+})
+
+describe('saveDecisionProviderAction endpoint guard', () => {
+  it('rejects private / localhost / plain-http Laya endpoints', async () => {
+    const { saveDecisionProviderAction } = await import('@/app/(authed)/settings/profile/actions')
+    const me = await makeUser()
+    sessionMock.mockResolvedValue(me.id)
+    for (const endpoint of ['http://169.254.169.254', 'https://127.0.0.1', 'https://localhost']) {
+      const fd = new FormData()
+      fd.set('provider', 'laya')
+      fd.set('layaEndpoint', endpoint)
+      expect(await saveDecisionProviderAction(fd)).toEqual({
+        error: 'Laya endpoint must be a public https URL',
+      })
+    }
+    const ok = new FormData()
+    ok.set('provider', 'laya')
+    ok.set('layaEndpoint', 'https://laya.example.com')
+    expect(await saveDecisionProviderAction(ok)).toEqual({ success: true })
   })
 })

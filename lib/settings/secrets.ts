@@ -3,6 +3,7 @@ import * as profileQ from '@/lib/db/queries/profile'
 import { resolveKey } from '@/lib/lab/providers/registry'
 import { DEFAULT_LAYA_ENDPOINT } from '@/lib/decisions/laya-http'
 import { fetchWithTimeout } from '@/lib/net/timeout'
+import { assertSafeUrl } from '@/lib/ingest/ssrf'
 import {
   SERVICE_SECRETS,
   getServiceSecretInfo,
@@ -76,8 +77,20 @@ export async function checkServiceKey(
       ? 'https://api.firecrawl.dev/v1/team/credit-usage'
       : `${(opts.layaEndpoint || DEFAULT_LAYA_ENDPOINT).replace(/\/$/, '')}/config`
   const label = getServiceSecretInfo(id).label
+  // The Laya endpoint is user-supplied: only public https hosts may be
+  // called (no localhost / private / link-local IPs), and redirects are not
+  // followed, so the check can't be used to probe internal addresses.
   try {
-    const init: RequestInit = { method: 'GET', headers: { authorization: `Bearer ${key}` } }
+    assertSafeUrl(url)
+  } catch {
+    return { ok: false, error: `${label} endpoint must be a public https URL.`, rejected: false }
+  }
+  try {
+    const init: RequestInit = {
+      method: 'GET',
+      redirect: 'manual',
+      headers: { authorization: `Bearer ${key}` },
+    }
     const res = opts.fetchImpl
       ? await opts.fetchImpl(url, init)
       : await fetchWithTimeout(url, init, { timeoutMs: CHECK_TIMEOUT_MS, label: `${id}-check` })
@@ -85,7 +98,7 @@ export async function checkServiceKey(
     if (res.status === 401 || res.status === 403) {
       return { ok: false, error: `${label} rejected this key.`, rejected: true }
     }
-    return { ok: false, error: `${label} answered HTTP ${res.status}.`, rejected: false }
+    return { ok: false, error: `${label} did not accept the check.`, rejected: false }
   } catch {
     return { ok: false, error: `Could not reach ${label}.`, rejected: false }
   }

@@ -11,6 +11,7 @@ import {
 import * as profileQ from '@/lib/db/queries/profile'
 import { resolveAiKey, resolveServiceSecret } from '@/lib/settings/secrets'
 import { logger } from '@/lib/logger'
+import { assertSafeUrl } from '@/lib/ingest/ssrf'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -47,7 +48,21 @@ const bodySchema = z
     rubric: z.string().max(1000).optional(),
     scale: z.tuple([z.number(), z.number()]).optional(),
     // laya-specific override
-    layaEndpoint: z.string().url().optional(),
+    layaEndpoint: z
+      .string()
+      .url()
+      .refine(
+        (v) => {
+          try {
+            assertSafeUrl(v)
+            return true
+          } catch {
+            return false
+          }
+        },
+        { message: 'layaEndpoint must be a public https URL' },
+      )
+      .optional(),
   })
   .superRefine((data, ctx) => {
     if (data.type === 'choice') {
