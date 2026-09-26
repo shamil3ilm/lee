@@ -204,7 +204,7 @@ Wherever else it applies:
 | 15 | Mock interview (Whisper) | v12.4 |
 | 16 | PWA + share target, Telegram bot | v12.5, v17 §7.1–7.2 |
 | 17 | Remaining Playground formats (SQL, concurrency, system design sim, incident drills, CTF, git), each with its drag-and-drop blocks | v13.3–13.7, v17 §8.4 |
-| 17b | Playground expansion: cyber security, pipelines, packages, servers, command line (bash, PowerShell, cmd), conflicts | v13.8–13.11 |
+| 17b | Playground expansion: cyber security, pipelines, packages, servers, command line (bash, PowerShell, cmd), conflicts; cloud & scale (Docker, Kubernetes, AWS, Azure, Redis, queues, sync/async, API integration, SDKs, monolith vs modular, multi-server) | v13.8–13.13 |
 | 18 | Model/agent Playground extras, AI budget meter, error monitoring | v14.1–14.5, v17 §9.3–9.4 |
 | 19 | GitHub + Hugging Face connections | v15 |
 | 20 | Radar briefs, Jev provider, injection lab, cross-platform issues | v16.1–16.4 |

@@ -151,6 +151,52 @@ New exercise formats:
 | **People-conflict scenario** | Role-play a code-review disagreement or scope pushback with an AI counterpart | rubric: clarity, empathy, outcome, trade-offs stated | AI evaluator with a published rubric |
 | **Real-history drills** | Replay bugs from Employ's own history (the order-dependent test leak, the Laya `noul` parsing bug, the double-0013 migration clash) | same as debugging | repo history snapshots |
 
+### 5.2 Extension (2026-09-26): cloud, containers, data stores, messaging, integration, architecture at scale
+New or deepened domains:
+
+| Domain | Skills (examples) |
+|---|---|
+| Docker (deep) | images and layers, multi-stage builds, build cache, `.dockerignore`, volumes and bind mounts, networks, Compose (depends_on, healthchecks, env), non-root and slim images, debugging a container that exits |
+| Kubernetes (deep) | pods, deployments, services, ingress, ConfigMaps and Secrets, probes, requests/limits, HPA autoscaling, rolling updates and rollback, namespaces, RBAC, Helm basics, reading `kubectl describe` and events |
+| AWS | IAM, VPC and security groups, EC2, S3, Lambda, API Gateway, SQS/SNS, DynamoDB, RDS, CloudWatch, ALB/NLB, cost awareness |
+| Azure | Entra ID and RBAC, VNets and NSGs, VMs, Blob Storage, Functions, Service Bus, Cosmos DB, Azure SQL, Monitor, App Gateway and Load Balancer, cost awareness |
+| Redis | data types (strings, hashes, lists, sets, sorted sets, streams), TTL and eviction, caching patterns (cache-aside, write-through, stampede protection), rate limiting, distributed locks and their pitfalls, pub/sub, transactions and Lua, persistence (RDB/AOF) |
+| Queues & messaging | at-least-once vs exactly-once, visibility timeouts, retries with backoff, dead-letter queues, ordering and partitions, idempotent consumers, outbox pattern, pub/sub vs work queues, Kafka-style logs vs SQS-style queues, backpressure |
+| Sync vs async | request/response vs events, blocking vs non-blocking I/O, async/await and event loops, callbacks and promises, sagas and eventual consistency, timeouts and cancellation, when to go async |
+| API integration | REST, GraphQL, gRPC and webhooks; auth (API keys, OAuth 2.0 client credentials and auth code + PKCE); pagination, rate limits and 429 handling, retries with idempotency keys, webhook signature verification, versioning, contract testing, mocking third-party APIs |
+| SDK design & use | using official SDKs well (config, retries, timeouts, pagination helpers); building a typed SDK: ergonomics, errors, retries, versioning, generated clients from OpenAPI |
+| Monolith ↔ modular ↔ services | modular monolith boundaries, dependency rules, shared kernel, when (not) to split, strangler-fig migration, service boundaries, data ownership, distributed-monolith anti-pattern |
+| Multi-server & scaling | stateless services, sessions (sticky vs shared store), horizontal vs vertical scaling, load-balancing algorithms and health checks, service discovery, config and secrets distribution, distributed locks and leader election, cache consistency across nodes, blue/green across a fleet |
+
+New exercise formats:
+
+| Format | What you do | Scored on |
+|---|---|---|
+| **Compose builder** | Wire app + DB + Redis + worker in Compose (drag services from Blocks); fix a stack that won't start | stack healthy, image size, security findings |
+| **Cloud architect** | Design on AWS or Azure for a brief (traffic, budget, compliance); the simulator runs traffic, failures and a monthly bill | availability, latency, cost vs budget, least privilege |
+| **Cloud CLI tasks** | `aws …` / `az …` commands against a simulated account (IAM, S3/Blob, queues, functions) | end state, least privilege, commands used |
+| **Redis lab** | Implement cache-aside with stampede protection, a sliding-window rate limiter, a leaderboard, a lock with a fencing token | correctness under the concurrency simulator, memory, latency |
+| **Queue simulator** | Consumers crash, messages duplicate, arrive out of order and poison-pill; make processing exactly-once in effect | no lost or double side effects, throughput, DLQ handling |
+| **Sync→async refactor** | Turn a slow synchronous flow into an event-driven one without losing consistency | p95 latency, consistency checks, failure handling |
+| **Integration lab** | Integrate a mock third-party API that paginates, rate-limits (429), flakes and sends signed webhooks | complete data, no duplicates, signature verified, backoff correct |
+| **SDK workshop** | Build a small typed SDK over that API: retries, pagination iterator, typed errors, versioning | consumer tests pass, API ergonomics rubric |
+| **Architecture kata** | Split or merge modules in a codebase; enforce boundaries; plan a strangler-fig migration | dependency rules pass, tests green, migration plan rubric |
+| **Scale-out lab** | Take a single-server app to N servers: sessions, cache, locks, health checks, zero-downtime deploy | error rate during scale and deploy, consistency, cost |
+
+**Runtimes — zero cost, stated honestly:**
+- **Simulated in the browser (default):**
+  - AWS and Azure services and CLIs (the IAM policy evaluator, networking rules, queues, storage, functions and billing are modelled);
+  - Redis commands with real semantics (TTL, data types, transactions, pub/sub);
+  - queues and brokers;
+  - Kubernetes state (existing).
+
+  Each exercise lists what the simulator covers.
+- **Real, optional, free:**
+  - **Upstash** free tier for real Redis and QStash queues via REST, using the user's own key stored with the v14 encrypted key store.
+  - **Play with Docker** and **Killercoda** (free browser sandboxes) for real Docker and Kubernetes. The Playground gives the guided task and verifies the output the user pastes back.
+  - **LocalStack** (AWS) and **Azurite** (Azure Storage) emulators if the user runs Docker locally.
+- **Never real paid cloud accounts.** No exercise requires an AWS or Azure account; if the user adds one anyway, exercises only generate commands and never run them.
+
 **Safety (applies to all security content):**
 - Offensive work targets only sandboxed in-browser apps and the local v86 VM, never real hosts.
 - There are no scanners or payloads aimed at the internet, and every exploit ends with the fix.
@@ -269,6 +315,7 @@ Skill graph, templates and achievement catalog: versioned JSON under `content/ac
 - **13.8 Security expansion**: blue-team triage, hardening review, crypto, cloud IAM, supply-chain drills
 - **13.9 Delivery**: pipeline debugger, data pipeline lab, dependency resolver, package author
 - **13.10 Infrastructure & command line**: server lab (v86 + simulated shell), terminal tasks in bash/PowerShell/cmd, cross-shell translation, explain/predict, script repair, danger zone, command builder, container & cluster doctor
+- **13.13 Cloud & scale**: Docker/Compose, Kubernetes (deep), AWS and Azure simulators + CLI tasks, Redis lab, queue simulator, sync→async, integration lab, SDK workshop, architecture kata, scale-out lab; optional Upstash / Play with Docker / Killercoda / LocalStack / Azurite
 - **13.11 Conflicts**: semantic, migration and lockfile conflicts; people-conflict scenarios; real-history drills
 
 ## 13. Constraints
