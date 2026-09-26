@@ -77,6 +77,38 @@ When the user earns something verifiable in the Playground, the CV gets a *sugge
 4. **Relocation & location filters:** visa sponsorship mention, time-zone overlap, remote region eligibility, cost-of-living index (from Expenses, v12.3) on discoveries.
 5. **Salary log:** record quoted/posted ranges (role, company, location, currency, source); used by offer comparison (v12.3) and Scam Shield's "too good to be true" signal. Stored in the posting's currency; expenses stay INR.
 
+### 6.6 Opportunity Score — how good is this job *for me*
+CV Match (v12) answers "how well do I fit them". The Opportunity Score answers the other half: "how well do they fit me". Today discoveries use `combinedScore = 0.6·match + 0.4·benefits` (lib/discovery/scoring.ts); this replaces that blend.
+
+**Criteria (each 0–100, with evidence and a confidence):**
+| Criterion | What feeds it (all free) |
+|---|---|
+| Growth & development | learning budget, mentorship, scope/ownership, promotion path, tech stack vs the user's skill-gap targets (§4) and Playground goals |
+| Role quality | clear responsibilities, seniority fit, impact, on-call load, title vs duties |
+| Compensation | stated range vs the user's floor and salary log (§6.5), equity, pay transparency |
+| Benefits | existing benefit weights and must-haves (health/family cover, visa, relocation, leave, 4-day week) |
+| Company structure & stability | size, stage (startup/scale-up/enterprise), funding and layoff news, team and reporting structure, engineering maturity (eng blog, GitHub org activity via v15) |
+| Environment & culture | remote/hybrid policy, working hours and time-zone overlap, work-life-balance signals ("fast-paced", "hustle", weekend work), the user's own interview impressions (debriefs) |
+| Location & logistics | commute or remote, visa, relocation, cost of living from Expenses → estimated monthly savings in INR |
+| Hiring process | rounds, take-home burden, response speed and transparency (from the user's own application history with that company) |
+| Mission & interest | match to the user's stated industries and interests |
+
+**Rules:**
+- **Unknown is not zero.** Missing information shows as "Unknown" and lowers the confidence, not the score. Each unknown generates a **question to ask** the recruiter or interviewer; answers recorded later update the score.
+- **Evidence:** every criterion lists its reasons. Quotes from the posting must be verbatim (v16 citation check); inferred values are labelled as inferred.
+- **The user sets the weights** in Settings › Preferences, with sliders and presets (Growth first, Money first, Stability, Relocation, Balanced). Must-haves stay hard caps, reusing `applyCaps`.
+- **Trust gates:** a Scam Shield `likely_scam` item (§1) gets no Opportunity Score, and a ghost/stale posting (§6.1) is flagged.
+- **Deterministic first:** rule-based extraction; AI only fills criteria that rules can't, and never overrides a cap or trust gate. Versioned like prompts, with an eval suite of labelled postings.
+
+**Where it shows:**
+- Discovery and application cards: an Opportunity badge next to CV Match, plus a breakdown drawer.
+- **2×2 view**, CV Match × Opportunity: *Apply now* (both high), *Stretch* (great opportunity, weaker fit → tailor or learn first), *Backup* (good fit, weaker opportunity), *Skip*.
+- The dashboard's next-best-action prefers high-opportunity items.
+- **Offer comparison (v12.3)** reuses the same criteria with the offer's real numbers.
+- **Learning loop:** when the user later rates an application or offer ("would take it / wouldn't"), the app suggests weight adjustments. The user accepts or ignores them; weights are never changed silently.
+
+Data: an `opportunity_scores` table (target, per-criterion score/confidence/evidence, weights snapshot, total, rules version, created_at), plus `opportunity_prefs` on the profile (weights, preset, must-haves).
+
 ## 7. Capture & habits
 
 1. **Share to Employ:** PWA share-target (after v12.5) — share a job URL/text from any phone app into Discovery. Keeps the v1 "no browser extension" decision.
@@ -148,6 +180,56 @@ Wherever else it applies:
 4. **Error monitoring:** Sentry Developer (free) for client + server errors, source maps uploaded at build; PII scrubbing on; fallback self-hosted `error_events` table if the user prefers no third party (toggle in Settings).
 5. **Audit log & undo:** every automated or suggestion-accepted change (status, category, merge, quarantine) writes `audit_events` (before/after JSON); "Undo" for 7 days on the activity feed.
 
+## 9.6 Free-tier architecture (hard constraints)
+Employ runs on **Vercel Hobby** and **Neon Free**, and every feature must fit. The limits below were verified from the vendors' docs on 2026-09-26.
+
+| Vercel Hobby | Limit |
+|---|---|
+| Cron | once per day per job, ±59 min precision, up to 100 jobs |
+| Function duration | max 300 s |
+| Server CPU | **4 h active CPU per month**; 360 GB-h memory |
+| Traffic | 1M invocations; 100 GB fast data transfer; 10 GB origin transfer |
+| Deploys | 100 deployments/day, 1 concurrent build, 45-minute build |
+| Logs | runtime logs kept 1 hour |
+| Use | non-commercial personal use only |
+
+| Neon Free | Limit |
+|---|---|
+| Storage | **0.5 GB per project** |
+| Compute | 100 CU-hours/month; scale-to-zero after 5 min (cannot disable) |
+| Egress | 5 GB/month |
+| Point-in-time restore | 6 hours |
+| Branches | 10 |
+
+When compute or egress is exhausted, **the database is suspended until next month**: the app goes down, though no data is lost.
+
+**Design rules that follow:**
+1. **Compute lives in the browser.**
+   - Playground engines, simulations, scoring of attempts, format and regex exercises, and LaTeX preview helpers all run client-side.
+   - Server functions only read/write data and call AI (I/O wait does not count as active CPU).
+   - CPU-heavy server work (PDF rendering, CV scoring) is measured, and moved to the browser where it can be.
+2. **Background work fits the daily cron.**
+   - The single daily job becomes several staggered daily jobs (sync, discovery, radar ingest, curriculum scout, digest). Each stays well under 300 s and resumes from a checkpoint if it runs out of time.
+   - Anything heavier (Playground Forge validation, scenario generation, backups, Lighthouse/benchmark CI) runs on **GitHub Actions**. Public repositories get unlimited standard-runner minutes; private repositories get 2,000 minutes/month, which the Forge must budget for.
+3. **Forge output doesn't redeploy the app.**
+   - Content packs are small JSON stored in Neon and cached in the browser. Only engine code changes go through a deploy.
+   - This keeps within 100 deploys/day and one build at a time.
+4. **Storage budget for Neon's 0.5 GB:**
+   - **Replays are tiny by design:** the simulation is deterministic, so a replay only needs the seed, the pack and engine versions, and the user's inputs, compressed in the browser (CompressionStream). The full event log is rebuilt on demand.
+   - Budgets per table, with `ai_call_logs` aggregated after 90 days and raw rows pruned.
+   - Large files (documents, PDFs) stay small or are generated on demand; nothing big is stored twice.
+   - History is never deleted to save space. When the budget tightens, old detail is compacted (the aggregates stay exact) and the user is asked to export or archive first.
+5. **Keep Neon asleep when idle.**
+   - No polling or heartbeats; the Playground saves drafts to IndexedDB and writes to the DB once per attempt.
+   - Batch writes, cache reads in the browser, and limit query payload sizes to protect the 5 GB egress.
+6. **Static engine assets:** v86 image, Pyodide, PGlite and similar are self-hosted with immutable caching and a service worker, so each is downloaded once per device. A total engine budget (≤ 60 MB, lazy per exercise) protects the 100 GB transfer allowance.
+7. **Free-tier meter in Settings:**
+   - Live usage vs every limit above (DB size, CU-hours, egress, function invocations, active CPU where exposed, AI tokens).
+   - Warnings at 70 % and 90 %; automatic throttles before a hard stop (the Forge pauses, pruning runs, non-essential crons skip).
+   - Because runtime logs last 1 hour, errors go to the app's own `error_events` table (§9.4).
+8. **Backups matter more:** point-in-time restore is only 6 hours, so the weekly encrypted `pg_dump` via GitHub Actions (§9.2) is required, not optional.
+9. **Personal use:** Hobby is non-commercial personal use, which matches Employ. Anything commercial would need Vercel Pro.
+
 ## 10. Master roadmap (all approved items, in build order)
 
 | # | Item | Spec |
@@ -155,10 +237,15 @@ Wherever else it applies:
 | 1 | Merge CV scoring (v12.0) + Model Lab core (v14.0); migration renumbering; full CI; push | v12, v14 |
 | 2 | Integration pass: CV score surfaces, keys to Settings › AI, **Lab → Playground rename** | v11, v17 §0 |
 | 3 | Visual QA + journey E2E | v17 §9.1 |
+| 3b | **Free-tier meter + guardrails** (usage vs Vercel Hobby / Neon Free limits, staggered daily crons, storage budgets, error_events) | v17 §9.6 |
 | 4 | **Scam Shield** | v17 §1 |
+| 4b | **Opportunity Score** (criteria, weights UI, 2×2 view, questions to ask) | v17 §6.6 |
 | 5 | Email → status suggestions | v17 §2 |
 | 6 | Backups + export/delete, audit log & undo | v17 §9.2, §9.5 |
 | 7 | Playground core (placement, adaptive selection, coding + complexity evaluation) | v13.0–13.2 |
+| 7b | **Self-evolving curriculum** (learner model, demand + version-drift signals, Fresh track) + **Radar ingest** (v16.0) pulled forward so trends feed the Playground early | v13 §6.1, v16.0 |
+| 7c | **Employ Sim foundation** (browser-only engine, ShopLite reference system, scenario runner, measured scoring) | v13 §5.3 |
+| 7d | **Playground Forge** (open-source-model agents that grow scenarios and the engine around your level) + Playground performance budgets in CI | v13 §5.4, §5.5, §6.2 |
 | 8 | **CV suggestions from Playground** + skill-gap loop | v17 §5, §4 |
 | 9 | **LaTeX Studio** (new kinds, standalone editor, editor parity) + shared **Blocks palette** in LaTeX, CV editor and templates | v17 §8.1–8.4 |
 | 9b | Blocks palette in the remaining places (todos, dashboard, expenses, AI routing, documents) | v17 §8.4 |
@@ -170,8 +257,9 @@ Wherever else it applies:
 | 15 | Mock interview (Whisper) | v12.4 |
 | 16 | PWA + share target, Telegram bot | v12.5, v17 §7.1–7.2 |
 | 17 | Remaining Playground formats (SQL, concurrency, system design sim, incident drills, CTF, git), each with its drag-and-drop blocks | v13.3–13.7, v17 §8.4 |
+| 17b | Playground expansion: cyber security, pipelines, packages, servers, command line (bash, PowerShell, cmd), conflicts; cloud & scale (Docker, Kubernetes, AWS, Azure, Redis, queues, sync/async, API integration, SDKs, monolith vs modular, multi-server) | v13.8–13.13 |
 | 18 | Model/agent Playground extras, AI budget meter, error monitoring | v14.1–14.5, v17 §9.3–9.4 |
 | 19 | GitHub + Hugging Face connections | v15 |
-| 20 | Radar, briefs, Jev provider, injection lab, cross-platform issues | v16.0–16.4 |
+| 20 | Radar briefs, Jev provider, injection lab, cross-platform issues | v16.1–16.4 |
 
 Each item ships behind the usual gate: tests first, lint → typecheck → test → eval → e2e → build, then push.
