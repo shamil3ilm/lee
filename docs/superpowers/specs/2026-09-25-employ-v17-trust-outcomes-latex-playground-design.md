@@ -180,6 +180,56 @@ Wherever else it applies:
 4. **Error monitoring:** Sentry Developer (free) for client + server errors, source maps uploaded at build; PII scrubbing on; fallback self-hosted `error_events` table if the user prefers no third party (toggle in Settings).
 5. **Audit log & undo:** every automated or suggestion-accepted change (status, category, merge, quarantine) writes `audit_events` (before/after JSON); "Undo" for 7 days on the activity feed.
 
+## 9.6 Free-tier architecture (hard constraints)
+Employ runs on **Vercel Hobby** and **Neon Free**, and every feature must fit. The limits below were verified from the vendors' docs on 2026-09-26.
+
+| Vercel Hobby | Limit |
+|---|---|
+| Cron | once per day per job, ±59 min precision, up to 100 jobs |
+| Function duration | max 300 s |
+| Server CPU | **4 h active CPU per month**; 360 GB-h memory |
+| Traffic | 1M invocations; 100 GB fast data transfer; 10 GB origin transfer |
+| Deploys | 100 deployments/day, 1 concurrent build, 45-minute build |
+| Logs | runtime logs kept 1 hour |
+| Use | non-commercial personal use only |
+
+| Neon Free | Limit |
+|---|---|
+| Storage | **0.5 GB per project** |
+| Compute | 100 CU-hours/month; scale-to-zero after 5 min (cannot disable) |
+| Egress | 5 GB/month |
+| Point-in-time restore | 6 hours |
+| Branches | 10 |
+
+When compute or egress is exhausted, **the database is suspended until next month**: the app goes down, though no data is lost.
+
+**Design rules that follow:**
+1. **Compute lives in the browser.**
+   - Playground engines, simulations, scoring of attempts, format and regex exercises, and LaTeX preview helpers all run client-side.
+   - Server functions only read/write data and call AI (I/O wait does not count as active CPU).
+   - CPU-heavy server work (PDF rendering, CV scoring) is measured, and moved to the browser where it can be.
+2. **Background work fits the daily cron.**
+   - The single daily job becomes several staggered daily jobs (sync, discovery, radar ingest, curriculum scout, digest). Each stays well under 300 s and resumes from a checkpoint if it runs out of time.
+   - Anything heavier (Playground Forge validation, scenario generation, backups, Lighthouse/benchmark CI) runs on **GitHub Actions**. Public repositories get unlimited standard-runner minutes; private repositories get 2,000 minutes/month, which the Forge must budget for.
+3. **Forge output doesn't redeploy the app.**
+   - Content packs are small JSON stored in Neon and cached in the browser. Only engine code changes go through a deploy.
+   - This keeps within 100 deploys/day and one build at a time.
+4. **Storage budget for Neon's 0.5 GB:**
+   - **Replays are tiny by design:** the simulation is deterministic, so a replay only needs the seed, the pack and engine versions, and the user's inputs, compressed in the browser (CompressionStream). The full event log is rebuilt on demand.
+   - Budgets per table, with `ai_call_logs` aggregated after 90 days and raw rows pruned.
+   - Large files (documents, PDFs) stay small or are generated on demand; nothing big is stored twice.
+   - History is never deleted to save space. When the budget tightens, old detail is compacted (the aggregates stay exact) and the user is asked to export or archive first.
+5. **Keep Neon asleep when idle.**
+   - No polling or heartbeats; the Playground saves drafts to IndexedDB and writes to the DB once per attempt.
+   - Batch writes, cache reads in the browser, and limit query payload sizes to protect the 5 GB egress.
+6. **Static engine assets:** v86 image, Pyodide, PGlite and similar are self-hosted with immutable caching and a service worker, so each is downloaded once per device. A total engine budget (≤ 60 MB, lazy per exercise) protects the 100 GB transfer allowance.
+7. **Free-tier meter in Settings:**
+   - Live usage vs every limit above (DB size, CU-hours, egress, function invocations, active CPU where exposed, AI tokens).
+   - Warnings at 70 % and 90 %; automatic throttles before a hard stop (the Forge pauses, pruning runs, non-essential crons skip).
+   - Because runtime logs last 1 hour, errors go to the app's own `error_events` table (§9.4).
+8. **Backups matter more:** point-in-time restore is only 6 hours, so the weekly encrypted `pg_dump` via GitHub Actions (§9.2) is required, not optional.
+9. **Personal use:** Hobby is non-commercial personal use, which matches Employ. Anything commercial would need Vercel Pro.
+
 ## 10. Master roadmap (all approved items, in build order)
 
 | # | Item | Spec |
@@ -187,6 +237,7 @@ Wherever else it applies:
 | 1 | Merge CV scoring (v12.0) + Model Lab core (v14.0); migration renumbering; full CI; push | v12, v14 |
 | 2 | Integration pass: CV score surfaces, keys to Settings › AI, **Lab → Playground rename** | v11, v17 §0 |
 | 3 | Visual QA + journey E2E | v17 §9.1 |
+| 3b | **Free-tier meter + guardrails** (usage vs Vercel Hobby / Neon Free limits, staggered daily crons, storage budgets, error_events) | v17 §9.6 |
 | 4 | **Scam Shield** | v17 §1 |
 | 4b | **Opportunity Score** (criteria, weights UI, 2×2 view, questions to ask) | v17 §6.6 |
 | 5 | Email → status suggestions | v17 §2 |

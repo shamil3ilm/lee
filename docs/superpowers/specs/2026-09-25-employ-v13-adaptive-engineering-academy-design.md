@@ -190,6 +190,38 @@ New exercise formats:
 - There are no scanners or payloads aimed at the internet, and every exploit ends with the fix.
 - Network access from the VM is disabled.
 
+### 5.2b Extension (2026-09-26): data, config and markup languages
+A **Languages & formats** domain. Everything here runs on small JavaScript libraries in the browser: light, instant, no engines to download.
+
+| Group | Languages and formats |
+|---|---|
+| Data interchange | **JSON** (incl. JSON5/JSONC quirks), JSON Lines, **YAML**, **TOML**, **XML**, **CSV/TSV**, INI, .env |
+| Schemas and contracts | **JSON Schema**, **OpenAPI**, AsyncAPI, GraphQL SDL, Protocol Buffers, Avro |
+| Query and patterns | **regex**, **jq**, JSONPath, XPath, glob patterns, cron expressions, semver ranges |
+| Markup and docs | Markdown, HTML, CSS, Mermaid diagrams, LaTeX (links to LaTeX Studio, v17 §8) |
+| Infrastructure as code and config | Dockerfile, Compose YAML, Kubernetes manifests, GitHub Actions YAML, HCL (Terraform syntax), nginx config |
+| Encodings and wire formats | UTF-8/Unicode, Base64, URL encoding, ISO 8601 dates and time zones, HTTP messages, JWT structure, MessagePack/CBOR |
+
+Exercise formats (they plug into the existing adaptive engine and scoring):
+
+| Format | Example | Scored on |
+|---|---|---|
+| **Fix it** | Repair malformed JSON, YAML with indentation or type traps (`no` → false, `010` → octal), broken XML | valid and semantically as intended |
+| **Convert** | JSON ↔ YAML ↔ TOML ↔ XML ↔ CSV without losing types, comments or ordering | round-trip equality, type fidelity |
+| **Validate** | Write a JSON Schema or OpenAPI spec that accepts the good payloads and rejects the bad ones | precision/recall over hidden test payloads |
+| **Query** | Extract and transform with jq / JSONPath / XPath over realistic API responses and logs | correct output, expression simplicity |
+| **Regex** | Match and capture against hidden test sets; **ReDoS round**: make a slow pattern safe | correctness, measured backtracking time |
+| **Choose the format** | JSON vs Protobuf vs MessagePack for a payload; size and parse time measured in the browser | measured size and speed, trade-off write-up |
+| **Security of formats** | XXE in XML, YAML unsafe loading, JSON prototype pollution, CSV formula injection, JWT `alg: none` (sandboxed) | exploit shown, then fixed |
+| **Spot the difference** | Time zones and ISO 8601, Unicode normalisation, float precision in JSON | correct handling, tests pass |
+
+Programming languages grow the same way (the self-evolving curriculum adds them), wherever an open-source in-browser runtime exists:
+- JavaScript/TypeScript, Python (Pyodide), SQL (PGlite/SQLite);
+- PHP (php-wasm), Ruby (ruby.wasm), Lua;
+- Go via an interpreter compiled to WebAssembly.
+
+Languages with no practical in-browser toolchain get reading, review and predict-the-output exercises until a runtime fits the performance budget (§5.5).
+
 ### 5.3 Employ Sim — our own browser playground engine (2026-09-26)
 **Decision:** the Playground is browser-only and self-contained.
 - No installs, no external sandboxes, no cloud accounts.
@@ -480,6 +512,7 @@ Everything is kept, append-only, per user. Records are never overwritten or sile
 - **13.6 Generation** — parameterized templates everywhere + validated AI variants + difficulty calibration
 - **13.7 Path, capstones, boss battles, stats page, journey integrations**
 - **13.12 Self-evolving curriculum (lite, ships with 13.6)**: learner model, plateau/format switching, job-market demand, version drift (endoflife.date + GitHub releases), Fresh track, weekly "What's new", retire/refresh; full trend-driven skill proposals once v16 Radar ingest lands
+- **13.14 Languages & formats**: JSON, YAML, TOML, XML, CSV, JSON Schema, OpenAPI, regex, jq, and more (fix, convert, validate, query, ReDoS, format security)
 - **13.8 Security expansion**: blue-team triage, hardening review, crypto, cloud IAM, supply-chain drills
 - **13.9 Delivery**: pipeline debugger, data pipeline lab, dependency resolver, package author
 - **13.10 Infrastructure & command line**: server lab (v86 + simulated shell), terminal tasks in bash/PowerShell/cmd, cross-shell translation, explain/predict, script repair, danger zone, command builder, container & cluster doctor
