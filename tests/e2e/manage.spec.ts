@@ -110,7 +110,7 @@ test('application: edit job details, link and unlink a contact', async ({ page }
   await expect(page.getByText(/AED 3,?00,000 – 4,?00,000/)).toBeVisible()
 
   // Link a contact, then unlink.
-  const card = page.locator('div.rounded-lg.border').filter({ hasText: 'Points of contact' }).last()
+  const card = page.locator('[data-slot="card"]').filter({ hasText: 'Points of contact' }).last()
   await card.getByRole('button', { name: 'Link contact' }).click()
   const link = page.getByRole('dialog', { name: 'Link a contact' })
   await link.getByRole('combobox', { name: 'Contact' }).click()

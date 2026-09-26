@@ -20,7 +20,7 @@ test('find → save discovery → apply → interview stage → offer', async ({
 
   // Find: the seeded discovery is in the "new" inbox.
   await page.goto('/discoveries')
-  const card = page.locator('div.rounded-lg.border').filter({ hasText: title }).last()
+  const card = page.locator('[data-slot="card"]').filter({ hasText: title }).last()
   await expect(card).toBeVisible()
 
   // Save → promoted to an application in the pipeline.
@@ -65,7 +65,7 @@ test('CV score from an application CV fit card', async ({ page }) => {
     page.getByRole('heading', { level: 1, name: 'Senior Backend Developer, Jira Platform' }),
   ).toBeVisible()
 
-  const fitCard = page.locator('div.rounded-lg.border').filter({ hasText: 'CV fit' }).last()
+  const fitCard = page.locator('[data-slot="card"]').filter({ hasText: 'CV fit' }).last()
   await expect(fitCard.getByText('Not scored yet.')).toBeVisible()
   await fitCard.getByRole('button', { name: 'Score now' }).click()
   await expectToast(page, /Scored \d+\/100/)
