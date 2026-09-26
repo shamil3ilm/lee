@@ -1,10 +1,12 @@
 import { and, desc, eq, isNull, sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { aiCallLogs } from '@/lib/db/schema'
+import { runAfterResponse, settleDeferred } from '@/lib/server/after-response'
 
 /**
  * v10 logging helpers. Providers still write their own success rows during
- * generation (see gemini.ts / groq.ts) — this module handles the two edge
+ * generation (see gemini.ts / groq.ts → log-call.ts; inside a request those
+ * inserts run after the response) — this module handles the two edge
  * cases the providers can't observe on their own:
  *
  *   1. A signal-check skip — nothing hits the model, so `writeSkip` inserts
@@ -59,7 +61,8 @@ export async function writeSkipLog(
   meta: AiCallKindMeta,
   code: string,
 ): Promise<void> {
-  try {
+  // Analytics only — after the response inside a request, inline elsewhere.
+  await runAfterResponse('ai_skip_log', async () => {
     await db.insert(aiCallLogs).values({
       userId: meta.userId,
       provider: meta.provider,
@@ -68,9 +71,7 @@ export async function writeSkipLog(
       signalCheckPassed: false,
       signalCheckCode: code,
     })
-  } catch {
-    /* logging must never break the call */
-  }
+  })
 }
 
 /**
@@ -88,6 +89,17 @@ export async function linkLatestCallToDocument(
   documentId: string,
   kind: string,
 ): Promise<void> {
+  // The provider's log insert may itself still be in flight (it runs after
+  // the response inside a request), so wait for every deferred write started
+  // before this point, then link — also off the response path.
+  const priorWrites = settleDeferred()
+  await runAfterResponse('ai_link_document', async () => {
+    await priorWrites
+    await linkLatest(userId, documentId, kind)
+  })
+}
+
+async function linkLatest(userId: string, documentId: string, kind: string): Promise<void> {
   try {
     // Find the most recent OK log row for this user that has no document yet
     // and update it in-place.
