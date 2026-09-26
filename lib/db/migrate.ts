@@ -14,10 +14,24 @@ loadEnv({ path: '.env' })
 
 const MIGRATIONS_FOLDER = path.resolve(process.cwd(), 'lib/db/migrations')
 
+async function countTracked(client: postgres.Sql): Promise<number> {
+  try {
+    const rows = await client<{ n: number }[]>`select count(*)::int as n from drizzle.__drizzle_migrations`
+    return rows[0]?.n ?? 0
+  } catch {
+    return 0 // tracking table not created yet (fresh database)
+  }
+}
+
 async function runPgMigrations(url: string): Promise<void> {
-  const client = postgres(url, { max: 1 })
+  // Silence Postgres NOTICEs ("schema drizzle already exists, skipping") so
+  // the build log shows only the summary line below.
+  const client = postgres(url, { max: 1, onnotice: () => {} })
   const db = drizzlePg(client)
+  const before = await countTracked(client)
   await migratePg(db, { migrationsFolder: MIGRATIONS_FOLDER })
+  const after = await countTracked(client)
+  console.log(`migrations: applied ${after - before} new (${after} total)`)
   await client.end()
 }
 

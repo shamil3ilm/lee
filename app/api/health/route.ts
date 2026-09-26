@@ -1,14 +1,23 @@
 import { NextResponse } from 'next/server'
 import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
+import { appliedMigrationCount, expectedMigrationCount } from '@/lib/db/migration-status'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(): Promise<NextResponse> {
   try {
     await db.execute(sql`select 1`)
-    return NextResponse.json({ ok: true, db: 'up' })
   } catch {
     return NextResponse.json({ ok: false, db: 'down' }, { status: 503 })
   }
+
+  // Counts only — no names, hosts or other schema detail on a public route.
+  const applied = await appliedMigrationCount(db)
+  const expected = expectedMigrationCount()
+  return NextResponse.json({
+    ok: true,
+    db: 'up',
+    migrations: { applied, expected, upToDate: applied === null ? null : applied >= expected },
+  })
 }
