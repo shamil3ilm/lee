@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { DiscoveryAdapter, DiscoveryItem, NormalizedJob } from './types'
+import { discoveryFetch } from './http'
 
 const configSchema = z.object({ company: z.string() })
 
@@ -27,7 +28,7 @@ export class GreenhouseAdapter implements DiscoveryAdapter {
   async fetch(config: unknown): Promise<DiscoveryItem[]> {
     const { company } = configSchema.parse(config)
     const url = `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(company)}/jobs?content=true`
-    const res = await fetch(url)
+    const res = await discoveryFetch('greenhouse', url)
     if (!res.ok) throw new Error(`greenhouse ${res.status}`)
     const body = (await res.json()) as GreenhouseResponse
     const jobs = body.jobs ?? []

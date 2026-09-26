@@ -55,6 +55,8 @@ import {
   type ParsedProfile,
 } from './types'
 import type { CallMeta } from './log'
+import { recordAiCall, type AiCallRecord } from './log-call'
+import { fetchWithTimeout, GROQ_ATTEMPT_TIMEOUT_MS } from '@/lib/net/timeout'
 import { stripLatexFencing } from './utils/latex'
 import {
   coverLetterSchema,
@@ -98,19 +100,25 @@ export class GroqProvider implements AIProvider {
     promptTokens: number
     completionTokens: number
   }> {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${this.apiKey}`,
-        'content-type': 'application/json',
+    // Fresh timeout per attempt. "timed out" is not in the retry regex in
+    // generate(), so a hung upstream costs one attempt, not three.
+    const res = await fetchWithTimeout(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${this.apiKey}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: this.model,
+          messages: [{ role: 'user', content: prompt }],
+          response_format: { type: 'json_object' },
+          temperature: 0.2,
+        }),
       },
-      body: JSON.stringify({
-        model: this.model,
-        messages: [{ role: 'user', content: prompt }],
-        response_format: { type: 'json_object' },
-        temperature: 0.2,
-      }),
-    })
+      { timeoutMs: GROQ_ATTEMPT_TIMEOUT_MS, label: 'groq' },
+    )
     if (!res.ok) {
       const body = await res.text().catch(() => '')
       throw new Error(`groq ${res.status}: ${body.slice(0, 400)}`)
@@ -168,50 +176,13 @@ export class GroqProvider implements AIProvider {
   }
 
   /**
-   * v10.1 — inserts one ai_call_logs row (with prompt hash + version + doc
-   * link if provided) and fires `onLogged(callId)` when the caller wants to
-   * capture the inserted id for a foreign-key linkage.
+   * v10.1 — one ai_call_logs row per generate() (prompt hash + version + doc
+   * link if provided). Written after the response when called inside a
+   * request; inline when the caller needs the id via `onLogged`. See
+   * lib/ai/log-call.ts.
    */
-  private async logCall(x: {
-    status: string
-    latency: number
-    promptTokens?: number
-    completionTokens?: number
-    error?: string
-    meta?: CallMeta
-  }): Promise<void> {
-    try {
-      const { db } = await import('@/lib/db/client')
-      const { aiCallLogs } = await import('@/lib/db/schema')
-      const inserted = await db
-        .insert(aiCallLogs)
-        .values({
-          userId: x.meta?.userId ?? null,
-          provider: 'groq',
-          kind: x.meta?.kind ?? 'parse',
-          promptTokens: x.promptTokens ?? null,
-          completionTokens: x.completionTokens ?? null,
-          latencyMs: x.latency,
-          status: x.status,
-          error: x.error ?? null,
-          documentId: x.meta?.documentId ?? null,
-          signalCheckPassed: x.meta?.signalCheckPassed ?? null,
-          signalCheckCode: x.meta?.signalCheckCode ?? null,
-          promptHash: x.meta?.promptHash ?? null,
-          promptVersion: x.meta?.promptVersion ?? null,
-        })
-        .returning()
-      const id = inserted[0]?.id
-      if (id && x.meta?.onLogged) {
-        try {
-          x.meta.onLogged(id)
-        } catch {
-          /* callback must never break the call */
-        }
-      }
-    } catch {
-      /* logging must never break the call */
-    }
+  private async logCall(x: AiCallRecord): Promise<void> {
+    await recordAiCall('groq', x)
   }
 
   async parseJob(text: string, meta: CallMeta = {}): Promise<ParsedJob> {

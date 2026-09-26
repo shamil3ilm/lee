@@ -6,6 +6,7 @@
  * All calls take the caller's access token (already refreshed by
  * `lib/google/tokens.ts`) so this module is stateless and easy to test.
  */
+import { fetchWithTimeout, GMAIL_TIMEOUT_MS } from '@/lib/net/timeout'
 
 export interface GmailTokens {
   accessToken: string
@@ -58,9 +59,10 @@ interface ListThreadsArgs {
  */
 export async function listThreads({ tokens, maxResults = 100 }: ListThreadsArgs): Promise<GmailThreadSummary[]> {
   const params = new URLSearchParams({ q: 'newer_than:30d', maxResults: String(maxResults) })
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `https://gmail.googleapis.com/gmail/v1/users/me/threads?${params.toString()}`,
     { headers: { authorization: `Bearer ${tokens.accessToken}` } },
+    { timeoutMs: GMAIL_TIMEOUT_MS, label: 'gmail listThreads' },
   )
   if (!res.ok) {
     const detail = await res.text().catch(() => '')
@@ -85,9 +87,10 @@ export async function getThread({
   for (const h of ['From', 'To', 'Cc', 'Subject', 'Date']) {
     params.append('metadataHeaders', h)
   }
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `https://gmail.googleapis.com/gmail/v1/users/me/threads/${encodeURIComponent(threadId)}?${params.toString()}`,
     { headers: { authorization: `Bearer ${tokens.accessToken}` } },
+    { timeoutMs: GMAIL_TIMEOUT_MS, label: 'gmail getThread' },
   )
   if (!res.ok) {
     const detail = await res.text().catch(() => '')

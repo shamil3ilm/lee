@@ -2,6 +2,7 @@ import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { accounts } from '@/lib/db/schema'
 import { env } from '@/lib/env'
+import { fetchWithTimeout, GOOGLE_TOKEN_TIMEOUT_MS } from '@/lib/net/timeout'
 
 /**
  * Raised when a user has not linked a Google account (or has linked one but
@@ -59,16 +60,20 @@ export async function getGoogleTokens(userId: string): Promise<GoogleTokens> {
     }
   }
 
-  const res = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: env.AUTH_GOOGLE_ID,
-      client_secret: env.AUTH_GOOGLE_SECRET,
-      grant_type: 'refresh_token',
-      refresh_token: row.refresh_token,
-    }),
-  })
+  const res = await fetchWithTimeout(
+    'https://oauth2.googleapis.com/token',
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: env.AUTH_GOOGLE_ID,
+        client_secret: env.AUTH_GOOGLE_SECRET,
+        grant_type: 'refresh_token',
+        refresh_token: row.refresh_token,
+      }),
+    },
+    { timeoutMs: GOOGLE_TOKEN_TIMEOUT_MS, label: 'google token refresh' },
+  )
   if (!res.ok) {
     const detail = await res.text().catch(() => '')
     throw new Error(`google token refresh failed: ${res.status} ${detail}`)

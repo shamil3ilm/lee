@@ -8,6 +8,7 @@ import type {
   YesNoInput,
   YesNoResult,
 } from './types'
+import { fetchWithTimeout, GROQ_ATTEMPT_TIMEOUT_MS } from '@/lib/net/timeout'
 
 const choiceResponseSchema = z.object({
   pick: z.string(),
@@ -43,19 +44,23 @@ export class GroqDecisionProvider implements DecisionProvider {
   ) {}
 
   private async chat(prompt: string): Promise<string> {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${this.apiKey}`,
-        'content-type': 'application/json',
+    const res = await fetchWithTimeout(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${this.apiKey}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: this.model,
+          messages: [{ role: 'user', content: prompt }],
+          response_format: { type: 'json_object' },
+          temperature: 0.1,
+        }),
       },
-      body: JSON.stringify({
-        model: this.model,
-        messages: [{ role: 'user', content: prompt }],
-        response_format: { type: 'json_object' },
-        temperature: 0.1,
-      }),
-    })
+      { timeoutMs: GROQ_ATTEMPT_TIMEOUT_MS, label: 'groq decision' },
+    )
     if (!res.ok) {
       const body = await res.text().catch(() => '')
       throw new Error(`groq decision ${res.status}: ${body.slice(0, 200)}`)

@@ -104,6 +104,32 @@ describe('GET /api/cron/sync-all', () => {
     expect(acts.some((a) => a.kind === 'reminder')).toBe(true)
   })
 
+  it('runs with the Fluid-compute 300 s budget', async () => {
+    const mod = await import('@/app/api/cron/sync-all/route')
+    expect(mod.maxDuration).toBe(300)
+  })
+
+  it('writes at most one reminder per overdue application per day across re-runs', async () => {
+    const u = await makeUser('cron-remind-dedup@x.com')
+    const co = await makeCompany(u.id)
+    const j = await makeJob(u.id, co.id)
+    const app = await makeApplication(u.id, j.id, {
+      status: 'applied',
+      nextActionAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+    })
+    ;(globalThis as { fetch: typeof fetch }).fetch = (async () =>
+      new Response('nothing', { status: 500 })) as unknown as typeof fetch
+
+    const first = await GET(buildRequest({ authorization: `Bearer ${env.CRON_SECRET}` }) as never)
+    const second = await GET(buildRequest({ authorization: `Bearer ${env.CRON_SECRET}` }) as never)
+    expect(((await first.json()) as { reminders_added: number }).reminders_added).toBe(1)
+    expect(((await second.json()) as { reminders_added: number }).reminders_added).toBe(0)
+    const reminders = (
+      await db.select().from(activities).where(eq(activities.applicationId, app.id))
+    ).filter((a) => a.kind === 'reminder')
+    expect(reminders).toHaveLength(1)
+  })
+
   it('emits followup_recommended activities for applications past the 7-day mark', async () => {
     const u = await makeUser('cron-followup@x.com')
     const co = await makeCompany(u.id)

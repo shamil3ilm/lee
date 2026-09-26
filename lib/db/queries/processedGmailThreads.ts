@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import { processedGmailThreads } from '@/lib/db/schema'
 
@@ -21,6 +21,28 @@ export async function has(
     ),
   })
   return Boolean(row)
+}
+
+/**
+ * Which of `threadIds` were already processed for this user — one query
+ * (composite PK lookup) instead of one `has()` per thread.
+ */
+export async function processedThreadIds(
+  userId: string,
+  threadIds: readonly string[],
+  client: DbClient = db,
+): Promise<Set<string>> {
+  if (threadIds.length === 0) return new Set()
+  const rows = await client
+    .select({ threadId: processedGmailThreads.threadId })
+    .from(processedGmailThreads)
+    .where(
+      and(
+        eq(processedGmailThreads.userId, userId),
+        inArray(processedGmailThreads.threadId, [...threadIds]),
+      ),
+    )
+  return new Set(rows.map((r) => r.threadId))
 }
 
 /**

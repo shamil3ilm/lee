@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import * as cheerio from 'cheerio'
 import type { DiscoveryAdapter, DiscoveryItem, NormalizedJob } from './types'
+import { discoveryFetch } from './http'
 
 const configSchema = z.union([
   z.object({ url: z.string().url() }),
@@ -55,7 +56,7 @@ export class JsonLdAdapter implements DiscoveryAdapter {
   }
 
   private async fetchOne(url: string): Promise<DiscoveryItem[]> {
-    const res = await fetch(url, { headers: { accept: 'text/html' } })
+    const res = await discoveryFetch('jsonld', url, { headers: { accept: 'text/html' } })
     if (!res.ok) throw new Error(`jsonld ${res.status}`)
     const html = await res.text()
     const $ = cheerio.load(html)

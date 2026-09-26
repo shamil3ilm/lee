@@ -24,6 +24,19 @@ export async function add(
   await client.insert(scamAllowList).values({ userId, kind, value }).onConflictDoNothing()
 }
 
+/** Insert several entries in one statement (duplicates are ignored). */
+export async function addMany(
+  userId: string,
+  entries: ReadonlyArray<{ kind: AllowListKind; value: string }>,
+  client: DbClient = db,
+): Promise<void> {
+  if (entries.length === 0) return
+  await client
+    .insert(scamAllowList)
+    .values(entries.map((e) => ({ userId, kind: e.kind, value: e.value })))
+    .onConflictDoNothing()
+}
+
 export async function remove(userId: string, id: string, client: DbClient = db): Promise<boolean> {
   const rows = await client
     .delete(scamAllowList)

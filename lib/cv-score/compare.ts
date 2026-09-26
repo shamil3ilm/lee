@@ -6,7 +6,9 @@ import * as applicationsQ from '@/lib/db/queries/applications'
 import * as documentsQ from '@/lib/db/queries/documents'
 import { CvScoreError } from './errors'
 import { COMPONENT_KEYS, HEADLINE_LABELS } from './headlines'
-import { scoreCv, type CvScoreRecord } from './score'
+import { scoreContextFor, scoreCv, type CvScoreRecord } from './score'
+import { hasJdSignal, jobTargetFromApplication } from './jd'
+import { mapWithConcurrency } from '@/lib/util/concurrency'
 import { loadDocumentSource } from './sources'
 import type { ComponentHeadlineKey, CvScoreResult, HeadlineKey } from './types'
 import type { KeywordDetails } from './dimensions/keywords'
@@ -78,6 +80,13 @@ export async function compareCvs(input: CompareInput): Promise<CompareResult> {
 
 export const ACTIVE_STATUSES = ['saved', 'applied', 'screen', 'interview'] as const
 const MAX_BATCH = 50
+/** Items scored at once. Deterministic scoring is CPU-light; each item still writes a row. */
+const BATCH_CONCURRENCY = 3
+/**
+ * AI requirement-fit calls per batch. The route has a 30 s budget; the
+ * remaining items are scored with the deterministic dimensions only.
+ */
+export const MAX_AI_ITEMS_PER_BATCH = 5
 
 export interface BatchRow {
   applicationId: string
@@ -98,6 +107,8 @@ export interface BatchResult {
   includeAi: boolean
   rows: BatchRow[]
   truncated: boolean
+  /** True when more items had a JD than MAX_AI_ITEMS_PER_BATCH, so some ran without AI. */
+  aiCapped?: boolean
 }
 
 export async function latestMasterDocument(userId: string): Promise<documentsQ.Document | null> {
@@ -121,43 +132,56 @@ export async function batchScoreMaster(input: {
     (ACTIVE_STATUSES as readonly string[]).includes(a.status),
   )
   const includeAi = input.includeAi ?? false
-  const rows: BatchRow[] = []
-  for (const app of apps.slice(0, MAX_BATCH)) {
+  const batch = apps.slice(0, MAX_BATCH)
+  // Loaded once for the whole batch instead of once per item.
+  const context = await scoreContextFor(input.userId, loaded.kind === 'master_cv', input.now)
+  // Only items with a JD can use the AI dimension; the first N of those get it.
+  const aiEligible = includeAi ? batch.filter((a) => hasJdSignal(jobTargetFromApplication(a))) : []
+  const aiIds = new Set(aiEligible.slice(0, MAX_AI_ITEMS_PER_BATCH).map((a) => a.id))
+
+  const scored = await mapWithConcurrency(batch, BATCH_CONCURRENCY, async (app) => {
     const r = await scoreCv({
       userId: input.userId,
       source: loaded,
       applicationId: app.id,
+      application: app,
+      context,
       ai: input.ai,
-      includeAi,
+      includeAi: aiIds.has(app.id),
       now: input.now,
     })
-    const kw = r.dimensions.keywords && !('skipped' in r.dimensions.keywords)
-      ? ((r.dimensions.keywords.details as KeywordDetails).required ?? [])
-          .filter((h) => h.status === 'missing')
-          .map((h) => h.term)
-      : []
-    rows.push({
-      applicationId: app.id,
-      jobTitle: app.job.title,
-      companyName: app.job.company?.name ?? null,
-      status: app.status,
-      scoreId: r.id,
-      total: r.total.score,
-      grade: r.total.grade,
-      scores: Object.fromEntries(COMPONENT_KEYS.map((k) => [k, r.scores[k].score])) as Record<
-        ComponentHeadlineKey,
-        number | null
-      >,
-      missingSkills: kw,
-      mode: r.mode,
-    })
-  }
-  rows.sort((x, y) => (y.total ?? -1) - (x.total ?? -1))
+    return toBatchRow(app, r)
+  })
+  const rows = [...scored].sort((x, y) => (y.total ?? -1) - (x.total ?? -1))
   return {
     masterDocumentId: master.id,
     masterLabel: master.title,
     includeAi,
     rows,
     truncated: apps.length > MAX_BATCH,
+    aiCapped: aiEligible.length > MAX_AI_ITEMS_PER_BATCH,
+  }
+}
+
+function toBatchRow(app: applicationsQ.ApplicationWithJob, r: CvScoreRecord): BatchRow {
+  const kw = r.dimensions.keywords && !('skipped' in r.dimensions.keywords)
+    ? ((r.dimensions.keywords.details as KeywordDetails).required ?? [])
+        .filter((h) => h.status === 'missing')
+        .map((h) => h.term)
+    : []
+  return {
+    applicationId: app.id,
+    jobTitle: app.job.title,
+    companyName: app.job.company?.name ?? null,
+    status: app.status,
+    scoreId: r.id,
+    total: r.total.score,
+    grade: r.total.grade,
+    scores: Object.fromEntries(COMPONENT_KEYS.map((k) => [k, r.scores[k].score])) as Record<
+      ComponentHeadlineKey,
+      number | null
+    >,
+    missingSkills: kw,
+    mode: r.mode,
   }
 }

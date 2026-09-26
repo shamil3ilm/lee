@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger'
+import { fetchWithTimeout, isTimeoutError, LATEX_COMPILE_TIMEOUT_MS } from '@/lib/net/timeout'
 
 export type CompileResult =
   | { ok: true; pdf: ArrayBuffer }
@@ -57,8 +58,20 @@ export async function compileLatex(
   }
   let res: Response
   try {
-    res = await fetch(LATEX_ONLINE_URL, { method: 'POST', body: form })
+    res = await fetchWithTimeout(
+      LATEX_ONLINE_URL,
+      { method: 'POST', body: form },
+      { timeoutMs: LATEX_COMPILE_TIMEOUT_MS, label: 'latexonline.cc compile' },
+    )
   } catch (err) {
+    if (isTimeoutError(err)) {
+      logger.error('latexonline.cc timeout', { timeoutMs: LATEX_COMPILE_TIMEOUT_MS })
+      return {
+        ok: false,
+        status: 504,
+        log: `Compile service unavailable: ${err instanceof Error ? err.message : 'timed out'}`,
+      }
+    }
     logger.error('latexonline.cc network error', {
       err: err instanceof Error ? err.message : String(err),
     })

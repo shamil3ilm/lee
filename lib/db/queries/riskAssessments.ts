@@ -48,6 +48,50 @@ export async function upsert(
   return row
 }
 
+/**
+ * Upsert many assessments in one statement. Same conflict rule as `upsert`
+ * (user_verdict is never touched). Returns nothing — batch callers only
+ * need the count, which is `items.length`.
+ */
+export async function upsertMany(
+  userId: string,
+  items: ReadonlyArray<{ targetType: RiskTargetType; targetId: string; data: AssessmentWrite }>,
+  client: DbClient = db,
+): Promise<void> {
+  if (items.length === 0) return
+  // One row per target: a repeated target would make ON CONFLICT touch the
+  // same row twice in one statement, which Postgres rejects.
+  const unique = [...new Map(items.map((i) => [`${i.targetType}:${i.targetId}`, i])).values()]
+  const excluded = (col: string) => sql.raw(`excluded.${col}`)
+  await client
+    .insert(jobRiskAssessments)
+    .values(
+      unique.map(({ targetType, targetId, data }) => ({
+        userId,
+        targetType,
+        targetId,
+        score: data.score,
+        level: data.level,
+        signals: data.signals as never,
+        rulesVersion: data.rulesVersion,
+        net: (data.net ?? null) as never,
+        allowListed: data.allowListed,
+      })),
+    )
+    .onConflictDoUpdate({
+      target: [jobRiskAssessments.userId, jobRiskAssessments.targetType, jobRiskAssessments.targetId],
+      set: {
+        score: excluded('score'),
+        level: excluded('level'),
+        signals: excluded('signals'),
+        rulesVersion: excluded('rules_version'),
+        net: excluded('net'),
+        allowListed: excluded('allow_listed'),
+        updatedAt: new Date(),
+      },
+    })
+}
+
 export async function get(
   userId: string,
   targetType: RiskTargetType,

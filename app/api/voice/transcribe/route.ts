@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { env } from '@/lib/env'
 import { logger } from '@/lib/logger'
+import { fetchWithTimeout, GROQ_TRANSCRIBE_TIMEOUT_MS } from '@/lib/net/timeout'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -70,11 +71,11 @@ export async function POST(req: Request): Promise<NextResponse> {
     upstream.append('response_format', 'json')
 
     const start = Date.now()
-    const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: { authorization: `Bearer ${apiKey}` },
-      body: upstream,
-    })
+    const res = await fetchWithTimeout(
+      'https://api.groq.com/openai/v1/audio/transcriptions',
+      { method: 'POST', headers: { authorization: `Bearer ${apiKey}` }, body: upstream },
+      { timeoutMs: GROQ_TRANSCRIBE_TIMEOUT_MS, label: 'groq transcription' },
+    )
     const latencyMs = Date.now() - start
 
     if (!res.ok) {

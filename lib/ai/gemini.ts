@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GEMINI_ATTEMPT_TIMEOUT_MS, timeoutError, timeoutSignal } from '@/lib/net/timeout'
 import { buildParseJobPrompt, PARSE_JOB_PROMPT_VERSION } from './prompts/parse-job'
 import { buildParseProfilePrompt, PARSE_PROFILE_PROMPT_VERSION } from './prompts/parse-profile'
 import { buildScoreJobPrompt, SCORE_JOB_PROMPT_VERSION } from './prompts/score-job'
@@ -56,6 +57,7 @@ import {
   type ParsedProfile,
 } from './types'
 import type { CallMeta } from './log'
+import { recordAiCall, type AiCallRecord } from './log-call'
 import { stripLatexFencing } from './utils/latex'
 import {
   coverLetterSchema,
@@ -100,7 +102,16 @@ export class GeminiProvider implements AIProvider {
       model: modelName,
       generationConfig: { responseMimeType: 'application/json' },
     })
-    const res = await m.generateContent(prompt)
+    // Fresh timeout per attempt; a timeout is not in the retry regex in
+    // generate(), so it moves straight on to the fallback model.
+    const signal = timeoutSignal(GEMINI_ATTEMPT_TIMEOUT_MS)
+    let res: Awaited<ReturnType<typeof m.generateContent>>
+    try {
+      res = await m.generateContent(prompt, { signal })
+    } catch (e) {
+      if (signal.aborted) throw timeoutError('gemini', GEMINI_ATTEMPT_TIMEOUT_MS, e)
+      throw e
+    }
     return {
       text: res.response.text(),
       promptTokens: res.response.usageMetadata?.promptTokenCount ?? 0,
@@ -162,50 +173,12 @@ export class GeminiProvider implements AIProvider {
   }
 
   /**
-   * Insert one `ai_call_logs` row and, if the caller supplied `onLogged`,
-   * fire it with the new row's id. Best-effort — never throws; a logging
-   * failure only means analytics loses one row.
+   * One `ai_call_logs` row per generate(). Written after the response when
+   * called inside a request; inline when the caller needs the id via
+   * `onLogged`. Never throws. See lib/ai/log-call.ts.
    */
-  private async logCall(x: {
-    status: string
-    latency: number
-    promptTokens?: number
-    completionTokens?: number
-    error?: string
-    meta?: CallMeta
-  }): Promise<void> {
-    try {
-      const { db } = await import('@/lib/db/client')
-      const { aiCallLogs } = await import('@/lib/db/schema')
-      const inserted = await db
-        .insert(aiCallLogs)
-        .values({
-          userId: x.meta?.userId ?? null,
-          provider: 'gemini',
-          kind: x.meta?.kind ?? 'parse',
-          promptTokens: x.promptTokens ?? null,
-          completionTokens: x.completionTokens ?? null,
-          latencyMs: x.latency,
-          status: x.status,
-          error: x.error ?? null,
-          documentId: x.meta?.documentId ?? null,
-          signalCheckPassed: x.meta?.signalCheckPassed ?? null,
-          signalCheckCode: x.meta?.signalCheckCode ?? null,
-          promptHash: x.meta?.promptHash ?? null,
-          promptVersion: x.meta?.promptVersion ?? null,
-        })
-        .returning()
-      const id = inserted[0]?.id
-      if (id && x.meta?.onLogged) {
-        try {
-          x.meta.onLogged(id)
-        } catch {
-          /* callback must never break the call */
-        }
-      }
-    } catch {
-      /* logging must never break the call */
-    }
+  private async logCall(x: AiCallRecord): Promise<void> {
+    await recordAiCall('gemini', x)
   }
 
   async parseJob(text: string, meta: CallMeta = {}): Promise<ParsedJob> {

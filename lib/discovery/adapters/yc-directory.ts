@@ -1,3 +1,4 @@
+import { discoveryFetch } from './http'
 import type {
   DiscoveryAdapter,
   DiscoveryItem,
@@ -36,7 +37,7 @@ export class YcDirectoryAdapter implements DiscoveryAdapter {
   readonly kind = 'yc_directory'
 
   async fetch(_config: unknown): Promise<DiscoveryItem[]> {
-    const res = await fetch('https://www.ycombinator.com/api/companies', {
+    const res = await discoveryFetch('yc-directory', 'https://www.ycombinator.com/api/companies', {
       headers: { accept: 'application/json' },
     })
     if (!res.ok) throw new Error(`yc_directory ${res.status}`)

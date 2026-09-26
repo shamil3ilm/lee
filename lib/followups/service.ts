@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { activities, applications, documents } from '@/lib/db/schema'
 
@@ -55,9 +55,9 @@ export async function findFollowupCandidates(
   userId: string,
   now: Date = new Date(),
 ): Promise<FollowupCandidate[]> {
-  // Pull all in-flight applications with appliedAt set. We do the interval
-  // math + doc/email dedup in-memory: cardinality per user is tiny (< a few
-  // hundred at most) and this avoids four subqueries per app.
+  // Pull all in-flight applications, do the interval math in memory, then
+  // check drafts and live email threads for all due apps in two batched
+  // queries — three queries total regardless of how many apps are due.
   const rows = await db.query.applications.findMany({
     where: and(
       eq(applications.userId, userId),
@@ -66,56 +66,136 @@ export async function findFollowupCandidates(
     with: { job: { with: { company: true } } },
   })
 
-  const candidates: FollowupCandidate[] = []
-  for (const app of rows) {
-    if (!app.appliedAt) continue
+  const due = rows.flatMap((app) => {
+    if (!app.appliedAt) return []
     const daysSince = Math.floor((now.getTime() - app.appliedAt.getTime()) / MS_PER_DAY)
     const suggested = bucketFor(daysSince)
-    if (!suggested) continue
+    return suggested ? [{ app, daysSince, suggested }] : []
+  })
+  if (due.length === 0) return []
+  const appIds = due.map((d) => d.app.id)
 
+  // Two batched lookups instead of two queries per application.
+  const [draftedDays, liveThreads] = await Promise.all([
+    draftedFollowupDays(userId, appIds),
+    appsWithRecentEmail(userId, appIds, new Date(now.getTime() - RECENT_EMAIL_LOOKBACK_MS)),
+  ])
+
+  return due
     // A drafted follow-up for this specific interval means the user is
     // already handling this bucket — don't re-nudge.
-    const existingDocs = await db
-      .select()
-      .from(documents)
-      .where(
-        and(
-          eq(documents.userId, userId),
-          eq(documents.applicationId, app.id),
-          eq(documents.kind, 'outreach_followup_email'),
-        ),
-      )
-    const bucketAlreadyDrafted = existingDocs.some((d) => {
-      const c = d.content as { daysSince?: number } | null
-      return c?.daysSince === suggested
-    })
-    if (bucketAlreadyDrafted) continue
+    .filter((d) => !(draftedDays.get(d.app.id) ?? []).includes(d.suggested))
+    // Skip if there's a live inbound conversation (`kind='email'` is
+    // written by the Gmail sync when a matched thread lands in the app).
+    .filter((d) => !liveThreads.has(d.app.id))
+    .map((d) => ({
+      applicationId: d.app.id,
+      jobTitle: d.app.job.title,
+      companyName: d.app.job.company?.name ?? null,
+      daysSince: d.daysSince,
+      suggestedInterval: d.suggested,
+    }))
+}
 
-    // Skip if there's a live inbound conversation. `kind='email'` is written
-    // by the Gmail sync when a matched thread lands in the app.
-    const recentEmails = await db
-      .select()
-      .from(activities)
-      .where(
-        and(
-          eq(activities.userId, userId),
-          eq(activities.applicationId, app.id),
-          eq(activities.kind, 'email'),
-          gte(activities.createdAt, new Date(now.getTime() - RECENT_EMAIL_LOOKBACK_MS)),
-        ),
-      )
-      .limit(1)
-    if (recentEmails.length > 0) continue
-
-    candidates.push({
-      applicationId: app.id,
-      jobTitle: app.job.title,
-      companyName: app.job.company?.name ?? null,
-      daysSince,
-      suggestedInterval: suggested,
+/**
+ * `daysSince` values of every follow-up draft per application, in one
+ * grouped query. Only that JSON field is read — never the document body.
+ */
+async function draftedFollowupDays(
+  userId: string,
+  appIds: readonly string[],
+): Promise<Map<string, unknown[]>> {
+  const rows = await db
+    .select({
+      applicationId: documents.applicationId,
+      days: sql<unknown[]>`jsonb_agg(distinct ${documents.content} -> 'daysSince')`,
     })
-  }
-  return candidates
+    .from(documents)
+    .where(
+      and(
+        eq(documents.userId, userId),
+        eq(documents.kind, 'outreach_followup_email'),
+        inArray(documents.applicationId, [...appIds]),
+      ),
+    )
+    .groupBy(documents.applicationId)
+  return new Map(
+    rows.flatMap((r) => (r.applicationId ? [[r.applicationId, parseJsonArray(r.days)] as const] : [])),
+  )
+}
+
+function parseJsonArray(v: unknown): unknown[] {
+  // postgres-js parses jsonb; some drivers hand back the JSON text.
+  const parsed = typeof v === 'string' ? (JSON.parse(v) as unknown) : v
+  return Array.isArray(parsed) ? parsed : []
+}
+
+/** Applications with an inbound email activity since `since`, in one query. */
+async function appsWithRecentEmail(
+  userId: string,
+  appIds: readonly string[],
+  since: Date,
+): Promise<Set<string>> {
+  const rows = await db
+    .selectDistinct({ applicationId: activities.applicationId })
+    .from(activities)
+    .where(
+      and(
+        eq(activities.userId, userId),
+        eq(activities.kind, 'email'),
+        inArray(activities.applicationId, [...appIds]),
+        gte(activities.createdAt, since),
+      ),
+    )
+  return new Set(rows.map((r) => r.applicationId))
+}
+
+/** Of `appIds`, those that already got a `followup_recommended` in the last 24 h. */
+export async function recentlyNudgedIds(
+  userId: string,
+  appIds: readonly string[],
+  now: Date = new Date(),
+): Promise<Set<string>> {
+  if (appIds.length === 0) return new Set()
+  const rows = await db
+    .selectDistinct({ applicationId: activities.applicationId })
+    .from(activities)
+    .where(
+      and(
+        eq(activities.userId, userId),
+        eq(activities.kind, 'followup_recommended'),
+        inArray(activities.applicationId, [...appIds]),
+        gte(activities.createdAt, new Date(now.getTime() - MS_PER_DAY)),
+      ),
+    )
+  return new Set(rows.map((r) => r.applicationId))
+}
+
+/**
+ * Cron step: emit one `followup_recommended` activity per candidate that
+ * was not nudged in the last 24 h. One candidate lookup, one "already
+ * nudged" query for all candidates, one multi-row insert. Returns the number
+ * of nudges written.
+ */
+export async function recordFollowupNudges(userId: string, now: Date = new Date()): Promise<number> {
+  const candidates = await findFollowupCandidates(userId, now)
+  if (candidates.length === 0) return 0
+  const nudged = await recentlyNudgedIds(
+    userId,
+    candidates.map((c) => c.applicationId),
+    now,
+  )
+  const toNudge = candidates.filter((c) => !nudged.has(c.applicationId))
+  if (toNudge.length === 0) return 0
+  await db.insert(activities).values(
+    toNudge.map((c) => ({
+      userId,
+      applicationId: c.applicationId,
+      kind: 'followup_recommended',
+      payload: { daysSince: c.daysSince, suggestedInterval: c.suggestedInterval },
+    })),
+  )
+  return toNudge.length
 }
 
 /**

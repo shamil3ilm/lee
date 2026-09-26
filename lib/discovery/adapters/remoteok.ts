@@ -1,4 +1,5 @@
 import type { DiscoveryAdapter, DiscoveryItem, NormalizedJob } from './types'
+import { discoveryFetch } from './http'
 
 interface RemoteOkJob {
   id?: string | number
@@ -23,7 +24,7 @@ export class RemoteOkAdapter implements DiscoveryAdapter {
   readonly kind = 'remoteok'
 
   async fetch(_config: unknown): Promise<DiscoveryItem[]> {
-    const res = await fetch('https://remoteok.com/api', {
+    const res = await discoveryFetch('remoteok', 'https://remoteok.com/api', {
       headers: { accept: 'application/json', 'user-agent': 'employ/1.5' },
     })
     if (!res.ok) throw new Error(`remoteok ${res.status}`)

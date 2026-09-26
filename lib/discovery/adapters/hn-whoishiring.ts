@@ -1,4 +1,7 @@
 import type { DiscoveryAdapter, DiscoveryItem, NormalizedJob } from './types'
+import { discoveryFetch } from './http'
+import { HN_ITEM_TIMEOUT_MS } from '@/lib/net/timeout'
+import { mapWithConcurrency } from '@/lib/util/concurrency'
 
 interface AlgoliaSearchResponse {
   hits?: { objectID?: string; title?: string }[]
@@ -13,6 +16,7 @@ interface HnItem {
 }
 
 const MAX_COMMENTS = 100
+const ITEM_CONCURRENCY = 8
 
 /**
  * Ask HN: Who is hiring? scraper — but only against structured HN APIs
@@ -28,9 +32,14 @@ export class HnWhoIsHiringAdapter implements DiscoveryAdapter {
     if (!threadId) return []
     const kids = await this.fetchThreadKids(threadId)
     const commentIds = kids.slice(0, MAX_COMMENTS)
+    // Up to 100 item fetches: run them a few at a time (each with its own
+    // short timeout) instead of one after another.
+    const comments = await mapWithConcurrency(commentIds, ITEM_CONCURRENCY, (cid) =>
+      this.fetchItem(cid),
+    )
     const items: DiscoveryItem[] = []
-    for (const cid of commentIds) {
-      const comment = await this.fetchItem(cid)
+    for (const [i, cid] of commentIds.entries()) {
+      const comment = comments[i]
       if (!comment?.text) continue
       const parsed = parseCommentHeader(comment.text)
       if (!parsed) continue
@@ -55,23 +64,33 @@ export class HnWhoIsHiringAdapter implements DiscoveryAdapter {
   private async findLatestThreadId(): Promise<string | null> {
     const url =
       'https://hn.algolia.com/api/v1/search?tags=story&query=Ask+HN+Who+is+hiring&hitsPerPage=1&numericFilters=points>50'
-    const res = await fetch(url)
+    const res = await discoveryFetch('hn-algolia', url)
     if (!res.ok) throw new Error(`hn-algolia ${res.status}`)
     const body = (await res.json()) as AlgoliaSearchResponse
     return body.hits?.[0]?.objectID ?? null
   }
 
   private async fetchThreadKids(id: string): Promise<number[]> {
-    const res = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`)
+    const res = await discoveryFetch('hn-item', `https://hacker-news.firebaseio.com/v0/item/${id}.json`)
     if (!res.ok) throw new Error(`hn-item ${res.status}`)
     const body = (await res.json()) as HnItem
     return body.kids ?? []
   }
 
+  /** One comment; a failed or slow fetch just drops that comment. */
   private async fetchItem(id: number): Promise<HnItem | null> {
-    const res = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`)
-    if (!res.ok) return null
-    return (await res.json()) as HnItem
+    try {
+      const res = await discoveryFetch(
+        'hn-item',
+        `https://hacker-news.firebaseio.com/v0/item/${id}.json`,
+        {},
+        HN_ITEM_TIMEOUT_MS,
+      )
+      if (!res.ok) return null
+      return (await res.json()) as HnItem
+    } catch {
+      return null
+    }
   }
 }
 

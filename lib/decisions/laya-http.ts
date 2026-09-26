@@ -8,6 +8,8 @@ import type {
   YesNoResult,
 } from './types'
 import { LayaUnavailableError } from './types'
+import { fetchWithTimeout, LAYA_TIMEOUT_MS } from '@/lib/net/timeout'
+import { runAfterResponse } from '@/lib/server/after-response'
 
 /**
  * Laya decision provider — HTTP client for the public Laya Gradio Space
@@ -70,35 +72,28 @@ export class LayaHttpDecisionProvider implements DecisionProvider {
    * alongside Gemini/Groq generations. Best-effort — logging must never
    * break the call. Called from choice/yesNo/score after the SSE round-trip.
    *
-   * v10.1 — returns the inserted row's id so a caller can capture it for a
-   * downstream foreign-key linkage (currently unused by the expense classify
-   * path but kept symmetric with the Gemini/Groq providers). Returns null
-   * when logging fails so callers never depend on the id existing.
+   * The inserted id was never consumed by any caller, so the write is now
+   * deferred off the response path (see runAfterResponse).
    */
   private async logCall(
     kind: string,
     status: 'ok' | 'error',
     latency: number,
     error?: string,
-  ): Promise<string | null> {
-    try {
+  ): Promise<void> {
+    // Analytics only (no caller needs the id), so the insert runs after the
+    // response inside a request and inline elsewhere. Never throws.
+    await runAfterResponse('ai_call_log:laya', async () => {
       const { db } = await import('@/lib/db/client')
       const { aiCallLogs } = await import('@/lib/db/schema')
-      const inserted = await db
-        .insert(aiCallLogs)
-        .values({
-          provider: 'laya',
-          kind,
-          latencyMs: latency,
-          status,
-          error: error ?? null,
-        })
-        .returning()
-      return inserted[0]?.id ?? null
-    } catch {
-      /* logging must never break the call */
-      return null
-    }
+      await db.insert(aiCallLogs).values({
+        provider: 'laya',
+        kind,
+        latencyMs: latency,
+        status,
+        error: error ?? null,
+      })
+    })
   }
 
   async choice<T extends string>(input: ChoiceInput<T> & {
@@ -229,11 +224,15 @@ export class LayaHttpDecisionProvider implements DecisionProvider {
     // Step 1: POST the call → { event_id }
     let postRes: Response
     try {
-      postRes = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ data: [stateText, JSON.stringify(questions)] }),
-      })
+      postRes = await fetchWithTimeout(
+        url,
+        {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ data: [stateText, JSON.stringify(questions)] }),
+        },
+        { timeoutMs: LAYA_TIMEOUT_MS, label: 'laya POST' },
+      )
     } catch (e) {
       throw new LayaUnavailableError(`laya network error: ${getMessage(e)}`)
     }
@@ -253,7 +252,11 @@ export class LayaHttpDecisionProvider implements DecisionProvider {
     // Step 2: GET SSE stream and parse the final data frame.
     let getRes: Response
     try {
-      getRes = await fetch(`${url}/${eventId}`, { headers })
+      getRes = await fetchWithTimeout(
+        `${url}/${eventId}`,
+        { headers },
+        { timeoutMs: LAYA_TIMEOUT_MS, label: 'laya GET' },
+      )
     } catch (e) {
       throw new LayaUnavailableError(`laya GET network error: ${getMessage(e)}`)
     }
