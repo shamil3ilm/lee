@@ -127,7 +127,8 @@ describe('tombstoneDismissedDiscoveries', () => {
     const again = await discQ.upsertBySource(u.id, src.id, 'gh-4242', { big: 'y' }, heavyJob(42))
     expect(again.isNew).toBe(false)
     expect(again.discovery.id).toBe(old.id)
-    expect(again.discovery.status).toBe('dismissed')
+    const [row] = await db.select().from(s.discoveries).where(eq(s.discoveries.id, old.id))
+    expect(row!.status).toBe('dismissed')
 
     expect(await discQ.list(u.id, { status: 'new' })).toEqual([])
     expect(await discQ.countNew(u.id)).toBe(0)
@@ -151,7 +152,8 @@ describe('tombstoneDismissedDiscoveries', () => {
 
     const again = await compDiscQ.upsertBySource(u.id, src.id, 'a', { x: 1 }, normalized)
     expect(again.isNew).toBe(false)
-    expect(again.discovery.status).toBe('dismissed')
+    const [row] = await db.select().from(s.companyDiscoveries).where(eq(s.companyDiscoveries.id, a.id))
+    expect(row!.status).toBe('dismissed')
   })
 })
 

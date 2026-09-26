@@ -132,7 +132,16 @@ export async function batchScoreMaster(input: {
     (ACTIVE_STATUSES as readonly string[]).includes(a.status),
   )
   const includeAi = input.includeAi ?? false
-  const batch = apps.slice(0, MAX_BATCH)
+  // The lean list has no JD; load full job rows for just this batch, in one
+  // query, keeping the list's order.
+  const picked = apps.slice(0, MAX_BATCH)
+  const fullById = new Map(
+    (await applicationsQ.listWithJobsByIds(input.userId, picked.map((a) => a.id))).map((a) => [a.id, a]),
+  )
+  const batch = picked.flatMap((a) => {
+    const full = fullById.get(a.id)
+    return full ? [full] : []
+  })
   // Loaded once for the whole batch instead of once per item.
   const context = await scoreContextFor(input.userId, loaded.kind === 'master_cv', input.now)
   // Only items with a JD can use the AI dimension; the first N of those get it.

@@ -40,8 +40,9 @@ describe('batchScoreMaster', () => {
     spy.mockRestore()
     expect(b.rows).toHaveLength(6)
     // Before: the list plus one application lookup per item, and one
-    // user_profile read per item.
-    expect(sqls.filter((s) => /from "applications"/i.test(s))).toHaveLength(1)
+    // user_profile read per item. Now constant: the lean list plus one batched
+    // load of the full job rows (JD) for the batch, however many items.
+    expect(sqls.filter((s) => /from "applications"/i.test(s))).toHaveLength(2)
     expect(sqls.filter((s) => /from "user_profile"/i.test(s)).length).toBeLessThanOrEqual(1)
   })
 

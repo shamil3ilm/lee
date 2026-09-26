@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import { activities, applications } from '@/lib/db/schema'
 
@@ -111,6 +111,23 @@ export async function list(
     },
     orderBy: (a, { desc }) => desc(a.updatedAt),
   })
+}
+
+/**
+ * Full application + job + company rows for a set of ids, in one query.
+ * For batch work (CV score batch) that needs the JD but started from the lean
+ * `list()`. Scoped to `userId`; unknown or foreign ids are simply absent.
+ */
+export async function listWithJobsByIds(
+  userId: string,
+  ids: readonly string[],
+): Promise<ApplicationWithJob[]> {
+  if (ids.length === 0) return []
+  const rows = await db.query.applications.findMany({
+    where: and(eq(applications.userId, userId), inArray(applications.id, [...ids])),
+    with: { job: { with: { company: true } } },
+  })
+  return rows as never
 }
 
 export async function getById(

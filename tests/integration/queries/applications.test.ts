@@ -85,3 +85,28 @@ describe('applications queries', () => {
     expect(row?.nextActionAt?.toISOString()).toBe(when.toISOString())
   })
 })
+
+describe('listWithJobsByIds', () => {
+  it('returns full job rows for the given ids, scoped to the user', async () => {
+    const { makeCompany, makeJob, makeApplication } = await import('@/tests/factories')
+    const u = await makeUser('batch-owner@x.com')
+    const other = await makeUser('batch-other@x.com')
+    const c = await makeCompany(u.id)
+    const j = await makeJob(u.id, c.id)
+    const a1 = await makeApplication(u.id, j.id)
+    const oc = await makeCompany(other.id)
+    const oj = await makeJob(other.id, oc.id)
+    const foreign = await makeApplication(other.id, oj.id)
+
+    const rows = await q.listWithJobsByIds(u.id, [a1.id, foreign.id])
+    expect(rows.map((r) => r.id)).toEqual([a1.id])
+    expect(rows[0]!.job.id).toBe(j.id)
+    expect(rows[0]!.job).toHaveProperty('descriptionMd')
+    expect(rows[0]!.job.company?.id).toBe(c.id)
+  })
+
+  it('returns nothing for an empty id list', async () => {
+    const u = await makeUser('batch-empty@x.com')
+    expect(await q.listWithJobsByIds(u.id, [])).toEqual([])
+  })
+})
