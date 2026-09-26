@@ -1,21 +1,34 @@
 import { and, count, eq, gte, inArray, isNull, lt, or, sql } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
+import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import { discoveries } from '@/lib/db/schema'
+import type * as schema from '@/lib/db/schema'
 import { discoveryNotQuarantinedSql, discoveryQuarantinedSql } from './riskAssessments'
 
 export type Discovery = typeof discoveries.$inferSelect
 export type NewDiscovery = typeof discoveries.$inferInsert
 export type DiscoveryStatus = 'new' | 'saved' | 'dismissed'
 
+/**
+ * `DbClient` is a union of the postgres-js and PGlite drivers, and the union
+ * hides drizzle's `returning(fields)` overload. Both drivers implement it
+ * identically, so view the client through one driver's type to return only
+ * the columns we need (ids — never the jsonb payload back over the wire).
+ */
+function writer(client: DbClient): PostgresJsDatabase<typeof schema> {
+  return client as unknown as PostgresJsDatabase<typeof schema>
+}
+
 export interface UpsertResult {
-  discovery: Discovery
+  discovery: { id: string }
   isNew: boolean
 }
 
 /**
  * Insert-or-noop by (sourceId, sourceItemId). If a row already exists we
- * return the existing row and isNew=false; the caller uses that flag to skip
- * re-scoring items we've already seen.
+ * return its id and isNew=false; the caller uses that flag to skip
+ * re-scoring items we've already seen. Only the id comes back — never the
+ * `raw`/`normalized` jsonb, which the caller already has in memory.
  */
 export async function upsertBySource(
   userId: string,
@@ -25,20 +38,89 @@ export async function upsertBySource(
   normalized: unknown,
   client: DbClient = db,
 ): Promise<UpsertResult> {
-  const [inserted] = await client
+  const [inserted] = await writer(client)
     .insert(discoveries)
     .values({ userId, sourceId, sourceJobId: sourceItemId, raw: raw as never, normalized: normalized as never })
     .onConflictDoNothing({ target: [discoveries.sourceId, discoveries.sourceJobId] })
-    .returning()
+    .returning({ id: discoveries.id })
   if (inserted) return { discovery: inserted, isNew: true }
-  const existing = await client.query.discoveries.findFirst({
-    where: and(
-      eq(discoveries.sourceId, sourceId),
-      eq(discoveries.sourceJobId, sourceItemId),
-    ),
-  })
+  const [existing] = await client
+    .select({ id: discoveries.id })
+    .from(discoveries)
+    .where(and(eq(discoveries.sourceId, sourceId), eq(discoveries.sourceJobId, sourceItemId)))
+    .limit(1)
   if (!existing) throw new Error('upsertBySource: could not insert or find discovery')
   return { discovery: existing, isNew: false }
+}
+
+export interface SeenDiscovery {
+  id: string
+  sourceJobId: string
+  /** No match score yet (thin profile, scoring cap, AI failure) — re-score. */
+  unscored: boolean
+}
+
+/**
+ * One query: which of these `sourceJobIds` does this source already have?
+ * Selects ids and a scored flag only (no jsonb), keyed by source_job_id.
+ * Uses the (source_id, source_job_id) unique index.
+ */
+export async function seenBySourceJobIds(
+  sourceId: string,
+  sourceJobIds: readonly string[],
+  client: DbClient = db,
+): Promise<Map<string, SeenDiscovery>> {
+  if (sourceJobIds.length === 0) return new Map()
+  const rows = await client
+    .select({
+      id: discoveries.id,
+      sourceJobId: discoveries.sourceJobId,
+      unscored: sql<boolean>`${discoveries.matchScore} is null`,
+    })
+    .from(discoveries)
+    .where(and(eq(discoveries.sourceId, sourceId), inArray(discoveries.sourceJobId, [...sourceJobIds])))
+  return new Map(rows.map((r) => [r.sourceJobId, { ...r, unscored: Boolean(r.unscored) }]))
+}
+
+export interface NewDiscoveryItem {
+  sourceJobId: string
+  raw: unknown
+  normalized: unknown
+}
+
+/** Rows per INSERT — keeps statements (and their jsonb payloads) bounded. */
+const INSERT_CHUNK = 100
+
+/**
+ * Bulk insert-or-noop for one source. Returns `{id, sourceJobId}` for rows
+ * that were actually inserted; an item another run inserted concurrently is
+ * silently skipped (ON CONFLICT DO NOTHING).
+ */
+export async function insertManyForSource(
+  userId: string,
+  sourceId: string,
+  items: readonly NewDiscoveryItem[],
+  client: DbClient = db,
+): Promise<Array<{ id: string; sourceJobId: string }>> {
+  const out: Array<{ id: string; sourceJobId: string }> = []
+  for (let i = 0; i < items.length; i += INSERT_CHUNK) {
+    const chunk = items.slice(i, i + INSERT_CHUNK)
+    const rows = await writer(client)
+      .insert(discoveries)
+      .values(
+        chunk.map((it) => ({
+          userId,
+          sourceId,
+          sourceJobId: it.sourceJobId,
+          raw: it.raw as never,
+          normalized: it.normalized as never,
+        })),
+      )
+      .onConflictDoNothing({ target: [discoveries.sourceId, discoveries.sourceJobId] })
+      .returning({ id: discoveries.id, sourceJobId: discoveries.sourceJobId })
+    out.push(...rows)
+  }
+  return out
 }
 
 export interface ListOpts {

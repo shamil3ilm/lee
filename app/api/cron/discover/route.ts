@@ -13,10 +13,11 @@ import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
-// Vercel Hobby crons get up to 60s; API routes cap at 10s otherwise. On Hobby
-// this may still be enforced at 10s — with concurrency=4 in the service and a
-// handful of sources, that's usually enough. Upgrade to Pro for the full 60s.
-export const maxDuration = 60
+// Vercel Hobby with Fluid compute allows up to 300 s; discovery is
+// time-boxed below so the run always returns inside it.
+export const maxDuration = 300
+/** Wall-clock budget for discovery across all users. */
+const DISCOVERY_BUDGET_MS = 240_000
 
 interface CycleTotals {
   users: number
@@ -39,10 +40,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     errors: [],
   }
 
+  const deadline = Date.now() + DISCOVERY_BUDGET_MS
   for (const user of allUsers) {
     try {
       const ai = await getAIProviderForUser(user.id)
-      const result = await runDiscoveryCycleForUser({ userId: user.id, ai })
+      const result = await runDiscoveryCycleForUser({ userId: user.id, ai, deadline })
       totals.users += 1
       totals.sources_polled += result.sourcesPolled
       totals.new_discoveries += result.newJobDiscoveries + result.newCompanyDiscoveries
