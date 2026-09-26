@@ -56,8 +56,14 @@ function json(v: unknown): string {
 
 export function ProfileForm({ profile }: ProfileFormProps) {
   const [pending, start] = useTransition()
-  const timezones = useMemo(() => listTimezones(), [])
   const [timezone, setTimezone] = useState<string>(profile?.timezone ?? DEFAULT_TIMEZONE)
+  // Browsers list canonical ids (Chromium: 'Asia/Calcutta'), so a saved alias
+  // like 'Asia/Kolkata' was missing and the select rendered blank. Always
+  // keep the current value selectable (v17 §9.1 visual QA).
+  const timezones = useMemo(() => {
+    const all = listTimezones()
+    return all.includes(timezone) ? all : [timezone, ...all]
+  }, [timezone])
 
   function handleSubmit(fd: FormData): void {
     start(async () => {
