@@ -1,7 +1,9 @@
 import { and, desc, eq, isNull, sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { aiCallLogs } from '@/lib/db/schema'
+import { randomUUID } from 'node:crypto'
 import { runAfterResponse } from '@/lib/server/after-response'
+import { noteAiCall } from './usage'
 
 /**
  * v10 logging helpers. Providers still write their own success rows during
@@ -61,9 +63,20 @@ export async function writeSkipLog(
   meta: AiCallKindMeta,
   code: string,
 ): Promise<void> {
+  // Id up front so the enclosing usage scope can report the skip.
+  const id = randomUUID()
+  noteAiCall({
+    callId: id,
+    provider: meta.provider,
+    model: null,
+    status: 'skipped',
+    inputTokens: 0,
+    outputTokens: 0,
+  })
   // Analytics only — after the response inside a request, inline elsewhere.
   await runAfterResponse('ai_skip_log', async () => {
     await db.insert(aiCallLogs).values({
+      id,
       userId: meta.userId,
       provider: meta.provider,
       kind: meta.kind,

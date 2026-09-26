@@ -58,6 +58,7 @@ import {
 } from './types'
 import type { CallMeta } from './log'
 import { recordAiCall, type AiCallRecord } from './log-call'
+import { attemptStatus, errorMessage, httpStatusOf } from './attempts'
 import { stripLatexFencing } from './utils/latex'
 import {
   coverLetterSchema,
@@ -135,10 +136,14 @@ export class GeminiProvider implements AIProvider {
       promptHash: meta.promptHash ?? hashPrompt(prompt),
     }
 
+    // Failed attempts never feed an FK, so their rows stay deferred.
+    const attemptMeta: CallMeta = { ...metaWithHash, onLogged: undefined }
+
     let lastError: unknown
     for (const modelName of models) {
       for (const wait of backoffs) {
         if (wait > 0) await new Promise((r) => setTimeout(r, wait))
+        const attemptStart = Date.now()
         try {
           const { text, promptTokens, completionTokens } = await this.generateOnce(
             modelName,
@@ -150,10 +155,23 @@ export class GeminiProvider implements AIProvider {
             promptTokens,
             completionTokens,
             meta: metaWithHash,
+            // The SDK does not expose the HTTP status of a success.
+            model: modelName,
           })
           return text
         } catch (e) {
           lastError = e
+          // One row per failed attempt, so retries and 429s are visible.
+          // Gemini returns no rate-limit headers; quota is estimated from
+          // these rows (lib/ai/quota.ts).
+          await this.logCall({
+            status: attemptStatus(e),
+            latency: Date.now() - attemptStart,
+            error: errorMessage(e),
+            meta: attemptMeta,
+            model: modelName,
+            httpStatus: httpStatusOf(e),
+          })
           const msg = (e as Error).message ?? ''
           // Only retry on transient errors: 503 overload, 429 rate limit, 500.
           // Fatal errors (404 model not found, 400 bad request) bail immediately.
@@ -163,17 +181,12 @@ export class GeminiProvider implements AIProvider {
         }
       }
     }
-    await this.logCall({
-      status: 'error',
-      latency: Date.now() - start,
-      error: lastError instanceof Error ? lastError.message : String(lastError),
-      meta: metaWithHash,
-    })
     throw lastError
   }
 
   /**
-   * One `ai_call_logs` row per generate(). Written after the response when
+   * One `ai_call_logs` row per successful generate() plus one per failed
+   * attempt. Written after the response when
    * called inside a request; inline when the caller needs the id via
    * `onLogged`. Never throws. See lib/ai/log-call.ts.
    */

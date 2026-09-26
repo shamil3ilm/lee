@@ -9,6 +9,10 @@ import type {
   YesNoResult,
 } from './types'
 import { fetchWithTimeout, GROQ_ATTEMPT_TIMEOUT_MS } from '@/lib/net/timeout'
+import { recordAiCall } from '@/lib/ai/log-call'
+import { AiHttpError, attemptStatus, errorMessage, httpStatusOf } from '@/lib/ai/attempts'
+import { parseGroqRateLimitHeaders } from '@/lib/ai/rate-limit-headers'
+import { recordQuotaSnapshot } from '@/lib/ai/quota-snapshot'
 
 const choiceResponseSchema = z.object({
   pick: z.string(),
@@ -26,7 +30,10 @@ const scoreResponseSchema = z.object({
 
 interface GroqChatResponse {
   choices?: { message?: { content?: string } }[]
+  usage?: { prompt_tokens?: number; completion_tokens?: number }
 }
+
+type DecisionLogKind = 'decision_choice' | 'decision_yesno' | 'decision_score'
 
 /**
  * Groq-backed decision provider. Uses the OpenAI-compatible Chat Completions
@@ -35,6 +42,10 @@ interface GroqChatResponse {
  * envelope, no additional latency budget.
  *
  * Errors bubble; the composed provider wrapper handles fallback.
+ *
+ * Every call writes one ai_call_logs row (tokens, model, HTTP status; never
+ * the prompt) and refreshes the Groq rate-limit snapshot. The user comes
+ * from the enclosing usage scope (lib/ai/usage).
  */
 export class GroqDecisionProvider implements DecisionProvider {
   constructor(
@@ -43,32 +54,56 @@ export class GroqDecisionProvider implements DecisionProvider {
     private readonly model = process.env.GROQ_MODEL ?? 'openai/gpt-oss-20b',
   ) {}
 
-  private async chat(prompt: string): Promise<string> {
-    const res = await fetchWithTimeout(
-      'https://api.groq.com/openai/v1/chat/completions',
-      {
-        method: 'POST',
-        headers: {
-          authorization: `Bearer ${this.apiKey}`,
-          'content-type': 'application/json',
+  private async chat(prompt: string, kind: DecisionLogKind): Promise<string> {
+    const start = Date.now()
+    try {
+      const res = await fetchWithTimeout(
+        'https://api.groq.com/openai/v1/chat/completions',
+        {
+          method: 'POST',
+          headers: {
+            authorization: `Bearer ${this.apiKey}`,
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: this.model,
+            messages: [{ role: 'user', content: prompt }],
+            response_format: { type: 'json_object' },
+            temperature: 0.1,
+          }),
         },
-        body: JSON.stringify({
-          model: this.model,
-          messages: [{ role: 'user', content: prompt }],
-          response_format: { type: 'json_object' },
-          temperature: 0.1,
-        }),
-      },
-      { timeoutMs: GROQ_ATTEMPT_TIMEOUT_MS, label: 'groq decision' },
-    )
-    if (!res.ok) {
-      const body = await res.text().catch(() => '')
-      throw new Error(`groq decision ${res.status}: ${body.slice(0, 200)}`)
+        { timeoutMs: GROQ_ATTEMPT_TIMEOUT_MS, label: 'groq decision' },
+      )
+      const rateLimit = parseGroqRateLimitHeaders(res.headers)
+      await recordQuotaSnapshot({ provider: 'groq', model: this.model, snapshot: rateLimit })
+      if (!res.ok) {
+        const body = await res.text().catch(() => '')
+        throw new AiHttpError(`groq decision ${res.status}: ${body.slice(0, 200)}`, res.status)
+      }
+      const json = (await res.json()) as GroqChatResponse
+      const content = json.choices?.[0]?.message?.content
+      if (!content) throw new Error('groq decision: empty response content')
+      await recordAiCall('groq', {
+        status: 'ok',
+        latency: Date.now() - start,
+        promptTokens: json.usage?.prompt_tokens ?? 0,
+        completionTokens: json.usage?.completion_tokens ?? 0,
+        meta: { kind },
+        model: this.model,
+        httpStatus: res.status,
+      })
+      return content
+    } catch (e) {
+      await recordAiCall('groq', {
+        status: attemptStatus(e),
+        latency: Date.now() - start,
+        error: errorMessage(e),
+        meta: { kind },
+        model: this.model,
+        httpStatus: httpStatusOf(e),
+      })
+      throw e
     }
-    const json = (await res.json()) as GroqChatResponse
-    const content = json.choices?.[0]?.message?.content
-    if (!content) throw new Error('groq decision: empty response content')
-    return content
   }
 
   async choice<T extends string>(input: ChoiceInput<T>): Promise<ChoiceResult<T>> {
@@ -84,7 +119,7 @@ export class GroqDecisionProvider implements DecisionProvider {
     ]
       .filter(Boolean)
       .join('\n')
-    const raw = await this.chat(prompt)
+    const raw = await this.chat(prompt, 'decision_choice')
     const parsed = choiceResponseSchema.parse(JSON.parse(raw))
     if (!(input.options as readonly string[]).includes(parsed.pick)) {
       throw new Error(`groq decision.choice: pick "${parsed.pick}" not in options`)
@@ -103,7 +138,7 @@ export class GroqDecisionProvider implements DecisionProvider {
     ]
       .filter(Boolean)
       .join('\n')
-    const raw = await this.chat(prompt)
+    const raw = await this.chat(prompt, 'decision_yesno')
     return yesNoResponseSchema.parse(JSON.parse(raw))
   }
 
@@ -119,7 +154,7 @@ export class GroqDecisionProvider implements DecisionProvider {
     ]
       .filter(Boolean)
       .join('\n')
-    const raw = await this.chat(prompt)
+    const raw = await this.chat(prompt, 'decision_score')
     return scoreResponseSchema.parse(JSON.parse(raw))
   }
 }

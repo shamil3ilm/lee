@@ -8,6 +8,7 @@ import {
   boolean,
   jsonb,
   smallint,
+  real,
   index,
   uniqueIndex,
   customType,
@@ -811,6 +812,13 @@ export const aiCallLogs = pgTable('ai_call_logs', {
   // v14 — model id actually called (e.g. 'openai/gpt-oss-20b'). Nullable so
   // pre-v14 rows stay valid; Model Lab writes it for every arena call.
   model: text('model'),
+  // v18 — usage tracking. `httpStatus` is the provider's HTTP status for the
+  // attempt (429 rows are rate-limited retries); `audioSeconds` is the
+  // transcribed audio duration when the provider reports it, else
+  // `inputBytes` carries the upload size. Counts only — never content.
+  httpStatus: smallint('http_status'),
+  audioSeconds: real('audio_seconds'),
+  inputBytes: integer('input_bytes'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   // perf — every analytics / usage query filters by (user, created_at window).
@@ -1027,4 +1035,33 @@ export const scamAllowList = pgTable(
   (t) => ({
     userKindValueUq: uniqueIndex('scam_allow_list_user_kind_value_uq').on(t.userId, t.kind, t.value),
   }),
+)
+
+// ---------------------------------------------------------------------------
+// v18 — latest provider rate-limit snapshot per (user, provider, model).
+// Upserted from response headers (Groq `x-ratelimit-*`); never appended, so
+// the table stays at one row per model a user has called. Groq semantics:
+// `limit/remaining_requests` are requests per DAY, `limit/remaining_tokens`
+// are tokens per MINUTE (https://console.groq.com/docs/rate-limits).
+// ---------------------------------------------------------------------------
+
+export const aiQuotaSnapshots = pgTable(
+  'ai_quota_snapshots',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    provider: text('provider').notNull(),
+    model: text('model').notNull(),
+    limitRequests: integer('limit_requests'),
+    remainingRequests: integer('remaining_requests'),
+    resetRequestsAt: timestamp('reset_requests_at', { withTimezone: true }),
+    limitTokens: integer('limit_tokens'),
+    remainingTokens: integer('remaining_tokens'),
+    resetTokensAt: timestamp('reset_tokens_at', { withTimezone: true }),
+    // Set from `retry-after` on a 429; null otherwise.
+    retryAfterAt: timestamp('retry_after_at', { withTimezone: true }),
+    observedAt: timestamp('observed_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.userId, t.provider, t.model] }) }),
 )

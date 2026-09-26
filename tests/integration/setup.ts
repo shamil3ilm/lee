@@ -32,6 +32,7 @@ const TABLES = [
   'company_discoveries',
   'discoveries',
   'sources',
+  'ai_quota_snapshots',
   'ai_call_logs',
   'sessions',
   'accounts',
