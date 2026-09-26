@@ -3,6 +3,7 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { Bot, Download, HelpCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/empty-state'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Tooltip,
@@ -106,7 +107,7 @@ export function AIUsageCard({ data, className }: AIUsageCardProps) {
                 <span
                   className={cn(
                     'tabular-nums text-foreground',
-                    data.signalSkipRate > 0.25 && 'text-rose-500',
+                    data.signalSkipRate > 0.25 && 'text-danger',
                   )}
                 >
                   {formatPct(data.signalSkipRate)}
@@ -137,13 +138,13 @@ export function AIUsageCard({ data, className }: AIUsageCardProps) {
       </CardHeader>
       <CardContent className="flex-1 space-y-4 pt-0">
         {isEmpty ? (
-          <div className="flex h-56 flex-col items-center justify-center gap-2 rounded-md border border-dashed text-center">
-            <Bot className="size-6 text-muted-foreground" />
-            <p className="max-w-[240px] text-xs text-muted-foreground">
-              Trigger AI-powered features (URL parsing, tailored CVs, discovery
-              scoring) to build up cost data here.
-            </p>
-          </div>
+          <EmptyState
+            size="sm"
+            className="h-56"
+            icon={Bot}
+            title="No AI usage yet"
+            description="Trigger AI-powered features (URL parsing, tailored CVs, discovery scoring) to build up cost data here."
+          />
         ) : (
           <>
             <div className="overflow-hidden rounded-md border">
@@ -189,7 +190,7 @@ export function AIUsageCard({ data, className }: AIUsageCardProps) {
                       <td
                         className={cn(
                           'px-3 py-1.5 text-right tabular-nums',
-                          r.skipRate > 0.25 ? 'text-rose-500' : 'text-muted-foreground',
+                          r.skipRate > 0.25 ? 'text-danger' : 'text-muted-foreground',
                         )}
                       >
                         {formatPct(r.skipRate)}
@@ -237,7 +238,7 @@ export function AIUsageCard({ data, className }: AIUsageCardProps) {
                               key={`${r.kind}:${r.promptVersion}`}
                               className={cn(
                                 'border-t',
-                                isPoor && 'bg-yellow-500/10',
+                                isPoor && 'bg-warning/10',
                               )}
                             >
                               <td className="px-3 py-1.5 font-medium">{r.kind}</td>
@@ -251,7 +252,7 @@ export function AIUsageCard({ data, className }: AIUsageCardProps) {
                                 className={cn(
                                   'px-3 py-1.5 text-right tabular-nums',
                                   isPoor
-                                    ? 'text-yellow-700 dark:text-yellow-400 font-medium'
+                                    ? 'text-warning font-medium'
                                     : 'text-muted-foreground',
                                 )}
                               >

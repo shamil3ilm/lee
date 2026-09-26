@@ -1,4 +1,5 @@
 'use client'
+import { CHART_PRIMARY } from '@/lib/ui/chart-palette'
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import {
   ChartContainer,
@@ -9,7 +10,7 @@ import {
 import type { ResponseTimeBucket } from '@/lib/analytics/service'
 
 const CONFIG: ChartConfig = {
-  count: { label: 'Applications', color: 'hsl(217 91% 60%)' },
+  count: { label: 'Applications', color: CHART_PRIMARY },
 }
 
 export function ResponseTimeChart({ data }: { data: ResponseTimeBucket[] }) {

@@ -1,4 +1,5 @@
 'use client'
+import { CHART_PRIMARY } from '@/lib/ui/chart-palette'
 import { CartesianGrid, Scatter, ScatterChart, XAxis, YAxis, ZAxis } from 'recharts'
 import {
   ChartContainer,
@@ -17,7 +18,7 @@ const OUTCOME_LABEL: Record<number, string> = {
 }
 
 const CONFIG: ChartConfig = {
-  calibration: { label: 'Discoveries', color: 'hsl(258 90% 66%)' },
+  calibration: { label: 'Discoveries', color: CHART_PRIMARY },
 }
 
 export interface CalibrationDatum {

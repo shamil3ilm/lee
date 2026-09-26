@@ -81,7 +81,7 @@ export function ComparePanel({ documents, applications }: ComparePanelProps) {
                       <td
                         className={cn(
                           'py-2 text-right tabular-nums',
-                          d.delta === null ? 'text-muted-foreground' : d.delta > 0 ? 'text-emerald-600' : d.delta < 0 ? 'text-rose-600' : '',
+                          d.delta === null ? 'text-muted-foreground' : d.delta > 0 ? 'text-success' : d.delta < 0 ? 'text-danger' : '',
                         )}
                       >
                         {d.delta === null ? '—' : d.delta > 0 ? `+${d.delta}` : d.delta}

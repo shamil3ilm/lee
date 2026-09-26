@@ -101,17 +101,17 @@ export const HEADLINE_SHORT: Record<ComponentHeadlineKey, string> = {
 
 export function scoreTone(score: number | null | undefined): { text: string; bar: string; bg: string } {
   if (score === null || score === undefined) return { text: 'text-muted-foreground', bar: 'bg-muted', bg: 'bg-muted/40' }
-  if (score >= 85) return { text: 'text-emerald-600 dark:text-emerald-400', bar: 'bg-emerald-500', bg: 'bg-emerald-500/15' }
-  if (score >= 75) return { text: 'text-lime-600 dark:text-lime-400', bar: 'bg-lime-500', bg: 'bg-lime-500/15' }
-  if (score >= 65) return { text: 'text-amber-600 dark:text-amber-400', bar: 'bg-amber-500', bg: 'bg-amber-500/15' }
-  if (score >= 50) return { text: 'text-orange-600 dark:text-orange-400', bar: 'bg-orange-500', bg: 'bg-orange-500/15' }
-  return { text: 'text-rose-600 dark:text-rose-400', bar: 'bg-rose-500', bg: 'bg-rose-500/15' }
+  if (score >= 85) return { text: 'text-success', bar: 'bg-success', bg: 'bg-success-soft' }
+  if (score >= 75) return { text: 'text-info', bar: 'bg-info', bg: 'bg-info-soft' }
+  if (score >= 65) return { text: 'text-warning', bar: 'bg-warning', bg: 'bg-warning-soft' }
+  if (score >= 50) return { text: 'text-warning', bar: 'bg-warning/70', bg: 'bg-warning-soft' }
+  return { text: 'text-danger', bar: 'bg-danger', bg: 'bg-danger-soft' }
 }
 
 export const SEVERITY_ORDER: Severity[] = ['critical', 'major', 'minor']
 
-export const SEVERITY_BADGE: Record<Severity, 'rose' | 'violet' | 'slate'> = {
-  critical: 'rose',
-  major: 'violet',
-  minor: 'slate',
+export const SEVERITY_BADGE: Record<Severity, 'danger' | 'warning' | 'neutral'> = {
+  critical: 'danger',
+  major: 'warning',
+  minor: 'neutral',
 }

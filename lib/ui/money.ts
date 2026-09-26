@@ -1,3 +1,5 @@
+import { EXPENSE_CATEGORIES } from '@/lib/expenses/categories'
+import { CHART_MUTED, categorical } from '@/lib/ui/chart-palette'
 import { DEFAULT_CURRENCY, localeForCurrency } from '@/lib/money/currency'
 
 export { DEFAULT_CURRENCY } from '@/lib/money/currency'
@@ -45,32 +47,15 @@ export function formatMoneyAxis(amountCents: number, currency: string = DEFAULT_
  * distinct enough at small chart sizes and reuse the app's existing
  * status palette hue-range so cards feel consistent.
  */
-export const CATEGORY_COLOURS: Record<string, string> = {
-  subscription: 'hsl(258 90% 66%)',
-  food: 'hsl(30 88% 55%)',
-  groceries: 'hsl(38 92% 50%)',
-  dining: 'hsl(15 84% 55%)',
-  electricity: 'hsl(45 96% 55%)',
-  utilities: 'hsl(220 70% 55%)',
-  water: 'hsl(200 90% 60%)',
-  internet: 'hsl(217 91% 60%)',
-  transport: 'hsl(180 68% 45%)',
-  fuel: 'hsl(12 78% 50%)',
-  housing: 'hsl(275 60% 55%)',
-  rent: 'hsl(288 65% 55%)',
-  mortgage: 'hsl(300 55% 50%)',
-  health: 'hsl(340 82% 60%)',
-  insurance: 'hsl(210 55% 60%)',
-  entertainment: 'hsl(320 80% 65%)',
-  education: 'hsl(240 60% 65%)',
-  shopping: 'hsl(280 65% 60%)',
-  travel: 'hsl(190 75% 55%)',
-  gifts: 'hsl(350 78% 65%)',
-  fees: 'hsl(0 70% 55%)',
-  tax: 'hsl(0 60% 45%)',
-  other: 'hsl(215 20% 55%)',
-}
+/**
+ * Category colours come from the brand categorical chart palette
+ * (lib/ui/chart-palette.ts): each known category gets a stable slot by its
+ * position in EXPENSE_CATEGORIES; unknown categories use the muted slot.
+ */
+export const CATEGORY_COLOURS: Record<string, string> = Object.fromEntries(
+  EXPENSE_CATEGORIES.map((c, i) => [c, categorical(i)]),
+)
 
 export function colourFor(category: string): string {
-  return CATEGORY_COLOURS[category] ?? 'hsl(215 20% 55%)'
+  return CATEGORY_COLOURS[category] ?? CHART_MUTED
 }

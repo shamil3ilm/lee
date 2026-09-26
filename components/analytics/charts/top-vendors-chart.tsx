@@ -1,4 +1,5 @@
 'use client'
+import { CHART_PRIMARY } from '@/lib/ui/chart-palette'
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import {
   ChartContainer,
@@ -9,7 +10,7 @@ import {
 import { formatMoney, formatMoneyAxis } from '@/lib/ui/money'
 
 const CONFIG: ChartConfig = {
-  totalCents: { label: 'Spend', color: 'hsl(258 90% 66%)' },
+  totalCents: { label: 'Spend', color: CHART_PRIMARY },
 }
 
 export interface TopVendorDatum {

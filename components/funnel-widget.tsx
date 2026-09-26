@@ -1,3 +1,4 @@
+import { TONE_BG } from '@/lib/ui/tones'
 import { Card, CardContent } from '@/components/ui/card'
 
 interface FunnelWidgetProps {
@@ -13,10 +14,10 @@ interface FunnelWidgetProps {
 }
 
 const STAGES: Array<{ key: 'applied' | 'screen' | 'interview' | 'offer'; label: string; bar: string }> = [
-  { key: 'applied', label: 'Applied', bar: 'bg-blue-500 dark:bg-blue-400' },
-  { key: 'screen', label: 'Screen', bar: 'bg-indigo-500 dark:bg-indigo-400' },
-  { key: 'interview', label: 'Interview', bar: 'bg-violet-500 dark:bg-violet-400' },
-  { key: 'offer', label: 'Offer', bar: 'bg-emerald-500 dark:bg-emerald-400' },
+  { key: 'applied', label: 'Applied', bar: TONE_BG.applied },
+  { key: 'screen', label: 'Screen', bar: TONE_BG.screen },
+  { key: 'interview', label: 'Interview', bar: TONE_BG.interview },
+  { key: 'offer', label: 'Offer', bar: TONE_BG.offer },
 ]
 
 /**

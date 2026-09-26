@@ -20,15 +20,15 @@ import { cn } from '@/lib/utils'
 import { ReportItPanel } from './report-it-panel'
 
 const VARIANT: Record<RiskLevel, BadgeProps['variant']> = {
-  safe: 'emerald',
-  caution: 'slate',
-  likely_scam: 'rose',
+  safe: 'success',
+  caution: 'warning',
+  likely_scam: 'danger',
 }
 
 const DOT: Record<RiskLevel, string> = {
-  safe: 'bg-emerald-500',
-  caution: 'bg-amber-500',
-  likely_scam: 'bg-rose-500',
+  safe: 'bg-success',
+  caution: 'bg-warning',
+  likely_scam: 'bg-danger',
 }
 
 const ICON: Record<RiskLevel, typeof ShieldCheck> = {
@@ -126,10 +126,10 @@ function RiskDetails({ risk }: { risk: RiskView }) {
 
 function VerdictNote({ risk }: { risk: RiskView }) {
   if (risk.verdict === 'not_scam') {
-    return <p className="text-sm text-emerald-700 dark:text-emerald-400">You marked this as not a scam.</p>
+    return <p className="text-sm text-success">You marked this as not a scam.</p>
   }
   if (risk.verdict === 'confirmed_scam') {
-    return <p className="text-sm text-rose-700 dark:text-rose-400">You confirmed this is a scam. It stays quarantined.</p>
+    return <p className="text-sm text-danger">You confirmed this is a scam. It stays quarantined.</p>
   }
   if (risk.allowListed && risk.level === 'likely_scam') {
     return (

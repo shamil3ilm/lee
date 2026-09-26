@@ -101,7 +101,7 @@ export function BatchPanel() {
                             {r.companyName ?? '—'} · {r.status}
                           </span>
                           {r.missingSkills.length ? (
-                            <span className="block truncate text-rose-600" title={r.missingSkills.join(', ')}>
+                            <span className="block truncate text-danger" title={r.missingSkills.join(', ')}>
                               missing: {r.missingSkills.slice(0, 3).join(', ')}
                             </span>
                           ) : null}

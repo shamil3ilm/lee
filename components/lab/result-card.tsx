@@ -60,7 +60,7 @@ export function ResultCard({
     <Card
       className={cn(
         'flex min-w-0 flex-col',
-        result.vote === 1 && 'border-emerald-500 ring-1 ring-emerald-500/40',
+        result.vote === 1 && 'border-success ring-1 ring-success/40',
       )}
     >
       <CardHeader className="space-y-1.5 p-4 pb-2">
@@ -113,8 +113,8 @@ export function ResultCard({
               className={cn(
                 'inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-medium',
                 result.schemaValid
-                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                  : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
+                  ? 'bg-success-soft text-success'
+                  : 'bg-danger-soft text-danger',
               )}
               title={m?.schemaErrors?.join('\n')}
             >
@@ -131,8 +131,8 @@ export function ResultCard({
             className={cn(
               'rounded-md border p-3 text-xs',
               errorKind === 'rate_limited'
-                ? 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200'
-                : 'border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-200',
+                ? 'border-warning/30 bg-warning-soft text-warning'
+                : 'border-danger/30 bg-danger-soft text-danger',
             )}
           >
             <p className="font-semibold">{ERROR_LABELS[errorKind ?? 'error'] ?? 'Error'}</p>
@@ -148,7 +148,7 @@ export function ResultCard({
           </pre>
         )}
         {m?.schemaErrors?.length ? (
-          <ul className="list-disc space-y-0.5 pl-4 text-[11px] text-rose-600">
+          <ul className="list-disc space-y-0.5 pl-4 text-[11px] text-danger">
             {m.schemaErrors.slice(0, 5).map((e) => (
               <li key={e}>{e}</li>
             ))}

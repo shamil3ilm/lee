@@ -1,4 +1,5 @@
 'use client'
+import { toneColor } from '@/lib/ui/tones'
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import {
   ChartContainer,
@@ -11,10 +12,10 @@ import {
 import type { SourceFunnelRow } from '@/lib/analytics/service'
 
 const CONFIG: ChartConfig = {
-  applied: { label: 'Applied', color: 'hsl(217 91% 60%)' },
-  screened: { label: 'Screened', color: 'hsl(239 84% 67%)' },
-  interviewed: { label: 'Interviewed', color: 'hsl(258 90% 66%)' },
-  offered: { label: 'Offered', color: 'hsl(142 71% 45%)' },
+  applied: { label: 'Applied', color: toneColor('applied') },
+  screened: { label: 'Screened', color: toneColor('screen') },
+  interviewed: { label: 'Interviewed', color: toneColor('interview') },
+  offered: { label: 'Offered', color: toneColor('offer') },
 }
 
 export function SourceFunnelChart({ data }: { data: SourceFunnelRow[] }) {

@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { CheckSquare, Plus } from 'lucide-react'
 import type { Todo } from '@/lib/db/queries/todos'
+import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -51,9 +52,7 @@ export function TodosCard({ applicationId, todos, now }: TodosCardProps) {
       </CardHeader>
       <CardContent className="pt-0">
         {todos.length === 0 ? (
-          <p className="rounded-md border border-dashed px-3 py-6 text-center text-xs text-muted-foreground">
-            No todos linked to this application yet.
-          </p>
+          <EmptyState size="sm" icon={CheckSquare} title="No todos linked to this application yet." />
         ) : (
           <ul className="space-y-2">
             {todos.map((t) => (

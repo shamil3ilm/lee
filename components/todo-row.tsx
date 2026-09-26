@@ -151,7 +151,7 @@ export function TodoRow({ todo, applicationLabel, now }: TodoRowProps) {
               className={cn(
                 'inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5',
                 overdue
-                  ? 'border-red-200 bg-red-50 text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200'
+                  ? 'border-danger/30 bg-danger-soft text-danger'
                   : 'border-border',
               )}
               title={new Date(todo.dueAt).toLocaleString(DISPLAY_LOCALE)}

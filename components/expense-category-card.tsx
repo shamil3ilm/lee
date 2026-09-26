@@ -1,3 +1,4 @@
+import { toneColor } from '@/lib/ui/tones'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { colourFor, formatMoney } from '@/lib/ui/money'
@@ -27,9 +28,9 @@ export function ExpenseCategoryCard({
   const pct = hasBudget ? (totalCents / budgetCents!) * 100 : 0
   const overBudget = hasBudget && totalCents > budgetCents!
   const barColour = overBudget
-    ? 'hsl(0 84% 60%)'
+    ? toneColor('danger')
     : hasBudget && pct >= 80
-      ? 'hsl(38 92% 50%)'
+      ? toneColor('warning')
       : colourFor(category)
   return (
     <Card>

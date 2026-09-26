@@ -132,15 +132,15 @@ export function StalenessBanner({
       className={cn(
         'flex items-start gap-2 rounded-md border px-3 py-2 text-sm',
         isCritical
-          ? 'border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-100'
-          : 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100',
+          ? 'border-danger/30 bg-danger-soft text-danger'
+          : 'border-warning/30 bg-warning-soft text-warning',
         className,
       )}
     >
       <AlertTriangle
         className={cn(
           'mt-0.5 size-4 shrink-0',
-          isCritical ? 'text-rose-600 dark:text-rose-300' : 'text-amber-600 dark:text-amber-300',
+          isCritical ? 'text-danger' : 'text-warning',
         )}
       />
       <div className="min-w-0 flex-1">

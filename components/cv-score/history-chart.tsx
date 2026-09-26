@@ -1,13 +1,14 @@
 'use client'
+import { categorical } from '@/lib/ui/chart-palette'
 import { DISPLAY_LOCALE } from '@/lib/ui/date'
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
 import type { HistoryPoint } from './client'
 
 const config: ChartConfig = {
-  total: { label: 'Total', color: 'hsl(221 83% 53%)' },
-  ats: { label: 'ATS', color: 'hsl(142 71% 45%)' },
-  impact: { label: 'Impact', color: 'hsl(38 92% 50%)' },
+  total: { label: 'Total', color: categorical(0) },
+  ats: { label: 'ATS', color: categorical(1) },
+  impact: { label: 'Impact', color: categorical(4) },
 }
 
 /** Score history (oldest → newest) for the current CV / application. */

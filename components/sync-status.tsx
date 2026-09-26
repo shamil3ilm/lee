@@ -33,11 +33,11 @@ export function SyncStatus({
 }: SyncStatusProps) {
   if (!connected) {
     return (
-      <Card className="border-yellow-200 bg-yellow-50 dark:border-yellow-900/60 dark:bg-yellow-950/30">
+      <Card className="border-warning/30 bg-warning-soft">
         <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
           {/* One flowing paragraph: as three flex items the title was
               squeezed into a narrow column on phones (v17 §9.1). */}
-          <div className="flex min-w-0 items-start gap-2 text-yellow-900 dark:text-yellow-200">
+          <div className="flex min-w-0 items-start gap-2 text-warning">
             <AlertCircle className="mt-0.5 size-4 shrink-0" />
             <p>
               <span className="font-medium">Gmail not connected</span>{' '}
@@ -65,15 +65,15 @@ export function SyncStatus({
           </span>
         </div>
         <div className="flex items-center gap-1.5 text-muted-foreground">
-          <Mail className="size-3.5 text-blue-600 dark:text-blue-400" />
+          <Mail className="size-3.5 text-info" />
           <span className="font-medium text-foreground">{emailsToday}</span>
           <span>new email{emailsToday === 1 ? '' : 's'} today</span>
         </div>
         <div className="flex items-center gap-1.5 text-muted-foreground">
           {needsFollowUp === 0 ? (
-            <CheckCircle2 className="size-3.5 text-emerald-500" />
+            <CheckCircle2 className="size-3.5 text-success" />
           ) : (
-            <Bell className="size-3.5 text-amber-500" />
+            <Bell className="size-3.5 text-warning" />
           )}
           <span className="font-medium text-foreground">{needsFollowUp}</span>
           <span>need{needsFollowUp === 1 ? 's' : ''} follow-up</span>

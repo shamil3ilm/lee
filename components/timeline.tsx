@@ -146,7 +146,7 @@ function StageItem({ item }: { item: TimelineStage }) {
   return (
     <li className="rounded-md border bg-card p-3 text-sm">
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 rounded bg-violet-100 p-1.5 text-violet-700 dark:bg-violet-950 dark:text-violet-300">
+        <div className="mt-0.5 rounded bg-stage-interview-soft p-1.5 text-stage-interview">
           <Calendar className="size-3.5" />
         </div>
         <div className="min-w-0 flex-1">
@@ -381,7 +381,7 @@ function EmailActivityItem({ item }: { item: TimelineActivity }) {
   return (
     <li className="rounded-md border bg-card p-3 text-sm">
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 rounded bg-blue-100 p-1.5 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+        <div className="mt-0.5 rounded bg-info-soft p-1.5 text-info">
           <Mail className="size-3.5" />
         </div>
         <div className="min-w-0 flex-1">

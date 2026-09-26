@@ -430,7 +430,7 @@ export function LatexEditor({
                 </button>
               </div>
               {hint ? (
-                <p className="mb-2 rounded border border-amber-400/40 bg-amber-100/60 px-2 py-1 font-medium text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
+                <p className="mb-2 rounded border border-warning/40 bg-warning-soft px-2 py-1 font-medium text-warning">
                   Suggestion: {hint.message}
                 </p>
               ) : null}

@@ -3,6 +3,7 @@ import * as React from 'react'
 import Link from 'next/link'
 import { Download, HelpCircle, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/empty-state'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Tooltip,
@@ -76,10 +77,7 @@ export function AnalyticsCardShell({
       </CardHeader>
       <CardContent className="flex-1 pt-0">
         {isEmpty ? (
-          <div className="flex h-56 flex-col items-center justify-center gap-2 rounded-md border border-dashed text-center">
-            <EmptyIcon className="size-6 text-muted-foreground" />
-            <p className="max-w-[220px] text-xs text-muted-foreground">{emptyMessage}</p>
-          </div>
+          <EmptyState size="sm" className="h-56" icon={EmptyIcon} title="Nothing to chart yet" description={emptyMessage} />
         ) : (
           <div className="h-56 w-full">{children}</div>
         )}

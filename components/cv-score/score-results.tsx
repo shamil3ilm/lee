@@ -78,7 +78,7 @@ export function ScoreResults({ result, history, onPreviewFix }: ScoreResultsProp
               <p className="mt-1">Scorer v{result.scorerVersion}. Grades: A ≥ 85, B ≥ 75, C ≥ 65, D ≥ 50, F below.</p>
             </details>
             {skippedNotes.length ? (
-              <div className="flex items-start gap-1.5 rounded-md bg-amber-500/10 p-2 text-left text-xs text-amber-700 dark:text-amber-300">
+              <div className="flex items-start gap-1.5 rounded-md bg-warning-soft p-2 text-left text-xs text-warning">
                 <Info className="mt-0.5 size-3.5 shrink-0" />
                 <ul className="space-y-0.5">
                   {skippedNotes.map((s) => (

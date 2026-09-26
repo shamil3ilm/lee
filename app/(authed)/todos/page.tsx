@@ -4,6 +4,7 @@ import { requireUserId } from '@/lib/auth/require-session'
 import * as todosQ from '@/lib/db/queries/todos'
 import * as appsQ from '@/lib/db/queries/applications'
 import { PageHeader } from '@/components/page-header'
+import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { TodoForm } from '@/components/todo-form'
@@ -95,10 +96,7 @@ export default async function TodosPage({ searchParams }: TodosPageProps) {
           </span>
         </div>
         {todos.length === 0 && status === 'done' ? (
-          <div className="flex flex-col items-center gap-2 rounded-md border border-dashed py-10 text-sm text-muted-foreground">
-            <CheckSquare className="size-6" />
-            <p>No completed todos yet.</p>
-          </div>
+          <EmptyState icon={CheckSquare} title="No completed todos yet." />
         ) : (
           <TodosList todos={todos} applicationLabels={applicationLabels} now={now} />
         )}

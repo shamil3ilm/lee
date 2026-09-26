@@ -48,7 +48,7 @@ export function HeadlineCard({ score, findings, jdOnly, onFilter }: HeadlineCard
             <ScoreBar score={score.score} />
             <p className="text-xs text-muted-foreground">{score.verdict}</p>
             {score.reason && !score.skipped ? (
-              <p className="text-[11px] text-amber-600 dark:text-amber-400">{score.reason}</p>
+              <p className="text-[11px] text-warning">{score.reason}</p>
             ) : null}
           </>
         )}

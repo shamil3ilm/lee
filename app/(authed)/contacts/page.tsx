@@ -5,6 +5,7 @@ import * as companiesQ from '@/lib/db/queries/companies'
 import { AddContactDialog } from '@/components/add-contact-dialog'
 import { ContactActions } from '@/components/contact-actions'
 import { PageHeader } from '@/components/page-header'
+import { EmptyState } from '@/components/empty-state'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
@@ -66,11 +67,12 @@ export default async function ContactsPage() {
       />
 
       {contacts.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-16 text-center">
-          <Users className="size-6 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">No contacts yet.</p>
-          <AddContactDialog companies={companyOptions} />
-        </div>
+        <EmptyState
+          icon={Users}
+          title="No contacts yet."
+          description="Add recruiters, referrers and interviewers to keep your network in one place."
+          action={<AddContactDialog companies={companyOptions} />}
+        />
       ) : (
         <div className="space-y-6">
           {groups.map((g) => (

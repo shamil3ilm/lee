@@ -3,6 +3,7 @@ import { Target } from 'lucide-react'
 import { AnalyticsCardShell } from './card-shell'
 import type { BudgetVsActualRow } from '@/lib/analytics/service'
 import { colourFor, formatMoney } from '@/lib/ui/money'
+import { toneColor } from '@/lib/ui/tones'
 
 interface BudgetVsActualCardProps {
   data: BudgetVsActualRow[]
@@ -39,11 +40,11 @@ export function BudgetVsActualCard({ data }: BudgetVsActualCardProps) {
           const overBudget = r.budgetCents > 0 && r.actualCents > r.budgetCents
           const nearBudget = r.budgetCents > 0 && pctBudget >= 80 && pctBudget < 100
           const barColour = r.budgetCents === 0
-            ? 'hsl(215 20% 65%)'
+            ? toneColor('neutral')
             : overBudget
-              ? 'hsl(0 84% 60%)'
+              ? toneColor('danger')
               : nearBudget
-                ? 'hsl(38 92% 50%)'
+                ? toneColor('warning')
                 : colourFor(r.category)
           const budgetMarker = r.budgetCents > 0 && r.budgetCents < denom
             ? (r.budgetCents / denom) * 100
@@ -65,7 +66,7 @@ export function BudgetVsActualCard({ data }: BudgetVsActualCardProps) {
                           overBudget
                             ? 'ml-2 text-destructive'
                             : nearBudget
-                              ? 'ml-2 text-amber-600 dark:text-amber-400'
+                              ? 'ml-2 text-warning'
                               : 'ml-2'
                         }
                       >
