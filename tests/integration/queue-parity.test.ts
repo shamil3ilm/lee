@@ -6,24 +6,6 @@ import type { AIProvider } from '@/lib/ai'
 // hand it the test's fixture provider. The full module surface is mocked so
 // nothing under lib/ai (the Google SDK) loads — see cron-sync-all.test.ts.
 const aiHolder = vi.hoisted(() => ({ current: null as unknown }))
-// The daily plan includes the usage snapshot. Its storage-size queries
-// (pg_database_size / pg_total_relation_size) are instant on Neon but walk
-// every relation file in PGlite, which made these multi-day parity tests
-// order-dependently slow. Parity is about the queue, so stub only the two
-// size lookups; queue and file measurements stay real.
-vi.mock('@/lib/usage/collect', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/usage/collect')>()
-  return {
-    ...actual,
-    collectMeasurements: async (now: Date) => ({
-      dbSizeBytes: 1_000_000,
-      largestTables: [],
-      queue: await actual.queueCounts(now),
-      assetBytes: await actual.assetBytesByUser(),
-    }),
-  }
-})
-
 vi.mock('@/lib/ai', () => ({
   getAIProvider: () => aiHolder.current,
   getAIProviderForUser: async () => aiHolder.current,

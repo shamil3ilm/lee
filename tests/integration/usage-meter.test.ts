@@ -257,6 +257,7 @@ describe('takeUsageSnapshot', () => {
       gmailThreads: 0,
       compactedDiscoveries: 0,
       queueJobs: 0,
+      webVitals: 0,
     })
     const r = await takeUsageSnapshot()
     expect(r.throttles).toEqual(['early_retention'])
@@ -289,7 +290,7 @@ describe('warnings', () => {
     vi.restoreAllMocks()
     measure(0.93)
     vi.spyOn(retention, 'runRetention').mockResolvedValue({
-      tombstonedDiscoveries: 0, aiCallLogs: 0, gmailThreads: 0, compactedDiscoveries: 0, queueJobs: 0,
+      tombstonedDiscoveries: 0, aiCallLogs: 0, gmailThreads: 0, compactedDiscoveries: 0, queueJobs: 0, webVitals: 0,
     })
     expect((await takeUsageSnapshot(new Date('2026-09-11T09:00:00Z'))).todosCreated).toBe(1)
     list = await db.select().from(todos).where(eq(todos.userId, u.id))
@@ -422,5 +423,18 @@ describe('Neon service key', () => {
     })
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe('https://console.neon.tech/api/v2/projects?limit=1')
     expect(await testServiceSecretAction('neon')).toEqual({ ok: true, error: null })
+  })
+})
+
+describe('size measurements', () => {
+  it('exact and catalog-estimate paths both return sane values', async () => {
+    const { databaseSizeBytes, largestTables, LARGEST_TABLES_LIMIT } = await import('@/lib/usage/collect')
+    for (const exact of [true, false]) {
+      expect(await databaseSizeBytes(undefined, exact)).toBeGreaterThanOrEqual(0)
+      const tables = await largestTables(undefined, exact)
+      expect(tables.length).toBeGreaterThan(0)
+      expect(tables.length).toBeLessThanOrEqual(LARGEST_TABLES_LIMIT)
+      expect(tables.every((t) => typeof t.name === 'string' && t.bytes >= 0)).toBe(true)
+    }
   })
 })

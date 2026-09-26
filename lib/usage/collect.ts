@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { db, type DbClient } from '@/lib/db/client'
+import { db, isPglite, type DbClient } from '@/lib/db/client'
 import type { MeterReading } from './meters'
 import type { NeonUsage } from './neon-api'
 
@@ -18,25 +18,52 @@ function toRows<T>(result: unknown): T[] {
   return Array.isArray(rows) ? (rows as T[]) : []
 }
 
-export async function databaseSizeBytes(client: DbClient = db): Promise<number> {
+/**
+ * Exact sizes (pg_database_size / pg_total_relation_size) read the relation
+ * files. On Neon that is fast; in PGlite (local dev and tests) it walks an
+ * in-memory filesystem that grows over a long test run, taking seconds. So
+ * on PGlite we estimate from the catalog (pages × block size), which is
+ * instant; production (Neon) always uses the exact functions.
+ */
+const EXACT_SIZES = !isPglite
+
+export async function databaseSizeBytes(client: DbClient = db, exact = EXACT_SIZES): Promise<number> {
   const rows = toRows<{ size: string | number }>(
-    await client.execute(sql`select pg_database_size(current_database())::bigint as size`),
+    await client.execute(
+      exact
+        ? sql`select pg_database_size(current_database())::bigint as size`
+        : sql`select (coalesce(sum(relpages), 0) * current_setting('block_size')::bigint)::bigint as size from pg_class`,
+    ),
   )
   return Number(rows[0]?.size ?? 0)
 }
 
 export const LARGEST_TABLES_LIMIT = 8
 
-export async function largestTables(client: DbClient = db): Promise<{ name: string; bytes: number }[]> {
+export async function largestTables(
+  client: DbClient = db,
+  exact = EXACT_SIZES,
+): Promise<{ name: string; bytes: number }[]> {
   const rows = toRows<{ name: string; bytes: string | number }>(
-    await client.execute(sql`
-      select c.relname as name, pg_total_relation_size(c.oid)::bigint as bytes
-      from pg_class c
-      join pg_namespace n on n.oid = c.relnamespace
-      where c.relkind = 'r' and n.nspname = 'public'
-      order by pg_total_relation_size(c.oid) desc
-      limit ${LARGEST_TABLES_LIMIT}
-    `),
+    await client.execute(
+      exact
+        ? sql`
+            select c.relname as name, pg_total_relation_size(c.oid)::bigint as bytes
+            from pg_class c
+            join pg_namespace n on n.oid = c.relnamespace
+            where c.relkind = 'r' and n.nspname = 'public'
+            order by pg_total_relation_size(c.oid) desc
+            limit ${LARGEST_TABLES_LIMIT}
+          `
+        : sql`
+            select c.relname as name, (c.relpages * current_setting('block_size')::bigint)::bigint as bytes
+            from pg_class c
+            join pg_namespace n on n.oid = c.relnamespace
+            where c.relkind = 'r' and n.nspname = 'public'
+            order by c.relpages desc, c.relname
+            limit ${LARGEST_TABLES_LIMIT}
+          `,
+    ),
   )
   return rows.map((r) => ({ name: r.name, bytes: Number(r.bytes) }))
 }
