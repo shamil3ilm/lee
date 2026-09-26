@@ -57,6 +57,11 @@ interface MergeDocumentsDialogProps {
   triggerIcon?: React.ReactNode
   variant?: 'outline' | 'default' | 'ghost'
   size?: 'sm' | 'default'
+  /**
+   * Mount already open. Used when the dialog is lazy-loaded on the trigger's
+   * first click, so that click still opens it.
+   */
+  defaultOpen?: boolean
 }
 
 /**
@@ -144,9 +149,10 @@ export function MergeDocumentsDialog({
   triggerIcon,
   variant = 'outline',
   size = 'sm',
+  defaultOpen = false,
 }: MergeDocumentsDialogProps) {
   const router = useRouter()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(defaultOpen)
   const [pending, startTransition] = useTransition()
   const [title, setTitle] = useState(defaultTitle ?? '')
   const [selected, setSelected] = useState<MergeItem[]>([])

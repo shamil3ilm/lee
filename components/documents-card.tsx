@@ -1,11 +1,13 @@
 'use client'
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   Download,
   FileText,
+  Layers,
   Loader2,
   MoreHorizontal,
   Pencil,
@@ -31,12 +33,47 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { relativeFromNow } from '@/lib/ui/date'
-import { MergeDocumentsDialog } from '@/components/merge-documents-dialog'
 import { StalenessBadge } from '@/components/staleness-badge'
 import { CvScoreBadge } from '@/components/cv-score/cv-score-badge'
 import type { DocScore } from '@/lib/cv-score/fit'
 import { FeedbackButtons } from '@/components/feedback-buttons'
 import { logImplicitAction } from '@/lib/ui/implicit-signals'
+
+// The merge dialog pulls in @dnd-kit; keep it out of /applications/[id]'s
+// first-load bundle. Hover/focus on the trigger warms the chunk.
+function preloadMergeDialog(): void {
+  void import('@/components/merge-documents-dialog')
+}
+
+interface MergeTriggerButtonProps {
+  onClick?: () => void
+  onPointerEnter?: () => void
+  onFocus?: () => void
+  loading?: boolean
+}
+
+/** Same look as the dialog's own trigger, so the swap is invisible. */
+function MergeTriggerButton({ onClick, onPointerEnter, onFocus, loading }: MergeTriggerButtonProps) {
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={onClick}
+      onPointerEnter={onPointerEnter}
+      onFocus={onFocus}
+      disabled={loading}
+    >
+      {loading ? <Loader2 className="size-4 animate-spin" /> : <Layers className="size-4" />}
+      Merge documents
+    </Button>
+  )
+}
+
+const MergeDocumentsDialog = dynamic(
+  () => import('@/components/merge-documents-dialog').then((m) => m.MergeDocumentsDialog),
+  { ssr: false, loading: () => <MergeTriggerButton loading /> },
+)
 
 type DocumentKind =
   | 'master_cv'
@@ -94,6 +131,8 @@ export function DocumentsCard({ applicationId, documents, scores = {} }: Documen
   const [busy, setBusy] = useState<null | 'tailored' | 'cover_letter'>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<Document | null>(null)
+  // The merge dialog (and @dnd-kit) is fetched on the first click only.
+  const [mergeRequested, setMergeRequested] = useState(false)
 
   async function generate(
     kind: 'tailored' | 'cover_letter',
@@ -304,11 +343,20 @@ export function DocumentsCard({ applicationId, documents, scores = {} }: Documen
         </div>
         {documents.length > 0 ? (
           <div className="pt-1">
-            <MergeDocumentsDialog
-              documents={documents}
-              applicationId={applicationId}
-              triggerLabel="Merge documents"
-            />
+            {mergeRequested ? (
+              <MergeDocumentsDialog
+                documents={documents}
+                applicationId={applicationId}
+                triggerLabel="Merge documents"
+                defaultOpen
+              />
+            ) : (
+              <MergeTriggerButton
+                onClick={() => setMergeRequested(true)}
+                onPointerEnter={preloadMergeDialog}
+                onFocus={preloadMergeDialog}
+              />
+            )}
           </div>
         ) : null}
       </CardContent>
