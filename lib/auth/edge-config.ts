@@ -3,8 +3,9 @@ import type { NextAuthConfig } from 'next-auth'
 import { env } from '@/lib/env'
 import { isAllowedEmail } from './allowed-email'
 
-// Edge-safe Auth.js config: no DB adapter, no Node-only imports.
-// Used by `proxy.ts` (middleware) which runs on the Edge runtime.
+// Adapter-free Auth.js config: no DB adapter, no Node-only imports.
+// Used by `proxy.ts`, which runs on the Node.js runtime (Next 16 default)
+// but only needs to decode the session JWT, never touch the database.
 // The full DB-backed config lives in `./config.ts` and is used by API
 // routes and RSC (Node runtime).
 //
