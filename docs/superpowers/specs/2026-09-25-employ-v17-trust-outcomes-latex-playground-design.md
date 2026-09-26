@@ -194,6 +194,7 @@ Wherever else it applies:
 | 7 | Playground core (placement, adaptive selection, coding + complexity evaluation) | v13.0–13.2 |
 | 7b | **Self-evolving curriculum** (learner model, demand + version-drift signals, Fresh track) + **Radar ingest** (v16.0) pulled forward so trends feed the Playground early | v13 §6.1, v16.0 |
 | 7c | **Employ Sim foundation** (browser-only engine, ShopLite reference system, scenario runner, measured scoring) | v13 §5.3 |
+| 7d | **Playground Forge** (open-source-model agents that grow scenarios and the engine around your level) + Playground performance budgets in CI | v13 §5.4, §5.5, §6.2 |
 | 8 | **CV suggestions from Playground** + skill-gap loop | v17 §5, §4 |
 | 9 | **LaTeX Studio** (new kinds, standalone editor, editor parity) + shared **Blocks palette** in LaTeX, CV editor and templates | v17 §8.1–8.4 |
 | 9b | Blocks palette in the remaining places (todos, dashboard, expenses, AI routing, documents) | v17 §8.4 |

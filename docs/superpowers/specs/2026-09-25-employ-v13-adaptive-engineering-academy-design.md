@@ -260,6 +260,43 @@ New exercise formats:
 - Web Workers keep the UI responsive, with hard time and memory limits.
 - Works on desktop; phones get the drills and the lighter scenarios. The v86 and full-system scenarios need a desktop-class browser.
 
+### 5.4 Closing the limitations (2026-09-26)
+| Limitation | How we close it |
+|---|---|
+| Simulators model documented behaviour, not every quirk | **Differential testing against real engines**: our Redis model is checked command-by-command against the real redis-server running in v86, and our shell tools against real bash and coreutils in v86. Divergences become failing conformance tests that must be fixed. Conformance suites grow continuously (§6.2), and each exercise shows its coverage. |
+| No real Docker images | **container2wasm** (open source) converts real container images into WebAssembly that runs in the browser. It's used for "run this image" fidelity tasks, lazy-loaded and slower; the fast path stays the simulator. |
+| Kubernetes is a model | Our control plane follows the controller behaviour documented upstream, with conformance tests from the Kubernetes docs. Research spike: compile upstream Go components (kwok-style fake nodes) to WebAssembly for a real API server behind the same `kubectl` CLI. |
+| PowerShell and cmd are our own interpreters | Coverage grows by measured demand (the commands users actually need). Behaviour tests come from Microsoft's docs. Research spike: open-source PowerShell (MIT) on the .NET WebAssembly runtime; adopt it if the load size and speed fit the performance budgets. |
+| v86 is 32-bit and slower | JIT-enabled v86 for shell and server tasks. Heavy workloads run on the simulator's virtual nodes (measured in virtual time, so slowness does not distort scores). container2wasm covers 64-bit userland where needed. |
+| Phones are weaker | **Adaptive fidelity**: the engine reads device capability (cores, memory, WebGPU) and picks lighter simulation settings or smaller scenarios. Scores are normalised per scenario version, so the device never changes a grade. |
+| In-browser AI is small | Grading is rule-based first. Written answers use a published rubric; an in-browser model (WebLLM) gives feedback, and a larger open-source model is used only if the user enables it. |
+
+### 5.5 Performance budgets (enforced in CI)
+The Playground must never slow Employ down.
+- **Isolation:**
+  - Engines load only inside Playground exercises, lazy-loaded per exercise and cached by a service worker/OPFS after first use.
+  - Other pages never download them.
+  - Cross-origin isolation (COOP/COEP, needed for SharedArrayBuffer and threads) is applied **only to Playground routes**, so Google sign-in and the rest of the app are unaffected.
+- **Budgets:**
+
+  | Metric | Budget |
+  |---|---|
+  | Playground route initial JavaScript | ≤ 200 KB gzipped |
+  | App shell | unchanged |
+  | INP (responsiveness) | < 200 ms |
+  | Main-thread tasks | < 50 ms |
+  | LCP on Playground pages | < 2.5 s |
+
+  Every engine runs in a Web Worker with hard time and memory limits and a cancel button.
+- **Server:**
+  - No simulation or generation runs on request paths.
+  - Generation and validation run offline (§6.2), and results are stored as static content packs.
+  - AI calls are budgeted and rate-limited, so job-search features never compete with Playground work.
+- **Measured, not assumed:**
+  - Lighthouse CI and web-vitals budgets fail the build when exceeded.
+  - Simulator benchmarks (events per second, scenario runtime, memory) run in CI with regression alerts.
+  - Real-user web-vitals are logged from the browser.
+
 ## 6. Never the same twice
 
 - **Parameterized templates**: each exercise template declares generators (input shapes, constraints, schemas, traffic profiles, incident timelines) → fresh variant each time.
@@ -305,6 +342,45 @@ The Playground must not be static: not just fresh variants, but **new skills, ne
 **Transparency:**
 - Every item shows **"Why this?"**: for example "weak skill + asked by 4 of your saved jobs + trending this month".
 - Every generated item is logged in `ai_call_logs`, is rateable, and is covered by a generator eval suite.
+
+### 6.2 Continuous development — "Playground Forge" (2026-09-26)
+Open-source models and agents keep developing the Playground around the user's level, and the Playground keeps improving its own engine. Runtime stays self-contained: everything the Forge produces is shipped as static content or code, and **no AI is needed to play**.
+
+**Where it runs (zero cost):**
+- The development loop runs on scheduled **GitHub Actions** and in the daily cron.
+- It uses **open-source models** (Qwen-Coder, Llama, DeepSeek, gpt-oss and similar) through the free tiers already in the v14 model registry.
+- Optionally it uses a model running locally through Ollama if the user sets one up; this is not required.
+- Model choice per agent is routed by the Model Playground (v14) using measured results.
+
+**Agents (each has a narrow job and a checker):**
+| Agent | Job | Checked by |
+|---|---|---|
+| Scenario Author | New tickets, incidents and exercises on ShopLite, aimed at the user's frontier skills (target success ≈ 0.65–0.75) | Validator |
+| Validator | Runs every scenario headless on the same Employ Sim engine (Node): the broken state must fail the checks, the reference fix must pass, the result must hold across seeds, and the performance budget must be met | deterministic |
+| Loophole Hunter | Tries to "pass" without solving: disable the check, hard-code outputs, delete the failing test. Any success hardens the checks | Validator |
+| Fidelity Engineer | Writes conformance tests from official docs; runs differential tests against real engines (v86 redis-server, bash); proposes simulator fixes | CI |
+| Engine Improver | Opens pull requests to Employ Sim (new commands, cmdlets, controller behaviour, performance work) with tests | CI + user review |
+| Tutor | After each attempt: what went wrong, the concept behind it, what to try next | rubric; rateable |
+| Curriculum Scout | Trends, market demand and version drift (§6.1) | ≥ 2 cited sources |
+
+**Loop:**
+1. You attempt a scenario.
+2. It is scored from measured metrics.
+3. The learner model updates.
+4. The Forge targets your frontier skills and weak formats.
+5. The agents generate content; the Validator and Loophole Hunter check it.
+6. It is published as a versioned content pack.
+7. Difficulty calibrates from your attempts, and the cycle repeats. The Playground grows with you, level by level.
+
+**Guardrails:**
+- **Content is data:** scenario packs use a declarative checks language. Where custom check code is unavoidable, it runs only in the Worker sandbox, never on the server.
+- **Human in the loop for code:**
+  - Engine pull requests always need the user's merge.
+  - Content packs auto-publish only if the Validator and Loophole Hunter pass and the format already exists.
+  - New formats or domains need one-tap approval.
+  - Every pack is versioned and can be rolled back.
+- Everything is logged to `ai_call_logs` with prompt versions, and every agent has an eval suite (v10.1).
+- **Budgets:** per-day AI token caps per agent; when free tiers run out, the Forge pauses instead of degrading quality.
 
 ## 7. Gamification
 
@@ -362,6 +438,7 @@ Skill graph, templates and achievement catalog: versioned JSON under `content/ac
 ## 12. Phasing
 
 - **13.S Employ Sim foundation (before 13.3)**: discrete-event core (virtual clock, nodes, network, filesystem, seeds), fault injection, metrics, conformance-test harness, ShopLite reference system v1, scenario runner + measured scoring
+- **13.F Playground Forge (after 13.S)**: Validator + Loophole Hunter first, then Scenario Author, Tutor, Fidelity Engineer (differential tests vs v86 engines), Engine Improver PRs; GitHub Actions schedule; content packs; perf budgets in CI
 - **13.0 Core engine** — skill graph, ratings, placement (seeded from CV/profile + diagnostic), adaptive selector, daily plan, attempt/evaluation framework, XP/rank/streak/achievements core, Academy home + radar
 - **13.1 Coding workbench** — Web Worker runner, hidden tests, empirical complexity fit, acorn quality metrics, optimization + refactoring + debugging formats, Pyodide
 - **13.2 SQL lab** — PGlite runner with EXPLAIN-based efficiency, schema/indexing exercises
