@@ -15,6 +15,12 @@ describe('GET /api/health', () => {
     expect(body.migrations.expected).toBe(journal.entries.length)
   })
 
+  it('is never cached (uptime probes must see live status)', async () => {
+    const { GET } = await import('@/app/api/health/route')
+    const res = await GET()
+    expect(res.headers.get('cache-control')).toBe('no-store')
+  })
+
   it('reports applied migrations from the drizzle tracking table when present', async () => {
     await db.execute(sql`create schema if not exists drizzle`)
     await db.execute(
