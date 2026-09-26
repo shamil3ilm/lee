@@ -13,7 +13,7 @@ import path from 'node:path'
 
 const ROOT = path.resolve(process.argv[2] ?? '.next')
 const SKIP_DIRS = new Set(['cache', 'dev'])
-const MARKERS = ['e2e-test-login', 'e2e@employ.test', 'Sign in as E2E test user', 'authorizeTestUser']
+const MARKERS = ['e2e-test-login', 'e2e@lee.test', 'Sign in as E2E test user', 'authorizeTestUser']
 const MODULE_PATTERN = /test-login(-provider|-form)?\.tsx?$|lib\/auth\/test-login\.ts$/
 
 function* walk(dir) {

@@ -1,4 +1,4 @@
-# Employ v4.1 Polish Sweep — Implementation Plan
+# lee v4.1 Polish Sweep — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development`.
 

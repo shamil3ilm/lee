@@ -1,4 +1,4 @@
-# Employ — v8 Todos + Reminders + Voice Input Design Spec
+# lee — v8 Todos + Reminders + Voice Input Design Spec
 
 **Date:** 2026-09-25
 **Status:** Approved — ready for implementation

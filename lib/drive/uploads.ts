@@ -8,7 +8,7 @@ import { DriveError } from './errors'
  * Browser-direct uploads and Picker attachments for document assets (A2).
  *
  * Direct upload: the server validates the request and opens a Drive
- * resumable session in the user's Employ/Documents/<doc>/assets folder; the
+ * resumable session in the user's lee/Documents/<doc>/assets folder; the
  * browser PUTs the bytes to the session URI (no token in the browser, no
  * bytes through Vercel), then calls `completeAssetUpload`, which re-reads
  * the file's metadata from Drive before recording it.
@@ -57,7 +57,7 @@ export async function createAssetUploadSession(input: {
 
 /**
  * Record a browser-uploaded Drive file. Trusts nothing from the client but
- * the file id: the file must be one Employ created for this document
+ * the file id: the file must be one lee created for this document
  * (appProperties) inside its assets folder, within the size cap.
  */
 export async function completeAssetUpload(input: {
@@ -110,7 +110,7 @@ export async function findStrandedUpload(
 }
 
 /**
- * "Attach from Drive": the Picker granted Employ drive.file access to one
+ * "Attach from Drive": the Picker granted lee drive.file access to one
  * of the user's own files. The asset references it in place (no copy) and
  * is never trashed on removal.
  */
@@ -157,7 +157,7 @@ async function registerDriveFile(
       drivePicked: opts.picked,
     })
   } catch (err) {
-    // Never leave an orphan Employ upload behind; a picked file is the
+    // Never leave an orphan lee upload behind; a picked file is the
     // user's own and is left alone.
     if (!opts.picked) await client.trash(file.id).catch(() => undefined)
     throw err

@@ -31,7 +31,7 @@ export default function AboutPage() {
           <li>Sends emails you trigger, such as your weekly digest and new-match alerts.</li>
           <li>Adds interview stages you schedule to your Google Calendar.</li>
           <li>
-            Stores your documents and files in an <code>Employ</code> folder in your Google Drive, using access
+            Stores your documents and files in a <code>{APP_NAME}</code> folder in your Google Drive, using access
             limited to files it creates or you pick.
           </li>
         </ul>

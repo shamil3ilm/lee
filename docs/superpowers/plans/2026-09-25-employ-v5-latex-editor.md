@@ -1,4 +1,4 @@
-# Employ v5 LaTeX Editor — Implementation Plan
+# lee v5 LaTeX Editor — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development`.
 

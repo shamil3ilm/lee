@@ -16,6 +16,7 @@ import { trashDocumentDriveFiles } from '@/lib/drive/cleanup'
 import { safeMimeType } from '@/lib/drive/client'
 import { FakeDrive } from '@/tests/fixtures/fake-drive'
 import { driveUser } from '@/tests/fixtures/drive-user'
+import { ROOT_FOLDER_NAME } from '@/lib/drive/folders'
 
 const originalFetch = globalThis.fetch
 let drive: FakeDrive
@@ -89,7 +90,7 @@ describe('drive connection + store selection', () => {
 })
 
 describe('DriveAssetStore', () => {
-  it('creates Employ/Documents/<title-id>/assets once and stores only metadata in Neon', async () => {
+  it('creates lee/Documents/<title-id>/assets once and stores only metadata in Neon', async () => {
     const u = await driveUser()
     const doc = await makeDoc(u.id, 'Backend CV')
     const store = await getAssetStoreForUser(u.id)
@@ -102,10 +103,10 @@ describe('DriveAssetStore', () => {
     const folders = [...drive.files.values()].filter((f) => f.mimeType === 'application/vnd.google-apps.folder')
     const byName = (n: string) => folders.find((f) => f.name === n)!
     expect(folders.map((f) => f.name).sort()).toEqual(
-      ['Documents', 'Employ', `Backend CV-${doc.id.slice(0, 8)}`, 'assets'].sort(),
+      ['Documents', ROOT_FOLDER_NAME, `Backend CV-${doc.id.slice(0, 8)}`, 'assets'].sort(),
     )
-    expect(byName('Employ').parents).toEqual(['root'])
-    expect(byName('Documents').parents).toEqual([byName('Employ').id])
+    expect(byName(ROOT_FOLDER_NAME).parents).toEqual(['root'])
+    expect(byName('Documents').parents).toEqual([byName(ROOT_FOLDER_NAME).id])
     expect(byName('assets').parents).toEqual([byName(`Backend CV-${doc.id.slice(0, 8)}`).id])
     expect(drive.files.get(put.asset!.driveFileId!)!.parents).toEqual([byName('assets').id])
 
@@ -144,7 +145,7 @@ describe('DriveAssetStore', () => {
     const doc = await makeDoc(u.id)
     const store = await getAssetStoreForUser(u.id)
     await putAsset(store, u.id, doc.id, 'a.png')
-    // Simulate the user deleting Employ/ in Drive: every folder disappears.
+    // Simulate the user deleting lee/ in Drive: every folder disappears.
     for (const f of [...drive.files.values()]) drive.files.delete(f.id)
     const again = await putAsset(store, u.id, doc.id, 'b.png')
     expect(drive.files.get(again.asset!.driveFileId!)).toBeDefined()
@@ -251,7 +252,7 @@ describe('scoping', () => {
 })
 
 describe('cleanup', () => {
-  it('trashes Employ-created Drive files (not picked ones) before a document is deleted', async () => {
+  it('trashes lee-created Drive files (not picked ones) before a document is deleted', async () => {
     const u = await driveUser()
     const doc = await makeDoc(u.id)
     const store = await getAssetStoreForUser(u.id)

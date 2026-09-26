@@ -1,4 +1,4 @@
-# Employ — v10 AI Trust Infrastructure Design Spec
+# lee — v10 AI Trust Infrastructure Design Spec
 
 **Date:** 2026-09-25
 **Status:** Approved — ready for implementation
@@ -9,7 +9,7 @@
 
 ## 1. Problem
 
-Every AI feature in Employ runs unconditionally when triggered. Two failure modes:
+Every AI feature in lee runs unconditionally when triggered. Two failure modes:
 
 1. **Confidently wrong when input is low-signal** — outreach drafts hallucinate details, CVs get tailored to phantom requirements, follow-ups reference facts that don't exist. The "trying to be helpful with no signal" pattern from the DevDox story.
 2. **No feedback loop** — we track latency and tokens (`ai_call_logs`), but not whether the output was useful. Model swaps happen blind; regressions land silently.

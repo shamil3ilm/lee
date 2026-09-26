@@ -2,19 +2,20 @@ import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { documents, driveFolders } from '@/lib/db/schema'
 import type { DriveClient } from './client'
+import { APP_NAME } from '@/lib/brand'
 
 /**
- * Employ's folder layout in the user's Drive, created lazily and cached by
+ * lee's folder layout in the user's Drive, created lazily and cached by
  * folder id in `drive_folders` so steady-state uploads cost zero lookups:
  *
- *   Employ/
+ *   lee/
  *     Documents/<doc title>-<id8>/assets
  *     Exports/
  *     PDFs/
  *     CVs/
  */
 
-export const ROOT_FOLDER_NAME = 'Employ'
+export const ROOT_FOLDER_NAME = APP_NAME
 export const TOP_FOLDERS = {
   documents: 'Documents',
   exports: 'Exports',
@@ -53,7 +54,7 @@ export class DriveFolders {
     for (const key of Object.keys(TOP_FOLDERS) as TopFolder[]) await this.top(key)
   }
 
-  /** Employ/Documents/<title-id>/assets for one of the user's documents. */
+  /** lee/Documents/<title-id>/assets for one of the user's documents. */
   async documentAssets(documentId: string): Promise<string> {
     const cached = await this.cached(`doc-assets:${documentId}`)
     if (cached) return cached
@@ -71,7 +72,7 @@ export class DriveFolders {
   }
 
   /**
-   * Forget every cached folder id, e.g. after the user deleted Employ/ in
+   * Forget every cached folder id, e.g. after the user deleted lee/ in
    * Drive (an upload into a cached folder then 404s). The next call
    * re-finds or re-creates the layout.
    */
@@ -91,7 +92,7 @@ export class DriveFolders {
   private async ensure(key: string, name: string, parentId: string): Promise<string> {
     const cached = await this.cached(key)
     if (cached) return cached
-    // drive.file only sees folders Employ created, so a name match under the
+    // drive.file only sees folders lee created, so a name match under the
     // same parent is ours (e.g. from before a DB reset): reuse it.
     const id = (await this.client.findFolder(name, parentId)) ?? (await this.client.createFolder(name, parentId))
     await db

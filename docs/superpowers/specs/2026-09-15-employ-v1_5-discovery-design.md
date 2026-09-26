@@ -1,8 +1,8 @@
-# Employ — v1.5 Discovery Design Spec
+# lee — v1.5 Discovery Design Spec
 
 **Date:** 2026-09-15
 **Status:** Approved — ready for implementation planning
-**Scope:** Sub-project 1.5 of 5 in the Employ roadmap
+**Scope:** Sub-project 1.5 of 5 in the lee roadmap
 **Depends on:** v1 Core Tracker (shipped)
 
 ---

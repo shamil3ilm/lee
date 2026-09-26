@@ -20,6 +20,7 @@ import {
   type UploadScore,
 } from './client'
 import { ScoreResults } from './score-results'
+import { APP_NAME } from '@/lib/brand'
 import {
   ApplicationSelect,
   DocumentSelect,
@@ -80,7 +81,7 @@ export function ScorePanel({ documents, applications, initialDocumentId, initial
     }
     setResult(res.data)
     const copy = (res.data as Partial<UploadScore>).driveCopy
-    if (copy?.saved) toast.success('Saved a copy to Google Drive (Employ/CVs).')
+    if (copy?.saved) toast.success(`Saved a copy to Google Drive (${APP_NAME}/CVs).`)
     else if (copy) toast.error(copy.error)
     setDriveConnect(Boolean(copy && !copy.saved && copy.connect))
     void loadHistory(res.data)

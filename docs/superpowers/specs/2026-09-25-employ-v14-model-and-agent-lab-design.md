@@ -1,4 +1,4 @@
-# Employ — v14 Model & Agent Lab
+# lee — v14 Model & Agent Lab
 
 **Date:** 2026-09-25
 **Status:** Approved — ready for implementation
@@ -13,7 +13,7 @@
 2. **Compare models** side by side on the same prompt — latency, throughput, cost, quality
 3. **Evaluate models on real tasks** — run the existing eval suites (parse job, tailor CV, outreach, CV scoring, …) against any model
 4. **Build and test agents** — model + instructions + tools, with full step traces, compared across models and agent patterns
-5. **Adopt what works** — route each Employ AI task to the best model based on eval + ratings
+5. **Adopt what works** — route each lee AI task to the best model based on eval + ratings
 6. **Learn** — this is also an Academy track (prompting, RAG, evals, agents, cost/latency trade-offs)
 
 ## 2. Provider registry
@@ -93,7 +93,7 @@ Read-mostly, scoped to the user's own data; no arbitrary network or shell:
 
 ## 6. Adopt: per-task model routing
 
-- Settings › AI gains a **task routing table**: each Employ AI task (parse_job, tailor_cv, cover_letter, outreach, prep_pack, debrief, cv_requirement_fit, discovery scoring, …) → chosen model, or "default"
+- Settings › AI gains a **task routing table**: each lee AI task (parse_job, tailor_cv, cover_letter, outreach, prep_pack, debrief, cv_requirement_fit, discovery scoring, …) → chosen model, or "default"
 - Each row shows that task's eval score and user rating for the current model and suggests the best-scoring alternative from Lab evals ("gpt-oss-120b scores 12 points higher on tailor-cv at +0.4s")
 - Routing is read by `getAIProviderForUser(userId, task)`; the fallback chain stays in place (routed model → default → env)
 

@@ -1,4 +1,4 @@
-# Employ v3 Communications — Implementation Plan
+# lee v3 Communications — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development`.
 

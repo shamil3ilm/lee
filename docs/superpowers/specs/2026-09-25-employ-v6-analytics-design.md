@@ -1,8 +1,8 @@
-# Employ — v6 Analytics Design Spec
+# lee — v6 Analytics Design Spec
 
 **Date:** 2026-09-25
 **Status:** Approved — ready for implementation
-**Scope:** Sub-project 6 of 6+ in the Employ roadmap
+**Scope:** Sub-project 6 of 6+ in the lee roadmap
 **Depends on:** v1-v5 all shipped, real data in the pipeline
 
 ---

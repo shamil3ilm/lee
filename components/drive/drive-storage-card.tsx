@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DriveConnectButton } from '@/components/drive/drive-connect-button'
+import { APP_NAME } from '@/lib/brand'
 import {
   moveFilesToDriveAction,
   setDriveStorageEnabledAction,
@@ -46,7 +47,7 @@ export function DriveStorageCard(props: DriveStorageCardProps) {
         return
       }
       setEnabled(next)
-      toast.success(next ? 'New files will be saved to Google Drive.' : 'New files will be stored in Employ.')
+      toast.success(next ? 'New files will be saved to Google Drive.' : `New files will be stored in ${APP_NAME}.`)
     })
   }
 
@@ -94,8 +95,8 @@ export function DriveStorageCard(props: DriveStorageCardProps) {
         <div className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 p-3">
           <div className="min-w-0 text-xs text-muted-foreground">
             {props.connected
-              ? 'Files go to an Employ folder in your own Drive. Employ can only see files it created or that you pick.'
-              : 'Connect Drive to keep document files in your own Google Drive (free, uses your Google storage) instead of the 150 MB Employ allowance.'}
+              ? `Files go to a ${APP_NAME} folder in your own Drive. ${APP_NAME} can only see files it created or that you pick.`
+              : `Connect Drive to keep document files in your own Google Drive (free, uses your Google storage) instead of the 150 MB ${APP_NAME} allowance.`}
           </div>
           {props.connected ? (
             <Badge variant="emerald" className="shrink-0 text-[10px]">
@@ -110,7 +111,7 @@ export function DriveStorageCard(props: DriveStorageCardProps) {
 
         <dl className="grid grid-cols-2 gap-3 text-xs">
           <div className="rounded-md border p-2">
-            <dt className="text-muted-foreground">Stored in Employ</dt>
+            <dt className="text-muted-foreground">Stored in {APP_NAME}</dt>
             <dd className="font-medium" data-testid="drive-postgres-usage">
               {mb(props.postgresBytes)} of {mb(props.quotaBytes)}
             </dd>
@@ -137,7 +138,7 @@ export function DriveStorageCard(props: DriveStorageCardProps) {
             <div className="flex items-center justify-between gap-3 border-t pt-3">
               <p className="text-xs text-muted-foreground">
                 {pending > 0
-                  ? `${pending} file(s) are still stored in Employ. Moving copies each one, checks it, then frees the space.`
+                  ? `${pending} file(s) are still stored in ${APP_NAME}. Moving copies each one, checks it, then frees the space.`
                   : 'All document files are in Google Drive.'}
               </p>
               <Button
@@ -156,7 +157,7 @@ export function DriveStorageCard(props: DriveStorageCardProps) {
           <div className="flex items-center justify-between gap-3 border-t pt-3">
             <p className="text-xs text-muted-foreground">
               {props.hasGoogleAccount
-                ? 'Google will ask you to allow access to files Employ creates.'
+                ? `Google will ask you to allow access to files ${APP_NAME} creates.`
                 : 'Sign in with Google to connect Drive.'}
             </p>
             <DriveConnectButton returnTo="/settings/integrations" />

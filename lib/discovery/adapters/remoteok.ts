@@ -25,7 +25,7 @@ export class RemoteOkAdapter implements DiscoveryAdapter {
 
   async fetch(_config: unknown): Promise<DiscoveryItem[]> {
     const res = await discoveryFetch('remoteok', 'https://remoteok.com/api', {
-      headers: { accept: 'application/json', 'user-agent': 'employ/1.5' },
+      headers: { accept: 'application/json', 'user-agent': 'lee/1.5' },
     })
     if (!res.ok) throw new Error(`remoteok ${res.status}`)
     const body = (await res.json()) as unknown[]

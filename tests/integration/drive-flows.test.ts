@@ -86,7 +86,7 @@ describe('browser-direct resumable upload', () => {
     expect(row!.sha256).toBe(assetsQ.sha256Hex(Buffer.alloc(12, 9)))
   })
 
-  it('refuses to register a file that is not an Employ upload for this document', async () => {
+  it('refuses to register a file that is not an lee upload for this document', async () => {
     const u = await driveUser()
     const doc = await makeDoc(u.id)
     const other = await makeDoc(u.id, 'Other')
@@ -362,7 +362,7 @@ describe('CV score: save a copy to Drive', () => {
     })
   }
 
-  it('saves into Employ/CVs and links the cv_scores row', async () => {
+  it('saves into lee/CVs and links the cv_scores row', async () => {
     const u = await driveUser()
     const row = await scoreRow(u.id)
     const res = await saveCvCopyToDrive({

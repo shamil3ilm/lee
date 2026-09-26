@@ -1,8 +1,8 @@
-# Employ — v4 Outreach & Interview Prep Design Spec
+# lee — v4 Outreach & Interview Prep Design Spec
 
 **Date:** 2026-09-24
 **Status:** Approved — ready for implementation planning
-**Scope:** Sub-project 4 of 5 in the Employ roadmap (final sub-project)
+**Scope:** Sub-project 4 of 5 in the lee roadmap (final sub-project)
 **Depends on:** v1 + v1.5 + v2 + v3 (all shipped)
 
 ---
@@ -142,7 +142,7 @@ if (isMondayUtc() && !alreadySentThisWeek(user)) {
 **Content generation:** `lib/digest/weekly.ts`:
 - Queries current pipeline state (applications by status, next 7 days interviews, top 5 discoveries, stale >14 day items)
 - Renders as HTML using a small `lib/digest/email-template.tsx` — inline styles only, no external CSS (email client compat)
-- Subject: `Employ · weekly · {N} apps, {M} interviews this week`
+- Subject: `lee · weekly · {N} apps, {M} interviews this week`
 
 **Sending:** `lib/gmail/send.ts` uses Gmail API `users.messages.send` — requires expanding v3 scope to include `https://www.googleapis.com/auth/gmail.send` (currently only `gmail.readonly`).
 

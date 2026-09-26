@@ -22,7 +22,7 @@ export const maxDuration = 30
  * v12.0 — POST /api/cv-score/upload
  * Multipart: `file` (PDF/DOCX/TXT/MD ≤ 5 MB), optional `applicationId`,
  * optional `includeAi` ("false" to skip the AI requirement check),
- * optional `saveToDrive` ("true" to keep a copy in Employ/CVs in the user's
+ * optional `saveToDrive` ("true" to keep a copy in lee/CVs in the user's
  * Google Drive; off by default, and without it nothing is stored).
  */
 export async function POST(req: Request): Promise<NextResponse> {

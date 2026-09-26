@@ -1,4 +1,4 @@
-# Employ — v7 Expenses + PDF Merger Design Spec
+# lee — v7 Expenses + PDF Merger Design Spec
 
 **Date:** 2026-09-25
 **Status:** Approved — ready for implementation

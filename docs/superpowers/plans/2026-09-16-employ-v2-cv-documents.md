@@ -1,4 +1,4 @@
-# Employ v2 CV & Documents — Implementation Plan
+# lee v2 CV & Documents — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development`.
 

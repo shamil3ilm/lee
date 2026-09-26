@@ -1,4 +1,4 @@
-# Employ — v17 Scam Shield, Outcome Loops, LaTeX Studio, Playground
+# lee — v17 Scam Shield, Outcome Loops, LaTeX Studio, Playground
 
 **Date:** 2026-09-25
 **Status:** Approved — ready for implementation
@@ -111,7 +111,7 @@ Data: an `opportunity_scores` table (target, per-criterion score/confidence/evid
 
 ## 7. Capture & habits
 
-1. **Share to Employ:** PWA share-target (after v12.5) — share a job URL/text from any phone app into Discovery. Keeps the v1 "no browser extension" decision.
+1. **Share to lee:** PWA share-target (after v12.5) — share a job URL/text from any phone app into Discovery. Keeps the v1 "no browser extension" decision.
 2. **Telegram bot (free Bot API):** digest + reminders delivered; reply to capture a todo or paste a job link. Chat id linked from Settings › Notifications with a one-time code; webhook verified by secret token.
 3. **Weekly review:** Sunday 10-minute ritual — moved / stalled / next week's three goals; feeds v12.1 goals and streaks.
 4. **Energy check-ins:** 1–5 energy and mood tap on the dashboard; burnout warning when low energy streaks coincide with high rejection counts → suggests a lighter week (fewer applications, more Playground).
@@ -185,7 +185,7 @@ How Overleaf works:
 - The PDF preview uses PDF.js, and SyncTeX lookups run on the server.
 - History keeps snapshots and labels, with restore and diff.
 
-**Licensing rule:** Overleaf is **AGPL-3.0**, and so are SwiftLaTeX, texlyre-busytex and `codemirror-lang-latex` (which is derived from Overleaf's grammar). Employ **learns from the design and does not copy code**. It uses only permissively licensed libraries:
+**Licensing rule:** Overleaf is **AGPL-3.0**, and so are SwiftLaTeX, texlyre-busytex and `codemirror-lang-latex` (which is derived from Overleaf's grammar). lee **learns from the design and does not copy code**. It uses only permissively licensed libraries:
 - CodeMirror 6 (MIT)
 - `@codemirror/legacy-modes` stex (MIT)
 - PDF.js (Apache-2.0)
@@ -195,7 +195,7 @@ How Overleaf works:
 Licenses still to verify before adoption: KaTeX/MathJax, JSZip/fflate, `@codemirror/merge`.
 
 **Decisions:**
-| # | Feature | Employ approach | Effort |
+| # | Feature | lee approach | Effort |
 |---|---|---|---|
 | 1 | Editor core | **Replace Monaco with CodeMirror 6**, bundled and self-hosted (drops the jsDelivr dependency; ~119 KB gz vs Monaco ~852 KB gz) | M |
 | 2 | Highlighting | `@codemirror/legacy-modes` stex via StreamLanguage (MIT) | S |
@@ -227,7 +227,7 @@ Order: 1–8 first, as the editor upgrade. Then 9–13. Then 14–15, which depe
 5. **Audit log & undo:** every automated or suggestion-accepted change (status, category, merge, quarantine) writes `audit_events` (before/after JSON); "Undo" for 7 days on the activity feed.
 
 ## 9.6 Free-tier architecture (hard constraints)
-Employ runs on **Vercel Hobby** and **Neon Free**, and every feature must fit. The limits below were verified from the vendors' docs on 2026-09-26.
+lee runs on **Vercel Hobby** and **Neon Free**, and every feature must fit. The limits below were verified from the vendors' docs on 2026-09-26.
 
 | Vercel Hobby | Limit |
 |---|---|
@@ -274,7 +274,7 @@ When compute or egress is exhausted, **the database is suspended until next mont
    - Warnings at 70 % and 90 %; automatic throttles before a hard stop (the Forge pauses, pruning runs, non-essential crons skip).
    - Because runtime logs last 1 hour, errors go to the app's own `error_events` table (§9.4).
 8. **Backups matter more:** point-in-time restore is only 6 hours, so the weekly encrypted `pg_dump` via GitHub Actions (§9.2) is required, not optional.
-9. **Personal use:** Hobby is non-commercial personal use, which matches Employ. Anything commercial would need Vercel Pro.
+9. **Personal use:** Hobby is non-commercial personal use, which matches lee. Anything commercial would need Vercel Pro.
 
 ## 10. Master roadmap (all approved items, in build order)
 
@@ -284,7 +284,7 @@ When compute or egress is exhausted, **the database is suspended until next mont
 | 2 | Integration pass: CV score surfaces, keys to Settings › AI, **Lab → Playground rename** | v11, v17 §0 |
 | 3 | Visual QA + journey E2E | v17 §9.1 |
 | 3a | **Architecture A1–A3**: production-only migrations + Neon preview branches, file storage budget, durable job queue replacing the monolithic cron | architecture review 2026-09-26 |
-| 3a-2 | **Google Drive file storage** (drive.file scope, Employ/ folder, browser-direct uploads, Picker, migrate existing bytea assets) | architecture review A2 |
+| 3a-2 | **Google Drive file storage** (drive.file scope, lee/ folder, browser-direct uploads, Picker, migrate existing bytea assets) | architecture review A2 |
 | 3b | **Free-tier meter + guardrails** (usage vs Vercel Hobby / Neon Free limits, staggered daily crons, storage budgets, error_events) | v17 §9.6 |
 | 4 | **Scam Shield** | v17 §1 |
 | 4b | **Opportunity Score** (criteria, weights UI, 2×2 view, questions to ask) | v17 §6.6 |
@@ -292,7 +292,7 @@ When compute or egress is exhausted, **the database is suspended until next mont
 | 6 | Backups + export/delete, audit log & undo | v17 §9.2, §9.5 |
 | 7 | Playground core (placement, adaptive selection, coding + complexity evaluation) | v13.0–13.2 |
 | 7b | **Self-evolving curriculum** (learner model, demand + version-drift signals, Fresh track) + **Radar ingest** (v16.0) pulled forward so trends feed the Playground early | v13 §6.1, v16.0 |
-| 7c | **Employ Sim foundation** (browser-only engine, ShopLite reference system, scenario runner, measured scoring) | v13 §5.3 |
+| 7c | **lee Sim foundation** (browser-only engine, ShopLite reference system, scenario runner, measured scoring) | v13 §5.3 |
 | 7d | **Playground Forge** (open-source-model agents that grow scenarios and the engine around your level) + Playground performance budgets in CI | v13 §5.4, §5.5, §6.2 |
 | 8 | **CV suggestions from Playground** + skill-gap loop | v17 §5, §4 |
 | 9 | **LaTeX Studio** (new kinds, standalone editor, editor parity) + shared **Blocks palette** in LaTeX, CV editor and templates | v17 §8.1–8.4 |

@@ -8,7 +8,7 @@ export type CvCopyResult = { saved: true; driveFileId: string } | { saved: false
 
 /**
  * Opt-in "Save a copy to Drive" for CV score uploads: store the uploaded
- * file in Employ/CVs and link the cv_scores row to it so the history can
+ * file in lee/CVs and link the cv_scores row to it so the history can
  * reopen it. Never throws: scoring already succeeded, so a Drive problem is
  * reported next to the result instead of failing the request.
  */

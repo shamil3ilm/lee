@@ -1,4 +1,4 @@
-# Employ — Architecture Review (2026-09-26)
+# lee — Architecture Review (2026-09-26)
 
 **Status:** Proposed. Items A1–A3 are urgent; the rest are ordered by the roadmap.
 **Context:** 593 TS/TSX files, 26 tables, one Next.js 16 app on **Vercel Hobby + Neon Free** (limits in v17 §9.6). The scope grows fast: Playground engine, Forge agents, Scam Shield, Opportunity Score, Radar. This review checks the current code against those limits and that growth.
@@ -26,8 +26,8 @@
 - Deduplicate by content hash, and cap total asset storage (default 150 MB, shown in the free-tier meter).
 - Generated PDFs are rebuilt on demand, never stored.
 - **Decision (2026-09-26, user request): Google Drive is the primary file store.** Details:
-  - **Scope:** add `https://www.googleapis.com/auth/drive.file` to the existing Google sign-in scopes. It only grants access to files Employ creates or the user explicitly picks, not the whole Drive. It's classed as non-sensitive, so it adds no extra verification on top of the Gmail scopes the app already uses. Existing users re-consent once (incremental authorization).
-  - **Layout:** an `Employ/` folder in the user's Drive with `Documents/<document>/assets`, `Exports/` and `PDFs/`. Neon stores only the Drive file id, name, size, mime type and a content hash (a few hundred bytes per file).
+  - **Scope:** add `https://www.googleapis.com/auth/drive.file` to the existing Google sign-in scopes. It only grants access to files lee creates or the user explicitly picks, not the whole Drive. It's classed as non-sensitive, so it adds no extra verification on top of the Gmail scopes the app already uses. Existing users re-consent once (incremental authorization).
+  - **Layout:** an `lee/` folder in the user's Drive with `Documents/<document>/assets`, `Exports/` and `PDFs/`. Neon stores only the Drive file id, name, size, mime type and a content hash (a few hundred bytes per file).
   - **Access:** uploads and downloads go browser ↔ Drive where possible (resumable upload with a short-lived `drive.file` access token), so bytes don't pass through Vercel functions (4 h CPU, 10 GB origin transfer). The server fetches from Drive only when it must, for example to compile LaTeX, and caches by content hash.
   - **Picker:** use the Google Picker to attach existing Drive files (CVs, certificates) without re-uploading.
   - **Storage interface:** `lib/storage/asset-store.ts` (put/get/delete/usage). Backends: `drive` (default once connected) and `postgres` (fallback when Drive isn't connected, capped at 150 MB). Existing bytea assets migrate to Drive with a one-time, resumable job, then their bytes are cleared.
@@ -63,7 +63,7 @@
 - The CV-score LaTeX path already avoids compiling.
 
 ### A8 — Modular monolith with enforced boundaries (pnpm workspace)
-- `packages/sim`: the Employ Sim engine. Framework-free, runs in the browser and in Node (for the Forge and CI).
+- `packages/sim`: the lee Sim engine. Framework-free, runs in the browser and in Node (for the Forge and CI).
 - `packages/content`: schemas and validators for content packs, skills and scenarios.
 - `packages/rules`: pure deterministic rule engines (scam, CV score, opportunity) shared by browser and server.
 - `app/` + `lib/<feature>`: the web app. Each feature exposes `service`, `queries` and `types`; cross-feature imports go through services only.
@@ -87,4 +87,4 @@
 - **AI:** provider abstraction and signal gates stay; open-source models are preferred via the v14 registry.
 
 ## Order
-A1 → A2 → A3 (before Scam Shield network checks and email suggestions add more background work) → A9 with the free-tier meter → A4/A5/A6 (measured) → A8 (before Employ Sim, step 7c) → A7 (with LaTeX Studio) → A10 continuously.
+A1 → A2 → A3 (before Scam Shield network checks and email suggestions add more background work) → A9 with the free-tier meter → A4/A5/A6 (measured) → A8 (before lee Sim, step 7c) → A7 (with LaTeX Studio) → A10 continuously.

@@ -88,6 +88,6 @@ describe('applicationsToCsv', () => {
 describe('csvFilename', () => {
   it('formats YYYY-MM-DD', () => {
     const name = csvFilename(new Date('2026-09-25T09:30:00Z'))
-    expect(name).toBe('employ-applications-2026-09-25.csv')
+    expect(name).toBe('lee-applications-2026-09-25.csv')
   })
 })

@@ -47,7 +47,7 @@ export function assertTestLoginNotInProduction(env: EnvLike): void {
   if (!flagPresent(env) || !productionLike(env)) return
   const where = env.VERCEL ? 'VERCEL is set' : 'NODE_ENV=production'
   throw new Error(
-    `[employ] ${TEST_LOGIN_FLAG} is set while ${where}. The E2E test sign-in is ` +
+    `[lee] ${TEST_LOGIN_FLAG} is set while ${where}. The E2E test sign-in is ` +
       `local-development only; unset ${TEST_LOGIN_FLAG} for this build/runtime.`,
   )
 }

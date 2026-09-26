@@ -1,4 +1,4 @@
-# Employ — v9 State Freshness Guard (SFG) Design Spec
+# lee — v9 State Freshness Guard (SFG) Design Spec
 
 **Date:** 2026-09-25
 **Status:** Approved — ready for implementation
@@ -11,7 +11,7 @@
 
 An AI generates an action based on state at time T. A human reviews and approves. By the time the action executes at T+Δ, the underlying state may have changed in ways that make the action wrong, embarrassing, or actively harmful.
 
-**Concrete recurring pattern in Employ:**
+**Concrete recurring pattern in lee:**
 
 | Scenario | Stale action | Impact |
 |---|---|---|

@@ -18,7 +18,7 @@ import type {
 
 /**
  * Google Drive backend (A2). Bytes live in the user's own Drive under
- * Employ/; Neon keeps only the Drive file id, name, size, MIME type and
+ * lee/; Neon keeps only the Drive file id, name, size, MIME type and
  * sha256. Refs:
  *   drive:asset:<document_assets.id>
  *   drive:pdf:<document_id>:<cache_key>

@@ -1,8 +1,8 @@
-# Employ — v2 CV & Documents Design Spec
+# lee — v2 CV & Documents Design Spec
 
 **Date:** 2026-09-16
 **Status:** Approved — ready for implementation planning
-**Scope:** Sub-project 2 of 5 in the Employ roadmap
+**Scope:** Sub-project 2 of 5 in the lee roadmap
 **Depends on:** v1 Core Tracker + v1.5 Discovery (both shipped)
 
 ---

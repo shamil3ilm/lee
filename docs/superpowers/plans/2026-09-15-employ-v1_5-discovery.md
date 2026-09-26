@@ -1,4 +1,4 @@
-# Employ v1.5 Discovery — Implementation Plan
+# lee v1.5 Discovery — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development`.
 

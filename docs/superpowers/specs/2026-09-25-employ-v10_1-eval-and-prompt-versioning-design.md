@@ -1,4 +1,4 @@
-# Employ — v10.1 Eval + Prompt Versioning + Per-Discovery Scoring
+# lee — v10.1 Eval + Prompt Versioning + Per-Discovery Scoring
 
 **Date:** 2026-09-25
 **Status:** Approved — ready for implementation

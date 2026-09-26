@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DISPLAY_LOCALE, relativeFromNow } from '@/lib/ui/date'
+import { APP_NAME } from '@/lib/brand'
 
 interface IntegrationsPanelProps {
   email: string | null
@@ -25,7 +26,7 @@ const REQUIRED_SCOPES: Array<{ id: string; label: string; critical: boolean }> =
   { id: 'https://www.googleapis.com/auth/userinfo.profile', label: 'Profile', critical: true },
   { id: 'https://www.googleapis.com/auth/gmail.readonly', label: 'Gmail (read-only)', critical: false },
   { id: 'https://www.googleapis.com/auth/calendar.events', label: 'Calendar events', critical: false },
-  { id: 'https://www.googleapis.com/auth/drive.file', label: 'Drive (Employ files only)', critical: false },
+  { id: 'https://www.googleapis.com/auth/drive.file', label: `Drive (${APP_NAME} files only)`, critical: false },
 ]
 
 /** Match either the short form (`email`, `profile`) or the full URL form

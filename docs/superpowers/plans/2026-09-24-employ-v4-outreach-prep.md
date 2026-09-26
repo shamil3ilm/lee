@@ -1,4 +1,4 @@
-# Employ v4 Outreach & Interview Prep — Implementation Plan
+# lee v4 Outreach & Interview Prep — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development`.
 

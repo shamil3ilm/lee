@@ -49,10 +49,10 @@ export function applicationsToCsv(rows: readonly ApplicationListRow[]): string {
   return `﻿${header}\r\n${body}${body.length ? '\r\n' : ''}`
 }
 
-/** Formatted attachment name like `employ-applications-2026-09-25.csv`. */
+/** Formatted attachment name like `lee-applications-2026-09-25.csv`. */
 export function csvFilename(now: Date = new Date()): string {
   const y = now.getUTCFullYear()
   const m = String(now.getUTCMonth() + 1).padStart(2, '0')
   const d = String(now.getUTCDate()).padStart(2, '0')
-  return `employ-applications-${y}-${m}-${d}.csv`
+  return `lee-applications-${y}-${m}-${d}.csv`
 }

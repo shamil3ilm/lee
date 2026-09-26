@@ -1,4 +1,4 @@
-# Employ Core Tracker (v1) Implementation Plan
+# lee Core Tracker (v1) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -59,7 +59,7 @@ Expected: initial commit created.
 Overwrite with a minimal readme:
 
 ```markdown
-# Employ
+# lee
 
 Personal job-search tracker. Single-user Next.js 15 app deployed on Vercel with Neon Postgres, Auth.js, and Gemini for AI parsing.
 
@@ -1284,7 +1284,7 @@ import { signIn } from '@/lib/auth'
 export default function SignInPage() {
   return (
     <div className="mx-auto mt-32 max-w-sm text-center">
-      <h1 className="mb-4 text-2xl font-semibold">Sign in to Employ</h1>
+      <h1 className="mb-4 text-2xl font-semibold">Sign in to lee</h1>
       <form action={async () => { 'use server'; await signIn('google', { redirectTo: '/' }) }}>
         <button className="rounded bg-black px-4 py-2 text-white">Continue with Google</button>
       </form>
@@ -2271,7 +2271,7 @@ import './globals.css'
 import { ThemeProvider } from 'next-themes'
 import { Toaster } from 'sonner'
 
-export const metadata: Metadata = { title: 'Employ', description: 'Personal job-search tracker' }
+export const metadata: Metadata = { title: 'lee', description: 'Personal job-search tracker' }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -2326,7 +2326,7 @@ const NAV = [
 export function Sidebar() {
   return (
     <aside className="border-r p-4">
-      <div className="mb-6 text-lg font-semibold">Employ</div>
+      <div className="mb-6 text-lg font-semibold">lee</div>
       <nav className="space-y-1">
         {NAV.map(({ href, label, icon: Icon }) => (
           <Link key={href} href={href} className="flex items-center gap-2 rounded px-3 py-2 hover:bg-muted">
@@ -2939,7 +2939,7 @@ import { test, expect } from '@playwright/test'
 test('unauthenticated user is redirected to signin', async ({ page }) => {
   await page.goto('/')
   await expect(page).toHaveURL(/\/signin/)
-  await expect(page.getByText('Sign in to Employ')).toBeVisible()
+  await expect(page.getByText('Sign in to lee')).toBeVisible()
 })
 
 test('health endpoint returns ok', async ({ request }) => {

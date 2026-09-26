@@ -241,13 +241,13 @@ describe('fetchModels', () => {
   it('GETs {base}/models with auth and extra headers', async () => {
     const f = vi.fn(async () => jsonResponse({ data: [{ id: 'x' }] }))
     const json = await fetchModels(
-      { ...ep, provider: 'openrouter', baseUrl: 'https://openrouter.ai/api/v1', extraHeaders: { 'X-Title': 'Employ' } },
+      { ...ep, provider: 'openrouter', baseUrl: 'https://openrouter.ai/api/v1', extraHeaders: { 'X-Title': 'lee' } },
       { fetchImpl: f as unknown as typeof fetch },
     )
     expect(json).toEqual({ data: [{ id: 'x' }] })
     const [url, init] = f.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toBe('https://openrouter.ai/api/v1/models')
-    expect((init.headers as Record<string, string>)['X-Title']).toBe('Employ')
+    expect((init.headers as Record<string, string>)['X-Title']).toBe('lee')
     expect(init.method).toBe('GET')
   })
 })

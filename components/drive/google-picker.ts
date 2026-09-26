@@ -81,7 +81,7 @@ function loadPicker(): Promise<PickerNamespace> {
 
 /**
  * Open the Picker and resolve with the chosen file ids ([] on cancel). Each
- * picked file becomes accessible to Employ under drive.file.
+ * picked file becomes accessible to lee under drive.file.
  */
 export async function pickDriveFiles(accessToken: string): Promise<string[]> {
   const ns = await loadPicker()

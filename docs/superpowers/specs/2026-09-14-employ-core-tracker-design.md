@@ -1,15 +1,15 @@
-# Employ — Core Tracker (v1) Design Spec
+# lee — Core Tracker (v1) Design Spec
 
 **Date:** 2026-09-14
 **Author:** Mohamed Shamil (with Claude)
 **Status:** Approved — ready for implementation planning
-**Scope:** Sub-project 1 of 5 in the Employ roadmap
+**Scope:** Sub-project 1 of 5 in the lee roadmap
 
 ---
 
 ## 1. Overview
 
-Employ is a personal job-search platform: a deployed web app that tracks applications, discovers matching jobs and companies from legitimate sources, generates tailored CVs and cover letters, syncs interviews with calendar, and drafts outreach — all built for a single user first, with the schema shaped to support multi-tenancy later.
+lee is a personal job-search platform: a deployed web app that tracks applications, discovers matching jobs and companies from legitimate sources, generates tailored CVs and cover letters, syncs interviews with calendar, and drafts outreach — all built for a single user first, with the schema shaped to support multi-tenancy later.
 
 This spec covers **v1: Core Tracker**, the foundation the rest of the roadmap builds on. v1 does not do AI job discovery, CV generation, Gmail/Calendar sync, or outreach — those ship as sub-projects 1.5, 2, 3, and 4. But v1's schema includes stubbed tables and columns so later sub-projects are purely additive (no destructive migrations).
 

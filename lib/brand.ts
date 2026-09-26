@@ -1,8 +1,10 @@
 /**
  * Product identity. The user-facing name is "lee" — from Arabic لي, "mine" /
  * "for me": a personal tool that belongs to one person. Always lowercase, even at
- * the start of a sentence. Code, repo, package and URL still say "employ";
- * only what people read uses APP_NAME. Never hard-code the name elsewhere.
+ * the start of a sentence. Package, repo and deployment are "lee" too; only
+ * internal identifiers keep "employ" on purpose (localStorage keys — renaming
+ * would reset saved preferences — and private Drive appProperties tags).
+ * Never hard-code the name elsewhere: use APP_NAME.
  */
 export const APP_NAME = 'lee'
 export const APP_TAGLINE = 'Your personal job search, organised'

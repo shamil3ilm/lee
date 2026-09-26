@@ -14,7 +14,7 @@ export async function GET(): Promise<Response> {
     if (!userId) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
     const rows = await expensesQ.list(userId)
     const csv = expensesToCsv(rows)
-    const filename = `employ-expenses-${new Date().toISOString().slice(0, 10)}.csv`
+    const filename = `lee-expenses-${new Date().toISOString().slice(0, 10)}.csv`
     return new Response(csv, {
       headers: {
         'content-type': 'text/csv; charset=utf-8',

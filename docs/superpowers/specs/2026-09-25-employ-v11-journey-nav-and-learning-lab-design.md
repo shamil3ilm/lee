@@ -1,4 +1,4 @@
-# Employ — v11 Journey Navigation + Learning Lab
+# lee — v11 Journey Navigation + Learning Lab
 
 **Date:** 2026-09-25
 **Status:** Approved — ready for implementation

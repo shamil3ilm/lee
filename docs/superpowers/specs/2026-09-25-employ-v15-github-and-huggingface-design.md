@@ -1,4 +1,4 @@
-# Employ — v15 GitHub + Hugging Face Connections
+# lee — v15 GitHub + Hugging Face Connections
 
 **Date:** 2026-09-25
 **Status:** Approved — ready for implementation

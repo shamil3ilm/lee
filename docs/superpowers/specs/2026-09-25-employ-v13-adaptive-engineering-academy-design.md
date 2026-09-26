@@ -1,4 +1,4 @@
-# Employ — v13 Adaptive Engineering Academy
+# lee — v13 Adaptive Engineering Academy
 
 **Date:** 2026-09-25
 **Status:** Approved — ready for implementation
@@ -149,7 +149,7 @@ New exercise formats:
 | **Container & cluster doctor** | Shrink and secure a Dockerfile; fix pods stuck in CrashLoopBackOff/Pending | image size, security findings, pods healthy | Dockerfile linter rules + Kubernetes state simulator |
 | **Conflict resolver** | Git text conflicts (existing), semantic conflicts caught by tests, colliding migration numbers, lockfile conflicts | tests green, history clean, no lost changes | isomorphic-git + in-browser test runner |
 | **People-conflict scenario** | Role-play a code-review disagreement or scope pushback with an AI counterpart | rubric: clarity, empathy, outcome, trade-offs stated | AI evaluator with a published rubric |
-| **Real-history drills** | Replay bugs from Employ's own history (the order-dependent test leak, the Laya `noul` parsing bug, the double-0013 migration clash) | same as debugging | repo history snapshots |
+| **Real-history drills** | Replay bugs from lee's own history (the order-dependent test leak, the Laya `noul` parsing bug, the double-0013 migration clash) | same as debugging | repo history snapshots |
 
 ### 5.2 Extension (2026-09-26): cloud, containers, data stores, messaging, integration, architecture at scale
 New or deepened domains:
@@ -183,7 +183,7 @@ New exercise formats:
 | **Architecture kata** | Split or merge modules in a codebase; enforce boundaries; plan a strangler-fig migration | dependency rules pass, tests green, migration plan rubric |
 | **Scale-out lab** | Take a single-server app to N servers: sessions, cache, locks, health checks, zero-downtime deploy | error rate during scale and deploy, consistency, cost |
 
-**Runtimes:** everything runs in the browser on the Employ Sim engine (§5.3). No external services, no installs, no cloud accounts.
+**Runtimes:** everything runs in the browser on the lee Sim engine (§5.3). No external services, no installs, no cloud accounts.
 
 **Safety (applies to all security content):**
 - Offensive work targets only sandboxed in-browser apps and the local v86 VM, never real hosts.
@@ -222,7 +222,7 @@ Programming languages grow the same way (the self-evolving curriculum adds them)
 
 Languages with no practical in-browser toolchain get reading, review and predict-the-output exercises until a runtime fits the performance budget (§5.5).
 
-### 5.3 Employ Sim — our own browser playground engine (2026-09-26)
+### 5.3 lee Sim — our own browser playground engine (2026-09-26)
 **Decision:** the Playground is browser-only and self-contained.
 - No installs, no external sandboxes, no cloud accounts.
 - It works from any device, including offline once assets are cached.
@@ -304,7 +304,7 @@ Languages with no practical in-browser toolchain get reading, review and predict
 | In-browser AI is small | Grading is rule-based first. Written answers use a published rubric; an in-browser model (WebLLM) gives feedback, and a larger open-source model is used only if the user enables it. |
 
 ### 5.5 Performance budgets (enforced in CI)
-The Playground must never slow Employ down.
+The Playground must never slow lee down.
 - **Isolation:**
   - Engines load only inside Playground exercises, lazy-loaded per exercise and cached by a service worker/OPFS after first use.
   - Other pages never download them.
@@ -388,10 +388,10 @@ Open-source models and agents keep developing the Playground around the user's l
 | Agent | Job | Checked by |
 |---|---|---|
 | Scenario Author | New tickets, incidents and exercises on ShopLite, aimed at the user's frontier skills (target success ≈ 0.65–0.75) | Validator |
-| Validator | Runs every scenario headless on the same Employ Sim engine (Node): the broken state must fail the checks, the reference fix must pass, the result must hold across seeds, and the performance budget must be met | deterministic |
+| Validator | Runs every scenario headless on the same lee Sim engine (Node): the broken state must fail the checks, the reference fix must pass, the result must hold across seeds, and the performance budget must be met | deterministic |
 | Loophole Hunter | Tries to "pass" without solving: disable the check, hard-code outputs, delete the failing test. Any success hardens the checks | Validator |
 | Fidelity Engineer | Writes conformance tests from official docs; runs differential tests against real engines (v86 redis-server, bash); proposes simulator fixes | CI |
-| Engine Improver | Opens pull requests to Employ Sim (new commands, cmdlets, controller behaviour, performance work) with tests | CI + user review |
+| Engine Improver | Opens pull requests to lee Sim (new commands, cmdlets, controller behaviour, performance work) with tests | CI + user review |
 | Tutor | After each attempt: what went wrong, the concept behind it, what to try next | rubric; rateable |
 | Curriculum Scout | Trends, market demand and version drift (§6.1) | ≥ 2 cited sources |
 
@@ -501,7 +501,7 @@ Everything is kept, append-only, per user. Records are never overwritten or sile
 
 ## 12. Phasing
 
-- **13.S Employ Sim foundation (before 13.3)**: discrete-event core (virtual clock, nodes, network, filesystem, seeds), fault injection, metrics, conformance-test harness, ShopLite reference system v1, scenario runner + measured scoring
+- **13.S lee Sim foundation (before 13.3)**: discrete-event core (virtual clock, nodes, network, filesystem, seeds), fault injection, metrics, conformance-test harness, ShopLite reference system v1, scenario runner + measured scoring
 - **13.F Playground Forge (after 13.S)**: Validator + Loophole Hunter first, then Scenario Author, Tutor, Fidelity Engineer (differential tests vs v86 engines), Engine Improver PRs; GitHub Actions schedule; content packs; perf budgets in CI
 - **13.0 Core engine** — skill graph, ratings, placement (seeded from CV/profile + diagnostic), adaptive selector, daily plan, attempt/evaluation framework, XP/rank/streak/achievements core, Academy home + radar
 - **13.1 Coding workbench** — Web Worker runner, hidden tests, empirical complexity fit, acorn quality metrics, optimization + refactoring + debugging formats, Pyodide
@@ -516,7 +516,7 @@ Everything is kept, append-only, per user. Records are never overwritten or sile
 - **13.8 Security expansion**: blue-team triage, hardening review, crypto, cloud IAM, supply-chain drills
 - **13.9 Delivery**: pipeline debugger, data pipeline lab, dependency resolver, package author
 - **13.10 Infrastructure & command line**: server lab (v86 + simulated shell), terminal tasks in bash/PowerShell/cmd, cross-shell translation, explain/predict, script repair, danger zone, command builder, container & cluster doctor
-- **13.13 Cloud & scale**: Docker/Compose, Kubernetes (deep), AWS and Azure simulators + CLI tasks, Redis lab, queue simulator, sync→async, integration lab, SDK workshop, architecture kata, scale-out lab; all on Employ Sim (§5.3)
+- **13.13 Cloud & scale**: Docker/Compose, Kubernetes (deep), AWS and Azure simulators + CLI tasks, Redis lab, queue simulator, sync→async, integration lab, SDK workshop, architecture kata, scale-out lab; all on lee Sim (§5.3)
 - **13.11 Conflicts**: semantic, migration and lockfile conflicts; people-conflict scenarios; real-history drills
 
 ## 13. Constraints

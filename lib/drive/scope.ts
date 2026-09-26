@@ -1,5 +1,5 @@
 /**
- * `drive.file`: per-file access to files Employ creates or the user opens
+ * `drive.file`: per-file access to files lee creates or the user opens
  * with the app (Google Picker). Non-sensitive, no access to the rest of the
  * user's Drive. https://developers.google.com/workspace/drive/api/guides/api-specific-auth
  */

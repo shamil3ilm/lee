@@ -667,7 +667,7 @@ export const documentPdfCache = pgTable('document_pdf_cache', {
     .references(() => users.id, { onDelete: 'cascade' }),
   cacheKey: text('cache_key').notNull(),
   sizeBytes: integer('size_bytes').notNull(),
-  // Null when the cached PDF lives in the user's Drive (Employ/PDFs).
+  // Null when the cached PDF lives in the user's Drive (lee/PDFs).
   bytes: bytea('bytes'),
   driveFileId: text('drive_file_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -907,7 +907,7 @@ export const cvScores = pgTable(
     meta: jsonb('meta').notNull().default({}),
     scorerVersion: text('scorer_version').notNull(),
     aiCallId: uuid('ai_call_id').references(() => aiCallLogs.id, { onDelete: 'set null' }),
-    // A2 — optional copy of an uploaded CV saved to Employ/CVs in Drive.
+    // A2 — optional copy of an uploaded CV saved to lee/CVs in Drive.
     driveFileId: text('drive_file_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },

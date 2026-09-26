@@ -39,7 +39,7 @@ export const edgeAuthConfig = {
             'https://www.googleapis.com/auth/gmail.send',
             'https://www.googleapis.com/auth/calendar.events',
             // A2: Google Drive as the file store. drive.file is per-file
-            // (only files Employ creates or the user picks) and
+            // (only files lee creates or the user picks) and
             // non-sensitive. Existing sessions keep working without it;
             // Drive features show "Connect Google Drive", which re-runs this
             // consent (lib/drive/actions.ts). Keep in sync with DRIVE_FILE_SCOPE.

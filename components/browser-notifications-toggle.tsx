@@ -47,7 +47,7 @@ export function BrowserNotificationsToggle() {
     const n = showNotification({
       title: APP_NAME,
       body: 'Notifications are working — you\'ll be pinged when todos come due.',
-      tag: 'employ-test',
+      tag: 'lee-test',
     })
     if (!n) toast.error('Could not fire test notification.')
   }

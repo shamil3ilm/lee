@@ -1,4 +1,4 @@
-# Employ
+# lee
 
 Personal job-search tracker. Single-user Next.js 15 app deployed on Vercel with Neon Postgres, Auth.js, and Gemini for AI parsing.
 
@@ -72,11 +72,11 @@ the prompt so analytics can attribute rating deltas to the change.
 ## Google Drive file storage
 
 Document assets (and the compiled-PDF cache, and optional CV copies) live in the
-user's own Google Drive under `Employ/` once they click **Connect Google Drive**
+user's own Google Drive under `lee/` once they click **Connect Google Drive**
 (Settings › Integrations, the LaTeX Assets dialog, or the CV score upload).
 Neon keeps only the Drive file id, name, size, MIME type and sha256. Without
 Drive, files stay in Postgres, capped at 150 MB per user. The app requests the
-non-sensitive `drive.file` scope, which only covers files Employ creates or the
+non-sensitive `drive.file` scope, which only covers files lee creates or the
 user picks in the Google Picker.
 
 One-time Google Cloud console setup (same project as the OAuth client):

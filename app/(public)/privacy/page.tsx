@@ -54,7 +54,7 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong>Google Drive, per-file</strong> (<code>drive.file</code>): to store your documents, files and
-            generated PDFs in an <code>Employ</code> folder in your Drive, and to open files you explicitly pick.
+            generated PDFs in a <code>{APP_NAME}</code> folder in your Drive, and to open files you explicitly pick.
             This access covers only files the app creates or you choose; it cannot see the rest of your Drive.
           </li>
         </ul>

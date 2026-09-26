@@ -1,4 +1,4 @@
-# Employ — v16 AI Radar, Issue Solving, LinkedIn
+# lee — v16 AI Radar, Issue Solving, LinkedIn
 
 **Date:** 2026-09-25
 **Status:** Approved — ready for implementation

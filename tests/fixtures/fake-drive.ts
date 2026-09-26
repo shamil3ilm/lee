@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 
 /**
  * In-memory fake of the slice of Google Drive API v3 (+ the OAuth token
- * endpoint) that Employ uses, installed as a `fetch` mock. Files are owned
+ * endpoint) that lee uses, installed as a `fetch` mock. Files are owned
  * by the bearer token that created them, mirroring `drive.file`: another
  * user's token gets a 404 for them.
  */

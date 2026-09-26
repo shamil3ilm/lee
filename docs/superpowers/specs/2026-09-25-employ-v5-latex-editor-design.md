@@ -1,8 +1,8 @@
-# Employ — v5 LaTeX Editor Design Spec
+# lee — v5 LaTeX Editor Design Spec
 
 **Date:** 2026-09-25
 **Status:** Approved — ready for implementation planning
-**Scope:** Sub-project 5 of 5+ in the Employ roadmap
+**Scope:** Sub-project 5 of 5+ in the lee roadmap
 **Depends on:** v1 + v1.5 + v2 + v3 + v4 (all shipped)
 
 ---
