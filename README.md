@@ -1,6 +1,11 @@
 # lee
 
-Personal job-search tracker. Single-user Next.js 15 app deployed on Vercel with Neon Postgres, Auth.js, and Gemini for AI parsing.
+**lee** (Arabic لي, "mine") is a personal, single-user job-search workspace: applications, CVs and
+cover letters (LaTeX), interviews, contacts, discoveries with Scam Shield, CV scoring, todos, expenses
+and an engineering Playground. Next.js 16 on Vercel Hobby, Neon Postgres, Auth.js (Google), with
+Groq/Gemini (and other open-source model providers) for AI. Zero-cost by design.
+
+Repository: https://github.com/shamil3ilm/lee
 
 Spec: `docs/superpowers/specs/2026-09-14-employ-core-tracker-design.md`
 Plan: `docs/superpowers/plans/2026-09-14-employ-core-tracker.md`
