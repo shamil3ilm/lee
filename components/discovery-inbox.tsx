@@ -1,7 +1,7 @@
 'use client'
 import * as React from 'react'
 import Link from 'next/link'
-import { Sparkles, Trash2 } from 'lucide-react'
+import { ShieldCheck, Sparkles, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/empty-state'
@@ -19,6 +19,8 @@ import {
 interface JobsInboxProps {
   kind: 'jobs'
   items: DiscoveryRowJob[]
+  /** v17 §1 — showing the Scam Shield quarantine instead of the inbox. */
+  quarantineView?: boolean
 }
 
 interface CompaniesInboxProps {
@@ -87,6 +89,16 @@ export function DiscoveryInbox(props: DiscoveryInboxProps) {
     })
   }
 
+  if (items.length === 0 && props.kind === 'jobs' && props.quarantineView) {
+    return (
+      <EmptyState
+        icon={ShieldCheck}
+        title="Quarantine is empty"
+        description="Postings that Scam Shield rates “Likely scam” land here instead of your inbox. Nothing is ever deleted."
+      />
+    )
+  }
+
   if (items.length === 0) {
     return (
       <EmptyState
@@ -104,6 +116,12 @@ export function DiscoveryInbox(props: DiscoveryInboxProps) {
 
   return (
     <div className="space-y-2">
+      {props.kind === 'jobs' && props.quarantineView ? (
+        <p className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          Quarantined by Scam Shield: likely scams and ones you confirmed. Open a badge to see why,
+          mark “Not a scam” to release it, or report it.
+        </p>
+      ) : null}
       {isJobs ? (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2 text-xs">
           <div className="flex items-center gap-2 text-muted-foreground">

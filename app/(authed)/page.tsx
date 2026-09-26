@@ -6,7 +6,8 @@ import * as appsQ from '@/lib/db/queries/applications'
 import * as todosQ from '@/lib/db/queries/todos'
 import { db } from '@/lib/db/client'
 import { accounts, activities, discoveries } from '@/lib/db/schema'
-import { discoveryNotQuarantinedSql } from '@/lib/db/queries/riskAssessments'
+import { discoveryNotQuarantinedSql, mapForTargets } from '@/lib/db/queries/riskAssessments'
+import { toRiskView } from '@/lib/scam/view'
 import { getProfile } from '@/lib/profile/service'
 import { Kanban, type KanbanCard } from '@/components/kanban'
 import {
@@ -104,13 +105,16 @@ export default async function DashboardPage() {
     orderBy: (d, { desc }) => [desc(d.matchScore), desc(d.createdAt)],
     limit: 5,
   })
+  const freshRisks = await mapForTargets(userId, 'discovery', freshRows.map((r) => r.id))
   const fresh: FreshDiscoveryItem[] = freshRows.map((r) => {
     const n = r.normalized as unknown as NormalizedJob
+    const risk = freshRisks.get(r.id)
     return {
       id: r.id,
       title: n.title ?? 'Untitled',
       companyName: n.companyName ?? 'Unknown',
       matchScore: r.matchScore,
+      risk: risk ? toRiskView(risk) : null,
     }
   })
 

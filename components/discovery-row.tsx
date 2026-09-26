@@ -25,6 +25,8 @@ import type {
   NormalizedJob,
   NormalizedCompany,
 } from '@/lib/discovery/adapters/types'
+import { RiskBadge } from '@/components/scam/risk-badge'
+import type { RiskView } from '@/lib/scam/view'
 
 export interface DiscoveryRowJob {
   id: string
@@ -35,6 +37,8 @@ export interface DiscoveryRowJob {
   sourceName: string
   normalized: NormalizedJob
   reasoning: DiscoveryReasoning | null
+  /** v17 §1 — Scam Shield assessment; null when not assessed yet. */
+  risk?: RiskView | null
 }
 
 export interface DiscoveryRowCompany {
@@ -137,6 +141,7 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
               ) : null}
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              {item.risk ? <RiskBadge risk={item.risk} /> : null}
               <Badge variant={scoreVariant(item.matchScore)}>
                 {scoreLabel(item.matchScore, 'Match')}
               </Badge>

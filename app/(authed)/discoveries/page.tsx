@@ -3,6 +3,9 @@ import { requireUserId } from '@/lib/auth/require-session'
 import * as discoveriesQ from '@/lib/db/queries/discoveries'
 import * as companyDiscoveriesQ from '@/lib/db/queries/companyDiscoveries'
 import * as sourcesQ from '@/lib/db/queries/sources'
+import * as riskQ from '@/lib/db/queries/riskAssessments'
+import { reassessStaleDiscoveries, safely } from '@/lib/scam/service'
+import { toRiskView } from '@/lib/scam/view'
 import { PageHeader } from '@/components/page-header'
 import { DiscoveryInbox } from '@/components/discovery-inbox'
 import {
@@ -37,9 +40,12 @@ function parseTab(raw: string | undefined): 'jobs' | 'companies' {
 }
 
 function parseStatus(raw: string | undefined): DiscoveryStatusFilter {
-  if (raw === 'saved' || raw === 'dismissed') return raw
+  if (raw === 'saved' || raw === 'dismissed' || raw === 'quarantined') return raw
   return 'new'
 }
+
+/** Bound on-view Scam Shield catch-up (rules only, cached net facts). */
+const REASSESS_ON_VIEW = 100
 
 function parseSort(raw: string | undefined): DiscoverySort {
   if (raw === 'match' || raw === 'benefits' || raw === 'posted') return raw
@@ -59,35 +65,55 @@ export default async function DiscoveriesPage({
   const userId = await requireUserId()
   const sp = await searchParams
   const tab = parseTab(sp.tab)
-  const status = parseStatus(sp.status)
+  const parsedStatus = parseStatus(sp.status)
+  // Quarantine is a job-discovery concept; companies fall back to the inbox.
+  const status = tab === 'companies' && parsedStatus === 'quarantined' ? 'new' : parsedStatus
   const minScore = parseMinScore(sp.minScore)
   const sort = parseSort(sp.sort)
 
   const sources = await sourcesQ.list(userId)
   const sourceNameById = new Map(sources.map((s) => [s.id, s.name] as const))
 
-  const jobItems: DiscoveryRowJob[] =
+  if (tab === 'jobs') {
+    // v17 §1 — make sure every row has a current Scam Shield assessment
+    // (new rules version, rows ingested before Scam Shield) before filtering.
+    await safely('discoveries_view', () => reassessStaleDiscoveries(userId, { limit: REASSESS_ON_VIEW }))
+  }
+  const jobRows =
     tab === 'jobs'
-      ? (await discoveriesQ.list(userId, {
-          status,
+      ? await discoveriesQ.list(userId, {
+          status: status === 'quarantined' ? 'all' : status,
+          quarantine: status === 'quarantined' ? 'only' : 'exclude',
           minScore: minScore > 0 ? minScore : undefined,
           sort,
-        })).map((d) => ({
-          id: d.id,
-          status: d.status,
-          matchScore: d.matchScore,
-          benefitsScore: d.benefitsScore,
-          createdAt: d.createdAt.toISOString(),
-          sourceName: sourceNameById.get(d.sourceId) ?? 'unknown',
-          normalized: d.normalized as unknown as NormalizedJob,
-          reasoning: (d.matchReasoning as DiscoveryReasoning | null) ?? null,
-        }))
+        })
       : []
+  const risks =
+    tab === 'jobs'
+      ? await riskQ.mapForTargets(userId, 'discovery', jobRows.map((d) => d.id))
+      : new Map<string, riskQ.RiskAssessmentRow>()
+  const quarantinedCount = tab === 'jobs' ? await discoveriesQ.countQuarantined(userId) : 0
+
+  const jobItems: DiscoveryRowJob[] = jobRows.map((d) => {
+    const sourceName = sourceNameById.get(d.sourceId) ?? 'unknown'
+    const risk = risks.get(d.id)
+    return {
+      id: d.id,
+      status: d.status,
+      matchScore: d.matchScore,
+      benefitsScore: d.benefitsScore,
+      createdAt: d.createdAt.toISOString(),
+      sourceName,
+      normalized: d.normalized as unknown as NormalizedJob,
+      reasoning: (d.matchReasoning as DiscoveryReasoning | null) ?? null,
+      risk: risk ? toRiskView(risk, sourceName) : null,
+    }
+  })
 
   const companyItems: DiscoveryRowCompany[] =
     tab === 'companies'
       ? (await companyDiscoveriesQ.list(userId, {
-          status,
+          status: status === 'quarantined' ? 'new' : status,
           minScore: minScore > 0 ? minScore : undefined,
         })).map((d) => ({
           id: d.id,
@@ -107,9 +133,15 @@ export default async function DiscoveriesPage({
         description="AI-scored jobs and companies from your sources."
       />
       <TabBar tab={tab} />
-      <DiscoveryFilters tab={tab} status={status} minScore={minScore} sort={sort} />
+      <DiscoveryFilters
+        tab={tab}
+        status={status}
+        minScore={minScore}
+        sort={sort}
+        quarantinedCount={quarantinedCount}
+      />
       {tab === 'jobs' ? (
-        <DiscoveryInbox kind="jobs" items={jobItems} />
+        <DiscoveryInbox kind="jobs" items={jobItems} quarantineView={status === 'quarantined'} />
       ) : (
         <DiscoveryInbox kind="companies" items={companyItems} />
       )}

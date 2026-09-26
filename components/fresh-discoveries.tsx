@@ -8,12 +8,16 @@ import { Badge, type BadgeProps } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { saveDiscovery, dismissDiscovery } from '@/app/(authed)/discoveries/actions'
+import { RiskBadge } from '@/components/scam/risk-badge'
+import type { RiskView } from '@/lib/scam/view'
 
 export interface FreshDiscoveryItem {
   id: string
   title: string
   companyName: string
   matchScore: number | null
+  /** v17 §1 — Scam Shield assessment (quarantined rows never reach this card). */
+  risk?: RiskView | null
 }
 
 function scoreVariant(score: number | null): BadgeProps['variant'] {
@@ -85,7 +89,10 @@ function FreshRow({ item }: { item: FreshDiscoveryItem }) {
   return (
     <li className="grid grid-cols-[1fr_auto_auto] items-center gap-3 py-2 text-sm">
       <div className="min-w-0">
-        <div className="truncate font-medium">{item.companyName}</div>
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span className="truncate font-medium">{item.companyName}</span>
+          {item.risk ? <RiskBadge risk={item.risk} className="shrink-0" /> : null}
+        </div>
         <div className="truncate text-xs text-muted-foreground">{item.title}</div>
       </div>
       <Badge variant={scoreVariant(item.matchScore)}>

@@ -11,6 +11,9 @@ import * as todosQ from '@/lib/db/queries/todos'
 import * as cvScoresQ from '@/lib/db/queries/cvScores'
 import { pickScoringDocument, toCvFitView, toDocScoreMap } from '@/lib/cv-score/fit'
 import { CvFitCard } from '@/components/cv-score/cv-fit-card'
+import { RiskBadge } from '@/components/scam/risk-badge'
+import { ensureJobAssessment, safely } from '@/lib/scam/service'
+import { toRiskView } from '@/lib/scam/view'
 import { StatusPicker } from '@/components/status-picker'
 import { AddStageDialog } from '@/components/add-stage-dialog'
 import { DocumentsCard } from '@/components/documents-card'
@@ -78,6 +81,11 @@ export default async function ApplicationDetail({
   const now = new Date().getTime()
   const app = await appsQ.getById(userId, id)
   if (!app) notFound()
+
+  // v17 §1 — Scam Shield: re-assessed here when missing, stale (rules
+  // version) or older than the job's last edit. Never blocks the page.
+  const riskRow = await safely('application_view', () => ensureJobAssessment(userId, app.job.id))
+  const risk = riskRow ? toRiskView(riskRow, hostLabel(app.job.sourceUrl)) : null
 
   const [stages, activities, contacts, allDocs, todos, scoreRows, masterCvs] = await Promise.all([
     stagesQ.list(userId, id),
@@ -171,6 +179,7 @@ export default async function ApplicationDetail({
       <Card>
         <CardContent className="flex flex-wrap items-center gap-x-4 gap-y-2 py-4 text-sm">
           <Badge variant={STATUS_BADGE[status]}>{STATUS_LABELS[status]}</Badge>
+          {risk ? <RiskBadge risk={risk} /> : null}
           {app.job.company ? (
             <span className="flex items-center gap-1.5 text-muted-foreground">
               <Building2 className="size-3.5" />
@@ -347,6 +356,14 @@ export default async function ApplicationDetail({
       </div>
     </div>
   )
+}
+
+function hostLabel(url: string): string | null {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return null
+  }
 }
 
 function MetaList({ label, items }: { label: string; items: string[] }) {

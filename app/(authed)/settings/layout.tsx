@@ -7,6 +7,7 @@ const SETTINGS_TABS: RouteTab[] = [
   { href: '/settings/sources', label: 'Sources' },
   { href: '/settings/integrations', label: 'Integrations' },
   { href: '/settings/notifications', label: 'Notifications' },
+  { href: '/settings/scam-shield', label: 'Scam Shield' },
 ]
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
