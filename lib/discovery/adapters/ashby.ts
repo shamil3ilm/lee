@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { DiscoveryAdapter, DiscoveryItem, NormalizedJob } from './types'
+import { discoveryFetch } from './http'
 
 const configSchema = z.object({ company: z.string() })
 
@@ -43,7 +44,7 @@ export class AshbyAdapter implements DiscoveryAdapter {
   async fetch(config: unknown): Promise<DiscoveryItem[]> {
     const { company } = configSchema.parse(config)
     const url = `https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(company)}?includeCompensation=true`
-    const res = await fetch(url)
+    const res = await discoveryFetch('ashby', url)
     if (!res.ok) throw new Error(`ashby ${res.status}`)
     const body = (await res.json()) as AshbyResponse
     const jobs = body.jobs ?? []

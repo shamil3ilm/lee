@@ -1,4 +1,5 @@
 import type { GitHubRepo } from '@/lib/documents/types'
+import { fetchWithTimeout, GITHUB_TIMEOUT_MS } from '@/lib/net/timeout'
 
 /**
  * Fetches public repos for a GitHub user. Unauthenticated requests get 60/hr;
@@ -15,7 +16,7 @@ export async function fetchPublicRepos(
   }
   if (token) headers.authorization = `Bearer ${token}`
   const url = `https://api.github.com/users/${encodeURIComponent(username)}/repos?type=public&sort=updated&per_page=30`
-  const res = await fetch(url, { headers })
+  const res = await fetchWithTimeout(url, { headers }, { timeoutMs: GITHUB_TIMEOUT_MS, label: 'github' })
   if (!res.ok) {
     // Surface rate-limit and not-found errors distinctly so callers can toast
     // a meaningful message.

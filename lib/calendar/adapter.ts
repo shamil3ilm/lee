@@ -26,6 +26,8 @@ export interface CalendarEventInput {
   attendees?: Array<{ email: string; displayName?: string }>
 }
 
+import { CALENDAR_TIMEOUT_MS, fetchWithTimeout } from '@/lib/net/timeout'
+
 const BASE = 'https://www.googleapis.com/calendar/v3/calendars/primary/events'
 
 function authHeaders(tokens: CalendarTokens): Record<string, string> {
@@ -42,11 +44,11 @@ export async function createEvent({
   tokens: CalendarTokens
   event: CalendarEventInput
 }): Promise<{ eventId: string }> {
-  const res = await fetch(BASE, {
-    method: 'POST',
-    headers: authHeaders(tokens),
-    body: JSON.stringify(event),
-  })
+  const res = await fetchWithTimeout(
+    BASE,
+    { method: 'POST', headers: authHeaders(tokens), body: JSON.stringify(event) },
+    { timeoutMs: CALENDAR_TIMEOUT_MS, label: 'calendar createEvent' },
+  )
   if (!res.ok) {
     const detail = await res.text().catch(() => '')
     throw new Error(`calendar createEvent ${res.status}: ${detail}`)
@@ -65,11 +67,11 @@ export async function updateEvent({
   eventId: string
   event: Partial<CalendarEventInput>
 }): Promise<void> {
-  const res = await fetch(`${BASE}/${encodeURIComponent(eventId)}`, {
-    method: 'PATCH',
-    headers: authHeaders(tokens),
-    body: JSON.stringify(event),
-  })
+  const res = await fetchWithTimeout(
+    `${BASE}/${encodeURIComponent(eventId)}`,
+    { method: 'PATCH', headers: authHeaders(tokens), body: JSON.stringify(event) },
+    { timeoutMs: CALENDAR_TIMEOUT_MS, label: 'calendar updateEvent' },
+  )
   if (!res.ok) {
     const detail = await res.text().catch(() => '')
     throw new Error(`calendar updateEvent ${res.status}: ${detail}`)
@@ -83,10 +85,11 @@ export async function deleteEvent({
   tokens: CalendarTokens
   eventId: string
 }): Promise<void> {
-  const res = await fetch(`${BASE}/${encodeURIComponent(eventId)}`, {
-    method: 'DELETE',
-    headers: authHeaders(tokens),
-  })
+  const res = await fetchWithTimeout(
+    `${BASE}/${encodeURIComponent(eventId)}`,
+    { method: 'DELETE', headers: authHeaders(tokens) },
+    { timeoutMs: CALENDAR_TIMEOUT_MS, label: 'calendar deleteEvent' },
+  )
   // Google returns 204 No Content on success; 410 Gone is safe to treat as
   // idempotent success (already deleted). 404 likewise — the event does not
   // exist so the desired state is achieved.

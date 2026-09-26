@@ -1,3 +1,5 @@
+import { ATS_PROBE_TIMEOUT_MS, fetchWithTimeout } from '@/lib/net/timeout'
+
 export type ATSKind = 'greenhouse' | 'lever' | 'ashby' | 'workable'
 export type DetectedATS = { kind: ATSKind; slug: string } | null
 
@@ -17,7 +19,11 @@ export async function detectATSFromDomain(domain: string): Promise<DetectedATS> 
   const slug = slugFromDomain(domain)
   for (const c of CANDIDATES) {
     try {
-      const res = await fetch(c.url(slug), { method: 'GET' })
+      const res = await fetchWithTimeout(
+        c.url(slug),
+        { method: 'GET' },
+        { timeoutMs: ATS_PROBE_TIMEOUT_MS, label: `ats probe ${c.kind}` },
+      )
       if (res.ok) return { kind: c.kind, slug }
     } catch {
       // Ignore network errors — treat as "not this ATS" and continue probing.

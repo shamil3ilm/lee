@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { DiscoveryAdapter, DiscoveryItem, NormalizedJob } from './types'
+import { discoveryFetch } from './http'
 
 const configSchema = z.object({ company: z.string() })
 
@@ -42,7 +43,7 @@ export class WorkableAdapter implements DiscoveryAdapter {
     const { company } = configSchema.parse(config)
     const url = `https://apply.workable.com/api/v3/accounts/${encodeURIComponent(company)}/jobs`
     // Workable's public endpoint uses POST for filters; empty body returns all.
-    const res = await fetch(url, {
+    const res = await discoveryFetch('workable', url, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({}),

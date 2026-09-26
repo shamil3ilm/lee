@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { XMLParser } from 'fast-xml-parser'
 import type { DiscoveryAdapter, DiscoveryItem, NormalizedJob } from './types'
+import { discoveryFetch } from './http'
 
 const configSchema = z.object({ url: z.string().url() })
 
@@ -44,7 +45,7 @@ export class RssAdapter implements DiscoveryAdapter {
 
   async fetch(config: unknown): Promise<DiscoveryItem[]> {
     const { url } = configSchema.parse(config)
-    const res = await fetch(url, { headers: { accept: 'application/rss+xml, application/xml' } })
+    const res = await discoveryFetch('rss', url, { headers: { accept: 'application/rss+xml, application/xml' } })
     if (!res.ok) throw new Error(`rss ${res.status}`)
     const xml = await res.text()
     const parsed = parser.parse(xml) as RssFeed

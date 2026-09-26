@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GEMINI_ATTEMPT_TIMEOUT_MS, timeoutError, timeoutSignal } from '@/lib/net/timeout'
 import { buildParseJobPrompt, PARSE_JOB_PROMPT_VERSION } from './prompts/parse-job'
 import { buildParseProfilePrompt, PARSE_PROFILE_PROMPT_VERSION } from './prompts/parse-profile'
 import { buildScoreJobPrompt, SCORE_JOB_PROMPT_VERSION } from './prompts/score-job'
@@ -100,7 +101,16 @@ export class GeminiProvider implements AIProvider {
       model: modelName,
       generationConfig: { responseMimeType: 'application/json' },
     })
-    const res = await m.generateContent(prompt)
+    // Fresh timeout per attempt; a timeout is not in the retry regex in
+    // generate(), so it moves straight on to the fallback model.
+    const signal = timeoutSignal(GEMINI_ATTEMPT_TIMEOUT_MS)
+    let res: Awaited<ReturnType<typeof m.generateContent>>
+    try {
+      res = await m.generateContent(prompt, { signal })
+    } catch (e) {
+      if (signal.aborted) throw timeoutError('gemini', GEMINI_ATTEMPT_TIMEOUT_MS, e)
+      throw e
+    }
     return {
       text: res.response.text(),
       promptTokens: res.response.usageMetadata?.promptTokenCount ?? 0,

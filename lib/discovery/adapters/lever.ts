@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { DiscoveryAdapter, DiscoveryItem, NormalizedJob } from './types'
+import { discoveryFetch } from './http'
 
 const configSchema = z.object({ company: z.string() })
 
@@ -32,7 +33,7 @@ export class LeverAdapter implements DiscoveryAdapter {
   async fetch(config: unknown): Promise<DiscoveryItem[]> {
     const { company } = configSchema.parse(config)
     const url = `https://api.lever.co/v0/postings/${encodeURIComponent(company)}?mode=json`
-    const res = await fetch(url)
+    const res = await discoveryFetch('lever', url)
     if (!res.ok) throw new Error(`lever ${res.status}`)
     const postings = (await res.json()) as LeverPosting[]
     return postings.map((job) => {

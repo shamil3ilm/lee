@@ -55,6 +55,7 @@ import {
   type ParsedProfile,
 } from './types'
 import type { CallMeta } from './log'
+import { fetchWithTimeout, GROQ_ATTEMPT_TIMEOUT_MS } from '@/lib/net/timeout'
 import { stripLatexFencing } from './utils/latex'
 import {
   coverLetterSchema,
@@ -98,19 +99,25 @@ export class GroqProvider implements AIProvider {
     promptTokens: number
     completionTokens: number
   }> {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${this.apiKey}`,
-        'content-type': 'application/json',
+    // Fresh timeout per attempt. "timed out" is not in the retry regex in
+    // generate(), so a hung upstream costs one attempt, not three.
+    const res = await fetchWithTimeout(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${this.apiKey}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: this.model,
+          messages: [{ role: 'user', content: prompt }],
+          response_format: { type: 'json_object' },
+          temperature: 0.2,
+        }),
       },
-      body: JSON.stringify({
-        model: this.model,
-        messages: [{ role: 'user', content: prompt }],
-        response_format: { type: 'json_object' },
-        temperature: 0.2,
-      }),
-    })
+      { timeoutMs: GROQ_ATTEMPT_TIMEOUT_MS, label: 'groq' },
+    )
     if (!res.ok) {
       const body = await res.text().catch(() => '')
       throw new Error(`groq ${res.status}: ${body.slice(0, 400)}`)

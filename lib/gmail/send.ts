@@ -1,4 +1,5 @@
 import { getGoogleTokens } from '@/lib/google/tokens'
+import { fetchWithTimeout, GMAIL_TIMEOUT_MS } from '@/lib/net/timeout'
 
 export interface SendEmailArgs {
   userId: string
@@ -107,7 +108,7 @@ export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
   })
   const encoded = base64UrlEncode(raw)
 
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     'https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
     {
       method: 'POST',
@@ -117,6 +118,7 @@ export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
       },
       body: JSON.stringify({ raw: encoded }),
     },
+    { timeoutMs: GMAIL_TIMEOUT_MS, label: 'gmail send' },
   )
   if (!res.ok) {
     const detail = await res.text().catch(() => '')
