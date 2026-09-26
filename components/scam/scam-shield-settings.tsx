@@ -3,12 +3,23 @@ import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { Globe, ListChecks, X } from 'lucide-react'
 import {
+  addAllowListEntryAction,
   removeAllowListEntryAction,
   toggleScamNetChecksAction,
 } from '@/app/(authed)/settings/scam-shield/actions'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface AllowEntry {
   id: string
@@ -92,12 +103,30 @@ function NetChecksCard({ initial }: { initial: boolean }) {
 
 function AllowListCard({ entries }: { entries: AllowEntry[] }) {
   const [isPending, startTransition] = useTransition()
+  const [removing, setRemoving] = useState<AllowEntry | null>(null)
+  const [kind, setKind] = useState<'domain' | 'company'>('domain')
+  const [value, setValue] = useState('')
 
   function remove(id: string): void {
     startTransition(async () => {
       const result = await removeAllowListEntryAction(id)
       if ('error' in result) toast.error(result.error)
-      else toast.success('Removed from allow-list')
+      else {
+        toast.success('Removed from allow-list')
+        setRemoving(null)
+      }
+    })
+  }
+
+  function add(e: React.FormEvent): void {
+    e.preventDefault()
+    startTransition(async () => {
+      const result = await addAllowListEntryAction(kind, value)
+      if ('error' in result) toast.error(result.error)
+      else {
+        toast.success('Added to allow-list')
+        setValue('')
+      }
     })
   }
 
@@ -110,7 +139,38 @@ function AllowListCard({ entries }: { entries: AllowEntry[] }) {
           <Badge variant="secondary">{entries.length}</Badge>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-3">
+        <form onSubmit={add} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          <div className="space-y-1.5 sm:w-36">
+            <Label htmlFor="allow-kind" className="text-xs">
+              Type
+            </Label>
+            <Select value={kind} onValueChange={(v) => setKind(v === 'company' ? 'company' : 'domain')}>
+              <SelectTrigger id="allow-kind" className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="domain">Domain</SelectItem>
+                <SelectItem value="company">Company</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex-1 space-y-1.5">
+            <Label htmlFor="allow-value" className="text-xs">
+              {kind === 'domain' ? 'Domain' : 'Company name'}
+            </Label>
+            <Input
+              id="allow-value"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder={kind === 'domain' ? 'acme.com' : 'Acme'}
+              maxLength={200}
+            />
+          </div>
+          <Button type="submit" size="sm" className="h-9" disabled={isPending || !value.trim()}>
+            Add
+          </Button>
+        </form>
         {entries.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             Empty. When you mark a posting “Not a scam”, its company and domain are remembered here so
@@ -127,7 +187,7 @@ function AllowListCard({ entries }: { entries: AllowEntry[] }) {
                   variant="ghost"
                   className="h-7 w-7 p-0"
                   disabled={isPending}
-                  onClick={() => remove(e.id)}
+                  onClick={() => setRemoving(e)}
                   aria-label={`Remove ${e.value}`}
                   title="Remove"
                 >
@@ -138,6 +198,24 @@ function AllowListCard({ entries }: { entries: AllowEntry[] }) {
           </ul>
         )}
       </CardContent>
+      <ConfirmDialog
+        open={removing !== null}
+        onOpenChange={(open) => {
+          if (!open) setRemoving(null)
+        }}
+        title={`Remove ${removing?.value ?? 'entry'}?`}
+        description={
+          <p>
+            New postings from this {removing?.kind ?? 'entry'} will be assessed normally again. Items
+            it already released stay released until they are re-assessed.
+          </p>
+        }
+        confirmLabel="Remove"
+        pending={isPending}
+        onConfirm={() => {
+          if (removing) remove(removing.id)
+        }}
+      />
     </Card>
   )
 }

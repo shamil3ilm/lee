@@ -7,6 +7,7 @@ import type { ExpenseBudget } from '@/lib/db/queries/expenseBudgets'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -29,6 +30,7 @@ export function BudgetForm({ budgets }: BudgetFormProps) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState<ExpenseBudget | null>(null)
   const [category, setCategory] = useState<string>('food')
 
   function onSubmit(fd: FormData): void {
@@ -50,6 +52,7 @@ export function BudgetForm({ budgets }: BudgetFormProps) {
       const result = await deleteBudget(id)
       if ('success' in result) {
         toast.success('Budget removed')
+        setConfirming(null)
         router.refresh()
       } else {
         toast.error(result.error)
@@ -141,7 +144,7 @@ export function BudgetForm({ budgets }: BudgetFormProps) {
                         variant="ghost"
                         size="icon"
                         aria-label="Remove budget"
-                        onClick={() => onDelete(b.id)}
+                        onClick={() => setConfirming(b)}
                         disabled={pending}
                       >
                         {deletingId === b.id ? (
@@ -158,6 +161,19 @@ export function BudgetForm({ budgets }: BudgetFormProps) {
           </div>
         </Card>
       )}
+      <ConfirmDialog
+        open={confirming !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirming(null)
+        }}
+        title={`Remove the ${confirming?.category ?? ''} budget?`}
+        description={<p>Your expenses are kept; only the monthly cap is removed.</p>}
+        confirmLabel="Remove"
+        pending={pending}
+        onConfirm={() => {
+          if (confirming) onDelete(confirming.id)
+        }}
+      />
     </div>
   )
 }

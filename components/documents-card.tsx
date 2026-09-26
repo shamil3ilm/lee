@@ -12,6 +12,7 @@ import {
   MoreHorizontal,
   Pencil,
   RefreshCw,
+  TextCursorInput,
   Trash2,
 } from 'lucide-react'
 import type { DocumentSummary as Document } from '@/lib/db/queries/documents'
@@ -36,6 +37,11 @@ import { relativeFromNow } from '@/lib/ui/date'
 import { StalenessBadge } from '@/components/staleness-badge'
 import { CvScoreBadge } from '@/components/cv-score/cv-score-badge'
 import type { DocScore } from '@/lib/cv-score/fit'
+
+const DocumentRenameDialog = dynamic(
+  () => import('@/components/document-rename-dialog').then((m) => m.DocumentRenameDialog),
+  { ssr: false },
+)
 import { FeedbackButtons } from '@/components/feedback-buttons'
 import { logImplicitAction } from '@/lib/ui/implicit-signals'
 
@@ -131,6 +137,7 @@ export function DocumentsCard({ applicationId, documents, scores = {} }: Documen
   const [busy, setBusy] = useState<null | 'tailored' | 'cover_letter'>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<Document | null>(null)
+  const [renaming, setRenaming] = useState<Document | null>(null)
   // The merge dialog (and @dnd-kit) is fetched on the first click only.
   const [mergeRequested, setMergeRequested] = useState(false)
 
@@ -294,6 +301,10 @@ export function DocumentsCard({ applicationId, documents, scores = {} }: Documen
                           Regenerate
                         </DropdownMenuItem>
                       ) : null}
+                      <DropdownMenuItem onSelect={() => setRenaming(doc)}>
+                        <TextCursorInput className="size-4" />
+                        Rename
+                      </DropdownMenuItem>
                       <DropdownMenuItem
                         onSelect={(e) => {
                           e.preventDefault()
@@ -361,6 +372,16 @@ export function DocumentsCard({ applicationId, documents, scores = {} }: Documen
         ) : null}
       </CardContent>
 
+      {renaming ? (
+        <DocumentRenameDialog
+          documentId={renaming.id}
+          currentTitle={renaming.title}
+          open
+          onOpenChange={(open) => {
+            if (!open) setRenaming(null)
+          }}
+        />
+      ) : null}
       <Dialog
         open={confirmDelete !== null}
         onOpenChange={(open) => {

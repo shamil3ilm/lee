@@ -1,9 +1,10 @@
 'use client'
 import { useState, useTransition } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Download, FileText, Loader2, Pencil, Trash2 } from 'lucide-react'
+import { Download, FileText, Loader2, Pencil, TextCursorInput, Trash2 } from 'lucide-react'
 import type { DocumentSummary as Document } from '@/lib/db/queries/documents'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -21,6 +22,11 @@ import { relativeFromNow } from '@/lib/ui/date'
 import { StalenessBadge } from '@/components/staleness-badge'
 import { CvScoreBadge } from '@/components/cv-score/cv-score-badge'
 import type { DocScore } from '@/lib/cv-score/fit'
+
+const DocumentRenameDialog = dynamic(
+  () => import('@/components/document-rename-dialog').then((m) => m.DocumentRenameDialog),
+  { ssr: false },
+)
 
 type DocumentKind =
   | 'master_cv'
@@ -109,6 +115,7 @@ export function DocumentsTable({ documents, currentFilter, scores = {} }: Docume
   const [pending, startTransition] = useTransition()
   const [confirmDelete, setConfirmDelete] = useState<Document | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [renaming, setRenaming] = useState<Document | null>(null)
 
   function setFilter(v: FilterValue): void {
     startTransition(() => {
@@ -245,6 +252,15 @@ export function DocumentsTable({ documents, currentFilter, scores = {} }: Docume
                             </Button>
                           ) : null}
                           <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Rename ${doc.title}`}
+                            onClick={() => setRenaming(doc)}
+                          >
+                            <TextCursorInput className="size-4" />
+                          </Button>
+                          <Button
                             asChild
                             variant="ghost"
                             size="icon"
@@ -279,6 +295,16 @@ export function DocumentsTable({ documents, currentFilter, scores = {} }: Docume
         </Card>
       )}
 
+      {renaming ? (
+        <DocumentRenameDialog
+          documentId={renaming.id}
+          currentTitle={renaming.title}
+          open
+          onOpenChange={(open) => {
+            if (!open) setRenaming(null)
+          }}
+        />
+      ) : null}
       <Dialog
         open={confirmDelete !== null}
         onOpenChange={(open) => {

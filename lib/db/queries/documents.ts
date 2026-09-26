@@ -136,6 +136,19 @@ export async function update(
   return row ?? null
 }
 
+/**
+ * Change only the title. Deliberately leaves `updated_at` alone: staleness
+ * snapshots compare it, and a rename does not change the content.
+ */
+export async function rename(userId: string, id: string, title: string): Promise<boolean> {
+  const rows = await db
+    .update(documents)
+    .set({ title })
+    .where(and(eq(documents.userId, userId), eq(documents.id, id)))
+    .returning()
+  return rows.length > 0
+}
+
 export async function remove(userId: string, id: string, client: DbClient = db): Promise<void> {
   await client.delete(documents).where(and(eq(documents.userId, userId), eq(documents.id, id)))
 }
