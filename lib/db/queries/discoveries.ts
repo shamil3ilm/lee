@@ -330,6 +330,31 @@ export async function dismissByIds(
 }
 
 /**
+ * Undo a dismiss: move the given `dismissed` discoveries back to `new` in one
+ * UPDATE. Rows in any other status (saved, new) are left alone. Returns the
+ * restored rows' scoring-call ids so the caller can retract the implicit
+ * "dismissed" feedback signal.
+ */
+export async function restoreByIds(
+  userId: string,
+  ids: string[],
+  client: DbClient = db,
+): Promise<Array<{ id: string; scoredByCallId: string | null }>> {
+  if (ids.length === 0) return []
+  return writer(client)
+    .update(discoveries)
+    .set({ status: 'new', updatedAt: new Date() })
+    .where(
+      and(
+        eq(discoveries.userId, userId),
+        inArray(discoveries.id, ids),
+        eq(discoveries.status, 'dismissed'),
+      ),
+    )
+    .returning({ id: discoveries.id, scoredByCallId: discoveries.scoredByCallId })
+}
+
+/**
  * Dismiss every `new` discovery for the user that was created more than
  * `days` days ago. Returns the number of rows affected.
  */

@@ -20,7 +20,10 @@ import {
   dismissDiscovery,
   saveCompanyDiscovery,
   dismissCompanyDiscovery,
+  restoreDiscoveries,
+  restoreCompanyDiscovery,
 } from '@/app/(authed)/discoveries/actions'
+import { toastDismissedCompany, toastDismissedJobs } from '@/components/discovery-undo'
 import { RiskBadge } from '@/components/scam/risk-badge'
 import type { RiskView } from '@/lib/scam/view'
 
@@ -121,9 +124,17 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
   const handleDismiss = (): void => {
     startTransition(async () => {
       const result = await dismissDiscovery(item.id)
-      if ('success' in result) toast.success('Dismissed')
+      if ('success' in result) toastDismissedJobs('Dismissed', [item.id])
       else if ('error' in result) toast.error(result.error)
       else toast(result.message)
+    })
+  }
+
+  const handleRestore = (): void => {
+    startTransition(async () => {
+      const result = await restoreDiscoveries([item.id])
+      if ('success' in result) toast.success('Restored to inbox')
+      else toast.error(result.error)
     })
   }
 
@@ -204,6 +215,10 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
                   Dismiss
                 </Button>
               </>
+            ) : item.status === 'dismissed' ? (
+              <Button size="sm" variant="outline" onClick={handleRestore} disabled={isPending}>
+                Restore
+              </Button>
             ) : (
               <Badge variant={item.status === 'saved' ? 'emerald' : 'neutral'}>
                 {item.status}
@@ -255,9 +270,17 @@ export function CompanyDiscoveryRow({ item }: { item: DiscoveryRowCompany }) {
   const handleDismiss = (): void => {
     startTransition(async () => {
       const result = await dismissCompanyDiscovery(item.id)
-      if ('success' in result) toast.success('Dismissed')
+      if ('success' in result) toastDismissedCompany(item.id)
       else if ('error' in result) toast.error(result.error)
       else toast(result.message)
+    })
+  }
+
+  const handleRestore = (): void => {
+    startTransition(async () => {
+      const result = await restoreCompanyDiscovery(item.id)
+      if ('success' in result) toast.success('Restored to inbox')
+      else if ('error' in result) toast.error(result.error)
     })
   }
 
@@ -311,6 +334,10 @@ export function CompanyDiscoveryRow({ item }: { item: DiscoveryRowCompany }) {
                   Dismiss
                 </Button>
               </>
+            ) : item.status === 'dismissed' ? (
+              <Button size="sm" variant="outline" onClick={handleRestore} disabled={isPending}>
+                Restore
+              </Button>
             ) : (
               <Badge variant={item.status === 'saved' ? 'emerald' : 'neutral'}>
                 {item.status}

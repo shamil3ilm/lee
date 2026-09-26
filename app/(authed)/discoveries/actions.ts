@@ -18,6 +18,8 @@ export type ActionResult =
   | { conflict: string; currentStatus: string; message: string }
 export type BulkResult = { success: true; count: number } | { error: string }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 /**
  * Promote a job discovery to an application. v9 guard: refuse if the
  * discovery is no longer `new` (dismissed in another tab; already promoted).
@@ -172,5 +174,51 @@ export async function dismissOlderThan(days: number): Promise<BulkResult> {
       err: err instanceof Error ? err.message : String(err),
     })
     return { error: 'Could not dismiss older discoveries.' }
+  }
+}
+
+/**
+ * Undo dismiss for one or many job discoveries (dismissed → new). Used by the
+ * "Undo" on the dismiss toast and the Restore button in the Dismissed view.
+ */
+export async function restoreDiscoveries(ids: string[]): Promise<BulkResult> {
+  try {
+    const userId = await requireUserId()
+    if (!Array.isArray(ids)) return { error: 'Invalid selection.' }
+    const clean = ids.filter((v) => typeof v === 'string' && UUID_RE.test(v)).slice(0, 500)
+    if (clean.length === 0) return { success: true, count: 0 }
+    const restored = await discQ.restoreByIds(userId, clean)
+    await aiCallLogsQ.clearDismissedAction(
+      userId,
+      restored.flatMap((r) => (r.scoredByCallId ? [r.scoredByCallId] : [])),
+    )
+    revalidatePath('/discoveries')
+    revalidatePath('/')
+    return { success: true, count: restored.length }
+  } catch (err) {
+    logger.error('restoreDiscoveries failed', {
+      err: err instanceof Error ? err.message : String(err),
+    })
+    return { error: 'Could not restore discoveries.' }
+  }
+}
+
+export async function restoreCompanyDiscovery(discoveryId: string): Promise<ActionResult> {
+  try {
+    const userId = await requireUserId()
+    if (!UUID_RE.test(discoveryId)) return { error: 'Company discovery not found.' }
+    const restored = await compDiscQ.restoreById(userId, discoveryId)
+    if (!restored) return { error: 'Company discovery not found.' }
+    if (restored.scoredByCallId) {
+      await aiCallLogsQ.clearDismissedAction(userId, [restored.scoredByCallId])
+    }
+    revalidatePath('/discoveries')
+    return { success: true }
+  } catch (err) {
+    logger.error('restoreCompanyDiscovery failed', {
+      discoveryId,
+      err: err instanceof Error ? err.message : String(err),
+    })
+    return { error: 'Could not restore.' }
   }
 }

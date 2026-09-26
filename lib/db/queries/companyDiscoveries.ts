@@ -199,3 +199,23 @@ export async function setStatus(
     .set({ status, updatedAt: new Date(), ...extra })
     .where(and(eq(companyDiscoveries.userId, userId), eq(companyDiscoveries.id, id)))
 }
+
+/** Undo a dismiss on one company discovery (dismissed → new only). */
+export async function restoreById(
+  userId: string,
+  id: string,
+  client: DbClient = db,
+): Promise<{ id: string; scoredByCallId: string | null } | null> {
+  const [row] = await writer(client)
+    .update(companyDiscoveries)
+    .set({ status: 'new', updatedAt: new Date() })
+    .where(
+      and(
+        eq(companyDiscoveries.userId, userId),
+        eq(companyDiscoveries.id, id),
+        eq(companyDiscoveries.status, 'dismissed'),
+      ),
+    )
+    .returning({ id: companyDiscoveries.id, scoredByCallId: companyDiscoveries.scoredByCallId })
+  return row ?? null
+}

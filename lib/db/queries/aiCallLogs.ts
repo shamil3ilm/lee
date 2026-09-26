@@ -1,4 +1,4 @@
-import { and, desc, eq, isNotNull } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNotNull } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { aiCallLogs } from '@/lib/db/schema'
 
@@ -47,6 +47,25 @@ export async function updateAction(
     .where(and(eq(aiCallLogs.id, id), eq(aiCallLogs.userId, userId)))
     .returning()
   return row ?? null
+}
+
+/**
+ * Retract an implicit "dismissed" signal (the user undid the dismiss). Only
+ * rows still carrying 'dismissed' are cleared, so a later explicit action is
+ * never overwritten.
+ */
+export async function clearDismissedAction(userId: string, ids: string[]): Promise<void> {
+  if (ids.length === 0) return
+  await db
+    .update(aiCallLogs)
+    .set({ userAction: null })
+    .where(
+      and(
+        eq(aiCallLogs.userId, userId),
+        inArray(aiCallLogs.id, ids),
+        eq(aiCallLogs.userAction, 'dismissed'),
+      ),
+    )
 }
 
 /**

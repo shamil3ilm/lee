@@ -15,6 +15,7 @@ import {
   dismissMultiple,
   dismissOlderThan,
 } from '@/app/(authed)/discoveries/actions'
+import { toastDismissedJobs } from '@/components/discovery-undo'
 
 interface JobsInboxProps {
   kind: 'jobs'
@@ -66,7 +67,7 @@ export function DiscoveryInbox(props: DiscoveryInboxProps) {
     startTransition(async () => {
       const result = await dismissMultiple(ids)
       if ('success' in result) {
-        toast.success(`Dismissed ${result.count}`)
+        toastDismissedJobs(`Dismissed ${result.count}`, ids)
         setSelected(new Set())
       } else {
         toast.error(result.error)
