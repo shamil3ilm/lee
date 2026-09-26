@@ -172,6 +172,52 @@ Wherever else it applies:
 | Settings › AI routing (v14) | drag models into each task's fallback order |
 | Documents | drop files anywhere on the page to upload; merge order (exists) |
 
+### 8.5 Design informed by Overleaf (research 2026-09-26, primary sources)
+How Overleaf works:
+- Overleaf's source editor is **CodeMirror 6** (switched Nov 2022), with its own Lezer LaTeX grammar.
+- Autocomplete draws on commands (including user-defined ones), environments, `\ref` labels, `\cite` keys, package names and file paths.
+- "Code Check" lints as you type; there is a section outline and folding.
+- A visual mode is built from CM6 decorations, with MathJax previews.
+- There are a figure modal (upload, project file or URL, emitting a `figure` environment), a table generator and a symbol palette.
+- Spell check is Hunspell compiled to WASM, running in a worker.
+- Compiling runs server-side in **CLSI**: latexmk with `-synctex=1`, a choice of pdfLaTeX/XeLaTeX/LuaLaTeX, "stop on first error", draft mode via the `graphicx` draft option, incremental sync, a 60 s default timeout, and auto-compile with a 2.5 s debounce and 5 s maximum wait.
+- The **log is parsed in the browser** into errors and warnings with jump-to-line.
+- The PDF preview uses PDF.js, and SyncTeX lookups run on the server.
+- History keeps snapshots and labels, with restore and diff.
+
+**Licensing rule:** Overleaf is **AGPL-3.0**, and so are SwiftLaTeX, texlyre-busytex and `codemirror-lang-latex` (which is derived from Overleaf's grammar). Employ **learns from the design and does not copy code**. It uses only permissively licensed libraries:
+- CodeMirror 6 (MIT)
+- `@codemirror/legacy-modes` stex (MIT)
+- PDF.js (Apache-2.0)
+- synctex-js (MIT)
+- busytex scripts (MIT; the TeX Live binaries carry their own licenses)
+
+Licenses still to verify before adoption: KaTeX/MathJax, JSZip/fflate, `@codemirror/merge`.
+
+**Decisions:**
+| # | Feature | Employ approach | Effort |
+|---|---|---|---|
+| 1 | Editor core | **Replace Monaco with CodeMirror 6**, bundled and self-hosted (drops the jsDelivr dependency; ~119 KB gz vs Monaco ~852 KB gz) | M |
+| 2 | Highlighting | `@codemirror/legacy-modes` stex via StreamLanguage (MIT) | S |
+| 3 | Autocomplete | Own completion sources on the same categories as Overleaf (commands incl. `\newcommand`, environments as snippets, `\ref`/`\label`, `\cite` from project `.bib`, file paths for `\input`/`\includegraphics`), from a regex index of the project files | M |
+| 4 | Errors | Own log parser in `lib/latex/errors.ts` using the same method: rejoin 79-column wraps, `!` + `l.<n>`, `(`/`)` file stack, warnings; jump to line | S |
+| 5 | Auto-compile | 2.5 s debounce, 5 s max wait; "stop on first error" toggle; Ctrl/Cmd+Enter and Ctrl/Cmd+S to compile | S |
+| 6 | Code Check | CM6 linter: `\begin`/`\end`, braces, `\left`/`\right`, `$`/`$$`, math-only commands outside math | S |
+| 7 | Outline and folding | Section outline (`\section*`…) with click-to-jump; fold by section | S |
+| 8 | Draft mode | Prepend `\PassOptionsToPackage{draft}{graphicx}` for fast previews | S |
+| 9 | Multi-file | Main document = root `.tex` containing `\documentclass`; the tarball compile already supports multiple files | M |
+| 10 | PDF preview | PDF.js viewer (Apache-2.0) replacing the plain iframe | S |
+| 11 | Figure / table / symbols / math | Figure dialog on the asset store; grid → `tabular`; symbol palette JSON with package hints; math hover preview (KaTeX, license to verify) | M |
+| 12 | `.bib` | Key search and autocomplete; add by DOI (§8.3) | S |
+| 13 | History | Snapshots and labels in Neon (within the §9.6 budget); diff with `@codemirror/merge` | M |
+| 14 | In-browser compile | **busytex** (MIT scripts, TeX Live 2023) behind a setting, lazy-loaded and cached; latexonline stays the fallback. Every one of the 14 templates must be tested first (moderncv, altacv and fontawesome package coverage is unverified). Assets of 32 MB+ go against the §5.5/§9.6 engine budget, so this is opt-in | L |
+| 15 | SyncTeX | Only possible with in-browser TeX (latexonline returns only the PDF or the log): read `output.synctex.gz` and resolve with synctex-js. Before that, fall back to text-search mapping from a PDF click back to the source | M |
+| 16 | Spell check | Browser `spellcheck` first; Hunspell WASM later if needed | S |
+| — | Visual rich-text mode | Skip for now; the drag-and-drop blocks (§8.4) cover ease of use | — |
+| — | Real-time collaboration, track changes, comments | Skip: single-user app | — |
+
+Order: 1–8 first, as the editor upgrade. Then 9–13. Then 14–15, which depend on in-browser TeX passing template tests.
+
 ## 9. Platform & reliability
 
 1. **Visual QA + E2E:** screenshot pass at 390 px and 1440 px on every authed page (dev-only test login, never a copied session token); Playwright journeys: find → save → apply → interview → offer; scam quarantine; email suggestion accept.
