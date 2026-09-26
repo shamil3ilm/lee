@@ -11,19 +11,22 @@ import {
 } from '@/components/ui/select'
 
 export type DiscoverySort = 'combined' | 'match' | 'benefits' | 'posted'
-export type DiscoveryStatusFilter = 'new' | 'saved' | 'dismissed'
+export type DiscoveryStatusFilter = 'new' | 'saved' | 'dismissed' | 'quarantined'
 
 interface DiscoveryFiltersProps {
   tab: 'jobs' | 'companies'
   status: DiscoveryStatusFilter
   minScore: number
   sort: DiscoverySort
+  /** v17 §1 — Scam Shield quarantine count (jobs tab only). */
+  quarantinedCount?: number
 }
 
 const STATUS_LABELS: Record<DiscoveryStatusFilter, string> = {
   new: 'New',
   saved: 'Saved',
   dismissed: 'Dismissed',
+  quarantined: 'Quarantined',
 }
 
 const SORT_LABELS: Record<DiscoverySort, string> = {
@@ -44,7 +47,11 @@ export function DiscoveryFilters({
   status,
   minScore,
   sort,
+  quarantinedCount = 0,
 }: DiscoveryFiltersProps) {
+  const statuses = (Object.keys(STATUS_LABELS) as DiscoveryStatusFilter[]).filter(
+    (s) => s !== 'quarantined' || tab === 'jobs',
+  )
   const router = useRouter()
   const pathname = usePathname()
   const params = useSearchParams()
@@ -76,13 +83,13 @@ export function DiscoveryFilters({
           value={status}
           onValueChange={(v) => update({ status: v })}
         >
-          <SelectTrigger id="disc-status" className="h-8 w-full sm:w-[130px]">
+          <SelectTrigger id="disc-status" className="h-8 w-full sm:w-[170px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {(Object.keys(STATUS_LABELS) as DiscoveryStatusFilter[]).map((s) => (
+            {statuses.map((s) => (
               <SelectItem key={s} value={s}>
-                {STATUS_LABELS[s]}
+                {s === 'quarantined' ? `${STATUS_LABELS[s]} (${quarantinedCount})` : STATUS_LABELS[s]}
               </SelectItem>
             ))}
           </SelectContent>

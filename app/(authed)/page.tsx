@@ -6,6 +6,8 @@ import * as appsQ from '@/lib/db/queries/applications'
 import * as todosQ from '@/lib/db/queries/todos'
 import { db } from '@/lib/db/client'
 import { accounts, activities, discoveries } from '@/lib/db/schema'
+import { discoveryNotQuarantinedSql, mapForTargets } from '@/lib/db/queries/riskAssessments'
+import { toRiskView } from '@/lib/scam/view'
 import { getProfile } from '@/lib/profile/service'
 import { Kanban, type KanbanCard } from '@/components/kanban'
 import {
@@ -97,17 +99,22 @@ export default async function DashboardPage() {
       eq(discoveries.userId, userId),
       eq(discoveries.status, 'new'),
       gte(discoveries.createdAt, new Date(now.getTime() - FRESH_WINDOW_MS)),
+      // v17 §1 — likely-scam discoveries stay in quarantine, off the dashboard.
+      discoveryNotQuarantinedSql(),
     ),
     orderBy: (d, { desc }) => [desc(d.matchScore), desc(d.createdAt)],
     limit: 5,
   })
+  const freshRisks = await mapForTargets(userId, 'discovery', freshRows.map((r) => r.id))
   const fresh: FreshDiscoveryItem[] = freshRows.map((r) => {
     const n = r.normalized as unknown as NormalizedJob
+    const risk = freshRisks.get(r.id)
     return {
       id: r.id,
       title: n.title ?? 'Untitled',
       companyName: n.companyName ?? 'Unknown',
       matchScore: r.matchScore,
+      risk: risk ? toRiskView(risk) : null,
     }
   })
 

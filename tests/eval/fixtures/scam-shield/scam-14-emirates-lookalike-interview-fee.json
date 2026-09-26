@@ -1,0 +1,18 @@
+{
+  "name": "Emirates cabin crew via lookalike domain with interview fee",
+  "label": "scam",
+  "inputs": {
+    "title": "Cabin Crew - Open Day",
+    "company": "Emirates Group",
+    "applyUrl": "https://emirates-careers.com/cabin-crew/register",
+    "description": "Emirates cabin crew open day in Kochi and Mumbai. Pay the interview fee of AED 250 by bank transfer to reserve your slot. Offer valid only today."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "sender.lookalike_domain",
+      "money.upfront_fee",
+      "content.urgency"
+    ]
+  }
+}

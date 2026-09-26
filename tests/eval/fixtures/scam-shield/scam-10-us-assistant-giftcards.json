@@ -1,0 +1,18 @@
+{
+  "name": "US personal assistant: cheque + gift cards",
+  "label": "scam",
+  "inputs": {
+    "title": "Personal Assistant to CEO (Remote)",
+    "company": "Hartwell Capital Partners",
+    "applyEmail": "hartwell.ceo.assistant@gmail.com",
+    "description": "Earn $500 per week, flexible hours from home. Your first task: we will mail you a cheque, deposit the cheque and buy Google Play cards for our clients, then send the codes by text. Interview via text message only."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "money.cheque_cashing",
+      "money.crypto_giftcard",
+      "channel.chat_interview"
+    ]
+  }
+}

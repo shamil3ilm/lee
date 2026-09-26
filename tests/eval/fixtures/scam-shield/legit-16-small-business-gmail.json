@@ -1,0 +1,17 @@
+{
+  "name": "Small Kochi business hiring via Gmail (weak signal only)",
+  "label": "legit",
+  "notes": "Small businesses often use Gmail; alone this is a weak signal and stays Safe.",
+  "inputs": {
+    "title": "Accounts Assistant",
+    "company": "Malabar Traders",
+    "applyEmail": "malabartraders.kochi@gmail.com",
+    "location": "Kochi, Kerala",
+    "description": "Accounts assistant for a wholesale spices business. Tally, GST filing and bank reconciliation. 2+ years experience, B.Com preferred. Salary ₹22,000 per month. Interview at our Ernakulam office."
+  },
+  "expect": {
+    "level": "safe",
+    "signals": ["sender.freemail_recruiter"],
+    "noSignals": ["content.pay_too_high"]
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "Gulf recruitment agency ad: urgent, CV by WhatsApp (borderline)",
+  "label": "legit",
+  "notes": "Common legitimate agency phrasing in the Gulf; the WhatsApp channel and urgency still warrant a Caution, not quarantine.",
+  "inputs": {
+    "title": "Electrical Supervisor - Abu Dhabi",
+    "company": "Gulf Skills Manpower Consultants",
+    "location": "Abu Dhabi, UAE",
+    "description": "Urgent requirement for an Electrical Supervisor for a leading MEP contractor in Abu Dhabi. 8+ years GCC experience, valid UAE driving licence. Salary AED 9000 + accommodation + transport. Send your CV on WhatsApp +971 52 xxx xxxx. Interviews at our Abu Dhabi office."
+  },
+  "expect": {
+    "level": "caution",
+    "signals": ["channel.messaging_only", "content.urgency"],
+    "noSignals": ["money.upfront_fee", "identity.id_documents"]
+  }
+}

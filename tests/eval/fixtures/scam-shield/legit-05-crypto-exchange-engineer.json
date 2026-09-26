@@ -1,0 +1,17 @@
+{
+  "name": "Crypto exchange wallet engineer",
+  "label": "legit",
+  "inputs": {
+    "title": "Senior Rust Engineer, Wallets",
+    "company": "Kraken",
+    "companyDomain": "kraken.com",
+    "applyUrl": "https://jobs.lever.co/kraken/abc-123",
+    "description": "Build crypto wallet infrastructure and custody services in Rust. Deep experience with key management, HSMs and blockchain node operations. Remote within UTC-5 to UTC+3."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "money.crypto_giftcard"
+    ]
+  }
+}

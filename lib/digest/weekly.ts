@@ -1,4 +1,5 @@
 import { and, asc, eq, gte, isNotNull, lt, lte, notInArray, desc, sql } from 'drizzle-orm'
+import { discoveryNotQuarantinedSql } from '@/lib/db/queries/riskAssessments'
 import { db, type DbClient } from '@/lib/db/client'
 import {
   applications,
@@ -204,7 +205,9 @@ export async function gatherPipelineSnapshot(
       matchScore: discoveries.matchScore,
     })
     .from(discoveries)
-    .where(and(eq(discoveries.userId, userId), eq(discoveries.status, 'new')))
+    .where(
+      and(eq(discoveries.userId, userId), eq(discoveries.status, 'new'), discoveryNotQuarantinedSql()),
+    )
     .orderBy(desc(discoveries.matchScore))
     .limit(5)
 

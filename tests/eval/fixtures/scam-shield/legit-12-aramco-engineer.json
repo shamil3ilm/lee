@@ -1,0 +1,14 @@
+{
+  "name": "Saudi Aramco engineering role with relocation",
+  "label": "legit",
+  "inputs": {
+    "title": "Reservoir Engineer",
+    "company": "Saudi Aramco",
+    "applyUrl": "https://www.aramco.com/en/careers/reservoir-engineer-dhahran",
+    "location": "Dhahran, Saudi Arabia",
+    "description": "Model and optimise reservoir performance. 8+ years of experience and a BSc in Petroleum Engineering. Relocation support; the company covers visa and medical costs. Panel interviews in Dhahran or by video."
+  },
+  "expect": {
+    "level": "safe"
+  }
+}

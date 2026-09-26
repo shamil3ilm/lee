@@ -23,6 +23,15 @@ import type { Source } from '@/lib/db/queries/sources'
 import type { Discovery } from '@/lib/db/queries/discoveries'
 import type { CompanyDiscovery } from '@/lib/db/queries/companyDiscoveries'
 import type { Application } from '@/lib/db/queries/applications'
+import {
+  NET_LOOKUPS_PER_CYCLE,
+  assessDiscovery,
+  assessJob,
+  netModeForUser,
+  reassessStaleDiscoveries,
+  safely,
+} from '@/lib/scam/service'
+import type { NetBudget, NetMode } from '@/lib/scam/net-cache'
 
 export interface DiscoveryCycleResult {
   sourcesPolled: number
@@ -80,9 +89,16 @@ export async function runDiscoveryCycleForUser(args: {
     )
   }
 
+  // v17 §1 — Scam Shield: network checks only when the user enabled them;
+  // one lookup budget is shared by every source in this cycle.
+  const scam: ScamCtx = {
+    net: (await safely('net_mode', () => netModeForUser(userId))) ?? 'off',
+    budget: { remaining: NET_LOOKUPS_PER_CYCLE },
+  }
+
   await inBatches(active, CONCURRENCY, async (source) => {
     try {
-      const perSource = await pollSource({ userId, source, ai, profile: scoringProfile })
+      const perSource = await pollSource({ userId, source, ai, profile: scoringProfile, scam })
       result.sourcesPolled += 1
       result.newJobDiscoveries += perSource.newJobs
       result.newCompanyDiscoveries += perSource.newCompanies
@@ -93,7 +109,15 @@ export async function runDiscoveryCycleForUser(args: {
     }
   })
 
+  // Rows from an older RULES_VERSION (or pre-Scam-Shield) get re-assessed.
+  await safely('reassess_stale', () => reassessStaleDiscoveries(userId))
+
   return result
+}
+
+interface ScamCtx {
+  net: NetMode
+  budget: NetBudget
 }
 
 async function pollSource(args: {
@@ -101,8 +125,9 @@ async function pollSource(args: {
   source: Source
   ai: AIProvider
   profile: UserProfile | null
+  scam: ScamCtx
 }): Promise<{ newJobs: number; newCompanies: number }> {
-  const { userId, source, ai, profile } = args
+  const { userId, source, ai, profile, scam } = args
   const adapter = getAdapter(source.kind)
   if (!adapter) throw new Error(`no adapter registered for kind=${source.kind}`)
   const items = await adapter.fetch(source.config)
@@ -110,7 +135,7 @@ async function pollSource(args: {
   let newCompanies = 0
   for (const item of items) {
     if (item.normalized.kind === 'job') {
-      const fresh = await handleJobItem({ userId, source, ai, profile, item })
+      const fresh = await handleJobItem({ userId, source, ai, profile, item, scam })
       if (fresh) newJobs += 1
     } else {
       const fresh = await handleCompanyItem({ userId, source, ai, profile, item })
@@ -127,8 +152,9 @@ async function handleJobItem(args: {
   ai: AIProvider
   profile: UserProfile | null
   item: DiscoveryItem
+  scam: ScamCtx
 }): Promise<boolean> {
-  const { userId, source, ai, profile, item } = args
+  const { userId, source, ai, profile, item, scam } = args
   const normalized = item.normalized as NormalizedJob
   const { discovery, isNew } = await discQ.upsertBySource(
     userId,
@@ -138,6 +164,9 @@ async function handleJobItem(args: {
     normalized,
   )
   if (!isNew) return false
+  await safely('discovery', () =>
+    assessDiscovery(userId, discovery.id, { net: scam.net, budget: scam.budget }),
+  )
   if (!profile) return true // no profile → skip scoring, keep discovery
   try {
     // v10.1 — capture the ai_call_logs row id via the `onLogged` callback so
@@ -281,6 +310,10 @@ export async function promoteJobDiscovery(args: {
     )
     return app
   })
+
+  // v17 §1 — the promoted job gets its own assessment (the discovery's
+  // "not a scam" verdict carries over through the allow-list).
+  await safely('promoted_job', () => assessJob(userId, application.jobId))
 
   const updatedDiscovery = await discQ.getById(userId, discoveryId)
   return { discovery: updatedDiscovery ?? disc, application }

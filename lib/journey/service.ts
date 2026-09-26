@@ -1,4 +1,5 @@
 import { and, asc, count, desc, eq, gte, inArray, isNotNull, lt, lte } from 'drizzle-orm'
+import { discoveryNotQuarantinedSql } from '@/lib/db/queries/riskAssessments'
 import { db } from '@/lib/db/client'
 import {
   accounts,
@@ -238,6 +239,7 @@ async function discoveryAction(userId: string): Promise<NextBestAction | null> {
       and(
         eq(discoveries.userId, userId),
         eq(discoveries.status, 'new'),
+        discoveryNotQuarantinedSql(),
         isNotNull(discoveries.matchScore),
         gte(discoveries.matchScore, minScore),
       ),
@@ -301,7 +303,9 @@ export async function getJourneyCounts(userId: string): Promise<JourneyCounts> {
     db
       .select({ c: count() })
       .from(discoveries)
-      .where(and(eq(discoveries.userId, userId), eq(discoveries.status, 'new'))),
+      .where(
+        and(eq(discoveries.userId, userId), eq(discoveries.status, 'new'), discoveryNotQuarantinedSql()),
+      ),
     db
       .select({ status: applications.status, c: count() })
       .from(applications)

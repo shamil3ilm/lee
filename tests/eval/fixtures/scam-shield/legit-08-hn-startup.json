@@ -1,0 +1,14 @@
+{
+  "name": "Short Hacker News Who's Hiring post",
+  "label": "legit",
+  "inputs": {
+    "title": "Founding Engineer",
+    "company": "Tensorlake",
+    "companyDomain": "tensorlake.ai",
+    "applyUrl": "https://news.ycombinator.com/item?id=41000000",
+    "description": "Tensorlake | Founding Engineer | SF or Remote | Full-time. We build document ingestion for LLM apps (Rust, Python). Email founders@tensorlake.ai with something you've built."
+  },
+  "expect": {
+    "level": "safe"
+  }
+}

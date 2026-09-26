@@ -1,0 +1,18 @@
+{
+  "name": "TCS walk-in drive with document list at joining",
+  "label": "legit",
+  "inputs": {
+    "title": "Walk-in Drive: Java Developers (4-8 yrs)",
+    "company": "Tata Consultancy Services",
+    "applyUrl": "https://www.tcs.com/careers/india/walk-in-java-chennai",
+    "location": "Chennai",
+    "description": "TCS is conducting a walk-in drive for Java developers on Saturday at Siruseri. Bring two passport size photographs and your updated CV. Submit your PAN card and Aadhaar copies at the time of joining for background verification. TCS does not charge any fee at any stage of recruitment."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "identity.id_documents",
+      "money.upfront_fee"
+    ]
+  }
+}

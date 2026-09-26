@@ -354,6 +354,10 @@ export const userProfile = pgTable('user_profile', {
   // of the server region. Defaults to Asia/Dubai (Shamil's home tz) so
   // existing rows behave identically to the previous hardcoded constant.
   timezone: text('timezone').notNull().default('Asia/Dubai'),
+  // v17 §1 — Scam Shield network checks (RDAP domain age + DNS-over-HTTPS
+  // MX). Off by default: they send posting domains to rdap.org and
+  // Cloudflare. Toggled in Settings › Scam Shield.
+  scamNetChecks: boolean('scam_net_checks').notNull().default(false),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
@@ -887,3 +891,79 @@ export const labRunsRelations = relations(labRuns, ({ many }) => ({
 export const labRunResultsRelations = relations(labRunResults, ({ one }) => ({
   run: one(labRuns, { fields: [labRunResults.runId], references: [labRuns.id] }),
 }))
+
+// ---------------------------------------------------------------------------
+// v17 §1 — Scam Shield. One assessment per (user, target). `target_id` is
+// polymorphic (discoveries.id or jobs.id), so no FK. `level` is rule-based
+// and can only be raised by a second opinion, never lowered. Rows are never
+// deleted by the pipeline; quarantine is a query-time filter:
+//   user_verdict = 'confirmed_scam'
+//   OR (level = 'likely_scam' AND user_verdict IS NULL AND NOT allow_listed)
+// ---------------------------------------------------------------------------
+
+export const jobRiskAssessments = pgTable(
+  'job_risk_assessments',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    // 'discovery' | 'job'
+    targetType: text('target_type').notNull(),
+    targetId: uuid('target_id').notNull(),
+    score: smallint('score').notNull(),
+    // 'safe' | 'caution' | 'likely_scam'
+    level: text('level').notNull(),
+    signals: jsonb('signals').notNull().default([]),
+    rulesVersion: text('rules_version').notNull(),
+    // Network facts used ({ domains: [{ domain, registeredAt, ageDays, hasMx }] }).
+    net: jsonb('net'),
+    // True when the target matched the user's allow-list at assessment time.
+    allowListed: boolean('allow_listed').notNull().default(false),
+    // null | 'not_scam' | 'confirmed_scam' — only ever set by the user.
+    userVerdict: text('user_verdict'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    userTargetUq: uniqueIndex('job_risk_assessments_user_target_uq').on(
+      t.userId,
+      t.targetType,
+      t.targetId,
+    ),
+    userLevelIx: index('job_risk_assessments_user_level_idx').on(t.userId, t.targetType, t.level),
+  }),
+)
+
+// Per-domain network facts, shared across users (public data). Each check
+// has its own status + timestamp so a failed MX lookup can be retried
+// without re-running RDAP.
+export const scamDomainCache = pgTable('scam_domain_cache', {
+  domain: text('domain').primaryKey(),
+  registeredAt: timestamp('registered_at', { withTimezone: true }),
+  // 'ok' | 'not_found' | 'error'
+  ageStatus: text('age_status'),
+  ageCheckedAt: timestamp('age_checked_at', { withTimezone: true }),
+  hasMx: boolean('has_mx'),
+  // 'ok' | 'error'
+  mxStatus: text('mx_status'),
+  mxCheckedAt: timestamp('mx_checked_at', { withTimezone: true }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+// Per-user "not a scam" memory. kind: 'domain' | 'company'.
+export const scamAllowList = pgTable(
+  'scam_allow_list',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    kind: text('kind').notNull(),
+    value: text('value').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    userKindValueUq: uniqueIndex('scam_allow_list_user_kind_value_uq').on(t.userId, t.kind, t.value),
+  }),
+)

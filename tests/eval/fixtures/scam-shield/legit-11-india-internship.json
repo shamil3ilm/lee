@@ -1,0 +1,19 @@
+{
+  "name": "Paid internship listed on Internshala",
+  "label": "legit",
+  "inputs": {
+    "title": "Frontend Development Intern",
+    "company": "Zerodha",
+    "companyDomain": "zerodha.com",
+    "applyUrl": "https://internshala.com/internship/detail/frontend-development-internship-zerodha-1234",
+    "location": "Bengaluru",
+    "description": "6 month internship with our Kite web team. Stipend ₹40,000 per month. Freshers welcome; you should know JavaScript and Vue. Two technical interviews."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "content.pay_too_high",
+      "sender.apply_domain_mismatch"
+    ]
+  }
+}

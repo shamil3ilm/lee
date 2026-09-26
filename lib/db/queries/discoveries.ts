@@ -1,6 +1,7 @@
 import { and, count, eq, gte, inArray, isNull, lt, or, sql } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import { discoveries } from '@/lib/db/schema'
+import { discoveryNotQuarantinedSql, discoveryQuarantinedSql } from './riskAssessments'
 
 export type Discovery = typeof discoveries.$inferSelect
 export type NewDiscovery = typeof discoveries.$inferInsert
@@ -46,6 +47,11 @@ export interface ListOpts {
   sourceIds?: string[]
   sort?: 'combined' | 'match' | 'benefits' | 'posted'
   limit?: number
+  /**
+   * v17 §1 — Scam Shield quarantine. 'exclude' (default) hides quarantined
+   * rows, 'only' returns just them, 'include' ignores quarantine.
+   */
+  quarantine?: 'exclude' | 'only' | 'include'
 }
 
 export async function list(
@@ -70,6 +76,9 @@ export async function list(
   if (opts.sourceIds && opts.sourceIds.length > 0) {
     conds.push(inArray(discoveries.sourceId, opts.sourceIds))
   }
+  const quarantine = opts.quarantine ?? 'exclude'
+  if (quarantine === 'exclude') conds.push(discoveryNotQuarantinedSql())
+  if (quarantine === 'only') conds.push(discoveryQuarantinedSql())
   return client.query.discoveries.findMany({
     where: and(...conds),
     orderBy: (d, { desc }) => {
@@ -203,11 +212,29 @@ export async function dismissOlderThan(
   return rows.length
 }
 
-/** Count of unreviewed (`status='new'`) discoveries — powers the nav badge. */
+/**
+ * Count of unreviewed (`status='new'`) discoveries — powers the nav badge.
+ * Quarantined (likely-scam) rows are not counted.
+ */
 export async function countNew(userId: string, client: DbClient = db): Promise<number> {
   const [row] = await client
     .select({ c: count() })
     .from(discoveries)
-    .where(and(eq(discoveries.userId, userId), eq(discoveries.status, 'new')))
+    .where(
+      and(
+        eq(discoveries.userId, userId),
+        eq(discoveries.status, 'new'),
+        discoveryNotQuarantinedSql(),
+      ),
+    )
+  return Number(row?.c ?? 0)
+}
+
+/** v17 §1 — how many discoveries sit in Scam Shield quarantine (any status). */
+export async function countQuarantined(userId: string, client: DbClient = db): Promise<number> {
+  const [row] = await client
+    .select({ c: count() })
+    .from(discoveries)
+    .where(and(eq(discoveries.userId, userId), discoveryQuarantinedSql()))
   return Number(row?.c ?? 0)
 }

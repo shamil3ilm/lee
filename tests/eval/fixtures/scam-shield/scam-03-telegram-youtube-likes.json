@@ -1,0 +1,19 @@
+{
+  "name": "Telegram task scam: like YouTube videos",
+  "label": "scam",
+  "inputs": {
+    "title": "Online Part Time Job - Social Media Promoter",
+    "company": "Digital Growth Media",
+    "description": "Simply like YouTube videos and earn ₹50 per like. Complete tasks and earn up to ₹6000 daily payout directly to your UPI. No interview required. Join our Telegram channel for your first task: https://t.me/dgm_tasks_official",
+    "source": "Instagram ad"
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "content.task_scheme",
+      "content.pay_too_high",
+      "channel.offer_without_interview",
+      "channel.messaging_only"
+    ]
+  }
+}

@@ -13,6 +13,7 @@ import type { Job } from '@/lib/db/queries/jobs'
 import type { Company } from '@/lib/db/queries/companies'
 import type { Activity } from '@/lib/db/queries/activities'
 import type { ParsedJob } from '@/lib/ai/types'
+import { assessJob, netModeForUser, safely } from '@/lib/scam/service'
 
 export interface CreateApplicationResult {
   application: Application
@@ -39,7 +40,12 @@ export async function createApplicationFromUrl(args: {
   }
   const parsed = await ai.parseJob(text)
   const domain = parsed.company_domain ?? new URL(page.finalUrl).hostname
-  return saveParsedApplication({ userId, parsed, domain, text, finalUrl: page.finalUrl })
+  const saved = await saveParsedApplication({ userId, parsed, domain, text, finalUrl: page.finalUrl })
+  // v17 §1 — Scam Shield on every created/updated job; never blocks the save.
+  await safely('job_from_url', async () =>
+    assessJob(userId, saved.job.id, { net: await netModeForUser(userId) }),
+  )
+  return saved
 }
 
 /**

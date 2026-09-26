@@ -10,6 +10,7 @@ import * as jobsQ from '@/lib/db/queries/jobs'
 import * as appsQ from '@/lib/db/queries/applications'
 import * as actQ from '@/lib/db/queries/activities'
 import { logger } from '@/lib/logger'
+import { assessJob, netModeForUser, safely } from '@/lib/scam/service'
 
 export type ActionResult =
   | { success: true; applicationId: string }
@@ -90,6 +91,10 @@ export async function addManually(formData: FormData): Promise<ActionResult> {
       await actQ.log(userId, application.id, 'status_change', { from: null, to: 'saved' }, tx)
       return application
     })
+    // v17 §1 — Scam Shield on the new/updated job; never blocks the save.
+    await safely('job_manual', async () =>
+      assessJob(userId, result.jobId, { net: await netModeForUser(userId) }),
+    )
 
     revalidatePath('/applications')
     return { success: true, applicationId: result.id }

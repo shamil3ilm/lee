@@ -1,0 +1,19 @@
+{
+  "name": "India WFH data entry with registration fee",
+  "label": "scam",
+  "inputs": {
+    "title": "Data Entry Operator (Work From Home) - Part Time",
+    "company": "Global Info Services",
+    "description": "Urgent hiring for home based data entry jobs! No experience needed, freshers and housewives can apply. Earn Rs. 15,000 to 25,000 weekly by doing simple typing work from your phone. Registration fee Rs. 850 only (refundable after 3 months). To join, WhatsApp your name and city to 98xxxxxx21.",
+    "source": "Facebook group"
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "money.upfront_fee",
+      "channel.messaging_only",
+      "content.easy_money",
+      "content.vague_duties"
+    ]
+  }
+}

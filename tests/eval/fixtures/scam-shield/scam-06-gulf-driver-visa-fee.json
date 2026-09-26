@@ -1,0 +1,19 @@
+{
+  "name": "Gulf driver job: visa fee paid by candidate, passport on WhatsApp",
+  "label": "scam",
+  "inputs": {
+    "title": "Heavy Driver - Dubai",
+    "company": "Al Noor Transport LLC",
+    "location": "Dubai, UAE",
+    "description": "Immediate requirement for heavy drivers in Dubai. Salary AED 4500 + accommodation. Visa processing fee AED 3500 to be paid by the candidate before ticket. Send passport copy and CV on WhatsApp +971 50 xxx xxxx. Direct joining, offer letter within 24 hours. Only 5 positions left!"
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "money.upfront_fee",
+      "identity.id_documents",
+      "channel.offer_without_interview",
+      "content.urgency"
+    ]
+  }
+}

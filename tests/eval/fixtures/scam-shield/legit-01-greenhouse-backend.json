@@ -1,0 +1,23 @@
+{
+  "name": "US backend role on Greenhouse",
+  "label": "legit",
+  "inputs": {
+    "title": "Senior Backend Engineer, Payments",
+    "company": "Ramp",
+    "companyDomain": "ramp.com",
+    "applyUrl": "https://boards.greenhouse.io/ramp/jobs/5123456",
+    "location": "New York, NY or Remote (US)",
+    "salary": {
+      "min": 180000,
+      "max": 240000,
+      "currency": "USD"
+    },
+    "description": "You will design and operate the services that move money for our customers: ledgering, card authorisations and reconciliations in Python and Postgres. 5+ years building production backend systems. Interview process: recruiter call, technical screen, system design, and a values interview."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "sender.apply_domain_mismatch"
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "UAE hotel rating task scam with USDT deposit",
+  "label": "scam",
+  "inputs": {
+    "title": "Remote Hotel Review Specialist",
+    "company": "Booking Partners Agency",
+    "location": "Dubai, UAE (Remote)",
+    "description": "Rate hotels on our partner platform and earn commission per task. Earn AED 400 a day from your phone in your spare time. To unlock premium tasks you must recharge your account - deposit USDT (TRC20) to your wallet. WhatsApp only: +971 55 xxx xxxx"
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "content.task_scheme",
+      "money.crypto_giftcard",
+      "content.pay_too_high",
+      "channel.messaging_only"
+    ]
+  }
+}
