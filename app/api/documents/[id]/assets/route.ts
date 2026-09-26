@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import * as documentsQ from '@/lib/db/queries/documents'
 import * as assetsQ from '@/lib/db/queries/documentAssets'
-import { getAssetStore } from '@/lib/storage/asset-store'
+import { getAssetStoreForUser } from '@/lib/storage/asset-store'
+import { DriveError } from '@/lib/drive/errors'
+import { findStrandedUpload } from '@/lib/drive/uploads'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -81,9 +83,23 @@ export async function POST(
 
     // Bytes go through the asset store, which enforces the per-user storage
     // quota (ASSET_QUOTA_BYTES) on top of the per-file / per-document caps.
-    const store = getAssetStore()
+    const store = await getAssetStoreForUser(userId)
     const created: assetsQ.AssetMetadata[] = []
     const errors: { filename: string; error: string }[] = []
+    let connect = false
+    // Fallback from a failed browser-direct upload: if the bytes did reach
+    // Drive, register that file instead of uploading a second copy.
+    const uploadId = form.get('uploadId')
+    if (typeof uploadId === 'string' && uploadId && files.length === 1) {
+      try {
+        const stranded = await findStrandedUpload(userId, id, uploadId, files[0]!.size)
+        if (stranded) return NextResponse.json({ assets: [stranded] })
+      } catch (err) {
+        logger.warn('assets upload: stranded-upload lookup failed', {
+          err: err instanceof Error ? err.message : String(err),
+        })
+      }
+    }
     for (const file of files) {
       try {
         const bytes = Buffer.from(await file.arrayBuffer())
@@ -97,6 +113,9 @@ export async function POST(
       } catch (err) {
         if (err instanceof assetsQ.AssetValidationError) {
           errors.push({ filename: file.name, error: err.message })
+        } else if (err instanceof DriveError) {
+          connect ||= err.needsConnect
+          errors.push({ filename: file.name, error: err.message })
         } else {
           logger.error('assets upload: insert failed', {
             filename: file.name,
@@ -107,7 +126,11 @@ export async function POST(
       }
     }
 
-    return NextResponse.json({ assets: created, errors: errors.length ? errors : undefined })
+    return NextResponse.json({
+      assets: created,
+      errors: errors.length ? errors : undefined,
+      connect: connect || undefined,
+    })
   } catch (err) {
     logger.error('POST /api/documents/[id]/assets failed', {
       err: err instanceof Error ? err.message : String(err),

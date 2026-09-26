@@ -1,7 +1,8 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { toast } from 'sonner'
-import { FileText, Image as ImageIcon, Loader2, Paperclip, Trash2, Upload } from 'lucide-react'
+import { FileText, HardDrive, Image as ImageIcon, Loader2, Paperclip, Trash2, Upload } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -13,6 +14,15 @@ import {
 import { Button } from '@/components/ui/button'
 import type { AssetMetadata } from '@/lib/db/queries/documentAssets'
 import { buildAssetSnippet, insertVariants, type SnippetVariant } from '@/lib/latex/snippets'
+import { DriveConnectButton } from '@/components/drive/drive-connect-button'
+import {
+  attachFromDrive,
+  fetchDriveStatus,
+  fetchPickerToken,
+  uploadAsset,
+  type DriveStatus,
+} from '@/components/drive/asset-upload'
+import { isPickerConfigured, pickDriveFiles } from '@/components/drive/google-picker'
 
 interface AssetsDialogProps {
   documentId: string
@@ -47,7 +57,23 @@ export function LatexAssetsDialog({
 }: AssetsDialogProps): React.ReactElement {
   const [open, setOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [attaching, setAttaching] = useState(false)
+  const [drive, setDrive] = useState<DriveStatus | null>(null)
+  const [needsReconnect, setNeedsReconnect] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const pathname = usePathname()
+
+  // Drive status is only needed once the dialog opens (cheap, no Google call).
+  useEffect(() => {
+    if (!open || drive) return
+    let live = true
+    void fetchDriveStatus().then((s) => {
+      if (live && s) setDrive(s)
+    })
+    return () => {
+      live = false
+    }
+  }, [open, drive])
 
   const uploadFiles = useCallback(
     async (files: FileList | File[]): Promise<AssetMetadata[]> => {
@@ -55,45 +81,52 @@ export function LatexAssetsDialog({
       if (list.length === 0) return []
       setUploading(true)
       try {
-        const form = new FormData()
-        for (const f of list) form.append('file', f)
-        const res = await fetch(`/api/documents/${documentId}/assets`, {
-          method: 'POST',
-          body: form,
-        })
-        if (!res.ok) {
-          const body = (await res.json().catch(() => ({}))) as { error?: string }
-          toast.error(body.error ?? 'Upload failed.')
-          return []
+        const created: AssetMetadata[] = []
+        for (const file of list) {
+          const out = await uploadAsset(documentId, file)
+          if (out.asset) created.push(out.asset)
+          else toast.error(`${file.name}: ${out.error ?? 'Upload failed.'}`)
+          if (out.connect) setNeedsReconnect(true)
         }
-        const body = (await res.json()) as {
-          assets: AssetMetadata[]
-          errors?: { filename: string; error: string }[]
-        }
-        for (const e of body.errors ?? []) {
-          toast.error(`${e.filename}: ${e.error}`)
-        }
-        if (body.assets.length > 0) {
-          onAssetsChange([...assets, ...body.assets])
-          const first = body.assets[0]
+        if (created.length > 0) {
+          onAssetsChange([...assets, ...created])
+          const first = created[0]
           toast.success(
-            body.assets.length === 1 && first
-              ? `Uploaded ${first.filename}`
-              : `Uploaded ${body.assets.length} files`,
+            created.length === 1 && first ? `Uploaded ${first.filename}` : `Uploaded ${created.length} files`,
           )
         }
-        return body.assets
-      } catch (err) {
-        toast.error('Upload failed.')
-        // Swallow — the toast already told the user; logging happens server-side.
-        void err
-        return []
+        return created
       } finally {
         setUploading(false)
       }
     },
     [assets, documentId, onAssetsChange],
   )
+
+  async function handleAttachFromDrive(): Promise<void> {
+    setAttaching(true)
+    try {
+      const token = await fetchPickerToken()
+      if ('error' in token) {
+        toast.error(token.error)
+        if (token.connect) setNeedsReconnect(true)
+        return
+      }
+      const fileIds = await pickDriveFiles(token.accessToken)
+      if (fileIds.length === 0) return
+      const res = await attachFromDrive(documentId, fileIds)
+      for (const e of res.errors) toast.error(e)
+      if (res.connect) setNeedsReconnect(true)
+      if (res.assets.length > 0) {
+        onAssetsChange([...assets, ...res.assets])
+        toast.success(`Attached ${res.assets.length} file(s) from Google Drive`)
+      }
+    } catch {
+      toast.error('Could not open Google Drive.')
+    } finally {
+      setAttaching(false)
+    }
+  }
 
   // Expose the uploader to the outer editor via a ref-like escape hatch so
   // drag-drop on the editor surface can reuse this component's upload path.
@@ -145,8 +178,24 @@ export function LatexAssetsDialog({
         <div className="flex items-center justify-between border-b pb-2">
           <p className="text-xs text-muted-foreground">
             {assets.length} of 20 assets · 5 MB max per file
+            {drive?.backend === 'drive' ? ' · saved to your Google Drive' : ''}
           </p>
           <div className="flex items-center gap-2">
+            {drive && (!drive.connected || needsReconnect) ? (
+              <DriveConnectButton returnTo={pathname ?? '/documents'} reconnect={drive.connected} />
+            ) : null}
+            {drive?.connected && !needsReconnect && isPickerConfigured() ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={attaching}
+                onClick={() => void handleAttachFromDrive()}
+              >
+                {attaching ? <Loader2 className="size-4 animate-spin" /> : <HardDrive className="size-4" />}
+                Attach from Drive
+              </Button>
+            ) : null}
             <input
               ref={fileInputRef}
               type="file"
