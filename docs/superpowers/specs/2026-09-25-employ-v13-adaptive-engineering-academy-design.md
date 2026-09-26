@@ -183,24 +183,82 @@ New exercise formats:
 | **Architecture kata** | Split or merge modules in a codebase; enforce boundaries; plan a strangler-fig migration | dependency rules pass, tests green, migration plan rubric |
 | **Scale-out lab** | Take a single-server app to N servers: sessions, cache, locks, health checks, zero-downtime deploy | error rate during scale and deploy, consistency, cost |
 
-**Runtimes — zero cost, stated honestly:**
-- **Simulated in the browser (default):**
-  - AWS and Azure services and CLIs (the IAM policy evaluator, networking rules, queues, storage, functions and billing are modelled);
-  - Redis commands with real semantics (TTL, data types, transactions, pub/sub);
-  - queues and brokers;
-  - Kubernetes state (existing).
-
-  Each exercise lists what the simulator covers.
-- **Real, optional, free:**
-  - **Upstash** free tier for real Redis and QStash queues via REST, using the user's own key stored with the v14 encrypted key store.
-  - **Play with Docker** and **Killercoda** (free browser sandboxes) for real Docker and Kubernetes. The Playground gives the guided task and verifies the output the user pastes back.
-  - **LocalStack** (AWS) and **Azurite** (Azure Storage) emulators if the user runs Docker locally.
-- **Never real paid cloud accounts.** No exercise requires an AWS or Azure account; if the user adds one anyway, exercises only generate commands and never run them.
+**Runtimes:** everything runs in the browser on the Employ Sim engine (§5.3). No external services, no installs, no cloud accounts.
 
 **Safety (applies to all security content):**
 - Offensive work targets only sandboxed in-browser apps and the local v86 VM, never real hosts.
 - There are no scanners or payloads aimed at the internet, and every exploit ends with the fix.
 - Network access from the VM is disabled.
+
+### 5.3 Employ Sim — our own browser playground engine (2026-09-26)
+**Decision:** the Playground is browser-only and self-contained.
+- No installs, no external sandboxes, no cloud accounts.
+- It works from any device, including offline once assets are cached.
+- Everything it needs is either open-source code we bundle and serve ourselves, or engines we build.
+
+**Two kinds of runtime:**
+1. **Real engines in the browser** (open-source, self-hosted as static assets; no third-party service at runtime):
+
+   | Engine | What it runs |
+   |---|---|
+   | PGlite | real PostgreSQL (SQL lab, EXPLAIN, data pipelines) |
+   | SQLite (WASM) | real SQLite |
+   | Pyodide | real Python |
+   | Web Workers + QuickJS | real JavaScript/TypeScript user code |
+   | isomorphic-git | real git (conflicts, rebase, bisect) |
+   | v86 | real Linux (32-bit x86) with bash, coreutils, grep/sed/awk/jq, and real redis-server and nginx inside the VM |
+
+   The v86 disk image is cached in the browser (OPFS/service worker). The VM has no network access to the internet.
+2. **Our own simulators**, one discrete-event engine in a Web Worker:
+   - **Core:**
+     - virtual clock, which can run hours of traffic in seconds;
+     - virtual nodes with CPU/memory budgets;
+     - a virtual network with latency, packet loss, partitions and DNS;
+     - a virtual filesystem;
+     - deterministic seeds, so every run is reproducible, replayable and fair to score.
+   - **Built on the core, each implementing documented behaviour:**
+     - **Redis:** data types, TTL, eviction, MULTI/Lua, pub/sub, streams. Uses the real redis-server in v86 where that's enough.
+     - **Queue brokers:** SQS-style visibility timeouts and DLQ; Kafka-style partitions, offsets and consumer groups.
+     - **Load balancers:** round-robin, least-connections and consistent hashing; health checks; sticky sessions.
+     - **Container runtime model:** Dockerfile interpreter with layers, build cache, image size, users; volumes, networks, Compose.
+     - **Kubernetes mini control plane:** reconciliation loops (Deployment → ReplicaSet → Pod), scheduler, probes, HPA, rolling updates, events; with a `kubectl`-style CLI.
+     - **Cloud models:** the AWS IAM policy evaluation logic and Azure RBAC as documented; VPC/NSG rules; S3/Blob, functions, queues; a billing meter. Driven by `aws`/`az`-style CLIs.
+     - **Shells:** real bash in v86, plus our own **PowerShell** (object pipeline, curated cmdlets) and **cmd** interpreters over the same virtual filesystem.
+     - **Mock third-party APIs:** pagination, 429s, flakiness, signed webhooks, OAuth; for integration and SDK work.
+     - **Fault injection:** latency, crashes, disk full, clock skew, partitions, bad deploys, poisoned messages.
+
+**The user's work runs for real inside simulated infrastructure.** Code, SQL, scripts and configs execute in the real engines. Services written by the user become processes on virtual nodes. Metrics such as p50/p95/p99 latency, error rate, throughput and cost are measured from the simulation's virtual time, not estimated.
+
+**Fidelity, stated honestly:**
+- Simulators model documented behaviour, not every quirk of the real tools.
+- Each simulator ships with **conformance tests** derived from the official documentation (for example the Redis command semantics and Kubernetes controller behaviour), and each exercise lists what it covers.
+- Concepts, debugging reasoning and command fluency transfer to real systems; exact version-specific quirks may not.
+- v86 is 32-bit and slower than native, so heavy workloads use the simulator rather than the VM.
+
+**Grading needs no external AI:**
+- Scoring is deterministic: checks, tests, measured metrics, diffs.
+- Optional written-answer feedback can use a small model running in the browser via WebGPU (WebLLM). The Radeon 780M can run small models.
+- Hosted AI (Groq) is only used if the user turns it on.
+
+**Scenario structure (real-life, not quizzes):**
+- **One reference company system:** "ShopLite" = gateway, 3–4 services (modular monolith first, later split), Postgres, Redis cache, queue worker, ≥ 2 replicas behind a load balancer, CI pipeline, logs/metrics/traces. The user learns it the way they would learn a codebase at a job.
+- **Scenarios are tickets against it:**
+  - on-call incidents (latency spike, queue backlog, disk full, bad deploy, cache stampede, split brain);
+  - feature tickets;
+  - performance regressions;
+  - security findings;
+  - migrations (monolith → modules → services, sync → async);
+  - third-party integrations;
+  - scale-out;
+  - code and design reviews.
+- **Assessment from measurements:** service-level targets met, tests green, p95/p99 and error rate under load, time to mitigate, blast radius, quality of the change, a short postmortem.
+- **Levels follow an engineering career ladder:** Junior → Mid → Senior → Staff differ by scope, ambiguity and blast radius. Promotion checks are multi-scenario "on-call weeks" and migrations.
+- **The browser still hosts quick drills** (flashcards, predict-the-output, short coding) alongside the scenarios.
+
+**Engineering constraints:**
+- Everything is lazy-loaded per exercise; heavy engines are cached after first use.
+- Web Workers keep the UI responsive, with hard time and memory limits.
+- Works on desktop; phones get the drills and the lighter scenarios. The v86 and full-system scenarios need a desktop-class browser.
 
 ## 6. Never the same twice
 
@@ -303,6 +361,7 @@ Skill graph, templates and achievement catalog: versioned JSON under `content/ac
 
 ## 12. Phasing
 
+- **13.S Employ Sim foundation (before 13.3)**: discrete-event core (virtual clock, nodes, network, filesystem, seeds), fault injection, metrics, conformance-test harness, ShopLite reference system v1, scenario runner + measured scoring
 - **13.0 Core engine** — skill graph, ratings, placement (seeded from CV/profile + diagnostic), adaptive selector, daily plan, attempt/evaluation framework, XP/rank/streak/achievements core, Academy home + radar
 - **13.1 Coding workbench** — Web Worker runner, hidden tests, empirical complexity fit, acorn quality metrics, optimization + refactoring + debugging formats, Pyodide
 - **13.2 SQL lab** — PGlite runner with EXPLAIN-based efficiency, schema/indexing exercises
@@ -315,7 +374,7 @@ Skill graph, templates and achievement catalog: versioned JSON under `content/ac
 - **13.8 Security expansion**: blue-team triage, hardening review, crypto, cloud IAM, supply-chain drills
 - **13.9 Delivery**: pipeline debugger, data pipeline lab, dependency resolver, package author
 - **13.10 Infrastructure & command line**: server lab (v86 + simulated shell), terminal tasks in bash/PowerShell/cmd, cross-shell translation, explain/predict, script repair, danger zone, command builder, container & cluster doctor
-- **13.13 Cloud & scale**: Docker/Compose, Kubernetes (deep), AWS and Azure simulators + CLI tasks, Redis lab, queue simulator, sync→async, integration lab, SDK workshop, architecture kata, scale-out lab; optional Upstash / Play with Docker / Killercoda / LocalStack / Azurite
+- **13.13 Cloud & scale**: Docker/Compose, Kubernetes (deep), AWS and Azure simulators + CLI tasks, Redis lab, queue simulator, sync→async, integration lab, SDK workshop, architecture kata, scale-out lab; all on Employ Sim (§5.3)
 - **13.11 Conflicts**: semantic, migration and lockfile conflicts; people-conflict scenarios; real-history drills
 
 ## 13. Constraints
