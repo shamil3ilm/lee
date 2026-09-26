@@ -26,6 +26,8 @@ import {
   subscribeSidebar,
 } from '@/lib/ui/sidebar-store'
 import { cn } from '@/lib/utils'
+import { Logo } from '@/components/brand/logo'
+import { APP_NAME } from '@/lib/brand'
 
 interface SidebarProps {
   className?: string
@@ -85,9 +87,18 @@ export function Sidebar({
           <Link
             href="/"
             onClick={onNavigate}
-            className="text-base font-semibold tracking-tight group-data-[sidebar=rail]/shell:hidden"
+            aria-label={`${APP_NAME} home`}
+            className="text-base group-data-[sidebar=rail]/shell:hidden"
           >
-            Employ
+            <Logo size={26} />
+          </Link>
+          <Link
+            href="/"
+            onClick={onNavigate}
+            aria-label={`${APP_NAME} home`}
+            className="hidden group-data-[sidebar=rail]/shell:inline-flex"
+          >
+            <Logo size={26} markOnly />
           </Link>
           {railEnabled ? <RailToggle rail={rail} onToggle={() => setRail(!rail)} /> : null}
         </div>

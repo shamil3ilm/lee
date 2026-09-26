@@ -4,10 +4,12 @@ import { ThemeProvider } from 'next-themes'
 import { Toaster } from '@/components/ui/toaster'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
+import { APP_NAME, APP_TAGLINE } from '@/lib/brand'
 
 export const metadata: Metadata = {
-  title: 'Employ',
-  description: 'Personal job-search tracker',
+  title: { default: APP_NAME, template: `%s · ${APP_NAME}` },
+  description: APP_TAGLINE,
+  applicationName: APP_NAME,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

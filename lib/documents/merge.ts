@@ -15,6 +15,7 @@ import {
 } from '@/lib/documents/types'
 import { getMasterCV } from '@/lib/documents/master'
 import { compileLatex } from '@/lib/latex/compile'
+import { APP_NAME } from '@/lib/brand'
 
 export interface MergeSource {
   kind: 'document' | 'asset'
@@ -188,8 +189,8 @@ export async function mergePdfs(opts: MergeOptions): Promise<Buffer> {
         : 'mergePdfs: no pages produced'
     throw new Error(message)
   }
-  merged.setProducer('Employ')
-  merged.setCreator('Employ merge')
+  merged.setProducer(APP_NAME)
+  merged.setCreator(`${APP_NAME} merge`)
   const bytes = await merged.save()
   return Buffer.from(bytes)
 }

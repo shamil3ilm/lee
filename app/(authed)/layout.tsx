@@ -12,6 +12,9 @@ import { NotificationScheduler } from '@/components/notification-scheduler'
 import { UserMenu } from '@/components/user-menu'
 import type { NavBadges } from '@/components/nav/nav-config'
 import { APP_SHELL_ID, RAIL_BOOT_SCRIPT } from '@/lib/ui/sidebar-store'
+import Link from 'next/link'
+import { Logo } from '@/components/brand/logo'
+import { APP_NAME } from '@/lib/brand'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,6 +53,10 @@ export default async function AuthedLayout({ children }: { children: React.React
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:px-6">
           <MobileNav email={email} name={name} image={image} badges={badges} />
+          {/* Phones have no sidebar, so the brand sits in the top bar. */}
+          <Link href="/" aria-label={`${APP_NAME} home`} className="md:hidden">
+            <Logo size={24} />
+          </Link>
           <div className="flex-1" />
           <div className="flex items-center gap-2">
             <CommandMenuButton />

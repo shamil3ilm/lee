@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { makeUser } from '@/tests/factories'
 import * as keysQ from '@/lib/db/queries/labProviderKeys'
 import { MissingKeyError } from '@/lib/lab/providers/errors'
+import { APP_NAME } from '@/lib/brand'
 import {
   _clearModelCache,
   buildEndpoint,
@@ -46,7 +47,7 @@ describe('buildEndpoint', () => {
     const ep = buildEndpoint('openrouter', 'k')
     expect(ep.baseUrl).toBe('https://openrouter.ai/api/v1')
     expect(ep.extraHeaders?.['HTTP-Referer']).toBeTruthy()
-    expect(ep.extraHeaders?.['X-Title']).toBe('Employ Model Playground')
+    expect(ep.extraHeaders?.['X-Title']).toBe(`${APP_NAME} Model Playground`)
   })
 
   it('refuses browser-side providers', () => {

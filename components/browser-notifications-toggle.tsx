@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { Bell, BellOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { APP_NAME } from '@/lib/brand'
 import {
   permissionState,
   permissionStateServerSnapshot,
@@ -44,7 +45,7 @@ export function BrowserNotificationsToggle() {
 
   function fireTest(): void {
     const n = showNotification({
-      title: 'Employ',
+      title: APP_NAME,
       body: 'Notifications are working — you\'ll be pinged when todos come due.',
       tag: 'employ-test',
     })

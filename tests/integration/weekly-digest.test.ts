@@ -10,6 +10,7 @@ import {
   sendWeeklyDigest,
 } from '@/lib/digest/weekly'
 import { renderWeeklyDigestHtml } from '@/lib/digest/email-template'
+import { APP_NAME } from '@/lib/brand'
 import {
   makeUser,
   makeCompany,
@@ -261,8 +262,8 @@ describe('sendWeeklyDigest', () => {
     expect(send).toHaveBeenCalledTimes(1)
     const arg = send.mock.calls[0]?.[0] as SendArgs | undefined
     expect(arg?.to).toBe('digest-send@x.com')
-    expect(arg?.subject).toContain('Employ')
-    expect(arg?.htmlBody).toContain('Your Employ week')
+    expect(arg?.subject).toContain(APP_NAME)
+    expect(arg?.htmlBody).toContain(`Your ${APP_NAME} week`)
     expect(snapshot.totalApplications).toBe(1)
 
     const profile = await profileQ.get(u.id)
@@ -350,7 +351,7 @@ describe('renderWeeklyDigestHtml', () => {
     const snap = await gatherPipelineSnapshot(u.id)
     const html = renderWeeklyDigestHtml(snap)
     expect(html.startsWith('<!doctype html>')).toBe(true)
-    expect(html).toContain('Your Employ week')
+    expect(html).toContain(`Your ${APP_NAME} week`)
     expect(html).toContain('Applications by status')
     expect(html).toContain('Upcoming interviews')
     expect(html).toContain('Top discoveries')

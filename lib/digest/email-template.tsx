@@ -1,5 +1,7 @@
 import type { CSSProperties, ReactElement } from 'react'
 import type { PipelineSnapshot } from './weekly'
+import { APP_NAME } from '@/lib/brand'
+import { EmailBrandHeader } from '@/lib/email/brand-header'
 
 // Inline styles only — no external CSS. Most email clients strip <style> tags
 // or refuse to load external stylesheets. Colors kept accessible and neutral.
@@ -90,7 +92,8 @@ export function WeeklyDigestEmail({
   } = snapshot
   return (
     <div style={styles.wrapper}>
-      <h1 style={styles.h1}>Your Employ week</h1>
+      <EmailBrandHeader appBaseUrl={appBaseUrl} />
+      <h1 style={styles.h1}>Your {APP_NAME} week</h1>
       <p style={styles.subline}>
         This week at a glance: {totalApplications} applications ·{' '}
         {upcomingInterviews.length} interviews · {topDiscoveries.length} discoveries ·{' '}
@@ -238,7 +241,7 @@ export function WeeklyDigestEmail({
       </div>
 
       <div style={styles.footer}>
-        Sent by Employ. Manage this email in your{' '}
+        Sent by {APP_NAME}. Manage this email in your{' '}
         <a href={`${appBaseUrl}/settings/notifications`} style={styles.link}>
           notification settings
         </a>
@@ -268,5 +271,5 @@ export function renderWeeklyDigestHtml(
   const body = renderToStaticMarkup(
     <WeeklyDigestEmail snapshot={snapshot} appBaseUrl={appBaseUrl} />,
   )
-  return `<!doctype html><html><head><meta charset="utf-8"><title>Employ · Weekly Digest</title></head><body style="margin:0;padding:0;background:#f7f7f7;">${body}</body></html>`
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${APP_NAME} · Weekly Digest</title></head><body style="margin:0;padding:0;background:#f7f7f7;">${body}</body></html>`
 }
