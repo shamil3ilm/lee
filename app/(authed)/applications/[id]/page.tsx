@@ -11,6 +11,7 @@ import * as todosQ from '@/lib/db/queries/todos'
 import * as cvScoresQ from '@/lib/db/queries/cvScores'
 import * as contactsQ from '@/lib/db/queries/contacts'
 import * as companiesQ from '@/lib/db/queries/companies'
+import * as aiCallLogsQ from '@/lib/db/queries/aiCallLogs'
 import { ApplicationActions } from '@/components/application-actions'
 import { ApplicationContactsCard } from '@/components/application-contacts-card'
 import { pickScoringDocument, toCvFitView, toDocScoreMap } from '@/lib/cv-score/fit'
@@ -125,10 +126,15 @@ export default async function ApplicationDetail({
   const cvDocs = allDocs.filter((d) =>
     ['tailored_cv', 'cover_letter', 'master_cv'].includes(d.kind),
   )
-  const docScores = await cvScoresQ.latestByDocuments(
-    userId,
-    cvDocs.map((d) => d.id),
-  )
+  // AI usage badges: one indexed lookup for the AI-generated documents.
+  const aiDocIds = allDocs.filter((d) => isAiGeneratedKind(d.kind)).map((d) => d.id)
+  const [docScores, docUsage] = await Promise.all([
+    cvScoresQ.latestByDocuments(
+      userId,
+      cvDocs.map((d) => d.id),
+    ),
+    aiCallLogsQ.usageByDocument(userId, aiDocIds),
+  ])
   const cvFit = toCvFitView(scoreRows)
   const scoringDoc = pickScoringDocument([...allDocs, ...masterCvs])
   const outreachDocs = allDocs.filter((d) => d.kind.startsWith('outreach_'))
@@ -353,18 +359,21 @@ export default async function ApplicationDetail({
             applicationId={app.id}
             documents={cvDocs.map(withoutContent)}
             scores={toDocScoreMap(docScores)}
+            usage={docUsage}
           />
 
           <OutreachCard
             applicationId={app.id}
             outreachDocs={outreachDocs}
             appliedAt={app.appliedAt ? app.appliedAt.toISOString() : null}
+            usage={docUsage}
           />
 
           <PrepPackCard
             applicationId={app.id}
             stages={stages}
             prepDocs={prepDocs}
+            usage={docUsage}
           />
 
           <ApplicationContactsCard
@@ -389,6 +398,16 @@ export default async function ApplicationDetail({
 }
 
 /** Strip the content payload before a document crosses to a client card. */
+/** Document kinds produced by an AI generation call (they carry a usage badge). */
+function isAiGeneratedKind(kind: string): boolean {
+  return (
+    kind === 'tailored_cv' ||
+    kind === 'cover_letter' ||
+    kind === 'interview_prep_pack' ||
+    kind.startsWith('outreach_')
+  )
+}
+
 function withoutContent<T extends { content: unknown }>(doc: T): Omit<T, 'content'> {
   const { content: _content, ...rest } = doc
   void _content

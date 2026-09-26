@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { getDecisionProviderForUser } from '@/lib/decisions'
+import { withAiUsage } from '@/lib/ai/usage'
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/expenses/categories'
 import { checkExpenseClassifySignal } from '@/lib/ai/signal'
 import { writeSkipLog } from '@/lib/ai/log'
@@ -65,17 +66,20 @@ export async function POST(req: Request): Promise<NextResponse> {
     const text = [vendor, description].filter(Boolean).join(' — ')
 
     const provider = await getDecisionProviderForUser(userId)
-    const result = await provider.choice<ExpenseCategory>({
-      text,
-      options: EXPENSE_CATEGORIES,
-      context:
-        'You are classifying a personal expense into a single category. ' +
-        'The vendor is the merchant name; the description is a short note.',
-    })
+    const { result, usage } = await withAiUsage({ userId }, () =>
+      provider.choice<ExpenseCategory>({
+        text,
+        options: EXPENSE_CATEGORIES,
+        context:
+          'You are classifying a personal expense into a single category. ' +
+          'The vendor is the merchant name; the description is a short note.',
+      }),
+    )
 
     return NextResponse.json({
       category: result.pick,
       confidence: result.confidence,
+      usage,
     })
   } catch (err) {
     logger.error('POST /api/expenses/classify failed', {

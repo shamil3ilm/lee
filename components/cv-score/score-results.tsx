@@ -134,7 +134,7 @@ export function ScoreResults({ result, history, onPreviewFix }: ScoreResultsProp
             ) : null}
             {fit ? (
               <TabsContent value="fit" className="pt-2">
-                <RequirementFitTable details={fit} aiCallId={result.aiCallId} />
+                <RequirementFitTable details={fit} aiCallId={result.aiCallId} usage={result.usage} />
               </TabsContent>
             ) : null}
             <TabsContent value="history" className="pt-2">

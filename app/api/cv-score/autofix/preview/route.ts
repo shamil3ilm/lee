@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { withAiUsage } from '@/lib/ai/usage'
 import { z } from 'zod'
 import { previewAutofix } from '@/lib/cv-score/autofix'
 import {
@@ -32,13 +33,15 @@ export async function POST(req: Request): Promise<NextResponse> {
     const parsed = bodySchema.safeParse(await readJson(req))
     if (!parsed.success) return badRequest()
     const ai = await aiForUser(userId)
-    const preview = await previewAutofix({
-      userId,
-      applicationId: parsed.data.applicationId ?? null,
-      findingIds: parsed.data.findingIds,
-      ai,
-    })
-    return NextResponse.json({ preview })
+    const { result: preview, usage } = await withAiUsage({ userId }, () =>
+      previewAutofix({
+        userId,
+        applicationId: parsed.data.applicationId ?? null,
+        findingIds: parsed.data.findingIds,
+        ai,
+      }),
+    )
+    return NextResponse.json({ preview, usage })
   } catch (err) {
     return errorResponse(err, 'cv_score_autofix_preview_failed', 'Could not prepare fixes.')
   }

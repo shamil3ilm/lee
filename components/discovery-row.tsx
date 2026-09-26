@@ -25,6 +25,7 @@ import {
 } from '@/app/(authed)/discoveries/actions'
 import { toastDismissedCompany, toastDismissedJobs } from '@/components/discovery-undo'
 import { RiskBadge } from '@/components/scam/risk-badge'
+import { CallUsageBadge } from '@/components/ai/usage-badge'
 import type { RiskView } from '@/lib/scam/view'
 
 /**
@@ -58,6 +59,8 @@ export interface DiscoveryRowJob {
   sourceName: string
   normalized: DiscoveryJobSummary
   reasoning: DiscoveryReasoning | null
+  /** v18 — ai_call_logs id of the scoring call, for the usage badge. */
+  scoredByCallId?: string | null
   /** v17 §1 — Scam Shield assessment; null when not assessed yet. */
   risk?: RiskView | null
 }
@@ -70,6 +73,8 @@ export interface DiscoveryRowCompany {
   sourceName: string
   normalized: DiscoveryCompanySummary
   reasoning: DiscoveryReasoning | null
+  /** v18 — ai_call_logs id of the scoring call, for the usage badge. */
+  scoredByCallId?: string | null
 }
 
 export interface DiscoveryReasoning {
@@ -240,7 +245,11 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
           </div>
         </div>
         {expanded ? (
-          <ReasoningBlock reasoning={item.reasoning} techStack={n.techStack} />
+          <ReasoningBlock
+            reasoning={item.reasoning}
+            techStack={n.techStack}
+            callId={item.scoredByCallId}
+          />
         ) : null}
       </CardContent>
     </Card>
@@ -359,7 +368,11 @@ export function CompanyDiscoveryRow({ item }: { item: DiscoveryRowCompany }) {
           </div>
         </div>
         {expanded ? (
-          <ReasoningBlock reasoning={item.reasoning} techStack={n.techStack} />
+          <ReasoningBlock
+            reasoning={item.reasoning}
+            techStack={n.techStack}
+            callId={item.scoredByCallId}
+          />
         ) : null}
       </CardContent>
     </Card>
@@ -371,9 +384,11 @@ export function CompanyDiscoveryRow({ item }: { item: DiscoveryRowCompany }) {
 function ReasoningBlock({
   reasoning,
   techStack,
+  callId,
 }: {
   reasoning: DiscoveryReasoning | null
   techStack?: string[]
+  callId?: string | null
 }) {
   if (!reasoning && (!techStack || techStack.length === 0)) {
     return (
@@ -391,6 +406,7 @@ function ReasoningBlock({
             Reasoning
           </div>
           <p className="text-muted-foreground">{reasoning.summary}</p>
+          <CallUsageBadge callId={callId} className="mt-1" />
         </div>
       ) : null}
       {reasoning?.strengths && reasoning.strengths.length > 0 ? (

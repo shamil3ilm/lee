@@ -12,6 +12,7 @@ import {
 } from '@/lib/documents/errors'
 import { getAIProviderForUser } from '@/lib/ai'
 import { AISkippedError } from '@/lib/ai/signal'
+import { AiUsageScope } from '@/lib/ai/usage'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -27,10 +28,13 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
+  // Collects the AI calls made for this response → `usage` in the JSON.
+  const aiUsage = new AiUsageScope()
   try {
     const session = await auth()
     const userId = session?.user?.id
     if (!userId) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
+    aiUsage.bindUser(userId)
     const { id: applicationId } = await params
     const rawBody = (await req.json().catch(() => null)) as unknown
     const parsed = bodySchema.safeParse(rawBody)
@@ -38,21 +42,28 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 })
     }
     const ai = await getAIProviderForUser(userId)
-    const doc = await generateOutreachDraft({
+    const doc = await aiUsage.run(() => generateOutreachDraft({
       userId,
       applicationId,
       kind: parsed.data.kind,
       tone: parsed.data.tone,
       ai,
-    })
+    }))
     return NextResponse.json({
       documentId: doc.id,
       downloadUrl: `/api/documents/${doc.id}/pdf`,
+      usage: aiUsage.usage,
     })
   } catch (err) {
     if (err instanceof AISkippedError) {
       return NextResponse.json(
-        { skipped: true, code: err.code, message: err.message, fixHint: err.fixHint },
+        {
+          skipped: true,
+          code: err.code,
+          message: err.message,
+          fixHint: err.fixHint,
+          usage: aiUsage.usage,
+        },
         { status: 200 },
       )
     }

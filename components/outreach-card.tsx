@@ -20,6 +20,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { VoiceInputButton } from '@/components/voice-input-button'
 import { StalenessBanner } from '@/components/staleness-banner'
 import { FeedbackButtons } from '@/components/feedback-buttons'
+import { UsageBadge } from '@/components/ai/usage-badge'
+import type { AiUsage } from '@/lib/ai/usage-types'
 import { logImplicitAction } from '@/lib/ui/implicit-signals'
 import { relativeFromNow } from '@/lib/ui/date'
 
@@ -38,6 +40,8 @@ interface OutreachCardProps {
   // v4.2 — needed so the follow-up tab can show a hint when appliedAt is
   // missing (otherwise the server route would 400 with "set applied-at first").
   appliedAt?: string | null
+  /** v18 — AI usage per document id (tokens · model · latency). */
+  usage?: Record<string, AiUsage>
 }
 
 const TAB_TO_KIND: Record<Exclude<TabValue, 'followup'>, OutreachKind> = {
@@ -118,6 +122,7 @@ export function OutreachCard({
   applicationId,
   outreachDocs,
   appliedAt,
+  usage = {},
 }: OutreachCardProps) {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<TabValue>('connection')
@@ -358,6 +363,7 @@ export function OutreachCard({
           </Button>
         </div>
         <FeedbackButtons documentId={latest.id} className="pt-1" />
+        <UsageBadge usage={usage[latest.id]} />
       </div>
     )
   }
@@ -485,6 +491,7 @@ export function OutreachCard({
                   </div>
                 </div>
                 <FeedbackButtons documentId={doc.id} className="pt-2" />
+                <UsageBadge usage={usage[doc.id]} />
               </div>
             )
           })}

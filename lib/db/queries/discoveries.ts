@@ -153,6 +153,7 @@ export interface DiscoveryListItem {
   matchScore: number | null
   benefitsScore: number | null
   matchReasoning: unknown
+  scoredByCallId: string | null
   createdAt: Date
   updatedAt: Date
   title: string | null
@@ -173,6 +174,8 @@ const LIST_COLUMNS = {
   matchScore: discoveries.matchScore,
   benefitsScore: discoveries.benefitsScore,
   matchReasoning: discoveries.matchReasoning,
+  // v18 — id only; the usage badge loads the call lazily when expanded.
+  scoredByCallId: discoveries.scoredByCallId,
   createdAt: discoveries.createdAt,
   updatedAt: discoveries.updatedAt,
   title: n('title'),

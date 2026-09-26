@@ -10,6 +10,8 @@ import {
 } from '@/lib/decisions'
 import * as profileQ from '@/lib/db/queries/profile'
 import { logger } from '@/lib/logger'
+import { withAiUsage } from '@/lib/ai/usage'
+import type { AiUsage } from '@/lib/ai/usage-types'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -102,6 +104,8 @@ interface ResultRow {
   }
   error?: string
   raw?: unknown
+  /** Token/latency usage of the logged model call (Groq); null for heuristic / Laya. */
+  usage?: AiUsage | null
 }
 
 function buildProvider(
@@ -229,7 +233,9 @@ export async function POST(req: Request): Promise<NextResponse> {
         if ('error' in built) {
           return { provider: kind, ok: false, latencyMs: 0, error: built.error }
         }
-        return runOne(kind, built, body)
+        // One usage scope per provider — they run concurrently.
+        const { result, usage } = await withAiUsage({ userId }, () => runOne(kind, built, body))
+        return { ...result, usage }
       }),
     )
 

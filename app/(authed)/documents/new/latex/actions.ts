@@ -6,6 +6,7 @@ import * as documentsQ from '@/lib/db/queries/documents'
 import { getMasterCV } from '@/lib/documents/master'
 import { fillTemplate, getTemplate } from '@/lib/latex/templates'
 import { getAIProviderForUser } from '@/lib/ai'
+import { withAiUsage } from '@/lib/ai/usage'
 import { logger } from '@/lib/logger'
 
 export type CreateLatexResult = { documentId: string } | { error: string }
@@ -204,17 +205,18 @@ export async function createFromMasterCV(templateId: string): Promise<CreateLate
     if (!master) return { error: 'You need to save a master CV first (Settings → CV).' }
 
     const ai = await getAIProviderForUser(userId)
-    let source: string
-    try {
-      const r = await ai.generateLatexCV({ master, templateId })
-      source = r.source
-    } catch (firstErr) {
-      logger.error('generateLatexCV first attempt failed, retrying', {
-        err: firstErr instanceof Error ? firstErr.message : String(firstErr),
-      })
-      const r = await ai.generateLatexCV({ master, templateId })
-      source = r.source
-    }
+    // Scoped so the call logs are attributed to the user (the page
+    // redirects, so the usage summary itself is not returned).
+    const { result: source } = await withAiUsage({ userId }, async () => {
+      try {
+        return (await ai.generateLatexCV({ master, templateId })).source
+      } catch (firstErr) {
+        logger.error('generateLatexCV first attempt failed, retrying', {
+          err: firstErr instanceof Error ? firstErr.message : String(firstErr),
+        })
+        return (await ai.generateLatexCV({ master, templateId })).source
+      }
+    })
 
     const { title, version } = await nextTitle(userId, 'latex_cv')
     const doc = await documentsQ.create(userId, {

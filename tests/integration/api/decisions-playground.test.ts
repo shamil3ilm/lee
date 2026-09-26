@@ -272,6 +272,40 @@ describe('POST /api/decisions/playground', () => {
     }
   })
 
+  it('returns per-row usage for the logged Groq call, none for the heuristic', async () => {
+    const u = await makeUser(`pg-usage-${Math.random()}@x.com`)
+    authMock.mockResolvedValue({ user: { id: u.id } })
+    const orig = process.env.GROQ_API_KEY
+    process.env.GROQ_API_KEY = 'test-key'
+    vi.resetModules()
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [{ message: { content: JSON.stringify({ answer: true, confidence: 0.8 }) } }],
+          usage: { prompt_tokens: 50, completion_tokens: 9 },
+        }),
+        { status: 200 },
+      ),
+    )
+    try {
+      const { POST } = await importRoute()
+      const res = await POST(
+        buildRequest({ type: 'yesNo', text: 'hi', question: 'greeting?', providers: ['groq', 'heuristic'] }),
+      )
+      const body = (await res.json()) as {
+        results: Array<{ provider: string; usage?: { inputTokens: number; outputTokens: number } | null }>
+      }
+      const groq = body.results.find((r) => r.provider === 'groq')!
+      const heur = body.results.find((r) => r.provider === 'heuristic')!
+      expect(groq.usage).toMatchObject({ inputTokens: 50, outputTokens: 9 })
+      expect(heur.usage).toBeNull()
+    } finally {
+      if (orig === undefined) delete process.env.GROQ_API_KEY
+      else process.env.GROQ_API_KEY = orig
+      vi.resetModules()
+    }
+  })
+
   it('falls back to profile.layaEndpoint when no per-call override is sent', async () => {
     const u = await makeUser(`pg-profile-laya-${Math.random()}@x.com`)
     await profileQ.upsert(u.id, {

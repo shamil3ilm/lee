@@ -49,6 +49,11 @@ export class AiUsageScope {
     this.state = { userId, notes: [] }
   }
 
+  /** Attribute calls to this user (for scopes created before auth resolves). */
+  bindUser(userId: string): void {
+    this.state.userId = userId
+  }
+
   run<T>(fn: () => Promise<T>): Promise<T> {
     return storage.run(this.state, fn)
   }
