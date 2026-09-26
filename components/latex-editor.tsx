@@ -1,66 +1,85 @@
 'use client'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
 import {
-  AlertTriangle,
   ChevronLeft,
   Download,
   Eye,
   FileCode2,
+  ListTree,
   Loader2,
   PlayCircle,
   Save,
+  Zap,
+  ImageOff,
 } from 'lucide-react'
-import type { OnMount } from '@monaco-editor/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { saveLatexSource } from '@/app/(authed)/documents/[id]/edit/actions'
 import { LatexAssetsDialog } from '@/components/latex-assets-dialog'
 import type { AssetMetadata } from '@/lib/db/queries/documentAssets'
 import { defaultSnippetForAsset } from '@/lib/latex/snippets'
-import { extractLatexHint } from '@/lib/latex/errors'
+import { extractLatexHint, isMainFile, parseLatexLog } from '@/lib/latex/errors'
+import { extractOutline } from '@/lib/latex/outline'
+import type { CodeEditorHandle } from '@/components/latex/code-editor'
+import type { CompileDiagnostic } from '@/components/latex/cm-setup'
+import { OutlinePanel } from '@/components/latex/outline-panel'
+import { ProblemsPanel } from '@/components/latex/problems-panel'
+import { useBibSources } from '@/components/latex/use-bib-sources'
+import { useLatexCompile, type CompileError, type CompileSnapshot } from '@/components/latex/use-latex-compile'
 
-// Pull Monaco's JS + workers from a CDN so we don't bundle ~2MB of editor
-// assets into the client chunk for this route. The wrapper package (and its
-// loader config) is itself imported lazily, so nothing Monaco-related is in
-// the route's first-load bundle; it loads only when the editor mounts.
-const MonacoEditor = dynamic(
-  () =>
-    import('@monaco-editor/react').then((m) => {
-      m.loader.config({
-        paths: {
-          vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs',
-        },
-      })
-      return m.default
-    }),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-full w-full items-center justify-center">
-        <Skeleton className="h-full w-full" />
-      </div>
-    ),
-  },
+// CodeMirror 6 is bundled (no CDN) into its own chunk that only this route
+// loads, after hydration. Until it arrives a plain textarea is editable, so
+// slow phones can start typing at once. If the chunk cannot load (offline,
+// blocked), the textarea simply stays: the editor degrades, never breaks.
+const CodeEditor = dynamic(
+  () => import('@/components/latex/code-editor').catch(() => ({ default: () => null })),
+  { ssr: false, loading: () => null },
 )
 
 interface LatexEditorProps {
   documentId: string
   initialTitle: string
   initialSource: string
-  initialError: { message: string; log: string } | null
+  initialError: CompileError | null
   initialAssets: AssetMetadata[]
   /** Overrides the default full-viewport height (e.g. when a breadcrumb sits above). */
   className?: string
 }
 
-type CompileError = { message: string; log: string }
+type UploadFn = (files: FileList | File[]) => Promise<AssetMetadata[]>
 
-const DEBOUNCE_MS = 1500
+function ToggleButton({
+  pressed,
+  onClick,
+  children,
+  title,
+}: {
+  pressed: boolean
+  onClick: () => void
+  children: React.ReactNode
+  title: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={pressed}
+      title={title}
+      className={cn(
+        'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition-colors',
+        pressed
+          ? 'border-primary/30 bg-primary/10 text-foreground'
+          : 'border-transparent text-muted-foreground hover:bg-muted hover:text-foreground',
+      )}
+    >
+      {children}
+    </button>
+  )
+}
 
 export function LatexEditor({
   documentId,
@@ -73,166 +92,106 @@ export function LatexEditor({
   const [source, setSource] = useState(initialSource)
   const [title, setTitle] = useState(initialTitle)
   const [saving, setSaving] = useState(false)
-  const [compiling, setCompiling] = useState(false)
-  const [error, setError] = useState<CompileError | null>(initialError)
-  const [previewKey, setPreviewKey] = useState(0)
-  const [showErrorPanel, setShowErrorPanel] = useState<boolean>(initialError !== null)
   const [assets, setAssets] = useState<AssetMetadata[]>(initialAssets)
   const [dragActive, setDragActive] = useState(false)
-  // Mobile-only pane toggle. Desktop (md+) always shows both side-by-side, so
-  // this state is ignored there; on mobile we swap between source and preview
-  // via a segmented control so neither pane gets a useless ~50vw column.
+  const [editorReady, setEditorReady] = useState(false)
+  const [draft, setDraft] = useState(false)
+  const [outlineOpen, setOutlineOpen] = useState(false)
+  // Mobile-only pane toggle; md+ always shows source and preview side by side.
   const [mobilePane, setMobilePane] = useState<'source' | 'preview'>('source')
-  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const latestSource = useRef(initialSource)
-  const editorRef = useRef<Parameters<OnMount>[0] | null>(null)
-  const monacoRef = useRef<Parameters<OnMount>[1] | null>(null)
+  const editorRef = useRef<CodeEditorHandle | null>(null)
 
-  const runCompile = useCallback(
-    async (sourceToCompile: string) => {
-      setCompiling(true)
-      try {
-        const res = await fetch('/api/latex/compile', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ documentId, source: sourceToCompile }),
-        })
-        if (res.ok) {
-          setError(null)
-          setShowErrorPanel(false)
-          // Bust the preview iframe cache so it re-fetches the newly compiled PDF.
-          setPreviewKey((k) => k + 1)
-        } else {
-          const errJson = (await res.json().catch(() => ({}))) as {
-            error?: string
-            log?: string
-          }
-          const nextError = {
-            message: errJson.error ?? 'Compile failed',
-            log: errJson.log ?? '',
-          }
-          setError(nextError)
-          setShowErrorPanel(true)
-        }
-      } catch (err) {
-        setError({
-          message: 'Network error while compiling.',
-          log: err instanceof Error ? err.message : String(err),
-        })
-        setShowErrorPanel(true)
-      } finally {
-        setCompiling(false)
-      }
-    },
-    [documentId],
+  const compile = useLatexCompile({ documentId, initialError })
+  const { notifyChange, compileNow } = compile
+  const bibSources = useBibSources(documentId, assets)
+
+  const assetKey = useMemo(
+    () => assets.map((a) => `${a.id}:${a.filename}:${a.sizeBytes}`).join('|'),
+    [assets],
   )
-
-  // Auto-compile debounce on source change.
+  const snapshot = useMemo<CompileSnapshot>(() => ({ source, draft, assetKey }), [source, draft, assetKey])
+  const snapshotRef = useRef(snapshot)
+  const firstSnapshot = useRef(true)
   useEffect(() => {
-    if (source === initialSource && previewKey === 0) {
-      // On first mount, kick off an initial compile so the preview isn't
-      // blank if the last compile was stale/failed.
+    snapshotRef.current = snapshot
+    // The saved source is already compiled (the preview loads it); only
+    // changes after mount schedule an auto-compile.
+    if (firstSnapshot.current) {
+      firstSnapshot.current = false
       return
     }
-    latestSource.current = source
-    if (debounceTimer.current) clearTimeout(debounceTimer.current)
-    debounceTimer.current = setTimeout(() => {
-      void runCompile(latestSource.current)
-    }, DEBOUNCE_MS)
-    return () => {
-      if (debounceTimer.current) clearTimeout(debounceTimer.current)
-    }
-    // We intentionally only re-run this effect when the source changes;
-    // runCompile is stable per documentId.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [source])
+    notifyChange(snapshot)
+  }, [snapshot, notifyChange])
 
-  /** Insert a snippet at the editor's current cursor and bring focus back. */
-  const insertAtCursor = useCallback((snippet: string): void => {
+  const compileCurrent = useCallback(() => compileNow(snapshotRef.current), [compileNow])
+
+  // Ctrl/Cmd+Enter and Ctrl/Cmd+S compile from anywhere on the page. Inside
+  // CodeMirror its own keymap handles them first (and marks them handled).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || !(e.ctrlKey || e.metaKey) || e.altKey) return
+      if (e.key === 'Enter' || e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        compileCurrent()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [compileCurrent])
+
+  /** Insert a snippet at the cursor (or `pos`); falls back to appending. */
+  const insertAtCursor = useCallback((snippet: string, pos?: number | null): void => {
     const editor = editorRef.current
-    if (!editor) {
-      // Fallback: append to the end of the source when Monaco isn't ready.
-      setSource((s) => (s.endsWith('\n') ? s + snippet + '\n' : s + '\n' + snippet + '\n'))
+    if (editor) {
+      editor.insertText(`${snippet}\n`, pos)
       return
     }
-    const monaco = monacoRef.current
-    const selection = editor.getSelection()
-    const position = editor.getPosition()
-    const range =
-      selection ??
-      (monaco && position
-        ? new monaco.Range(
-            position.lineNumber,
-            position.column,
-            position.lineNumber,
-            position.column,
-          )
-        : null)
-    if (!range) {
-      setSource((s) => (s.endsWith('\n') ? s + snippet + '\n' : s + '\n' + snippet + '\n'))
-      return
-    }
-    editor.executeEdits('assets-insert', [
-      { range, text: snippet + '\n', forceMoveMarkers: true },
-    ])
-    editor.focus()
+    setSource((s) => (s.endsWith('\n') ? `${s}${snippet}\n` : `${s}\n${snippet}\n`))
   }, [])
 
-  // Attach a native drop listener to the editor DOM node once Monaco mounts.
-  // The dragover/dragleave handlers control the visible drop overlay; the
-  // drop handler routes to the shared upload path exposed by the assets
-  // dialog (see `__latexAssetsUpload`).
-  const handleEditorMount: OnMount = useCallback(
-    (editor, monaco) => {
-      editorRef.current = editor
-      monacoRef.current = monaco
-      const dom = editor.getDomNode()
-      if (!dom) return
-      const onDragEnter = (e: DragEvent) => {
-        if (e.dataTransfer?.types.includes('Files')) {
-          e.preventDefault()
-          setDragActive(true)
-        }
+  const handleDropFiles = useCallback(
+    async (files: FileList, pos: number | null) => {
+      const uploader = (window as unknown as { __latexAssetsUpload?: UploadFn }).__latexAssetsUpload
+      if (!uploader) {
+        toast.error('Assets panel not ready — try again in a moment.')
+        return
       }
-      const onDragOver = (e: DragEvent) => {
-        if (e.dataTransfer?.types.includes('Files')) {
-          e.preventDefault()
-          e.dataTransfer.dropEffect = 'copy'
-        }
-      }
-      const onDragLeave = (e: DragEvent) => {
-        // The relatedTarget is null when leaving the viewport entirely; use
-        // that to distinguish "moved to a child" (ignore) from "left".
-        if (!e.relatedTarget || !(dom.contains(e.relatedTarget as Node))) {
-          setDragActive(false)
-        }
-      }
-      const onDrop = async (e: DragEvent) => {
-        e.preventDefault()
-        setDragActive(false)
-        const files = e.dataTransfer?.files
-        if (!files || files.length === 0) return
-        const uploader = (window as unknown as {
-          __latexAssetsUpload?: (files: FileList | File[]) => Promise<AssetMetadata[]>
-        }).__latexAssetsUpload
-        if (!uploader) {
-          toast.error('Assets panel not ready — try again in a moment.')
-          return
-        }
-        const uploaded = await uploader(files)
-        for (const asset of uploaded) {
-          insertAtCursor(defaultSnippetForAsset(asset))
-        }
-      }
-      dom.addEventListener('dragenter', onDragEnter)
-      dom.addEventListener('dragover', onDragOver)
-      dom.addEventListener('dragleave', onDragLeave)
-      dom.addEventListener('drop', (e) => {
-        void onDrop(e)
-      })
+      const uploaded = await uploader(files)
+      uploaded.forEach((asset, i) => insertAtCursor(defaultSnippetForAsset(asset), i === 0 ? pos : null))
     },
     [insertAtCursor],
   )
+
+  const jumpToLine = useCallback((line: number) => {
+    setMobilePane('source')
+    editorRef.current?.jumpTo(line)
+  }, [])
+
+  const onEditorReady = useCallback(() => setEditorReady(true), [])
+  const onDropFiles = useCallback(
+    (files: FileList, pos: number | null) => void handleDropFiles(files, pos),
+    [handleDropFiles],
+  )
+
+  const parsedLog = useMemo(() => (compile.error ? parseLatexLog(compile.error.log) : null), [compile.error])
+  const hint = compile.error ? extractLatexHint(compile.error.log) : null
+  const compileDiagnostics = useMemo<CompileDiagnostic[]>(
+    () =>
+      (parsedLog?.all ?? [])
+        .filter((e) => e.line !== null && isMainFile(e.file))
+        .map((e) => ({
+          line: e.line!,
+          severity: e.severity === 'error' ? 'error' : e.severity === 'warning' ? 'warning' : 'info',
+          message: e.message,
+        })),
+    [parsedLog],
+  )
+  const completionData = useMemo(
+    () => ({ bibSources, assetFilenames: assets.map((a) => a.filename) }),
+    [bibSources, assets],
+  )
+  const deferredSource = useDeferredValue(source)
+  const outline = useMemo(() => extractOutline(deferredSource), [deferredSource])
 
   async function handleSave(): Promise<void> {
     setSaving(true)
@@ -247,11 +206,6 @@ export function LatexEditor({
     }
   }
 
-  function handleManualCompile(): void {
-    if (debounceTimer.current) clearTimeout(debounceTimer.current)
-    void runCompile(source)
-  }
-
   function handleDownload(): void {
     const blob = new Blob([source], { type: 'application/x-tex' })
     const url = URL.createObjectURL(blob)
@@ -264,7 +218,7 @@ export function LatexEditor({
     URL.revokeObjectURL(url)
   }
 
-  const hint = error ? extractLatexHint(error.log) : null
+  const outlinePanel = <OutlinePanel items={outline} onJump={jumpToLine} />
 
   return (
     <div className={cn('flex h-[calc(100vh-6rem)] flex-col', className)}>
@@ -278,53 +232,34 @@ export function LatexEditor({
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            // Mobile: fill the row so the title is legible/edittable without
-            // horizontal scrolling. md+: cap at 18rem so it doesn't push the
-            // action cluster off-screen.
             className="min-w-0 flex-1 md:w-72 md:max-w-72 md:flex-none"
             placeholder="Document title"
             aria-label="Document title"
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {compiling ? (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+          {compile.compiling ? (
+            <span className="flex items-center gap-1 text-xs text-muted-foreground" role="status">
               <Loader2 className="size-3 animate-spin" />
               Compiling…
             </span>
           ) : null}
-          {/* Mobile-only pane toggle. Segmented button pair mirrors iOS/Android
-              conventions and lets the user swap views instead of squinting at
-              a 200px-wide iframe. */}
           <div className="inline-flex items-center rounded-md border bg-muted p-0.5 md:hidden">
-            <button
-              type="button"
-              onClick={() => setMobilePane('source')}
-              className={cn(
-                'inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors',
-                mobilePane === 'source'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground',
-              )}
-              aria-pressed={mobilePane === 'source'}
-            >
-              <FileCode2 className="size-3.5" />
-              Source
-            </button>
-            <button
-              type="button"
-              onClick={() => setMobilePane('preview')}
-              className={cn(
-                'inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors',
-                mobilePane === 'preview'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground',
-              )}
-              aria-pressed={mobilePane === 'preview'}
-            >
-              <Eye className="size-3.5" />
-              Preview
-            </button>
+            {(['source', 'preview'] as const).map((pane) => (
+              <button
+                key={pane}
+                type="button"
+                onClick={() => setMobilePane(pane)}
+                className={cn(
+                  'inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors',
+                  mobilePane === pane ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground',
+                )}
+                aria-pressed={mobilePane === pane}
+              >
+                {pane === 'source' ? <FileCode2 className="size-3.5" /> : <Eye className="size-3.5" />}
+                {pane === 'source' ? 'Source' : 'Preview'}
+              </button>
+            ))}
           </div>
           <LatexAssetsDialog
             documentId={documentId}
@@ -336,69 +271,102 @@ export function LatexEditor({
             type="button"
             variant="outline"
             size="sm"
-            onClick={handleManualCompile}
-            disabled={compiling}
+            onClick={compileCurrent}
+            disabled={compile.compiling}
+            title="Compile (Ctrl/Cmd+Enter or Ctrl/Cmd+S)"
           >
             <PlayCircle className="size-4" />
             <span className="hidden sm:inline">Compile</span>
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleDownload}
-          >
+          <Button type="button" variant="outline" size="sm" onClick={handleDownload}>
             <Download className="size-4" />
             <span className="hidden sm:inline">Download .tex</span>
           </Button>
-          <Button
-            type="button"
-            variant="default"
-            size="sm"
-            onClick={handleSave}
-            disabled={saving}
-          >
+          <Button type="button" variant="default" size="sm" onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
             <span className="hidden sm:inline">Save</span>
           </Button>
         </div>
       </div>
 
-      {/*
-        Layout:
-        - Mobile (<md): single column; only the currently-selected pane mounts
-          via the mobilePane toggle. Both are conditionally shown so Monaco
-          keeps its state and the iframe doesn't reload on toggle.
-        - md+: two-column split as before.
-      */}
-      <div className="grid flex-1 grid-cols-1 overflow-hidden md:grid-cols-2">
+      <div className="flex flex-wrap items-center gap-1 border-b bg-muted/30 px-3 py-1">
+        <ToggleButton pressed={outlineOpen} onClick={() => setOutlineOpen((v) => !v)} title="Show the section outline">
+          <ListTree className="size-3.5" />
+          Outline
+        </ToggleButton>
+        <ToggleButton
+          pressed={compile.autoCompile}
+          onClick={() => compile.setAutoCompile(!compile.autoCompile)}
+          title="Compile automatically when you stop typing"
+        >
+          <Zap className="size-3.5" />
+          Auto-compile
+        </ToggleButton>
+        <ToggleButton
+          pressed={draft}
+          onClick={() => setDraft((v) => !v)}
+          title="Draft mode: images are drawn as boxes for faster previews"
+        >
+          <ImageOff className="size-3.5" />
+          Draft
+        </ToggleButton>
+        <span className="ml-auto hidden text-[11px] text-muted-foreground lg:inline">
+          Ctrl/⌘+Enter to compile · Ctrl/⌘+F to find · Ctrl+Space for suggestions
+        </span>
+      </div>
+
+      <div
+        className={cn(
+          'grid min-h-0 flex-1 grid-cols-1 overflow-hidden',
+          outlineOpen ? 'md:grid-cols-[13rem_1fr_1fr]' : 'md:grid-cols-2',
+        )}
+      >
+        {outlineOpen ? <aside className="hidden min-h-0 border-r md:block">{outlinePanel}</aside> : null}
         <div
           className={cn(
-            'relative h-full min-h-[400px] border-b md:border-b-0 md:border-r',
-            mobilePane === 'preview' && 'hidden md:block',
+            'flex h-full min-h-[400px] flex-col border-b md:border-b-0 md:border-r',
+            mobilePane === 'preview' && 'hidden md:flex',
           )}
         >
-          <MonacoEditor
-            height="100%"
-            language="latex"
-            theme="vs-dark"
-            value={source}
-            onChange={(v) => setSource(v ?? '')}
-            onMount={handleEditorMount}
-            options={{
-              minimap: { enabled: false },
-              wordWrap: 'on',
-              fontSize: 13,
-              scrollBeyondLastLine: false,
-              automaticLayout: true,
-            }}
-          />
-          {dragActive ? (
-            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-primary/10 backdrop-blur-sm ring-2 ring-inset ring-primary">
-              <p className="rounded-md bg-background/90 px-4 py-2 text-sm font-medium shadow">
-                Drop files to attach
-              </p>
-            </div>
+          {outlineOpen ? <div className="max-h-40 border-b md:hidden">{outlinePanel}</div> : null}
+          <div className="relative min-h-0 flex-1">
+            {!editorReady ? (
+              <textarea
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+                aria-label="LaTeX source"
+                spellCheck={false}
+                autoCapitalize="off"
+                autoCorrect="off"
+                className="absolute inset-0 z-10 h-full w-full resize-none bg-background p-3 font-mono text-[13px] leading-relaxed text-foreground outline-none"
+              />
+            ) : null}
+            <CodeEditor
+              initialValue={source}
+              handleRef={editorRef}
+              onChange={setSource}
+              onCompile={compileCurrent}
+              onDropFiles={onDropFiles}
+              onDragActive={setDragActive}
+              completionData={completionData}
+              compileDiagnostics={compileDiagnostics}
+              onReady={onEditorReady}
+            />
+            {dragActive ? (
+              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-primary/10 ring-2 ring-inset ring-primary backdrop-blur-sm">
+                <p className="rounded-md bg-background/90 px-4 py-2 text-sm font-medium shadow">Drop files to attach</p>
+              </div>
+            ) : null}
+          </div>
+          {compile.error && compile.problemsOpen && parsedLog ? (
+            <ProblemsPanel
+              title={compile.error.message}
+              parsed={parsedLog}
+              rawLog={compile.error.log}
+              hint={hint}
+              onJump={jumpToLine}
+              onClose={() => compile.setProblemsOpen(false)}
+            />
           ) : null}
         </div>
 
@@ -409,36 +377,26 @@ export function LatexEditor({
           )}
         >
           <iframe
-            key={previewKey}
-            src={`/api/documents/${documentId}/pdf?v=${previewKey}`}
+            src={compile.pdfUrl ?? `/api/documents/${documentId}/pdf`}
             title="LaTeX PDF preview"
             className="h-full w-full bg-white"
           />
-          {error && showErrorPanel ? (
-            <div className="absolute inset-x-0 bottom-0 max-h-[45%] overflow-y-auto border-t border-destructive/40 bg-destructive/10 p-3 text-xs">
-              <div className="mb-1 flex items-center justify-between">
-                <p className="flex items-center gap-1 font-semibold text-destructive">
-                  <AlertTriangle className="size-3" />
-                  {error.message}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setShowErrorPanel(false)}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  Dismiss
-                </button>
-              </div>
-              {hint ? (
-                <p className="mb-2 rounded border border-warning/40 bg-warning-soft px-2 py-1 font-medium text-warning">
-                  Suggestion: {hint.message}
-                </p>
-              ) : null}
-              <pre className={cn('whitespace-pre-wrap break-words font-mono text-[11px]')}>
-                {error.log.slice(0, 4000)}
-                {error.log.length > 4000 ? '\n…(truncated)' : ''}
-              </pre>
-            </div>
+          {compile.error && !compile.problemsOpen ? (
+            <button
+              type="button"
+              onClick={() => {
+                compile.setProblemsOpen(true)
+                setMobilePane('source')
+              }}
+              className="absolute bottom-3 left-3 rounded-md border border-destructive/40 bg-background px-2 py-1 text-xs font-medium text-destructive shadow"
+            >
+              Last compile failed · show problems
+            </button>
+          ) : null}
+          {compile.pdfIsDraft ? (
+            <span className="pointer-events-none absolute right-3 top-3 rounded bg-warning-soft px-2 py-0.5 text-[11px] font-medium text-warning">
+              Draft preview
+            </span>
           ) : null}
         </div>
       </div>
