@@ -3,6 +3,7 @@ import { getSession } from '@/lib/auth/require-session'
 import * as discoveriesQ from '@/lib/db/queries/discoveries'
 import * as todosQ from '@/lib/db/queries/todos'
 import { logger } from '@/lib/logger'
+import { scheduleVisitDrain } from '@/lib/queue/visit'
 import { Sidebar } from '@/components/sidebar'
 import { CommandMenuButton } from '@/components/command-menu-button'
 import { InlineScript } from '@/components/inline-script'
@@ -39,6 +40,9 @@ export default async function AuthedLayout({ children }: { children: React.React
   const name = session.user.name ?? null
   const image = session.user.image ?? null
   const badges = session.user.id ? await loadNavBadges(session.user.id, new Date()) : {}
+  // Opportunistic queue drain for this user, registered with after(): no
+  // query on the render path; one indexed check once the response is sent.
+  if (session.user.id) void scheduleVisitDrain(session.user.id)
   return (
     // `group/shell` + `data-sidebar="rail"` drive every rail-mode width/label
     // variant. The boot script sets the attribute pre-paint from storage, so

@@ -4,7 +4,7 @@ import { runRetention } from '@/lib/db/retention'
 import { logger } from '@/lib/logger'
 
 // Daily storage retention (Neon Free = 0.5 GB). Scheduled in vercel.json at
-// a different hour from sync-all so the two never overlap.
+// a different hour from the queue scheduler and drains so they never overlap.
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 export const maxDuration = 60

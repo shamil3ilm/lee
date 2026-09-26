@@ -6,10 +6,10 @@ import { runDiscoveryCycleForUser } from '@/lib/discovery/service'
 import { getAIProviderForUser } from '@/lib/ai'
 import { logger } from '@/lib/logger'
 
-// NOTE (v3): this endpoint is NO LONGER scheduled by vercel.json — the daily
-// cron now hits `/api/cron/sync-all`, which fans out to discovery + gmail +
-// reminders. This route is retained as a callable endpoint for manual runs
-// and one-off debugging.
+// NOTE: this endpoint is NOT scheduled by vercel.json — discovery runs as
+// per-source `discovery-source:user+source` queue jobs (lib/queue, enqueued
+// by /api/cron/schedule). This route is retained as a callable endpoint for
+// manual runs and one-off debugging.
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'

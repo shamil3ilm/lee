@@ -8,7 +8,8 @@ export type ActionResult = { success: true } | { error: string }
 
 /**
  * Toggle the weekly digest on/off. This gates the cron send even on Mondays
- * — see cron/sync-all where the flag is consulted before dispatch.
+ * — see the `digest:user` job (lib/queue/handlers.ts), which checks the flag
+ * before dispatch.
  */
 export async function toggleDigestAction(enabled: boolean): Promise<ActionResult> {
   try {
@@ -26,8 +27,8 @@ export async function toggleDigestAction(enabled: boolean): Promise<ActionResult
 
 /**
  * Toggle the per-discovery-cycle email notification. Independent of the
- * weekly digest — see cron/sync-all where sendDiscoveryEmailIfEnabled is
- * called after every discovery cycle.
+ * weekly digest — see the `discovery-email:user` job (lib/queue/handlers.ts),
+ * which calls sendDiscoveryEmailIfEnabled after the user's source polls.
  */
 export async function toggleDiscoveryEmailAction(
   enabled: boolean,

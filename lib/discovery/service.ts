@@ -49,7 +49,8 @@ export interface DiscoveryCycleResult {
 }
 
 const CONCURRENCY = 4
-const MAX_ERRORS_BEFORE_SKIP = 5
+/** A source with this many consecutive poll errors is skipped until fixed. */
+export const MAX_ERRORS_BEFORE_SKIP = 5
 /**
  * AI scoring calls per source per run. A first poll of a big board can
  * return hundreds of postings; the rest stay unscored (match_score NULL)
@@ -74,9 +75,7 @@ export async function runDiscoveryCycleForUser(args: {
 }): Promise<DiscoveryCycleResult> {
   const { userId, ai } = args
   const deadline = args.deadline ?? Number.POSITIVE_INFINITY
-  const profile = await profileQ.get(userId)
-  const sources = await sourcesQ.list(userId, { enabled: true })
-  const active = sources.filter((s) => s.errorCount < MAX_ERRORS_BEFORE_SKIP)
+  const { active, scoringProfile, signalSkip } = await loadCycleContext(userId)
 
   const result: DiscoveryCycleResult = {
     sourcesPolled: 0,
@@ -85,31 +84,15 @@ export async function runDiscoveryCycleForUser(args: {
     errors: [],
   }
 
-  // v10 — signal-check gate. If the user's profile is too thin to produce
-  // grounded match scores, we still ingest fresh discoveries but skip the
-  // AI scoring pass entirely for this cycle. Surfaced in the response.
-  const profileSignal = checkDiscoveryScoringSignal(profile)
-  const scoringProfile = profileSignal.ok ? profile : null
-  if (!profileSignal.ok) {
-    result.signalCheck = {
-      skipped: true,
-      code: profileSignal.code,
-      message: profileSignal.message,
-    }
-    await writeSkipLog(
-      { userId, provider: 'unknown', kind: 'discovery_scoring' },
-      profileSignal.code,
-    )
+  // Surfaced in the response; the skip is logged once per cycle.
+  if (signalSkip) {
+    result.signalCheck = { skipped: true, code: signalSkip.code, message: signalSkip.message }
+    await writeSkipLog({ userId, provider: 'unknown', kind: 'discovery_scoring' }, signalSkip.code)
   }
 
   // v17 §1 — Scam Shield: network checks only when the user enabled them;
   // one lookup budget is shared by every source in this cycle.
-  // The allow-list is loaded once per cycle, not once per assessed item.
-  const scam: ScamCtx = {
-    net: (await safely('net_mode', () => netModeForUser(userId))) ?? 'off',
-    budget: { remaining: NET_LOOKUPS_PER_CYCLE },
-    allowList: (await safely('allow_list', () => allowQ.list(userId))) ?? [],
-  }
+  const scam = await loadScamCtx(userId, NET_LOOKUPS_PER_CYCLE)
 
   await inBatches(active, CONCURRENCY, async (source) => {
     if (Date.now() >= deadline) {
@@ -138,6 +121,85 @@ export async function runDiscoveryCycleForUser(args: {
   }
 
   return result
+}
+
+interface CycleContext {
+  active: Source[]
+  scoringProfile: UserProfile | null
+  signalSkip?: { code: string; message: string }
+}
+
+/** Enabled sources that are not failing, plus the v10 scoring signal gate. */
+async function loadCycleContext(userId: string): Promise<CycleContext> {
+  const profile = await profileQ.get(userId)
+  const sources = await sourcesQ.list(userId, { enabled: true })
+  const active = sources.filter((s) => s.errorCount < MAX_ERRORS_BEFORE_SKIP)
+  // v10 — signal-check gate. If the user's profile is too thin to produce
+  // grounded match scores, we still ingest fresh discoveries but skip the
+  // AI scoring pass entirely.
+  const signal = checkDiscoveryScoringSignal(profile)
+  if (signal.ok) return { active, scoringProfile: profile }
+  return { active, scoringProfile: null, signalSkip: { code: signal.code, message: signal.message } }
+}
+
+/** Scam Shield context; the allow-list is loaded once, not per item. */
+async function loadScamCtx(userId: string, netLookups: number): Promise<ScamCtx> {
+  return {
+    net: (await safely('net_mode', () => netModeForUser(userId))) ?? 'off',
+    budget: { remaining: netLookups },
+    allowList: (await safely('allow_list', () => allowQ.list(userId))) ?? [],
+  }
+}
+
+export interface SourcePollResult {
+  /** 'skipped' when the source is gone, disabled, failing, or out of time. */
+  status: 'polled' | 'failed' | 'skipped'
+  newJobDiscoveries: number
+  newCompanyDiscoveries: number
+  budgetExhausted: boolean
+  error?: string
+}
+
+/**
+ * Queue job `discovery-source` — poll ONE source: the per-source slice of
+ * runDiscoveryCycleForUser with the same caps (MAX_SCORED_PER_SOURCE AI
+ * scores, the caller's deadline) and error accounting (setPolled with the
+ * message, so a failing source is skipped after MAX_ERRORS_BEFORE_SKIP).
+ * The cycle's Scam Shield network-lookup budget is split evenly across the
+ * user's active sources, so a day's total stays the same. The v10 signal
+ * skip is logged once, by the user's first active source.
+ */
+export async function runDiscoveryForSource(args: {
+  userId: string
+  sourceId: string
+  ai: AIProvider
+  deadline?: number
+}): Promise<SourcePollResult> {
+  const { userId, ai } = args
+  const deadline = args.deadline ?? Number.POSITIVE_INFINITY
+  const empty = { newJobDiscoveries: 0, newCompanyDiscoveries: 0, budgetExhausted: false }
+  const { active, scoringProfile, signalSkip } = await loadCycleContext(userId)
+  const index = active.findIndex((s) => s.id === args.sourceId)
+  const source = active[index]
+  if (!source) return { status: 'skipped', ...empty }
+  if (Date.now() >= deadline) return { status: 'skipped', ...empty, budgetExhausted: true }
+  if (signalSkip && index === 0) {
+    await writeSkipLog({ userId, provider: 'unknown', kind: 'discovery_scoring' }, signalSkip.code)
+  }
+  const scam = await loadScamCtx(userId, Math.ceil(NET_LOOKUPS_PER_CYCLE / active.length))
+  try {
+    const r = await pollSource({ userId, source, ai, profile: scoringProfile, scam, deadline })
+    return {
+      status: 'polled',
+      newJobDiscoveries: r.newJobs,
+      newCompanyDiscoveries: r.newCompanies,
+      budgetExhausted: r.budgetExhausted,
+    }
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e)
+    await sourcesQ.setPolled(userId, source.id, message)
+    return { status: 'failed', ...empty, error: message }
+  }
 }
 
 async function pollSource(args: {

@@ -1065,3 +1065,58 @@ export const aiQuotaSnapshots = pgTable(
   },
   (t) => ({ pk: primaryKey({ columns: [t.userId, t.provider, t.model] }) }),
 )
+
+// ---------------------------------------------------------------------------
+// v19 (architecture review A3) — durable background job queue. Replaces the
+// single monolithic daily cron: a daily scheduler enqueues small per-user
+// jobs; staggered drain crons, user visits and an optional signed worker
+// endpoint drain them within a time budget. Named `queue_jobs` because
+// `jobs` already holds job postings.
+//
+// status: 'queued' | 'running' | 'done' | 'failed' (retry scheduled) | 'dead'
+// payload holds small ids only, never secrets or content.
+// ---------------------------------------------------------------------------
+
+export const queueJobs = pgTable(
+  'queue_jobs',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    // null for global jobs (e.g. the cross-user reminder sweep).
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+    type: text('type').notNull(),
+    payload: jsonb('payload').notNull().default({}),
+    status: text('status').notNull().default('queued'),
+    // Lower runs first among due jobs.
+    priority: smallint('priority').notNull().default(100),
+    // The job waits while any unfinished job of this type exists for the
+    // same user (e.g. the discovery email waits for that user's polls).
+    waitForType: text('wait_for_type'),
+    runAfter: timestamp('run_after', { withTimezone: true }).notNull().defaultNow(),
+    attempts: integer('attempts').notNull().default(0),
+    maxAttempts: integer('max_attempts').notNull().default(5),
+    lockedUntil: timestamp('locked_until', { withTimezone: true }),
+    lockedBy: text('locked_by'),
+    // Sanitized and truncated (lib/queue/errors.ts) — never raw upstream text.
+    lastError: text('last_error'),
+    idempotencyKey: text('idempotency_key'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+  },
+  (t) => ({
+    statusRunAfterIx: index('queue_jobs_status_run_after_idx').on(t.status, t.runAfter),
+    userStatusIx: index('queue_jobs_user_status_idx').on(t.userId, t.status, t.runAfter),
+    typeKeyUq: uniqueIndex('queue_jobs_type_key_uq').on(t.type, t.idempotencyKey),
+  }),
+)
+
+// Per-user queue bookkeeping: the visit-drain throttle, the manual "Run now"
+// throttle, and the last time a drain ran jobs for this user.
+export const queueUserState = pgTable('queue_user_state', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  lastVisitDrainAt: timestamp('last_visit_drain_at', { withTimezone: true }),
+  lastManualDrainAt: timestamp('last_manual_drain_at', { withTimezone: true }),
+  lastDrainAt: timestamp('last_drain_at', { withTimezone: true }),
+})
