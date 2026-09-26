@@ -80,23 +80,36 @@ export default async function ApplicationDetail({
   // Snapshot once per request so `Date.now()` isn't called at the JSX site
   // (react-hooks/purity flags impure calls in component bodies).
   const now = new Date().getTime()
-  const app = await appsQ.getById(userId, id)
-  if (!app) notFound()
-
-  // v17 §1 — Scam Shield: re-assessed here when missing, stale (rules
-  // version) or older than the job's last edit. Never blocks the page.
-  const riskRow = await safely('application_view', () => ensureJobAssessment(userId, app.job.id))
-  const risk = riskRow ? toRiskView(riskRow, hostLabel(app.job.sourceUrl)) : null
-
-  const [stages, activities, contacts, allDocs, todos, scoreRows, masterCvs] = await Promise.all([
+  // Everything below is keyed by (userId, id) only, so start it all at once
+  // instead of awaiting the application row first. If the application does
+  // not exist the page 404s and the other results are simply dropped.
+  const appP = appsQ.getById(userId, id)
+  const restP = Promise.all([
     stagesQ.list(userId, id),
     actQ.list(userId, id, { limit: 50 }),
     applicationContactsQ.listForApplication(userId, id),
-    documentsQ.list(userId, { applicationId: id }),
+    // This application's documents: outreach / prep / debrief cards parse
+    // their content, so this one list keeps it (scoped to one application).
+    documentsQ.listWithContent(userId, { applicationId: id }),
     todosQ.list(userId, { applicationId: id }),
     cvScoresQ.listByApplication(userId, id, CV_FIT_HISTORY),
     documentsQ.list(userId, { kind: 'master_cv' }),
   ])
+  // Keep a rejection of the batch from surfacing as unhandled while we wait
+  // on the application row; it is re-thrown by the await below.
+  restP.catch(() => undefined)
+  const app = await appP
+  if (!app) notFound()
+
+  // v17 §1 — Scam Shield: re-assessed here when missing, stale (rules
+  // version) or older than the job's last edit. Never blocks the page, and
+  // runs in parallel with the page's other reads.
+  const [riskRow, [stages, activities, contacts, allDocs, todos, scoreRows, masterCvs]] =
+    await Promise.all([
+      safely('application_view', () => ensureJobAssessment(userId, app.job.id)),
+      restP,
+    ])
+  const risk = riskRow ? toRiskView(riskRow, hostLabel(app.job.sourceUrl)) : null
 
   // Split the app's documents so each card only sees the shapes it renders.
   const cvDocs = allDocs.filter((d) =>
@@ -302,7 +315,7 @@ export default async function ApplicationDetail({
 
           <DocumentsCard
             applicationId={app.id}
-            documents={cvDocs}
+            documents={cvDocs.map(withoutContent)}
             scores={toDocScoreMap(docScores)}
           />
 
@@ -357,6 +370,13 @@ export default async function ApplicationDetail({
       </div>
     </div>
   )
+}
+
+/** Strip the content payload before a document crosses to a client card. */
+function withoutContent<T extends { content: unknown }>(doc: T): Omit<T, 'content'> {
+  const { content: _content, ...rest } = doc
+  void _content
+  return rest
 }
 
 function hostLabel(url: string): string | null {
