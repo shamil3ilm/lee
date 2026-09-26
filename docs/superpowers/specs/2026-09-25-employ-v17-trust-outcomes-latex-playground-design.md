@@ -192,6 +192,7 @@ Wherever else it applies:
 | 5 | Email → status suggestions | v17 §2 |
 | 6 | Backups + export/delete, audit log & undo | v17 §9.2, §9.5 |
 | 7 | Playground core (placement, adaptive selection, coding + complexity evaluation) | v13.0–13.2 |
+| 7b | **Self-evolving curriculum** (learner model, demand + version-drift signals, Fresh track) + **Radar ingest** (v16.0) pulled forward so trends feed the Playground early | v13 §6.1, v16.0 |
 | 8 | **CV suggestions from Playground** + skill-gap loop | v17 §5, §4 |
 | 9 | **LaTeX Studio** (new kinds, standalone editor, editor parity) + shared **Blocks palette** in LaTeX, CV editor and templates | v17 §8.1–8.4 |
 | 9b | Blocks palette in the remaining places (todos, dashboard, expenses, AI routing, documents) | v17 §8.4 |
@@ -206,6 +207,6 @@ Wherever else it applies:
 | 17b | Playground expansion: cyber security, pipelines, packages, servers, command line (bash, PowerShell, cmd), conflicts | v13.8–13.11 |
 | 18 | Model/agent Playground extras, AI budget meter, error monitoring | v14.1–14.5, v17 §9.3–9.4 |
 | 19 | GitHub + Hugging Face connections | v15 |
-| 20 | Radar, briefs, Jev provider, injection lab, cross-platform issues | v16.0–16.4 |
+| 20 | Radar briefs, Jev provider, injection lab, cross-platform issues | v16.1–16.4 |
 
 Each item ships behind the usual gate: tests first, lint → typecheck → test → eval → e2e → build, then push.

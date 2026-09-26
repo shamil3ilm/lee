@@ -162,6 +162,46 @@ New exercise formats:
 - **AI-generated variants**: the AI proposes a new problem + reference solution + tests; the harness **runs the reference solution against the tests** and checks complexity before the variant is ever served. Failed validation = discarded. Every accepted variant gets a difficulty rating that calibrates from attempts.
 - **Adaptive difficulty knobs**: input size, constraints, time budget, hint availability, number of concurrent actors, traffic intensity.
 
+### 6.1 Self-evolving curriculum (2026-09-26)
+The Playground must not be static: not just fresh variants, but **new skills, new exercises and retired ones**, driven by the user and the industry. `skills.json` becomes the *seed*; each user's live graph is the seed plus a DB overlay (`academy_skill_overlays`, versioned and reversible through the audit log and undo).
+
+**Signals (all free):**
+| Signal | Source | Effect |
+|---|---|---|
+| Your level and behaviour | ratings, attempts, plateau detection, learning velocity, format effectiveness | unlock deeper skills beyond the seed's top level; switch format when a skill plateaus; favour formats that raise *your* rating fastest |
+| Trending tech | v16 Radar (HF, GitHub trending, arXiv, Hacker News) + Stack Exchange tag trends + GitHub releases of tools you use | propose new skill nodes ("emerging") with a trend score and citations |
+| Job-market demand | skills in saved/applied jobs and discovery feed over time (§4 skill-gap loop) | weight skills the market in your target roles is asking for |
+| Version drift | endoflife.date API + GitHub releases (Node, Next.js, React, Python, Kubernetes, PostgreSQL…) | flag exercises written for old versions; generate "what changed" migration drills (e.g. Next.js 16 breaking changes) |
+| Your journey | upcoming interviews, rejections (v17 §6.3), GitHub activity (v15), CV gaps | boost exactly what the next step needs |
+
+**Pipeline (daily cron, inside free-tier AI budgets):**
+1. **Detect:** score candidate skills and changes from the signals.
+2. **Propose:** a skill node (name, domain, prerequisites, "why now" with ≥ 2 cited sources, v16 rule) plus exercise templates using existing formats (coding, terminal, pipeline, SQL, design, security…).
+3. **Validate:** nothing is served unvalidated.
+   - The reference solution must pass its tests in the sandbox, and complexity and time limits are checked.
+   - Security content must pass the safety policy (sandbox-only targets, a remediation step).
+   - Duplicates against the graph are rejected.
+   - Failures are discarded and logged.
+4. **Publish:** into a **"Fresh"** track with a badge. It starts at low selection weight with a v16 brief as reading, and its difficulty is calibrated from attempts.
+5. **Review:** a weekly "What's new in your Playground" feed.
+   - New *skills and domains* need one-tap acceptance, and a setting can auto-accept within domains you already follow.
+   - New *variants* flow automatically.
+6. **Refresh or retire:**
+   - Outdated exercises are regenerated for the current version.
+   - Skills whose trend decays, tech past end-of-life, and exercises with bad quality signals (you flag them, success rates look anomalous, or validation fails after a version bump) are archived.
+   - Your XP and history are always kept.
+
+**Learner model beyond ratings:**
+- forgetting curves per skill (drives spaced review)
+- learning velocity
+- which formats work for you
+- time-of-day performance, which schedules the daily plan
+- a periodic **checkpoint exam** that re-places you so levels never drift from reality
+
+**Transparency:**
+- Every item shows **"Why this?"**: for example "weak skill + asked by 4 of your saved jobs + trending this month".
+- Every generated item is logged in `ai_call_logs`, is rateable, and is covered by a generator eval suite.
+
 ## 7. Gamification
 
 - **XP** per attempt, weighted by difficulty and composite score
@@ -225,6 +265,7 @@ Skill graph, templates and achievement catalog: versioned JSON under `content/ac
 - **13.5 Incident drills + code review + security CTF + git scenarios**
 - **13.6 Generation** — parameterized templates everywhere + validated AI variants + difficulty calibration
 - **13.7 Path, capstones, boss battles, stats page, journey integrations**
+- **13.12 Self-evolving curriculum (lite, ships with 13.6)**: learner model, plateau/format switching, job-market demand, version drift (endoflife.date + GitHub releases), Fresh track, weekly "What's new", retire/refresh; full trend-driven skill proposals once v16 Radar ingest lands
 - **13.8 Security expansion**: blue-team triage, hardening review, crypto, cloud IAM, supply-chain drills
 - **13.9 Delivery**: pipeline debugger, data pipeline lab, dependency resolver, package author
 - **13.10 Infrastructure & command line**: server lab (v86 + simulated shell), terminal tasks in bash/PowerShell/cmd, cross-shell translation, explain/predict, script repair, danger zone, command builder, container & cluster doctor
