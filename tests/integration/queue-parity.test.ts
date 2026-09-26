@@ -6,6 +6,24 @@ import type { AIProvider } from '@/lib/ai'
 // hand it the test's fixture provider. The full module surface is mocked so
 // nothing under lib/ai (the Google SDK) loads — see cron-sync-all.test.ts.
 const aiHolder = vi.hoisted(() => ({ current: null as unknown }))
+// The daily plan includes the usage snapshot. Its storage-size queries
+// (pg_database_size / pg_total_relation_size) are instant on Neon but walk
+// every relation file in PGlite, which made these multi-day parity tests
+// order-dependently slow. Parity is about the queue, so stub only the two
+// size lookups; queue and file measurements stay real.
+vi.mock('@/lib/usage/collect', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/usage/collect')>()
+  return {
+    ...actual,
+    collectMeasurements: async (now: Date) => ({
+      dbSizeBytes: 1_000_000,
+      largestTables: [],
+      queue: await actual.queueCounts(now),
+      assetBytes: await actual.assetBytesByUser(),
+    }),
+  }
+})
+
 vi.mock('@/lib/ai', () => ({
   getAIProvider: () => aiHolder.current,
   getAIProviderForUser: async () => aiHolder.current,
@@ -109,12 +127,12 @@ describe('scheduler', () => {
 
     const now = new Date('2026-09-26T09:00:00Z')
     const first = await scheduleDailyJobs(now)
-    // reminders + followups + gmail + digest + 2 sources + scam + email
-    expect(first).toMatchObject({ day: '2026-09-26', users: 1, planned: 8, enqueued: 8 })
+    // reminders + usage snapshot + followups + gmail + digest + 2 sources + scam + email
+    expect(first).toMatchObject({ day: '2026-09-26', users: 1, planned: 9, enqueued: 9 })
     const again = await scheduleDailyJobs(new Date('2026-09-26T21:00:00Z'))
     expect(again.enqueued).toBe(0)
     const nextDay = await scheduleDailyJobs(new Date(now.getTime() + DAY))
-    expect(nextDay.enqueued).toBe(8)
+    expect(nextDay.enqueued).toBe(9)
 
     const polls = await db.select().from(queueJobs).where(eq(queueJobs.type, JOB_TYPES.discoverySource))
     expect(new Set(polls.map((p) => (p.payload as { sourceId: string }).sourceId)).size).toBe(2)

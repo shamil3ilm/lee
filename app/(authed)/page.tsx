@@ -12,6 +12,7 @@ import {
   ThisWeekWidget,
   WidgetSkeleton,
 } from '@/components/dashboard/widgets'
+import { UsageBanner } from '@/components/dashboard/usage-banner'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 
@@ -42,12 +43,14 @@ export default async function DashboardPage() {
           </Button>
         }
       />
-      {/* The setup checklist has no size until it resolves (it renders nothing
-          once setup is done), so everything below it waits inside one outer
-          boundary: nothing already on screen can be pushed down when it
-          appears (measured CLS 0.25 without this). Server components still
-          fetch in parallel; only the paint of the lower widgets is held. */}
+      {/* The setup checklist and the usage banner have no size until they
+          resolve (each renders nothing when not needed), so everything below
+          the header waits inside one outer boundary: nothing already on
+          screen can be pushed down when they appear (measured CLS 0.25
+          without this). Server components still fetch in parallel; only the
+          paint of the lower widgets is held. */}
       <Suspense fallback={<DashboardBodySkeleton />}>
+        <UsageBanner userId={userId} />
         <SetupChecklistWidget userId={userId} />
         <Suspense fallback={<WidgetSkeleton className="h-20" />}>
           <NextBestActionWidget userId={userId} now={now} />

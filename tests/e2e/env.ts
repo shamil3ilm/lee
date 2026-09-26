@@ -27,6 +27,7 @@ export const E2E_ENV: Readonly<Record<string, string>> = {
   ANTHROPIC_API_KEY: '',
   OPENAI_API_KEY: '',
   FIRECRAWL_API_KEY: '',
+  NEON_API_KEY: '',
   GITHUB_TOKEN: '',
   DECISION_PROVIDER: 'heuristic',
   CRON_SECRET: '00000000000000000000000000000000',

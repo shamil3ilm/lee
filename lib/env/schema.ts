@@ -43,6 +43,9 @@ export const envSchema = z
     DECISION_PROVIDER: z.enum(['groq', 'heuristic', 'laya']).optional().default('groq'),
     LAYA_ENDPOINT: z.string().url().optional(),
     LAYA_API_KEY: z.string().optional(),
+    // Optional Neon API key for Settings › Usage (compute, egress). A key
+    // saved in Settings › AI › Service keys wins over this default.
+    NEON_API_KEY: z.string().optional(),
   })
 
 export type Env = z.infer<typeof envSchema>

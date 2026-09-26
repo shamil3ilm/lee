@@ -3,11 +3,16 @@ import { readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { sql } from 'drizzle-orm'
 import { db, isPglite, pgliteClient } from '@/lib/db/client'
+import { clearThrottleCache } from '@/lib/usage/throttle'
 
 // App-level tables to truncate between tests. Ordered from child to parent
 // (though CASCADE handles the rest). Keep in sync with lib/db/schema.ts.
 const TABLES = [
   'web_vitals_daily',
+  'usage_alerts',
+  'usage_settings',
+  'usage_snapshots',
+  'user_defaults',
   'queue_user_state',
   'queue_jobs',
   'job_risk_assessments',
@@ -83,4 +88,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await db.execute(sql.raw(`TRUNCATE ${TABLES.join(', ')} RESTART IDENTITY CASCADE`))
+  // The free-tier throttle is cached per process for a minute; a truncated
+  // snapshot must not keep throttling the next test.
+  clearThrottleCache()
 })

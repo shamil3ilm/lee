@@ -89,6 +89,7 @@ export function WeeklyDigestEmail({
     staleApplications,
     upcomingTodos,
     completedStagesThisWeek,
+    usageWarnings = [],
   } = snapshot
   return (
     <div style={styles.wrapper}>
@@ -239,6 +240,27 @@ export function WeeklyDigestEmail({
           </ul>
         )}
       </div>
+
+      {usageWarnings.length > 0 ? (
+        <div style={styles.section}>
+          <h2 style={styles.h2}>Free-tier usage</h2>
+          <ul style={styles.list}>
+            {usageWarnings.map((w) => (
+              <li key={w.meter} style={styles.listItem}>
+                <strong>{w.label}</strong> at {Math.floor(w.fraction * 100)}%
+                <br />
+                <span style={styles.meta}>{w.detail}</span>
+              </li>
+            ))}
+          </ul>
+          <p style={styles.meta}>
+            At 90% {APP_NAME} throttles non-essential work.{' '}
+            <a href={`${appBaseUrl}/settings/usage`} style={styles.link}>
+              See usage
+            </a>
+          </p>
+        </div>
+      ) : null}
 
       <div style={styles.footer}>
         Sent by {APP_NAME}. Manage this email in your{' '}
