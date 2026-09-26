@@ -33,7 +33,7 @@ export function StatusPicker({ applicationId, current }: StatusPickerProps) {
 
   return (
     <Select value={current} disabled={pending} onValueChange={handleChange}>
-      <SelectTrigger className="w-40">
+      <SelectTrigger className="w-40" aria-label="Application status">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

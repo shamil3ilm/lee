@@ -29,7 +29,6 @@ import { STATUS_BADGE, STATUS_LABELS, type ApplicationStatus } from '@/lib/ui/st
 import type { TimelineActivity, TimelineItem, TimelineStage } from '@/lib/ui/timeline'
 
 export type { TimelineActivity, TimelineItem, TimelineStage } from '@/lib/ui/timeline'
-export { mergeTimeline } from '@/lib/ui/timeline'
 
 interface TimelineProps {
   items: TimelineItem[]

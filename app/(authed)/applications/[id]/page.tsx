@@ -19,7 +19,8 @@ import { PrepPackCard } from '@/components/prep-pack-card'
 import { TodosCard } from '@/components/todos-card'
 import { PageHeader } from '@/components/page-header'
 import { Breadcrumbs } from '@/components/breadcrumbs'
-import { Timeline, mergeTimeline, type TimelineActivity, type TimelineStage } from '@/components/timeline'
+import { Timeline } from '@/components/timeline'
+import { mergeTimeline, type TimelineActivity, type TimelineStage } from '@/lib/ui/timeline'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -151,7 +152,7 @@ export default async function ApplicationDetail({
   return (
     <div className="space-y-6">
       <Breadcrumbs
-        className="-mb-3"
+        className="mb-3"
         items={[
           { label: 'Apply' },
           { label: 'Applications', href: '/applications' },
@@ -207,8 +208,8 @@ export default async function ApplicationDetail({
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="min-w-0 space-y-6 lg:col-span-2">
           {app.job.descriptionMd ? (
             <Card>
               <CardHeader>
@@ -271,7 +272,7 @@ export default async function ApplicationDetail({
           ) : null}
         </div>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <Card>
             <CardHeader className="flex-row items-center justify-between space-y-0">
               <CardTitle className="text-sm font-semibold">Timeline</CardTitle>
