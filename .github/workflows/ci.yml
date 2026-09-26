@@ -35,5 +35,20 @@ jobs:
       # human runs `pnpm eval --update` and commits the resulting JSON files.
       - run: pnpm eval
       - run: pnpm playwright install --with-deps chromium
+      # v17 §9.1 — E2E journeys run against `next dev` with a freshly seeded
+      # PGlite file DB and the local-only test sign-in. Playwright's
+      # webServer sets E2E_TEST_LOGIN=1 and the dummy env (tests/e2e/env.ts)
+      # for the dev server ONLY; it is never set for the build below, where
+      # next.config.ts would refuse to build with it.
       - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
       - run: pnpm build
+      # Prove the production build contains no test sign-in code.
+      - run: node scripts/assert-no-test-login.mjs
