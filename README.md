@@ -69,6 +69,43 @@ the prompt so analytics can attribute rating deltas to the change.
 5. Deploy. First build runs `pnpm db:migrate` automatically.
 6. Sign in at `/signin`. Only `ALLOWED_EMAIL` can proceed.
 
+## Google Drive file storage
+
+Document assets (and the compiled-PDF cache, and optional CV copies) live in the
+user's own Google Drive under `Employ/` once they click **Connect Google Drive**
+(Settings › Integrations, the LaTeX Assets dialog, or the CV score upload).
+Neon keeps only the Drive file id, name, size, MIME type and sha256. Without
+Drive, files stay in Postgres, capped at 150 MB per user. The app requests the
+non-sensitive `drive.file` scope, which only covers files Employ creates or the
+user picks in the Google Picker.
+
+One-time Google Cloud console setup (same project as the OAuth client):
+
+1. **APIs & Services › Library**: enable **Google Drive API** and **Google Picker API**.
+2. **Google Auth Platform › Data Access › Add or remove scopes**: add
+   `https://www.googleapis.com/auth/drive.file` (listed as non-sensitive, so no
+   extra verification), then **Save**.
+3. **APIs & Services › Credentials › Create credentials › API key** (for the Picker):
+   - Application restrictions: **Websites**, add `https://<your-vercel-app>.vercel.app/*`,
+     `http://localhost:3000/*` for dev, **and** `https://docs.google.com/*` (the
+     Picker runs in an iframe there; without it the key is rejected).
+   - API restrictions: **Restrict key** › **Google Picker API**.
+4. Note the **project number** (IAM & Admin › Settings, or the console home
+   dashboard). It is the Picker's app id and must be the project that owns the
+   OAuth client.
+
+Vercel › Settings › Environment Variables (Production + Preview, **not**
+marked Sensitive, because `NEXT_PUBLIC_*` values are inlined at build time),
+then redeploy without the build cache:
+
+- `NEXT_PUBLIC_GOOGLE_PICKER_API_KEY` = the restricted API key
+- `NEXT_PUBLIC_GOOGLE_CLOUD_PROJECT_NUMBER` = the project number
+
+Both are optional: without them "Attach from Drive" is hidden, and uploads,
+downloads and moving files to Drive still work. Existing users keep their
+session; they click **Connect Google Drive** once to grant the new scope, then
+**Move existing files to Drive** in Settings › Integrations.
+
 ## Data safety
 
 - Neon free tier includes 7-day point-in-time recovery.
