@@ -133,6 +133,9 @@ export const contacts = pgTable(
     linkedinUrl: text('linkedin_url'),
     role: text('role'),
     notes: text('notes'),
+    // Networking board column: 'contacted' | 'replied' | 'meeting' |
+    // 'referral' (lib/contacts/pipeline.ts). null = not contacted yet.
+    pipelineStage: text('pipeline_stage'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

@@ -58,6 +58,23 @@ export async function update(
   return row
 }
 
+/**
+ * Move a contact on the networking board. `null` = To contact. Scoped by
+ * user; returns undefined when the contact isn't theirs.
+ */
+export async function setPipelineStage(
+  userId: string,
+  id: string,
+  stage: string | null,
+): Promise<Contact | undefined> {
+  const [row] = await db
+    .update(contacts)
+    .set({ pipelineStage: stage, updatedAt: new Date() })
+    .where(and(eq(contacts.userId, userId), eq(contacts.id, id)))
+    .returning()
+  return row
+}
+
 export async function remove(userId: string, id: string): Promise<boolean> {
   const rows = await db
     .delete(contacts)
