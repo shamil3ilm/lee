@@ -9,7 +9,8 @@ import { EmptyState } from '@/components/empty-state'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { BoardViewToggle } from '@/components/board/view-toggle'
-import { ContactsBoard, type ContactBoardItem } from '@/components/contacts-board'
+import type { ContactBoardItem } from '@/components/contacts-board'
+import { LazyContactsBoard } from '@/components/board/lazy'
 import { parseBoardView } from '@/lib/board/view'
 import { CONTACT_STAGE_LABELS, CONTACT_STAGE_TONE, contactStageOf } from '@/lib/contacts/pipeline'
 
@@ -107,7 +108,7 @@ export default async function ContactsPage({ searchParams }: ContactsPageProps) 
       />
 
       {view === 'board' ? (
-        <ContactsBoard contacts={toBoardItems(contacts, companyNames)} />
+        <LazyContactsBoard contacts={toBoardItems(contacts, companyNames)} />
       ) : contacts.length === 0 ? (
         <EmptyState
           icon={Users}

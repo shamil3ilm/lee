@@ -25,7 +25,7 @@ import { DocumentsCard } from '@/components/documents-card'
 import { OutreachCard } from '@/components/outreach-card'
 import { PrepPackCard } from '@/components/prep-pack-card'
 import { TodosCard } from '@/components/todos-card'
-import { StagesBoard } from '@/components/stages-board'
+import { LazyStagesBoard } from '@/components/board/lazy'
 import { PageHeader } from '@/components/page-header'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { Timeline } from '@/components/timeline'
@@ -284,7 +284,7 @@ export default async function ApplicationDetail({
                 </span>
               </CardHeader>
               <CardContent>
-                <StagesBoard
+                <LazyStagesBoard
                   stages={stages.map((s) => ({
                     id: s.id,
                     version: s.updatedAt.toISOString(),

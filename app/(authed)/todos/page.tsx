@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { TodoForm } from '@/components/todo-form'
 import { TodosList } from '@/components/todos-list'
-import { TodosBoard, type TodoBoardItem } from '@/components/todos-board'
+import type { TodoBoardItem } from '@/components/todos-board'
+import { LazyTodosBoard } from '@/components/board/lazy'
 import { BoardViewToggle } from '@/components/board/view-toggle'
 import { parseBoardView, viewHref } from '@/lib/board/view'
 import { TODO_ACTIVE_STATUSES, isActiveTodoStatus } from '@/lib/todos/status'
@@ -118,7 +119,7 @@ export default async function TodosPage({ searchParams }: TodosPageProps) {
       </Card>
 
       {board ? (
-        <TodosBoard
+        <LazyTodosBoard
           todos={todos.map(toBoardItem)}
           applicationLabels={applicationLabels}
           doneTotal={doneTotal}

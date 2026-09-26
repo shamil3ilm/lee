@@ -6,7 +6,8 @@ import { ApplicationsTable } from '@/components/applications-table'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import { BoardViewToggle } from '@/components/board/view-toggle'
-import { Kanban, type KanbanColumn } from '@/components/kanban'
+import type { KanbanColumn } from '@/components/kanban'
+import { LazyKanban } from '@/components/board/lazy'
 import { parseBoardView, viewHref } from '@/lib/board/view'
 import { APPLICATION_STATUSES, type ApplicationStatus } from '@/lib/ui/status'
 
@@ -60,7 +61,7 @@ export default async function ApplicationsPage({ searchParams }: ApplicationsPag
         }
       />
       {view === 'board' ? (
-        <Kanban columns={toBoardColumns(rows)} />
+        <LazyKanban columns={toBoardColumns(rows)} />
       ) : (
         <ApplicationsTable
           key={initialFilter}

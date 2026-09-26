@@ -22,11 +22,8 @@ import type {
 import type { NormalizedCompany } from '@/lib/discovery/adapters/types'
 import { cn } from '@/lib/utils'
 import { BoardViewToggle } from '@/components/board/view-toggle'
-import {
-  DiscoveriesBoard,
-  type DiscoveryBoardColumn,
-  type DiscoveryBoardItem,
-} from '@/components/discoveries-board'
+import type { DiscoveryBoardColumn, DiscoveryBoardItem } from '@/components/discoveries-board'
+import { LazyDiscoveriesBoard } from '@/components/board/lazy'
 import { parseBoardView, viewHref, type BoardView } from '@/lib/board/view'
 
 export const dynamic = 'force-dynamic'
@@ -103,7 +100,7 @@ export default async function DiscoveriesPage({
           actions={<ViewToggle sp={sp} view={view} explicit={explicit} />}
         />
         <TabBar tab={tab} />
-        <DiscoveriesBoard items={board.items} totals={board.totals} />
+        <LazyDiscoveriesBoard items={board.items} totals={board.totals} />
       </div>
     )
   }
