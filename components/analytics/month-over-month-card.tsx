@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/chart'
 import { AnalyticsCardShell } from './card-shell'
 import type { MonthComparisonRow } from '@/lib/analytics/service'
-import { formatMoney, formatMoneyCompact } from '@/lib/ui/money'
+import { formatMoney, formatMoneyAxis } from '@/lib/ui/money'
 
 interface MonthOverMonthCardProps {
   data: MonthComparisonRow[]
@@ -65,7 +65,7 @@ export function MonthOverMonthCard({ data }: MonthOverMonthCardProps) {
             tickLine={false}
             axisLine={false}
             width={40}
-            tickFormatter={(v: number) => formatMoneyCompact(v)}
+            tickFormatter={(v: number) => formatMoneyAxis(v)}
           />
           <ChartTooltip
             content={

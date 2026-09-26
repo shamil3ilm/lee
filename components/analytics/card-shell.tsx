@@ -44,7 +44,7 @@ export function AnalyticsCardShell({
   className,
 }: CardShellProps) {
   return (
-    <Card className={cn('flex flex-col', className)}>
+    <Card className={cn('flex min-w-0 flex-col', className)}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
         <div className="flex items-center gap-2">
           <CardTitle className="text-sm font-semibold">{title}</CardTitle>

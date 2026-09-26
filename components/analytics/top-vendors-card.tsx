@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/chart'
 import { AnalyticsCardShell } from './card-shell'
 import type { VendorRow } from '@/lib/analytics/service'
-import { formatMoney, formatMoneyCompact } from '@/lib/ui/money'
+import { formatMoney, formatMoneyAxis } from '@/lib/ui/money'
 
 interface TopVendorsCardProps {
   data: VendorRow[]
@@ -51,7 +51,7 @@ export function TopVendorsCard({ data }: TopVendorsCardProps) {
             type="number"
             tickLine={false}
             axisLine={false}
-            tickFormatter={(v: number) => formatMoneyCompact(v)}
+            tickFormatter={(v: number) => formatMoneyAxis(v)}
           />
           <YAxis
             type="category"

@@ -84,7 +84,7 @@ export default async function AnalyticsPage() {
         title="Analytics"
         description="Turn tracked pipeline data into insight — funnels, timings, calibration, and cadence."
       />
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <SourceFunnelCard data={funnel} />
         <ResponseTimeCard data={response} />
         <TimeToOutcomeCard data={outcome} />

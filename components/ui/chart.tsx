@@ -122,11 +122,12 @@ export const ChartTooltipContent = React.forwardRef<HTMLDivElement, TooltipConte
         <div className="grid gap-1.5">
           {payload.map((entry, i) => {
             const key = String(entry.dataKey ?? entry.name ?? i)
-            const cfg = config[key]
+            // Pie slices share one dataKey; fall back to the slice name.
+            const cfg = config[key] ?? config[String(entry.name)]
             const displayName = cfg?.label ?? String(entry.name ?? key)
             const value = entry.value ?? ''
             return (
-              <div key={key} className="flex items-center justify-between gap-4">
+              <div key={`${key}:${i}`} className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-1.5">
                   <span
                     className="h-2 w-2 shrink-0 rounded-[2px]"
@@ -174,10 +175,12 @@ export function ChartLegendContent({ payload, className, hideIcon }: ChartLegend
     <div className={cn('flex flex-wrap items-center justify-center gap-4 pt-3 text-xs', className)}>
       {payload.map((entry, i) => {
         const key = String(entry.dataKey ?? entry.value ?? i)
-        const cfg = config[key]
+        // Pie legends repeat one dataKey per slice: key by index and
+        // resolve the label from the slice value.
+        const cfg = config[key] ?? config[String(entry.value)]
         const label = cfg?.label ?? String(entry.value ?? key)
         return (
-          <div key={key} className="flex items-center gap-1.5 text-muted-foreground">
+          <div key={`${key}:${i}`} className="flex items-center gap-1.5 text-muted-foreground">
             {hideIcon ? null : (
               <span
                 className="h-2 w-2 rounded-[2px]"

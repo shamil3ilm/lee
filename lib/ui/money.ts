@@ -29,6 +29,18 @@ export function formatMoneyCompact(amountCents: number, currency: string = DEFAU
 }
 
 /**
+ * Axis-tick variant: compact notation so labels fit the fixed 40px chart
+ * gutter — 4000000 cents → "40K", INR 1.25 lakh → "1.3L". Grouped digits
+ * ("40,000") were clipped to ",000" on every expense chart (v17 §9.1).
+ */
+export function formatMoneyAxis(amountCents: number, currency: string = DEFAULT_CURRENCY): string {
+  return new Intl.NumberFormat(localeForCurrency(currency), {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(amountCents / 100)
+}
+
+/**
  * Palette used by every expense category chart / card. Colours are
  * distinct enough at small chart sizes and reuse the app's existing
  * status palette hue-range so cards feel consistent.

@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/chart'
 import { AnalyticsCardShell } from './card-shell'
 import type { MonthlyExpenseBar } from '@/lib/analytics/service'
-import { colourFor, formatMoney, formatMoneyCompact } from '@/lib/ui/money'
+import { colourFor, formatMoney, formatMoneyAxis } from '@/lib/ui/money'
 
 interface MonthlyExpensesCardProps {
   data: MonthlyExpenseBar[]
@@ -83,7 +83,7 @@ export function MonthlyExpensesCard({ data }: MonthlyExpensesCardProps) {
             tickLine={false}
             axisLine={false}
             width={40}
-            tickFormatter={(v: number) => formatMoneyCompact(v)}
+            tickFormatter={(v: number) => formatMoneyAxis(v)}
           />
           <ChartTooltip
             content={

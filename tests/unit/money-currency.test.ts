@@ -4,7 +4,7 @@ import {
   localeForCurrency,
   normalizeCurrency,
 } from '@/lib/money/currency'
-import { formatMoney, formatMoneyCompact } from '@/lib/ui/money'
+import { formatMoney, formatMoneyAxis, formatMoneyCompact } from '@/lib/ui/money'
 
 describe('currency defaults', () => {
   it('defaults to INR', () => {
@@ -41,5 +41,14 @@ describe('formatMoney', () => {
   it('compact format follows currency grouping', () => {
     expect(formatMoneyCompact(123456700)).toBe('12,34,567')
     expect(formatMoneyCompact(123456700, 'USD')).toBe('1,234,567')
+  })
+})
+
+describe('formatMoneyAxis', () => {
+  it('uses compact notation so axis ticks fit a 40px gutter', () => {
+    expect(formatMoneyAxis(4_000_000)).toBe('40K')
+    expect(formatMoneyAxis(12_500_000)).toBe('1.3L')
+    expect(formatMoneyAxis(250_000_000, 'USD')).toBe('2.5M')
+    expect(formatMoneyAxis(0)).toBe('0')
   })
 })

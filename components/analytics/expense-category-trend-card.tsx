@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/chart'
 import { AnalyticsCardShell } from './card-shell'
 import type { CategoryTrendRow } from '@/lib/analytics/service'
-import { colourFor, formatMoney, formatMoneyCompact } from '@/lib/ui/money'
+import { colourFor, formatMoney, formatMoneyAxis } from '@/lib/ui/money'
 
 interface ExpenseCategoryTrendCardProps {
   data: CategoryTrendRow[]
@@ -88,7 +88,7 @@ export function ExpenseCategoryTrendCard({ data }: ExpenseCategoryTrendCardProps
             tickLine={false}
             axisLine={false}
             width={40}
-            tickFormatter={(v: number) => formatMoneyCompact(v)}
+            tickFormatter={(v: number) => formatMoneyAxis(v)}
           />
           <ChartTooltip
             content={
