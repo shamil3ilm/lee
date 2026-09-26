@@ -125,3 +125,12 @@ test('application: edit job details, link and unlink a contact', async ({ page }
   await expectToast(page, 'Sara Haddad unlinked')
   await expect(card.getByText('Sara Haddad')).toHaveCount(0)
 })
+
+test('settings: background jobs shows status and runs due jobs on demand', async ({ page }) => {
+  await page.goto('/settings/jobs')
+  await expect(page.getByRole('heading', { name: 'Background jobs' })).toBeVisible()
+  await expect(page.getByTestId('job-counts')).toContainText('Queued')
+  await expect(page.getByText('Recent failures')).toBeVisible()
+  await page.getByRole('button', { name: 'Run now' }).click()
+  await expectToast(page, /Nothing was due|Ran \d+ job/)
+})
