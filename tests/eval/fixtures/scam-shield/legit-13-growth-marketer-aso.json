@@ -1,0 +1,17 @@
+{
+  "name": "Growth marketer owning App Store Optimization",
+  "label": "legit",
+  "inputs": {
+    "title": "Growth Marketing Manager",
+    "company": "Swiggy",
+    "applyUrl": "https://careers.swiggy.com/#/growth-marketing-manager",
+    "location": "Bengaluru",
+    "description": "Own App Store Optimization (ASO), paid acquisition and lifecycle campaigns. Improve product performance and conversion with the data team. 5+ years in consumer growth."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "content.task_scheme"
+    ]
+  }
+}

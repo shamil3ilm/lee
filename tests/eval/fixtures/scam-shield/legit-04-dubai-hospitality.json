@@ -1,0 +1,22 @@
+{
+  "name": "Dubai hotel role with visa costs borne by employer",
+  "label": "legit",
+  "inputs": {
+    "title": "Front Office Supervisor",
+    "company": "Marriott International",
+    "applyUrl": "https://careers.marriott.com/front-office-supervisor-dubai/job/1234",
+    "location": "Dubai, UAE",
+    "salary": {
+      "min": 7000,
+      "max": 9000,
+      "currency": "AED"
+    },
+    "description": "Lead the front office team at our Dubai Marina property. 3+ years in a similar role at a 5-star hotel. Package includes accommodation, transport and medical insurance; visa processing fee borne by the company. Interviews at the property with the Front Office Manager."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "money.upfront_fee"
+    ]
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "name": "Unknown recruiter on a week-old domain with no MX",
+  "label": "scam",
+  "notes": "Network facts are supplied by the fixture (the eval never calls out).",
+  "inputs": {
+    "title": "Operations Executive",
+    "company": "Brightpath Global Solutions",
+    "companyDomain": "brightpath-globalsolutions.com",
+    "applyEmail": "careers@brightpath-globalsolutions.com",
+    "description": "Direct joining for operations executives. Reply within 12 hours to confirm your interest."
+  },
+  "net": {
+    "domains": [
+      {
+        "domain": "brightpath-globalsolutions.com",
+        "registeredAt": "2026-09-19T00:00:00.000Z",
+        "ageDays": 7,
+        "hasMx": false
+      }
+    ],
+    "mailDomains": [
+      "brightpath-globalsolutions.com"
+    ]
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "sender.young_domain",
+      "sender.no_mx",
+      "channel.offer_without_interview",
+      "content.urgency"
+    ]
+  }
+}

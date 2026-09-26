@@ -1,0 +1,18 @@
+{
+  "name": "TCS offer from a lookalike domain with joining fee",
+  "label": "scam",
+  "inputs": {
+    "title": "Associate Software Engineer - Offer",
+    "company": "Tata Consultancy Services",
+    "applyUrl": "https://tcs-careers.in/offer/confirm",
+    "description": "Congratulations, you have been selected for the role of Associate Software Engineer at TCS. No interview required as per your profile. To confirm your seat, pay the joining fee of Rs. 4,500 (refundable with first salary) within 24 hours."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "sender.lookalike_domain",
+      "channel.offer_without_interview",
+      "money.upfront_fee"
+    ]
+  }
+}

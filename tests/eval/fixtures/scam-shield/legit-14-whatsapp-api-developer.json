@@ -1,0 +1,18 @@
+{
+  "name": "Developer building WhatsApp Business API integrations",
+  "label": "legit",
+  "inputs": {
+    "title": "Backend Developer - Messaging",
+    "company": "Gupshup",
+    "companyDomain": "gupshup.io",
+    "applyUrl": "https://gupshup.io/careers/backend-developer-messaging",
+    "location": "Gurugram",
+    "description": "Build WhatsApp Business API and Telegram bot integrations used by enterprise customers. Send WhatsApp notifications at scale with Kafka and Go. We never contact candidates on Telegram or WhatsApp for hiring."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "channel.messaging_only"
+    ]
+  }
+}

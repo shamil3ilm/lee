@@ -1,0 +1,18 @@
+{
+  "name": "Genuine Amazon posting on amazon.jobs",
+  "label": "legit",
+  "inputs": {
+    "title": "Software Development Engineer, Alexa",
+    "company": "Amazon",
+    "applyUrl": "https://www.amazon.jobs/en/jobs/2701234/software-development-engineer-alexa",
+    "location": "Hyderabad, Telangana",
+    "description": "Design and build large-scale distributed systems for Alexa. 2+ years of non-internship professional software development experience. Amazon never asks for payment during recruitment."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "sender.lookalike_domain",
+      "sender.apply_domain_mismatch"
+    ]
+  }
+}

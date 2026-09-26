@@ -1,0 +1,19 @@
+{
+  "name": "Part-time typing job collecting Aadhaar via Google Form",
+  "label": "scam",
+  "inputs": {
+    "title": "Part Time Typing Job - Earn Daily",
+    "company": "Sai Enterprises",
+    "applyUrl": "https://forms.gle/Xy7k2mPqR9",
+    "description": "Simple typing work, just need a smartphone. Earn ₹900 per day, daily payment. Fill the Google Form with your Aadhaar number and bank account number. Registration charges Rs. 299 only."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "identity.form_with_id",
+      "money.upfront_fee",
+      "content.vague_duties",
+      "content.easy_money"
+    ]
+  }
+}

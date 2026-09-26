@@ -1,0 +1,18 @@
+{
+  "name": "Fake Flipkart WFH job asking for bank details and OTP",
+  "label": "scam",
+  "inputs": {
+    "title": "Flipkart Work From Home - Order Processing",
+    "company": "Flipkart",
+    "applyEmail": "flipkart.careers.desk@yahoo.com",
+    "description": "Earn ₹1500 per day processing orders from home. For salary account creation, provide your bank account details and IFSC code, then share the OTP you receive with our HR executive."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "identity.bank_otp",
+      "sender.freemail_recruiter",
+      "content.pay_too_high"
+    ]
+  }
+}

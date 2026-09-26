@@ -1,0 +1,18 @@
+{
+  "name": "Product optimisation task scam with crypto top-ups",
+  "label": "scam",
+  "inputs": {
+    "title": "Online Merchant Assistant",
+    "company": "ShopBoost Global",
+    "description": "Optimize 40 products daily to earn commission. Product optimization tasks take only 30 minutes. Top up your account with USDT to unlock combination orders with 5x commission. Guaranteed income, contact our mentor on WhatsApp for training."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "content.task_scheme",
+      "money.crypto_giftcard",
+      "channel.offer_without_interview",
+      "channel.messaging_only"
+    ]
+  }
+}

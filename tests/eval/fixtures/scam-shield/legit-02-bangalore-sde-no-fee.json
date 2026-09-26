@@ -1,0 +1,19 @@
+{
+  "name": "Bengaluru SDE-2 with an explicit no-fee notice",
+  "label": "legit",
+  "inputs": {
+    "title": "Software Development Engineer II",
+    "company": "Razorpay",
+    "companyDomain": "razorpay.com",
+    "applyUrl": "https://razorpay.com/jobs/sde-2-backend",
+    "location": "Bengaluru, Karnataka",
+    "description": "Own high-throughput payment APIs in Go and Java. 3-6 years of experience. CTC 28-40 LPA plus ESOPs. Hybrid, 3 days a week in office. Note: Razorpay never charges any fee from candidates and never asks for money or OTPs during hiring. We do not charge a registration fee."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "money.upfront_fee",
+      "identity.bank_otp"
+    ]
+  }
+}

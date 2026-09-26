@@ -1,0 +1,19 @@
+{
+  "name": "Fake Amazon part-time job via Gmail asking for Aadhaar",
+  "label": "scam",
+  "inputs": {
+    "title": "Amazon Part Time Job - Product Review Associate",
+    "company": "Amazon",
+    "applyEmail": "amazon.hr.recruitment2026@gmail.com",
+    "description": "Amazon is hiring part time associates. Work 2-3 hours a day and earn ₹2000-₹5000 per day. To register, send your Aadhaar card and PAN card photo to our HR desk on Telegram @AmazonHR_Neha. Limited slots available!"
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "sender.freemail_recruiter",
+      "identity.id_documents",
+      "content.pay_too_high",
+      "channel.messaging_only"
+    ]
+  }
+}

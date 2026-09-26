@@ -1,0 +1,17 @@
+{
+  "name": "Fraud analyst role that discusses OTPs and cards",
+  "label": "legit",
+  "inputs": {
+    "title": "Fraud Risk Analyst",
+    "company": "HDFC Bank",
+    "applyUrl": "https://www.hdfcbank.com/careers/fraud-risk-analyst",
+    "location": "Mumbai",
+    "description": "Investigate credit card, UPI and OTP phishing fraud patterns. Build rules to verify suspicious transactions and educate customers never to share an OTP. 2-4 years in fraud analytics, SQL and Python."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "identity.bank_otp"
+    ]
+  }
+}

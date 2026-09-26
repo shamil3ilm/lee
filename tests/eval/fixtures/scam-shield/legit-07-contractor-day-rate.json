@@ -1,0 +1,18 @@
+{
+  "name": "Senior contractor with a normal day rate",
+  "label": "legit",
+  "inputs": {
+    "title": "Platform Engineer (Contract, 6 months)",
+    "company": "Monzo",
+    "companyDomain": "monzo.com",
+    "applyUrl": "https://monzo.com/careers/platform-contract",
+    "location": "London (Hybrid)",
+    "description": "Kubernetes, Terraform and AWS. Outside IR35, $650 per day. Interview: two technical sessions with the platform team."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "content.pay_too_high"
+    ]
+  }
+}

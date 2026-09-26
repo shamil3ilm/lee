@@ -50,6 +50,14 @@ import {
   type CvScoreExpect,
   type CvScoreFixtureInputs,
 } from './cv-score'
+import {
+  checkScamShieldExpectations,
+  loadScamShieldFixtures,
+  runScamShieldFixture,
+  scamShieldMetrics,
+  summarizeScamShield,
+} from './scam-shield'
+import type { NetContext, ScamInput } from '@/lib/scam/types'
 
 // ---------------------------------------------------------------------------
 // Config
@@ -67,6 +75,7 @@ type Task =
   | 'debrief'
   | 'expense-classify'
   | 'cv-score'
+  | 'scam-shield'
 
 const TASKS: readonly Task[] = [
   'parse-job',
@@ -77,6 +86,7 @@ const TASKS: readonly Task[] = [
   'debrief',
   'expense-classify',
   'cv-score',
+  'scam-shield',
 ]
 
 interface Fixture {
@@ -84,8 +94,10 @@ interface Fixture {
   name: string
   notes?: string
   inputs: unknown
-  /** v12.0 — exact expectations (cv-score fixtures). */
-  expect?: CvScoreExpect
+  /** v12.0 — exact expectations (cv-score, scam-shield fixtures). */
+  expect?: unknown
+  /** v17 §1 — cached network facts for scam-shield fixtures. */
+  net?: unknown
 }
 
 interface Result {
@@ -122,6 +134,7 @@ async function loadFixtures(task: Task): Promise<Fixture[]> {
       notes: parsed.notes,
       inputs: parsed.inputs,
       expect: parsed.expect,
+      net: parsed.net,
     })
   }
   return fixtures
@@ -209,6 +222,14 @@ async function runFixture(
       const result = await runCvScoreFixture(fixture.inputs as CvScoreFixtureInputs, ai)
       return summarize(result)
     }
+    case 'scam-shield':
+      // Pure rules + fixture-supplied net facts; never calls the network.
+      return summarizeScamShield(
+        runScamShieldFixture({
+          inputs: fixture.inputs as ScamInput,
+          net: (fixture.net as NetContext | undefined) ?? undefined,
+        }),
+      )
     case 'expense-classify': {
       const description = inputs.description as string | undefined
       const vendor = inputs.vendor as string | undefined
@@ -297,7 +318,7 @@ async function runCvScoreExpectationGate(): Promise<number> {
   for (const f of fixtures) {
     try {
       const result = await runCvScoreFixture(f.inputs as CvScoreFixtureInputs, ai)
-      const violations = checkExpectations(result, f.expect)
+      const violations = checkExpectations(result, f.expect as CvScoreExpect | undefined)
       if (violations.length === 0) {
         console.log(`  [OK ] ${f.file}`)
       } else {
@@ -310,6 +331,34 @@ async function runCvScoreExpectationGate(): Promise<number> {
       console.log(`  [FAIL] ${f.file} — threw: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
+  console.log('')
+  return failed
+}
+
+/**
+ * v17 §1 — Scam Shield labelled fixtures. Exact level (+ required and
+ * forbidden signals, verbatim evidence) per fixture; deterministic, so it
+ * gates CI like the cv-score expectations.
+ */
+async function runScamShieldExpectationGate(): Promise<number> {
+  const fixtures = loadScamShieldFixtures()
+  if (fixtures.length === 0) return 0
+  let failed = 0
+  console.log(`## scam-shield expectations (${fixtures.length} fixtures, deterministic)`)
+  for (const f of fixtures) {
+    const violations = checkScamShieldExpectations(f, runScamShieldFixture(f))
+    if (violations.length === 0) {
+      console.log(`  [OK ] ${f.file}`)
+    } else {
+      failed += 1
+      console.log(`  [FAIL] ${f.file}`)
+      for (const v of violations) console.log(`    - ${v}`)
+    }
+  }
+  const m = scamShieldMetrics(fixtures)
+  console.log(
+    `  scams caught ${m.caught}/${m.scams} · legit quarantined ${m.falseQuarantines}/${m.legit} · legit cautioned ${m.legitCautions}/${m.legit}`,
+  )
   console.log('')
   return failed
 }
@@ -333,6 +382,11 @@ async function main(): Promise<void> {
   const expectationFailures = await runCvScoreExpectationGate()
   if (expectationFailures > 0) {
     console.error(`cv-score expectations failed for ${expectationFailures} fixture(s).`)
+    process.exit(1)
+  }
+  const scamFailures = await runScamShieldExpectationGate()
+  if (scamFailures > 0) {
+    console.error(`scam-shield expectations failed for ${scamFailures} fixture(s).`)
     process.exit(1)
   }
 
