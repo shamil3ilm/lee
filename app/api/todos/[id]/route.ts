@@ -56,6 +56,9 @@ export async function PATCH(
       )
     }
     const { toggle, ...patch } = parsed.data
+    if (!(await todosQ.linksOwnedBy(userId, patch))) {
+      return NextResponse.json({ error: 'Linked item not found.' }, { status: 404 })
+    }
 
     if (toggle) {
       const row = await todosQ.toggleStatus(userId, id)

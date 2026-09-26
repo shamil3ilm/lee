@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, gte, isNull, lt, lte, sql } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
-import { todos } from '@/lib/db/schema'
+import { applications, companies, contacts, interviewStages, todos } from '@/lib/db/schema'
 
 export type Todo = typeof todos.$inferSelect
 export type NewTodo = typeof todos.$inferInsert
@@ -22,6 +22,47 @@ export interface ListTodosOpts {
   // Default ordering: overdue first, then by due date ascending (nulls last),
   // then by priority descending, then by created_at asc.
   sort?: 'due' | 'priority' | 'created'
+}
+
+export interface TodoLinks {
+  applicationId?: string | null
+  stageId?: string | null
+  contactId?: string | null
+  companyId?: string | null
+}
+
+/**
+ * True when every non-null link id belongs to `userId`. The FKs alone would
+ * happily point a todo at another user's application/contact/company.
+ */
+export async function linksOwnedBy(userId: string, links: TodoLinks): Promise<boolean> {
+  const checks: Array<Promise<unknown[]>> = []
+  if (links.applicationId) {
+    checks.push(
+      db.select({ id: applications.id }).from(applications)
+        .where(and(eq(applications.userId, userId), eq(applications.id, links.applicationId))).limit(1),
+    )
+  }
+  if (links.stageId) {
+    checks.push(
+      db.select({ id: interviewStages.id }).from(interviewStages)
+        .where(and(eq(interviewStages.userId, userId), eq(interviewStages.id, links.stageId))).limit(1),
+    )
+  }
+  if (links.contactId) {
+    checks.push(
+      db.select({ id: contacts.id }).from(contacts)
+        .where(and(eq(contacts.userId, userId), eq(contacts.id, links.contactId))).limit(1),
+    )
+  }
+  if (links.companyId) {
+    checks.push(
+      db.select({ id: companies.id }).from(companies)
+        .where(and(eq(companies.userId, userId), eq(companies.id, links.companyId))).limit(1),
+    )
+  }
+  const results = await Promise.all(checks)
+  return results.every((rows) => rows.length > 0)
 }
 
 /**

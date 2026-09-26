@@ -102,6 +102,9 @@ export async function POST(req: Request): Promise<NextResponse> {
       )
     }
     const d = parsed.data
+    if (!(await todosQ.linksOwnedBy(userId, d))) {
+      return NextResponse.json({ error: 'Linked item not found.' }, { status: 404 })
+    }
     const row = await todosQ.create(userId, {
       title: d.title,
       notesMd: d.notesMd ?? null,

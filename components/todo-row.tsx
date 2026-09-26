@@ -1,14 +1,21 @@
 'use client'
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Briefcase, Loader2, Trash2 } from 'lucide-react'
+import { Briefcase, Loader2, Pencil, Trash2 } from 'lucide-react'
 import type { Todo } from '@/lib/db/queries/todos'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DISPLAY_LOCALE, relativeFromNow } from '@/lib/ui/date'
 import { cn } from '@/lib/utils'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+
+const TodoEditDialog = dynamic(
+  () => import('@/components/todo-edit-dialog').then((m) => m.TodoEditDialog),
+  { ssr: false },
+)
 
 interface TodoRowProps {
   todo: Todo
@@ -37,14 +44,15 @@ const PRIORITY_VARIANT = {
 
 /**
  * Single row rendering of a todo. Checkbox flips status via /api/todos/[id]
- * with `{toggle: true}`; delete removes with a confirm-less click (small
- * items — undo via re-create is trivial and the button sits behind an
- * intent icon so accidental taps are rare).
+ * with `{toggle: true}`; the pencil opens an edit dialog (loaded on open);
+ * delete asks for confirmation in-app first.
  */
 export function TodoRow({ todo, applicationLabel, now }: TodoRowProps) {
   const router = useRouter()
   const [pending, setPending] = useState(false)
   const [removing, setRemoving] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const isDone = todo.status === 'done'
   const overdue =
     todo.dueAt !== null && !isDone && new Date(todo.dueAt).getTime() < now
@@ -76,6 +84,7 @@ export function TodoRow({ todo, applicationLabel, now }: TodoRowProps) {
       const res = await fetch(`/api/todos/${todo.id}`, { method: 'DELETE' })
       if (res.ok) {
         toast.success('Todo deleted')
+        setConfirmOpen(false)
         router.refresh()
       } else {
         const json = (await res.json().catch(() => ({}))) as { error?: string }
@@ -167,22 +176,54 @@ export function TodoRow({ todo, applicationLabel, now }: TodoRowProps) {
           ))}
         </div>
       </div>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        aria-label="Delete todo"
-        onClick={() => {
+      <div className="flex items-center">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={`Edit todo ${todo.title}`}
+          onClick={() => setEditOpen(true)}
+        >
+          <Pencil className="size-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label="Delete todo"
+          onClick={() => setConfirmOpen(true)}
+          disabled={removing}
+        >
+          {removing ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Trash2 className="size-4" />
+          )}
+        </Button>
+      </div>
+      {editOpen ? (
+        <TodoEditDialog
+          todo={{
+            id: todo.id,
+            title: todo.title,
+            notesMd: todo.notesMd,
+            priority: todo.priority,
+            dueAt: todo.dueAt ? new Date(todo.dueAt).toISOString() : null,
+          }}
+          open={editOpen}
+          onOpenChange={setEditOpen}
+        />
+      ) : null}
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Delete todo?"
+        description={<p>&ldquo;{todo.title}&rdquo; will be permanently deleted.</p>}
+        pending={removing}
+        onConfirm={() => {
           void remove()
         }}
-        disabled={removing}
-      >
-        {removing ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : (
-          <Trash2 className="size-4" />
-        )}
-      </Button>
+      />
     </li>
   )
 }
