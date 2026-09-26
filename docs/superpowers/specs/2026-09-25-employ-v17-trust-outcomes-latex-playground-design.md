@@ -77,6 +77,38 @@ When the user earns something verifiable in the Playground, the CV gets a *sugge
 4. **Relocation & location filters:** visa sponsorship mention, time-zone overlap, remote region eligibility, cost-of-living index (from Expenses, v12.3) on discoveries.
 5. **Salary log:** record quoted/posted ranges (role, company, location, currency, source); used by offer comparison (v12.3) and Scam Shield's "too good to be true" signal. Stored in the posting's currency; expenses stay INR.
 
+### 6.6 Opportunity Score — how good is this job *for me*
+CV Match (v12) answers "how well do I fit them". The Opportunity Score answers the other half: "how well do they fit me". Today discoveries use `combinedScore = 0.6·match + 0.4·benefits` (lib/discovery/scoring.ts); this replaces that blend.
+
+**Criteria (each 0–100, with evidence and a confidence):**
+| Criterion | What feeds it (all free) |
+|---|---|
+| Growth & development | learning budget, mentorship, scope/ownership, promotion path, tech stack vs the user's skill-gap targets (§4) and Playground goals |
+| Role quality | clear responsibilities, seniority fit, impact, on-call load, title vs duties |
+| Compensation | stated range vs the user's floor and salary log (§6.5), equity, pay transparency |
+| Benefits | existing benefit weights and must-haves (health/family cover, visa, relocation, leave, 4-day week) |
+| Company structure & stability | size, stage (startup/scale-up/enterprise), funding and layoff news, team and reporting structure, engineering maturity (eng blog, GitHub org activity via v15) |
+| Environment & culture | remote/hybrid policy, working hours and time-zone overlap, work-life-balance signals ("fast-paced", "hustle", weekend work), the user's own interview impressions (debriefs) |
+| Location & logistics | commute or remote, visa, relocation, cost of living from Expenses → estimated monthly savings in INR |
+| Hiring process | rounds, take-home burden, response speed and transparency (from the user's own application history with that company) |
+| Mission & interest | match to the user's stated industries and interests |
+
+**Rules:**
+- **Unknown is not zero.** Missing information shows as "Unknown" and lowers the confidence, not the score. Each unknown generates a **question to ask** the recruiter or interviewer; answers recorded later update the score.
+- **Evidence:** every criterion lists its reasons. Quotes from the posting must be verbatim (v16 citation check); inferred values are labelled as inferred.
+- **The user sets the weights** in Settings › Preferences, with sliders and presets (Growth first, Money first, Stability, Relocation, Balanced). Must-haves stay hard caps, reusing `applyCaps`.
+- **Trust gates:** a Scam Shield `likely_scam` item (§1) gets no Opportunity Score, and a ghost/stale posting (§6.1) is flagged.
+- **Deterministic first:** rule-based extraction; AI only fills criteria that rules can't, and never overrides a cap or trust gate. Versioned like prompts, with an eval suite of labelled postings.
+
+**Where it shows:**
+- Discovery and application cards: an Opportunity badge next to CV Match, plus a breakdown drawer.
+- **2×2 view**, CV Match × Opportunity: *Apply now* (both high), *Stretch* (great opportunity, weaker fit → tailor or learn first), *Backup* (good fit, weaker opportunity), *Skip*.
+- The dashboard's next-best-action prefers high-opportunity items.
+- **Offer comparison (v12.3)** reuses the same criteria with the offer's real numbers.
+- **Learning loop:** when the user later rates an application or offer ("would take it / wouldn't"), the app suggests weight adjustments. The user accepts or ignores them; weights are never changed silently.
+
+Data: an `opportunity_scores` table (target, per-criterion score/confidence/evidence, weights snapshot, total, rules version, created_at), plus `opportunity_prefs` on the profile (weights, preset, must-haves).
+
 ## 7. Capture & habits
 
 1. **Share to Employ:** PWA share-target (after v12.5) — share a job URL/text from any phone app into Discovery. Keeps the v1 "no browser extension" decision.
@@ -156,6 +188,7 @@ Wherever else it applies:
 | 2 | Integration pass: CV score surfaces, keys to Settings › AI, **Lab → Playground rename** | v11, v17 §0 |
 | 3 | Visual QA + journey E2E | v17 §9.1 |
 | 4 | **Scam Shield** | v17 §1 |
+| 4b | **Opportunity Score** (criteria, weights UI, 2×2 view, questions to ask) | v17 §6.6 |
 | 5 | Email → status suggestions | v17 §2 |
 | 6 | Backups + export/delete, audit log & undo | v17 §9.2, §9.5 |
 | 7 | Playground core (placement, adaptive selection, coding + complexity evaluation) | v13.0–13.2 |
