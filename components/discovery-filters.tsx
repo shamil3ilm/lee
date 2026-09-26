@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/select'
 
 export type DiscoverySort = 'combined' | 'match' | 'benefits' | 'posted'
-export type DiscoveryStatusFilter = 'new' | 'saved' | 'dismissed' | 'quarantined'
+export type DiscoveryStatusFilter = 'new' | 'shortlisted' | 'saved' | 'dismissed' | 'quarantined'
 
 interface DiscoveryFiltersProps {
   tab: 'jobs' | 'companies'
@@ -24,6 +24,7 @@ interface DiscoveryFiltersProps {
 
 const STATUS_LABELS: Record<DiscoveryStatusFilter, string> = {
   new: 'New',
+  shortlisted: 'Shortlisted',
   saved: 'Saved',
   dismissed: 'Dismissed',
   quarantined: 'Quarantined',
@@ -50,7 +51,7 @@ export function DiscoveryFilters({
   quarantinedCount = 0,
 }: DiscoveryFiltersProps) {
   const statuses = (Object.keys(STATUS_LABELS) as DiscoveryStatusFilter[]).filter(
-    (s) => s !== 'quarantined' || tab === 'jobs',
+    (s) => (s !== 'quarantined' && s !== 'shortlisted') || tab === 'jobs',
   )
   const router = useRouter()
   const pathname = usePathname()

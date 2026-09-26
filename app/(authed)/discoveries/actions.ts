@@ -1,4 +1,5 @@
 'use server'
+import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { requireUserId } from '@/lib/auth/require-session'
 import {
@@ -33,7 +34,7 @@ export async function saveDiscovery(discoveryId: string): Promise<ActionResult> 
     // may have advanced the row.
     const current = await discQ.getById(userId, discoveryId)
     if (!current) return { error: 'Discovery not found.' }
-    if (current.status !== 'new') {
+    if (current.status !== 'new' && current.status !== 'shortlisted') {
       return {
         conflict: 'discovery_not_new',
         currentStatus: current.status,
@@ -220,5 +221,59 @@ export async function restoreCompanyDiscovery(discoveryId: string): Promise<Acti
       err: err instanceof Error ? err.message : String(err),
     })
     return { error: 'Could not restore.' }
+  }
+}
+
+const moveSchema = z.object({
+  discoveryId: z.string().uuid(),
+  to: z.enum(['new', 'shortlisted', 'saved', 'dismissed']),
+})
+
+/**
+ * Discoveries triage board: New / Shortlisted / Applied / Dismissed. The
+ * "Applied" column is `saved` (promoted to an application), so moving there
+ * runs the same promotion as the inbox Save button, and a promoted card
+ * cannot move back (its application lives on). Scoped to the signed-in
+ * user; the implicit rating signal matches Save and Dismiss.
+ */
+export async function moveDiscovery(
+  discoveryId: string,
+  to: string,
+): Promise<{ success: true } | { error: string }> {
+  const parsed = moveSchema.safeParse({ discoveryId, to })
+  if (!parsed.success) return { error: 'Invalid move.' }
+  const target = parsed.data.to
+  try {
+    const userId = await requireUserId()
+    const current = await discQ.getById(userId, parsed.data.discoveryId)
+    if (!current) return { error: 'Discovery not found.' }
+    if (current.status === target) return { success: true }
+    if (current.status === 'saved') {
+      return { error: 'It is already in your pipeline; manage it from Applications.' }
+    }
+    if (target === 'saved') {
+      await promoteJobDiscovery({ userId, discoveryId: current.id })
+      if (current.scoredByCallId) await aiCallLogsQ.updateAction(userId, current.scoredByCallId, 'used')
+      revalidatePath('/applications')
+    } else {
+      await discQ.setStatus(userId, current.id, target)
+      if (current.scoredByCallId) {
+        if (target === 'dismissed') {
+          await aiCallLogsQ.updateAction(userId, current.scoredByCallId, 'dismissed')
+        } else if (current.status === 'dismissed') {
+          await aiCallLogsQ.clearDismissedAction(userId, [current.scoredByCallId])
+        }
+      }
+    }
+    revalidatePath('/discoveries')
+    revalidatePath('/')
+    return { success: true }
+  } catch (err) {
+    logger.error('moveDiscovery failed', {
+      discoveryId,
+      to: target,
+      err: err instanceof Error ? err.message : String(err),
+    })
+    return { error: 'Could not move the discovery.' }
   }
 }

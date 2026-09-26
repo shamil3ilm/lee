@@ -111,7 +111,7 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
   const n = item.normalized
-  const isActionable = item.status === 'new'
+  const isActionable = item.status === 'new' || item.status === 'shortlisted'
 
   const handleSave = (): void => {
     startTransition(async () => {

@@ -7,7 +7,12 @@ import { discoveryNotQuarantinedSql, discoveryQuarantinedSql } from './riskAsses
 
 export type Discovery = typeof discoveries.$inferSelect
 export type NewDiscovery = typeof discoveries.$inferInsert
-export type DiscoveryStatus = 'new' | 'saved' | 'dismissed'
+/**
+ * 'new' (inbox) · 'shortlisted' (triaged, worth a closer look) · 'saved'
+ * (promoted to an application) · 'dismissed'. Plain text column.
+ */
+export type DiscoveryStatus = 'new' | 'shortlisted' | 'saved' | 'dismissed'
+export const DISCOVERY_STATUSES: readonly DiscoveryStatus[] = ['new', 'shortlisted', 'saved', 'dismissed']
 
 /**
  * `DbClient` is a union of the postgres-js and PGlite drivers, and the union
@@ -154,6 +159,7 @@ export interface DiscoveryListItem {
   benefitsScore: number | null
   matchReasoning: unknown
   scoredByCallId: string | null
+  savedApplicationId: string | null
   createdAt: Date
   updatedAt: Date
   title: string | null
@@ -176,6 +182,7 @@ const LIST_COLUMNS = {
   matchReasoning: discoveries.matchReasoning,
   // v18 — id only; the usage badge loads the call lazily when expanded.
   scoredByCallId: discoveries.scoredByCallId,
+  savedApplicationId: discoveries.savedApplicationId,
   createdAt: discoveries.createdAt,
   updatedAt: discoveries.updatedAt,
   title: n('title'),
@@ -397,6 +404,28 @@ export async function countNew(userId: string, client: DbClient = db): Promise<n
       ),
     )
   return Number(row?.c ?? 0)
+}
+
+/**
+ * Per-status counts for the triage board, excluding Scam Shield quarantine.
+ * One grouped scan on (user_id, status).
+ */
+export async function countByStatus(
+  userId: string,
+  client: DbClient = db,
+): Promise<Record<DiscoveryStatus, number>> {
+  const rows = await client
+    .select({ status: discoveries.status, c: count() })
+    .from(discoveries)
+    .where(and(eq(discoveries.userId, userId), discoveryNotQuarantinedSql()))
+    .groupBy(discoveries.status)
+  const out: Record<DiscoveryStatus, number> = { new: 0, shortlisted: 0, saved: 0, dismissed: 0 }
+  for (const r of rows) {
+    if ((DISCOVERY_STATUSES as readonly string[]).includes(r.status)) {
+      out[r.status as DiscoveryStatus] = Number(r.c)
+    }
+  }
+  return out
 }
 
 /** v17 §1 — how many discoveries sit in Scam Shield quarantine (any status). */
