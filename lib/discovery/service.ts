@@ -219,6 +219,18 @@ export interface PromoteJobResult {
  * `saved`. All-or-nothing so a mid-flight failure leaves no half-created
  * pipeline entry.
  */
+/**
+ * `normalized` is persisted as jsonb, so the adapter's `postedAt: Date`
+ * comes back as an ISO string. Passing that string to a timestamp column
+ * threw "value.toISOString is not a function" and every Save failed for
+ * sources that report a posting date (v17 §9.1 E2E journey).
+ */
+function postedAtDate(value: Date | string | undefined | null): Date | null {
+  if (value === undefined || value === null || value === '') return null
+  const d = value instanceof Date ? value : new Date(value)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
 export async function promoteJobDiscovery(args: {
   userId: string
   discoveryId: string
@@ -254,7 +266,7 @@ export async function promoteJobDiscovery(args: {
         descriptionMd: normalized.descriptionMd,
         parsedMeta: { tech_stack: normalized.techStack },
         benefits: (normalized as unknown as { benefits?: Record<string, unknown> }).benefits ?? {},
-        postedAt: normalized.postedAt ?? null,
+        postedAt: postedAtDate(normalized.postedAt),
       },
       tx,
     )

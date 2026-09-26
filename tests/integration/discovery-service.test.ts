@@ -191,6 +191,38 @@ describe('promoteJobDiscovery', () => {
       .where(eq(applications.userId, u.id))
     expect(a).toHaveLength(1)
   })
+
+  it('saves a discovery whose postedAt round-tripped through jsonb as a string', async () => {
+    const u = await makeUser()
+    const [src] = await db
+      .insert(sources)
+      .values({ userId: u.id, name: 'HN', kind: 'hn', config: {} })
+      .returning()
+    const [disc] = await db
+      .insert(discTable)
+      .values({
+        userId: u.id,
+        sourceId: src!.id,
+        sourceJobId: 'posted-at-string',
+        raw: {},
+        normalized: {
+          kind: 'job',
+          title: 'Backend Engineer',
+          companyName: 'Acme',
+          companyDomain: 'acme.com',
+          descriptionMd: 'x',
+          applyUrl: 'https://acme.com/jobs/1',
+          techStack: [],
+          postedAt: '2026-09-20T10:00:00.000Z',
+          raw: {},
+        },
+      })
+      .returning()
+    const r = await promoteJobDiscovery({ userId: u.id, discoveryId: disc!.id })
+    expect(r.application.status).toBe('saved')
+    const [job] = await db.query.jobs.findMany({ where: (j, { eq: e }) => e(j.userId, u.id) })
+    expect(job?.postedAt?.toISOString()).toBe('2026-09-20T10:00:00.000Z')
+  })
 })
 
 describe('promoteCompanyDiscovery', () => {
