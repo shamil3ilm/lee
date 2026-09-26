@@ -39,7 +39,9 @@ export function BoardGrid({
       data-board={id}
       // Mobile: horizontal snap scroll, one column ≈ 85% of the screen.
       // lg+: columns share the width and scroll only when they can't fit.
-      className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2 lg:snap-none"
+      // `relative` makes this the containing block for sr-only text, so it is
+      // clipped by the scroller instead of widening the page.
+      className="relative -mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto lg:gap-2 px-1 pb-2 lg:snap-none"
     >
       {children}
     </section>
@@ -120,16 +122,16 @@ export function BoardColumnFrame<C extends string>({
       data-board-column={def.id}
       className={cn(
         'flex w-[85vw] shrink-0 snap-start flex-col rounded-lg border bg-muted/40 transition-colors',
-        'sm:w-72 lg:w-auto lg:min-w-[10.5rem] lg:flex-1 lg:shrink',
+        'sm:w-72 lg:w-auto lg:min-w-[9.5rem] lg:flex-1 lg:shrink',
         isOver && 'border-ring bg-accent/70',
       )}
     >
-      <div className="flex items-center gap-2 rounded-t-lg border-b bg-muted/70 px-3 py-2">
+      <div className="flex items-center gap-1.5 rounded-t-lg border-b bg-muted/70 py-2 pl-2.5 pr-1.5">
         <span aria-hidden="true" className={cn('size-2 shrink-0 rounded-full', TONE_BG[def.tone])} />
         <h3
           id={headingId}
-          className={cn('min-w-0 flex-1 truncate text-xs font-semibold uppercase tracking-wide', TONE_TEXT[def.tone])}
-          title={def.hint}
+          className={cn('min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-wide', TONE_TEXT[def.tone])}
+          title={def.hint ?? def.title}
         >
           {def.title}
         </h3>
@@ -147,12 +149,12 @@ export function BoardColumnFrame<C extends string>({
           type="button"
           variant="ghost"
           size="icon"
-          className="-mr-1.5 size-6"
+          className="size-5 shrink-0 [&_svg]:size-3"
           aria-label={`Collapse ${def.title} column`}
           aria-expanded={true}
           onClick={() => setCollapsed(true)}
         >
-          <ChevronsRightLeft className="size-3.5" />
+          <ChevronsRightLeft className="size-3" />
         </Button>
       </div>
       {wip === 'over' ? (

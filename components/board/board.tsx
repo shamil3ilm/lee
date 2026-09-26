@@ -2,6 +2,7 @@
 import * as React from 'react'
 import { toast } from 'sonner'
 import { findItem, groupedKey, moveItem, type BoardItem, type Grouped } from '@/lib/board/move'
+import { cn } from '@/lib/utils'
 import {
   BoardCardFrame,
   BoardColumnBody,
@@ -117,7 +118,10 @@ export function Board<C extends string, T extends BoardItem>(props: BoardProps<C
   )
 
   return (
-    <div className={props.className}>
+    // contain: inline-size keeps the columns' combined width from leaking
+    // into ancestors (flex/grid items would otherwise grow and scroll the
+    // whole page sideways); the grid scrolls inside instead.
+    <div className={cn('w-full min-w-0 [contain:inline-size]', props.className)}>
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         {announcement}
       </div>
