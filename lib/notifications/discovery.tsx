@@ -6,6 +6,8 @@ import * as profileQ from '@/lib/db/queries/profile'
 import { discoveryNotQuarantinedSql } from '@/lib/db/queries/riskAssessments'
 import { sendEmail as defaultSendEmail } from '@/lib/gmail/send'
 import { logger } from '@/lib/logger'
+import { APP_NAME } from '@/lib/brand'
+import { EmailBrandHeader } from '@/lib/email/brand-header'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -222,6 +224,7 @@ function DiscoveryEmail({
 }): ReactElement {
   return (
     <div style={styles.wrapper}>
+      <EmailBrandHeader appBaseUrl={appBaseUrl} />
       <h1 style={styles.h1}>
         {items.length === 1
           ? '1 new job match'
@@ -253,7 +256,7 @@ function DiscoveryEmail({
       </div>
 
       <div style={styles.footer}>
-        Sent by Employ. Manage this in your{' '}
+        Sent by {APP_NAME}. Manage this in your{' '}
         <a href={`${appBaseUrl}/settings/notifications`} style={styles.link}>
           notification settings
         </a>
@@ -284,7 +287,7 @@ export function buildDiscoveryEmail(
       appBaseUrl={appBaseUrl}
     />,
   )
-  const htmlBody = `<!doctype html><html><head><meta charset="utf-8"><title>Employ · New matches</title></head><body style="margin:0;padding:0;background:#f7f7f7;">${body}</body></html>`
+  const htmlBody = `<!doctype html><html><head><meta charset="utf-8"><title>${APP_NAME} · New matches</title></head><body style="margin:0;padding:0;background:#f7f7f7;">${body}</body></html>`
   return { subject, htmlBody }
 }
 

@@ -206,11 +206,41 @@ export async function compactDiscoveryPayloads(
   return jobs + companies
 }
 
+export const DONE_JOB_RETENTION_DAYS = 14
+export const DEAD_JOB_RETENTION_DAYS = 30
+
+/**
+ * Delete finished queue jobs: `done` after DONE_JOB_RETENTION_DAYS and
+ * `dead` after DEAD_JOB_RETENTION_DAYS (by finished_at). Queued, running
+ * and failed-awaiting-retry jobs are never touched. A deleted job's
+ * idempotency key is from a past UTC day, so it can never be re-enqueued.
+ */
+export async function pruneQueueJobs(
+  now: Date = new Date(),
+  opts: BatchOpts & { doneDays?: number; deadDays?: number } = {},
+): Promise<number> {
+  const client = opts.client ?? db
+  const doneBefore = cutoff(now, opts.doneDays ?? DONE_JOB_RETENTION_DAYS)
+  const deadBefore = cutoff(now, opts.deadDays ?? DEAD_JOB_RETENTION_DAYS)
+  return inBatches(async (limit) => {
+    const res = await client.execute(sql`
+      delete from queue_jobs where id in (
+        select id from queue_jobs
+        where (status = 'done' and finished_at < ${doneBefore})
+           or (status = 'dead' and finished_at < ${deadBefore})
+        limit ${limit}
+      )
+    `)
+    return affected(res)
+  }, opts.batchSize ?? RETENTION_BATCH_SIZE)
+}
+
 export interface RetentionResult {
   tombstonedDiscoveries: number
   aiCallLogs: number
   gmailThreads: number
   compactedDiscoveries: number
+  queueJobs: number
 }
 
 /** Run every retention step in sequence (each step is independent). */
@@ -219,5 +249,6 @@ export async function runRetention(now: Date = new Date()): Promise<RetentionRes
   const aiCallLogs = await pruneAiCallLogs(now)
   const gmailThreads = await pruneProcessedGmailThreads(now)
   const compactedDiscoveries = await compactDiscoveryPayloads(now)
-  return { tombstonedDiscoveries, aiCallLogs, gmailThreads, compactedDiscoveries }
+  const queueJobs = await pruneQueueJobs(now)
+  return { tombstonedDiscoveries, aiCallLogs, gmailThreads, compactedDiscoveries, queueJobs }
 }

@@ -106,6 +106,37 @@ downloads and moving files to Drive still work. Existing users keep their
 session; they click **Connect Google Drive** once to grant the new scope, then
 **Move existing files to Drive** in Settings › Integrations.
 
+## Background jobs
+
+Background work (reminders, follow-ups, Gmail sync, digest, discovery, the
+discovery email, Scam Shield re-checks) runs as small jobs in the `queue_jobs`
+table (`lib/queue/`). Vercel Hobby crons (UTC, each may fire up to 59 min late):
+
+| Cron | Path | What it does |
+|---|---|---|
+| 09:00 | `/api/cron/schedule` | enqueue the day's jobs (idempotent per UTC day), then drain for 240 s |
+| 12:00, 16:00, 21:00 | `/api/cron/drain` | drain due jobs and retries for 240 s |
+| 03:30 | `/api/cron/retention` | storage retention (also deletes done jobs after 14 days, dead after 30) |
+
+Authed page views also drain up to 2 of the visitor's due jobs after the
+response (at most once per 10 min). Settings › Background jobs shows counts,
+failures, **Retry** and **Run now**. `/api/cron/sync-all` still works as an
+alias (enqueue + drain).
+
+### Optional GitHub Actions worker
+
+`.github/workflows/queue-drain.yml` calls the signed endpoint
+`POST /api/internal/queue/drain` (HMAC-SHA256 over `timestamp.body`, 5-minute
+window). It is off by default. To enable it:
+
+1. Generate a secret: `openssl rand -hex 32`.
+2. Vercel env: `QUEUE_WORKER_SECRET=<secret>` (redeploy). Unset = endpoint returns 404.
+3. GitHub repo › Settings › Secrets and variables › Actions: secrets
+   `QUEUE_WORKER_SECRET=<secret>` and `APP_URL=https://<your-app>.vercel.app`,
+   and variable `QUEUE_DRAIN_ENABLED=true`.
+4. Run it from the Actions tab (workflow_dispatch). To run it on a timer, add a
+   `schedule:` trigger to the workflow.
+
 ## Data safety
 
 - Neon free tier includes 7-day point-in-time recovery.

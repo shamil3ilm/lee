@@ -1,6 +1,9 @@
 {
   "crons": [
-    { "path": "/api/cron/sync-all", "schedule": "0 9 * * *" },
+    { "path": "/api/cron/schedule", "schedule": "0 9 * * *" },
+    { "path": "/api/cron/drain", "schedule": "0 12 * * *" },
+    { "path": "/api/cron/drain", "schedule": "0 16 * * *" },
+    { "path": "/api/cron/drain", "schedule": "0 21 * * *" },
     { "path": "/api/cron/retention", "schedule": "30 3 * * *" }
   ],
   "buildCommand": "pnpm db:migrate && pnpm build",

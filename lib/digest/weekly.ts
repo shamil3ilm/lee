@@ -15,6 +15,7 @@ import * as profileQ from '@/lib/db/queries/profile'
 import { sendEmail as defaultSendEmail } from '@/lib/gmail/send'
 import { renderWeeklyDigestHtml } from './email-template'
 import { logger } from '@/lib/logger'
+import { APP_NAME } from '@/lib/brand'
 import {
   DEFAULT_TIMEZONE,
   isMondayInTz as isMondayInTzHelper,
@@ -434,7 +435,7 @@ export async function sendWeeklyDigest(args: SendWeeklyDigestArgs): Promise<{
     logger.info('weekly_digest_re_rendered_on_drift', { userId: args.userId })
   }
 
-  const subject = `Employ · weekly · ${snapshot.totalApplications} apps, ${snapshot.upcomingInterviews.length} interviews this week`
+  const subject = `${APP_NAME} · weekly · ${snapshot.totalApplications} apps, ${snapshot.upcomingInterviews.length} interviews this week`
   const result = await send({
     userId: args.userId,
     to: snapshot.userEmail,

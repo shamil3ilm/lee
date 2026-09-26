@@ -4,10 +4,13 @@ import { db } from '@/lib/db/client'
 import * as s from '@/lib/db/schema'
 import {
   AI_CALL_LOG_RETENTION_DAYS,
+  DEAD_JOB_RETENTION_DAYS,
   DISMISSED_DISCOVERY_RETENTION_DAYS,
+  DONE_JOB_RETENTION_DAYS,
   GMAIL_THREAD_RETENTION_DAYS,
   compactDiscoveryPayloads,
   pruneAiCallLogs,
+  pruneQueueJobs,
   tombstoneDismissedDiscoveries,
   pruneProcessedGmailThreads,
   runRetention,
@@ -253,12 +256,33 @@ describe('runRetention', () => {
     await makeApplication(u.id, j.id)
     await aiLog(u.id, daysAgo(365))
     await db.insert(s.processedGmailThreads).values({ userId: u.id, threadId: 't', processedAt: daysAgo(100) })
+    await db.insert(s.queueJobs).values({ type: 't', status: 'done', finishedAt: daysAgo(20) })
     const result = await runRetention(NOW)
     expect(result).toEqual({
       tombstonedDiscoveries: 0,
       aiCallLogs: 1,
       gmailThreads: 1,
       compactedDiscoveries: 0,
+      queueJobs: 1,
     })
+  })
+})
+
+describe('pruneQueueJobs', () => {
+  it(`deletes done jobs after ${DONE_JOB_RETENTION_DAYS} days and dead jobs after ${DEAD_JOB_RETENTION_DAYS}`, async () => {
+    const rows = await db
+      .insert(s.queueJobs)
+      .values([
+        { type: 't', status: 'done', finishedAt: daysAgo(DONE_JOB_RETENTION_DAYS + 1) },
+        { type: 't', status: 'done', finishedAt: daysAgo(DONE_JOB_RETENTION_DAYS - 1) },
+        { type: 't', status: 'dead', finishedAt: daysAgo(DONE_JOB_RETENTION_DAYS + 1) },
+        { type: 't', status: 'dead', finishedAt: daysAgo(DEAD_JOB_RETENTION_DAYS + 1) },
+        { type: 't', status: 'failed', createdAt: daysAgo(90) },
+        { type: 't', status: 'queued', createdAt: daysAgo(90) },
+      ])
+      .returning()
+    expect(await pruneQueueJobs(NOW, { batchSize: 1 })).toBe(2)
+    const left = await db.select().from(s.queueJobs)
+    expect(left.map((r) => r.id).sort()).toEqual([rows[1]!.id, rows[2]!.id, rows[4]!.id, rows[5]!.id].sort())
   })
 })

@@ -2,6 +2,8 @@ import type { ComponentType } from 'react'
 import { signIn } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { LogoMark } from '@/components/brand/logo'
+import { APP_NAME, APP_TAGLINE } from '@/lib/brand'
 
 // v17 §9.1 — the E2E test sign-in button exists only in local development.
 // The literal NODE_ENV check is folded by `next build`, so neither the import
@@ -22,9 +24,10 @@ export default async function SignInPage() {
   return (
     <div className="mx-auto mt-32 max-w-sm px-4">
       <Card>
-        <CardHeader className="text-center">
-          <CardTitle className="text-xl">Sign in to Employ</CardTitle>
-          <CardDescription>Personal job-search tracker</CardDescription>
+        <CardHeader className="items-center text-center">
+          <LogoMark size={56} className="mb-2" />
+          <CardTitle className="text-xl">Sign in to {APP_NAME}</CardTitle>
+          <CardDescription>{APP_TAGLINE}</CardDescription>
         </CardHeader>
         <CardContent>
           <form

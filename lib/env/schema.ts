@@ -30,6 +30,9 @@ export const envSchema = z
     FIRECRAWL_API_KEY: z.string().optional(),
     GITHUB_TOKEN: z.string().optional(),
     CRON_SECRET: z.string().min(32),
+    // v19 — shared HMAC secret for the optional GitHub Actions queue worker
+    // (POST /api/internal/queue/drain). Unset = the endpoint is disabled.
+    QUEUE_WORKER_SECRET: z.string().min(32).optional(),
     // v8 — decision provider selection. Default runs Groq (existing key)
     // with a heuristic-on-failure fallback. `laya` activates a self-hosted
     // Laya Space via HTTP; kept optional in v8 because the endpoint is

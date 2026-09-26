@@ -1,4 +1,5 @@
 import type { ProviderId, ProviderInfo } from './types'
+import { APP_NAME } from '@/lib/brand'
 
 /**
  * v14 — static provider catalogue. Client-safe (no secrets, no I/O).
@@ -120,6 +121,6 @@ export const RECOMMENDED: Readonly<Record<ProviderId, readonly string[]>> = {
 
 /** OpenRouter attribution headers; `HTTP-Referer` is added from NEXTAUTH_URL at call time. */
 export const OPENROUTER_APP_HEADERS: Readonly<Record<string, string>> = {
-  'X-Title': 'Employ Model Playground',
-  'X-OpenRouter-Title': 'Employ Model Playground',
+  'X-Title': `${APP_NAME} Model Playground`,
+  'X-OpenRouter-Title': `${APP_NAME} Model Playground`,
 }
