@@ -7,13 +7,12 @@ import { getAIProviderForUser } from '@/lib/ai'
 import { syncGmail } from '@/lib/gmail/sync'
 import { NoGoogleAccountError } from '@/lib/google/tokens'
 import * as profileQ from '@/lib/db/queries/profile'
-import * as activitiesQ from '@/lib/db/queries/activities'
 import {
   alreadySentThisTzWeek,
   isMondayInTz,
   sendWeeklyDigest,
 } from '@/lib/digest/weekly'
-import { alreadyNudgedRecently, findFollowupCandidates } from '@/lib/followups/service'
+import { recordFollowupNudges } from '@/lib/followups/service'
 import { sendDiscoveryEmailIfEnabled } from '@/lib/notifications/discovery'
 import { recordDueReminders } from '@/lib/reminders/service'
 import { mapWithConcurrency } from '@/lib/util/concurrency'
@@ -76,19 +75,11 @@ function message(e: unknown): string {
 async function runCheapSteps(user: User): Promise<UserTotals> {
   const t = emptyUserTotals()
 
-  // v4.2 — follow-up nudges. Emit a `followup_recommended` activity per
-  // candidate so the dashboard "Needs attention" widget can surface them.
-  // Idempotent: alreadyNudgedRecently prevents duplicate rows on re-runs.
+  // v4.2 — follow-up nudges: one `followup_recommended` activity per
+  // candidate for the dashboard "Needs attention" widget. Idempotent: apps
+  // nudged in the last 24 h are skipped (one batched check, one insert).
   try {
-    const candidates = await findFollowupCandidates(user.id)
-    for (const c of candidates) {
-      if (await alreadyNudgedRecently(user.id, c.applicationId)) continue
-      await activitiesQ.log(user.id, c.applicationId, 'followup_recommended', {
-        daysSince: c.daysSince,
-        suggestedInterval: c.suggestedInterval,
-      })
-      t.followups_recommended += 1
-    }
+    t.followups_recommended += await recordFollowupNudges(user.id)
   } catch (e) {
     t.errors.push(`user ${user.id} followups: ${message(e)}`)
   }
