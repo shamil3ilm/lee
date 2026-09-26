@@ -3,6 +3,7 @@ import { requireUserId } from '@/lib/auth/require-session'
 import * as contactsQ from '@/lib/db/queries/contacts'
 import * as companiesQ from '@/lib/db/queries/companies'
 import { AddContactDialog } from '@/components/add-contact-dialog'
+import { ContactActions } from '@/components/contact-actions'
 import { PageHeader } from '@/components/page-header'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -19,6 +20,9 @@ interface ContactRow {
   name: string
   role: string | null
   email: string | null
+  phone: string | null
+  linkedinUrl: string | null
+  notes: string | null
   companyId: string | null
 }
 
@@ -41,15 +45,16 @@ function groupByCompany(
 
 export default async function ContactsPage() {
   const userId = await requireUserId()
-  const [contacts, companies, companyNames] = await Promise.all([
+  const [contacts, companyNames] = await Promise.all([
     contactsQ.list(userId),
-    companiesQ.listWatched(userId),
     companiesQ.listNames(userId),
   ])
-  const companyOptions: CompanyOption[] = companies.map((c) => ({ id: c.id, name: c.name }))
-  // Group labels come from every company, not just watched ones — contacts
-  // at unwatched companies were each shown under a separate
-  // "(unknown company)" heading (v17 §9.1 visual QA).
+  // Every company (watched or not) is both a group label and a pick in the
+  // add/edit forms — a contact at an unwatched company must stay editable
+  // without losing its company (v17 §9.1 visual QA).
+  const companyOptions: CompanyOption[] = [...companyNames].sort((a, b) =>
+    a.name.localeCompare(b.name),
+  )
   const groups = groupByCompany(contacts, companyNames)
 
   return (
@@ -78,19 +83,34 @@ export default async function ContactsPage() {
                 {g.rows.map((c) => (
                   <li key={c.id}>
                     <Card>
-                      <CardContent className="py-3">
-                        <div className="font-medium">{c.name}</div>
-                        <div className="mt-0.5 text-xs text-muted-foreground">
-                          {c.role ?? 'No role'}
-                          {c.email ? (
-                            <>
-                              {' · '}
-                              <a className="hover:underline" href={`mailto:${c.email}`}>
-                                {c.email}
-                              </a>
-                            </>
-                          ) : null}
+                      <CardContent className="flex items-start gap-2 py-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium">{c.name}</div>
+                          <div className="mt-0.5 text-xs text-muted-foreground">
+                            {c.role ?? 'No role'}
+                            {c.email ? (
+                              <>
+                                {' · '}
+                                <a className="hover:underline" href={`mailto:${c.email}`}>
+                                  {c.email}
+                                </a>
+                              </>
+                            ) : null}
+                          </div>
                         </div>
+                        <ContactActions
+                          contact={{
+                            id: c.id,
+                            name: c.name,
+                            role: c.role,
+                            email: c.email,
+                            phone: c.phone,
+                            linkedinUrl: c.linkedinUrl,
+                            companyId: c.companyId,
+                            notes: c.notes,
+                          }}
+                          companies={companyOptions}
+                        />
                       </CardContent>
                     </Card>
                   </li>

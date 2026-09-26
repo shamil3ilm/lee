@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { contacts } from '@/lib/db/schema'
 
@@ -28,6 +28,15 @@ export async function list(
     where,
     orderBy: (c, { asc }) => asc(c.name),
   })
+}
+
+/** id + name of every contact, for pickers (lean: no notes/phone/etc). */
+export async function listOptions(userId: string): Promise<Array<{ id: string; name: string }>> {
+  return db
+    .select({ id: contacts.id, name: contacts.name })
+    .from(contacts)
+    .where(eq(contacts.userId, userId))
+    .orderBy(asc(contacts.name))
 }
 
 export async function getById(userId: string, id: string): Promise<Contact | undefined> {
