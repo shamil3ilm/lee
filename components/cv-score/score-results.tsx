@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { Info } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -9,10 +10,20 @@ import { isSkipped, type ComponentHeadlineKey, type Severity } from '@/lib/cv-sc
 import { HEADLINE_ORDER, type CvScoreRecord, type HistoryPoint } from './client'
 import { FindingsList } from './findings-list'
 import { HeadlineCard } from './headline-card'
-import { HistoryChart } from './history-chart'
 import { KeywordPanel } from './keyword-panel'
 import { RequirementFitTable } from './requirement-fit-table'
 import { ScoreRing } from './score-ring'
+
+// recharts is ~117 KB gz: load the history chart only when its tab opens.
+// The skeleton matches the chart's fixed h-48 so the tab does not jump.
+function HistoryChartSkeleton() {
+  return <div className="h-48 w-full animate-pulse rounded-md bg-muted/40" aria-hidden />
+}
+
+const HistoryChart = dynamic(
+  () => import('./history-chart').then((m) => m.HistoryChart),
+  { ssr: false, loading: HistoryChartSkeleton },
+)
 
 const JD_ONLY: ComponentHeadlineKey[] = ['roleMatch', 'skillsMatch', 'experienceMatch']
 
