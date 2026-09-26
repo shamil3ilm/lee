@@ -15,6 +15,8 @@ import {
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { FeedbackButtons } from '@/components/feedback-buttons'
+import { UsageBadge } from '@/components/ai/usage-badge'
+import type { AiUsage } from '@/lib/ai/usage-types'
 
 const DEBRIEF_TEMPLATE = `## What went well
 -
@@ -66,6 +68,7 @@ export function DebriefDialog({
   const [lastGeneratedDocId, setLastGeneratedDocId] = useState<string | null>(
     existingDebriefDocId ?? null,
   )
+  const [lastUsage, setLastUsage] = useState<AiUsage | null>(null)
 
   const notesAreMeaningful = notes.trim().length > 0 && notes.trim() !== DEBRIEF_TEMPLATE.trim()
 
@@ -116,6 +119,7 @@ export function DebriefDialog({
         skipped?: boolean
         message?: string
         fixHint?: string
+        usage?: AiUsage | null
       }
       if (json.skipped) {
         toast.warning(
@@ -130,6 +134,7 @@ export function DebriefDialog({
         return
       }
       setLastGeneratedDocId(json.documentId)
+      setLastUsage(json.usage ?? null)
       toast.success('AI summary generated')
       router.refresh()
     } catch {
@@ -215,6 +220,7 @@ export function DebriefDialog({
                 <FeedbackButtons documentId={lastGeneratedDocId} caption={null} />
               </div>
             ) : null}
+            {lastGeneratedDocId ? <UsageBadge usage={lastUsage} /> : null}
           </div>
         </div>
         <DialogFooter>

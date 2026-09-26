@@ -127,6 +127,13 @@
       "when": 1790411122305,
       "tag": "0017_perf_indexes_retention",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790415221343,
+      "tag": "0018_ai_quota_snapshots",
+      "breakpoints": true
     }
   ]
 }

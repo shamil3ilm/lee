@@ -86,21 +86,21 @@ export function AIUsageCard({ data, className }: AIUsageCardProps) {
             <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <span>
                 <span className="text-lg font-semibold tabular-nums text-foreground">
+                  {formatNumber(data.totalPromptTokens + data.totalCompletionTokens)}
+                </span>{' '}
+                tokens
+              </span>
+              <span>
+                <span className="text-lg font-semibold tabular-nums text-foreground">
                   {formatNumber(data.totalCalls)}
                 </span>{' '}
                 calls
               </span>
               <span>
-                <span className="text-lg font-semibold tabular-nums text-foreground">
+                <span className="tabular-nums text-foreground">
                   {formatCost(data.totalEstimatedCostUsd)}
                 </span>{' '}
-                estimated cost
-              </span>
-              <span>
-                <span className="tabular-nums text-foreground">
-                  {formatNumber(data.totalPromptTokens + data.totalCompletionTokens)}
-                </span>{' '}
-                tokens
+                estimated; free tier = $0
               </span>
               <span>
                 <span

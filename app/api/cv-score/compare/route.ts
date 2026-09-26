@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { withAiUsage } from '@/lib/ai/usage'
 import { z } from 'zod'
 import { compareCvs } from '@/lib/cv-score/compare'
 import {
@@ -36,15 +37,17 @@ export async function POST(req: Request): Promise<NextResponse> {
     if (!parsed.success) return badRequest('Provide two valid document ids.')
     const { documentIdA, documentIdB, applicationId, includeAi } = parsed.data
     const ai = applicationId && includeAi !== false ? await aiForUser(userId) : null
-    const comparison = await compareCvs({
-      userId,
-      documentIdA,
-      documentIdB,
-      applicationId: applicationId ?? null,
-      ai,
-      includeAi: includeAi ?? true,
-    })
-    return NextResponse.json({ comparison })
+    const { result: comparison, usage } = await withAiUsage({ userId }, () =>
+      compareCvs({
+        userId,
+        documentIdA,
+        documentIdB,
+        applicationId: applicationId ?? null,
+        ai,
+        includeAi: includeAi ?? true,
+      }),
+    )
+    return NextResponse.json({ comparison, usage })
   } catch (err) {
     return errorResponse(err, 'cv_score_compare_failed', 'Could not compare these CVs.')
   }

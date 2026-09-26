@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray, isNotNull } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { aiCallLogs } from '@/lib/db/schema'
+import type { AiUsage } from '@/lib/ai/usage-types'
 
 /**
  * v10 — AI call log query helpers. Keep this thin: analytics reads via
@@ -114,4 +115,87 @@ export async function listRated(userId: string): Promise<AiCallLog[]> {
     .from(aiCallLogs)
     .where(and(eq(aiCallLogs.userId, userId), isNotNull(aiCallLogs.userRating)))
     .orderBy(desc(aiCallLogs.createdAt))
+}
+
+// ---------------------------------------------------------------------------
+// v18 — per-result usage for AI output rendered after the fact (documents,
+// discovery reasoning). Only the handful of usage columns are selected.
+// ---------------------------------------------------------------------------
+
+const USAGE_COLUMNS = {
+  id: aiCallLogs.id,
+  documentId: aiCallLogs.documentId,
+  provider: aiCallLogs.provider,
+  model: aiCallLogs.model,
+  status: aiCallLogs.status,
+  promptTokens: aiCallLogs.promptTokens,
+  completionTokens: aiCallLogs.completionTokens,
+  latencyMs: aiCallLogs.latencyMs,
+  audioSeconds: aiCallLogs.audioSeconds,
+}
+
+interface UsageRow {
+  id: string
+  provider: string
+  model: string | null
+  status: string
+  promptTokens: number | null
+  completionTokens: number | null
+  latencyMs: number | null
+  audioSeconds: number | null
+}
+
+export function usageFromRow(r: UsageRow): AiUsage {
+  const ok = r.status === 'ok'
+  const failed = r.status === 'error' || r.status === 'rate_limited'
+  const usage: AiUsage = {
+    callId: r.id,
+    provider: r.provider,
+    model: r.model ?? null,
+    inputTokens: r.promptTokens ?? 0,
+    outputTokens: r.completionTokens ?? 0,
+    latencyMs: r.latencyMs ?? 0,
+    calls: ok ? 1 : 0,
+    failedAttempts: failed ? 1 : 0,
+    rateLimited: r.status === 'rate_limited' ? 1 : 0,
+    cached: false,
+    skipped: r.status === 'skipped',
+  }
+  if (r.audioSeconds != null) usage.audioSeconds = r.audioSeconds
+  return usage
+}
+
+/** Usage of one call, scoped to its owner. */
+export async function getUsage(userId: string, id: string): Promise<AiUsage | null> {
+  const [row] = await db
+    .select(USAGE_COLUMNS)
+    .from(aiCallLogs)
+    .where(and(eq(aiCallLogs.id, id), eq(aiCallLogs.userId, userId)))
+    .limit(1)
+  return row ? usageFromRow(row) : null
+}
+
+/**
+ * Usage of the latest successful generation per document, for the documents
+ * a page shows. One query on the ai_call_logs(document_id) partial index.
+ */
+export async function usageByDocument(
+  userId: string,
+  documentIds: string[],
+): Promise<Record<string, AiUsage>> {
+  if (documentIds.length === 0) return {}
+  const rows = await db
+    .selectDistinctOn([aiCallLogs.documentId], USAGE_COLUMNS)
+    .from(aiCallLogs)
+    .where(
+      and(
+        inArray(aiCallLogs.documentId, documentIds),
+        eq(aiCallLogs.userId, userId),
+        eq(aiCallLogs.status, 'ok'),
+      ),
+    )
+    .orderBy(aiCallLogs.documentId, desc(aiCallLogs.createdAt))
+  const out: Record<string, AiUsage> = {}
+  for (const r of rows) if (r.documentId) out[r.documentId] = usageFromRow(r)
+  return out
 }

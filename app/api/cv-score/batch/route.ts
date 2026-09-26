@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { withAiUsage } from '@/lib/ai/usage'
 import { z } from 'zod'
 import { batchScoreMaster } from '@/lib/cv-score/compare'
 import {
@@ -30,8 +31,10 @@ export async function POST(req: Request): Promise<NextResponse> {
     if (!parsed.success) return badRequest()
     const includeAi = parsed.data?.includeAi ?? false
     const ai = includeAi ? await aiForUser(userId) : null
-    const batch = await batchScoreMaster({ userId, ai, includeAi })
-    return NextResponse.json({ batch })
+    const { result: batch, usage } = await withAiUsage({ userId }, () =>
+      batchScoreMaster({ userId, ai, includeAi }),
+    )
+    return NextResponse.json({ batch, usage })
   } catch (err) {
     return errorResponse(err, 'cv_score_batch_failed', 'Could not run batch scoring.')
   }

@@ -43,6 +43,8 @@ const DocumentRenameDialog = dynamic(
   { ssr: false },
 )
 import { FeedbackButtons } from '@/components/feedback-buttons'
+import { UsageBadge } from '@/components/ai/usage-badge'
+import type { AiUsage } from '@/lib/ai/usage-types'
 import { logImplicitAction } from '@/lib/ui/implicit-signals'
 
 // The merge dialog pulls in @dnd-kit; keep it out of /applications/[id]'s
@@ -94,6 +96,8 @@ interface DocumentsCardProps {
   documents: Document[]
   /** Latest CV score per document id (CV rows only). */
   scores?: Record<string, DocScore>
+  /** v18 — AI usage per document id (tokens · model · latency). */
+  usage?: Record<string, AiUsage>
 }
 
 const KIND_LABELS: Record<DocumentKind, string> = {
@@ -132,7 +136,12 @@ function generateEndpoint(applicationId: string, kind: DocumentKind): string | n
   return null
 }
 
-export function DocumentsCard({ applicationId, documents, scores = {} }: DocumentsCardProps) {
+export function DocumentsCard({
+  applicationId,
+  documents,
+  scores = {},
+  usage = {},
+}: DocumentsCardProps) {
   const router = useRouter()
   const [busy, setBusy] = useState<null | 'tailored' | 'cover_letter'>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -252,11 +261,14 @@ export function DocumentsCard({ applicationId, documents, scores = {} }: Documen
                       <StalenessBadge documentId={doc.id} />
                     </div>
                     {isRatable(kind) ? (
-                      <FeedbackButtons
-                        documentId={doc.id}
-                        caption={null}
-                        className="mt-1"
-                      />
+                      <>
+                        <FeedbackButtons
+                          documentId={doc.id}
+                          caption={null}
+                          className="mt-1"
+                        />
+                        <UsageBadge usage={usage[doc.id]} className="mt-1" />
+                      </>
                     ) : null}
                   </div>
                   <DropdownMenu>

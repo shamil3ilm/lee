@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { syncFromGithub } from '@/lib/documents/master'
 import { getAIProviderForUser } from '@/lib/ai'
+import { withAiUsage } from '@/lib/ai/usage'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -19,8 +20,11 @@ export async function POST(req: Request): Promise<NextResponse> {
     const body = await req.json()
     const { username } = schema.parse(body)
     const ai = await getAIProviderForUser(userId)
-    const { proposed } = await syncFromGithub({ userId, username, ai })
-    return NextResponse.json({ proposed })
+    const {
+      result: { proposed },
+      usage,
+    } = await withAiUsage({ userId }, () => syncFromGithub({ userId, username, ai }))
+    return NextResponse.json({ proposed, usage })
   } catch (err) {
     logger.error('github sync failed', {
       err: err instanceof Error ? err.message : String(err),

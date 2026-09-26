@@ -3,6 +3,10 @@ import { auth } from '@/lib/auth'
 import { resolveAiKey } from '@/lib/settings/secrets'
 import { logger } from '@/lib/logger'
 import { fetchWithTimeout, GROQ_TRANSCRIBE_TIMEOUT_MS } from '@/lib/net/timeout'
+import { recordAiCall } from '@/lib/ai/log-call'
+import { AiUsageScope } from '@/lib/ai/usage'
+import { parseGroqRateLimitHeaders } from '@/lib/ai/rate-limit-headers'
+import { recordQuotaSnapshot } from '@/lib/ai/quota-snapshot'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -14,12 +18,24 @@ export const maxDuration = 30
 // Loose cap so a runaway upload can't stall the function. Whisper large v3
 // happily transcribes ~25MB files; we cap at 20MB.
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+const TRANSCRIBE_MODEL = 'whisper-large-v3'
+
+/** Audio duration Groq reports (verbose_json `duration`, or an OpenAI-style usage block). */
+function reportedSeconds(payload: { duration?: unknown; usage?: { seconds?: unknown } }): number | null {
+  const d = payload.duration ?? payload.usage?.seconds
+  return typeof d === 'number' && Number.isFinite(d) && d >= 0 ? d : null
+}
 
 /**
  * POST /api/voice/transcribe
  * Multipart body with a `file` field (audio blob). Forwards the audio to
  * Groq's OpenAI-compatible whisper-large-v3 endpoint and returns
- * `{text: string}`. Uses the user's Groq key (Settings › AI), else GROQ_API_KEY.
+ * `{text: string, usage}`. Uses the user's Groq key (Settings › AI), else
+ * GROQ_API_KEY.
+ *
+ * Every upstream call is logged to ai_call_logs (model, latency, HTTP
+ * status, audio seconds when Groq reports them, else the upload size —
+ * never the audio or the transcript) and refreshes the rate-limit snapshot.
  */
 export async function POST(req: Request): Promise<NextResponse> {
   try {
@@ -68,19 +84,64 @@ export async function POST(req: Request): Promise<NextResponse> {
           ? 'voice.mp4'
           : 'voice.webm'
     upstream.append('file', file, filename)
-    upstream.append('model', 'whisper-large-v3')
-    upstream.append('response_format', 'json')
+    upstream.append('model', TRANSCRIBE_MODEL)
+    // verbose_json carries the audio `duration`, which the quota meters need.
+    upstream.append('response_format', 'verbose_json')
+
+    const scope = new AiUsageScope(userId)
+    const log = (x: {
+      status: string
+      latencyMs: number
+      httpStatus: number | null
+      audioSeconds?: number | null
+      error?: string
+    }) =>
+      scope.run(() =>
+        recordAiCall('groq', {
+          status: x.status,
+          latency: x.latencyMs,
+          error: x.error,
+          meta: { userId, kind: 'voice_transcribe' },
+          model: TRANSCRIBE_MODEL,
+          httpStatus: x.httpStatus,
+          audioSeconds: x.audioSeconds ?? null,
+          inputBytes: x.audioSeconds == null ? file.size : null,
+        }),
+      )
 
     const start = Date.now()
-    const res = await fetchWithTimeout(
-      'https://api.groq.com/openai/v1/audio/transcriptions',
-      { method: 'POST', headers: { authorization: `Bearer ${apiKey}` }, body: upstream },
-      { timeoutMs: GROQ_TRANSCRIBE_TIMEOUT_MS, label: 'groq transcription' },
-    )
+    let res: Response
+    try {
+      res = await fetchWithTimeout(
+        'https://api.groq.com/openai/v1/audio/transcriptions',
+        { method: 'POST', headers: { authorization: `Bearer ${apiKey}` }, body: upstream },
+        { timeoutMs: GROQ_TRANSCRIBE_TIMEOUT_MS, label: 'groq transcription' },
+      )
+    } catch (err) {
+      await log({
+        status: 'error',
+        latencyMs: Date.now() - start,
+        httpStatus: null,
+        error: err instanceof Error ? err.message : String(err),
+      })
+      throw err
+    }
     const latencyMs = Date.now() - start
+    await recordQuotaSnapshot({
+      userId,
+      provider: 'groq',
+      model: TRANSCRIBE_MODEL,
+      snapshot: parseGroqRateLimitHeaders(res.headers),
+    })
 
     if (!res.ok) {
       const bodyText = await res.text().catch(() => '')
+      await log({
+        status: res.status === 429 ? 'rate_limited' : 'error',
+        latencyMs,
+        httpStatus: res.status,
+        error: `groq transcription ${res.status}`,
+      })
       logger.error('voice_transcribe_upstream_error', {
         status: res.status,
         latencyMs,
@@ -94,10 +155,18 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     const payload = (await res.json().catch(() => ({}))) as {
       text?: string
+      duration?: unknown
+      usage?: { seconds?: unknown }
     }
     const text = typeof payload.text === 'string' ? payload.text.trim() : ''
+    await log({
+      status: 'ok',
+      latencyMs,
+      httpStatus: res.status,
+      audioSeconds: reportedSeconds(payload),
+    })
     logger.info('voice_transcribe_ok', { latencyMs, chars: text.length })
-    return NextResponse.json({ text })
+    return NextResponse.json({ text, usage: scope.usage })
   } catch (err) {
     logger.error('POST /api/voice/transcribe failed', {
       err: err instanceof Error ? err.message : String(err),

@@ -6,6 +6,7 @@ import { requireUserId } from '@/lib/auth/require-session'
 import { saveProfile } from '@/lib/profile/service'
 import { importProfile } from '@/lib/profile/importer'
 import { getAIProviderForUser, findModel } from '@/lib/ai'
+import { withAiUsage } from '@/lib/ai/usage'
 import { logger } from '@/lib/logger'
 import type { NewUserProfile } from '@/lib/db/queries/profile'
 
@@ -150,7 +151,8 @@ export async function importProfileAction(
     }
 
     const ai = await getAIProviderForUser(userId)
-    await importProfile({ userId, cvText, profileMd, ai })
+    // Scoped so the parse call's log row is attributed to the user.
+    await withAiUsage({ userId }, () => importProfile({ userId, cvText, profileMd, ai }))
     revalidatePath('/settings/profile')
     return { success: true }
   } catch (err) {

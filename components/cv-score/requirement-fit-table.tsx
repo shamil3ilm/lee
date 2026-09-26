@@ -1,6 +1,8 @@
 import { CheckCircle2, ShieldAlert } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { FeedbackButtons } from '@/components/feedback-buttons'
+import { UsageBadge } from '@/components/ai/usage-badge'
+import type { AiUsage } from '@/lib/ai/usage-types'
 import type { RequirementFitDetails } from '@/lib/cv-score/requirement-fit'
 
 const STATUS_TONE = { met: 'emerald', partial: 'violet', missing: 'rose' } as const
@@ -8,10 +10,12 @@ const STATUS_TONE = { met: 'emerald', partial: 'violet', missing: 'rose' } as co
 interface RequirementFitTableProps {
   details: RequirementFitDetails
   aiCallId: string | null
+  /** v18 — usage of the response that produced this check (absent on stored results). */
+  usage?: AiUsage | null
 }
 
 /** Per-requirement AI assessment with verified-evidence badges + rating. */
-export function RequirementFitTable({ details, aiCallId }: RequirementFitTableProps) {
+export function RequirementFitTable({ details, aiCallId, usage }: RequirementFitTableProps) {
   return (
     <div className="space-y-3">
       <div className="overflow-x-auto">
@@ -57,6 +61,7 @@ export function RequirementFitTable({ details, aiCallId }: RequirementFitTablePr
           caption="Was this AI requirement check accurate?"
         />
       ) : null}
+      <UsageBadge usage={usage} />
     </div>
   )
 }

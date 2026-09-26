@@ -22,6 +22,9 @@ import { DiscoveryCalibrationCard } from '@/components/analytics/discovery-calib
 import { WeeklyActivityCard } from '@/components/analytics/weekly-activity-card'
 import { StatusDistributionCard } from '@/components/analytics/status-distribution-card'
 import { AIUsageCard } from '@/components/analytics/ai-usage-card'
+import { AITokensCard } from '@/components/analytics/ai-tokens-card'
+import { aiUsageBreakdown } from '@/lib/analytics/ai-usage-breakdown'
+import { quotaMeters } from '@/lib/ai/quota'
 import { MonthlyExpensesCard } from '@/components/analytics/monthly-expenses-card'
 import { BudgetVsActualCard } from '@/components/analytics/budget-vs-actual-card'
 import { MonthOverMonthCard } from '@/components/analytics/month-over-month-card'
@@ -62,6 +65,8 @@ export default async function AnalyticsPage() {
     categoryTrend,
     vendors,
     adherenceHistory,
+    aiTokens,
+    aiQuota,
   ] = await Promise.all([
     sourceFunnel(userId),
     responseTimeDistribution(userId),
@@ -76,6 +81,8 @@ export default async function AnalyticsPage() {
     expenseCategoryTrend(userId, 6),
     topVendors(userId, 3, 10),
     budgetAdherenceHistory(userId, 12),
+    aiUsageBreakdown(userId, 30),
+    quotaMeters(userId),
   ])
 
   return (
@@ -97,6 +104,12 @@ export default async function AnalyticsPage() {
         <ExpenseCategoryTrendCard data={categoryTrend} />
         <TopVendorsCard data={vendors} />
         <BudgetAdherenceHistoryCard data={adherenceHistory} />
+        <AITokensCard
+          data={aiTokens}
+          meters={aiQuota}
+          estimatedCostUsd={aiUsage.totalEstimatedCostUsd}
+          className="xl:col-span-3"
+        />
         <AIUsageCard data={aiUsage} className="xl:col-span-3" />
       </div>
     </div>

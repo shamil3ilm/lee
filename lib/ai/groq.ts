@@ -56,6 +56,9 @@ import {
 } from './types'
 import type { CallMeta } from './log'
 import { recordAiCall, type AiCallRecord } from './log-call'
+import { AiHttpError, attemptStatus, errorMessage, httpStatusOf } from './attempts'
+import { parseGroqRateLimitHeaders, type RateLimitSnapshot } from './rate-limit-headers'
+import { recordQuotaSnapshot } from './quota-snapshot'
 import { fetchWithTimeout, GROQ_ATTEMPT_TIMEOUT_MS } from '@/lib/net/timeout'
 import { stripLatexFencing } from './utils/latex'
 import {
@@ -99,6 +102,7 @@ export class GroqProvider implements AIProvider {
     text: string
     promptTokens: number
     completionTokens: number
+    rateLimit: RateLimitSnapshot | null
   }> {
     // Fresh timeout per attempt. "timed out" is not in the retry regex in
     // generate(), so a hung upstream costs one attempt, not three.
@@ -119,9 +123,10 @@ export class GroqProvider implements AIProvider {
       },
       { timeoutMs: GROQ_ATTEMPT_TIMEOUT_MS, label: 'groq' },
     )
+    const rateLimit = parseGroqRateLimitHeaders(res.headers)
     if (!res.ok) {
       const body = await res.text().catch(() => '')
-      throw new Error(`groq ${res.status}: ${body.slice(0, 400)}`)
+      throw new AiHttpError(`groq ${res.status}: ${body.slice(0, 400)}`, res.status, rateLimit)
     }
     const json = (await res.json()) as {
       choices: { message: { content: string } }[]
@@ -133,6 +138,7 @@ export class GroqProvider implements AIProvider {
       text: content,
       promptTokens: json.usage?.prompt_tokens ?? 0,
       completionTokens: json.usage?.completion_tokens ?? 0,
+      rateLimit,
     }
   }
 
@@ -144,21 +150,37 @@ export class GroqProvider implements AIProvider {
       ...meta,
       promptHash: meta.promptHash ?? hashPrompt(prompt),
     }
+    // Failed attempts never feed an FK, so their rows stay deferred.
+    const attemptMeta: CallMeta = { ...metaWithHash, onLogged: undefined }
     let lastError: unknown
     for (const wait of backoffs) {
       if (wait > 0) await new Promise((r) => setTimeout(r, wait))
+      const attemptStart = Date.now()
       try {
-        const { text, promptTokens, completionTokens } = await this.generateOnce(prompt)
+        const { text, promptTokens, completionTokens, rateLimit } = await this.generateOnce(prompt)
+        await this.snapshot(meta, rateLimit)
         await this.logCall({
           status: 'ok',
           latency: Date.now() - start,
           promptTokens,
           completionTokens,
           meta: metaWithHash,
+          model: this.model,
+          httpStatus: 200,
         })
         return text
       } catch (e) {
         lastError = e
+        if (e instanceof AiHttpError) await this.snapshot(meta, e.rateLimit)
+        // One row per failed attempt, so retries and 429s are visible.
+        await this.logCall({
+          status: attemptStatus(e),
+          latency: Date.now() - attemptStart,
+          error: errorMessage(e),
+          meta: attemptMeta,
+          model: this.model,
+          httpStatus: httpStatusOf(e),
+        })
         const msg = (e as Error).message ?? ''
         // Retry only on transient errors.
         if (!/\b(503|500|429|Service Unavailable|overloaded|rate)\b/i.test(msg)) {
@@ -166,18 +188,21 @@ export class GroqProvider implements AIProvider {
         }
       }
     }
-    await this.logCall({
-      status: 'error',
-      latency: Date.now() - start,
-      error: lastError instanceof Error ? lastError.message : String(lastError),
-      meta: metaWithHash,
-    })
     throw lastError
   }
 
+  private async snapshot(meta: CallMeta, rateLimit: RateLimitSnapshot | null): Promise<void> {
+    await recordQuotaSnapshot({
+      userId: meta.userId,
+      provider: 'groq',
+      model: this.model,
+      snapshot: rateLimit,
+    })
+  }
+
   /**
-   * v10.1 — one ai_call_logs row per generate() (prompt hash + version + doc
-   * link if provided). Written after the response when called inside a
+   * v10.1 — one ai_call_logs row per successful generate() plus one per
+   * failed attempt (prompt hash + version + doc link if provided). Written after the response when called inside a
    * request; inline when the caller needs the id via `onLogged`. See
    * lib/ai/log-call.ts.
    */

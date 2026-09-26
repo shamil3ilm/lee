@@ -13,6 +13,8 @@
  *      Readability, Structure).
  */
 
+import type { AiUsage } from '@/lib/ai/usage-types'
+
 export type CvSourceKind = 'master_cv' | 'tailored_cv' | 'latex_cv' | 'upload'
 
 export interface ScorableRole {
@@ -177,6 +179,8 @@ export interface CvScoreResult {
   findings: CvFinding[]
   skipped: SkippedEntry[]
   aiCallId: string | null
+  /** v18 — AI usage of the response that produced this result; absent on stored results. */
+  usage?: AiUsage | null
   source: { kind: CvSourceKind; documentId?: string | null; label: string }
   target: { applicationId: string; title: string; companyName?: string } | null
 }

@@ -118,6 +118,7 @@ export default async function DiscoveriesPage({
         applyUrl: d.applyUrl,
       },
       reasoning: (d.matchReasoning as DiscoveryReasoning | null) ?? null,
+      scoredByCallId: d.scoredByCallId,
       risk: risk ? toRiskView(risk, sourceName) : null,
     }
   })
@@ -130,6 +131,7 @@ export default async function DiscoveriesPage({
     sourceName: sourceNameById.get(d.sourceId) ?? 'unknown',
     normalized: toCompanySummary(d.normalized),
     reasoning: (d.matchReasoning as DiscoveryReasoning | null) ?? null,
+    scoredByCallId: d.scoredByCallId,
   }))
 
   const hasNext =

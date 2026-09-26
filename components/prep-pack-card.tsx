@@ -25,6 +25,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { FeedbackButtons } from '@/components/feedback-buttons'
+import { UsageBadge } from '@/components/ai/usage-badge'
+import type { AiUsage } from '@/lib/ai/usage-types'
 import { logImplicitAction } from '@/lib/ui/implicit-signals'
 import { relativeFromNow } from '@/lib/ui/date'
 
@@ -32,6 +34,8 @@ interface PrepPackCardProps {
   applicationId: string
   stages: InterviewStage[]
   prepDocs: Document[]
+  /** v18 — AI usage per document id (tokens · model · latency). */
+  usage?: Record<string, AiUsage>
 }
 
 const STAGE_KIND_LABELS: Record<string, string> = {
@@ -95,7 +99,12 @@ function latestPackForStage(
   return null
 }
 
-export function PrepPackCard({ applicationId, stages, prepDocs }: PrepPackCardProps) {
+export function PrepPackCard({
+  applicationId,
+  stages,
+  prepDocs,
+  usage = {},
+}: PrepPackCardProps) {
   const router = useRouter()
   const [busyStageId, setBusyStageId] = useState<string | null>(null)
   const [expandedDocIds, setExpandedDocIds] = useState<Set<string>>(new Set())
@@ -263,7 +272,10 @@ export function PrepPackCard({ applicationId, stages, prepDocs }: PrepPackCardPr
                     redFlags={entry.pack.redFlags}
                   />
                   <div className="flex items-center justify-between">
-                    <FeedbackButtons documentId={entry.doc.id} caption={null} />
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <FeedbackButtons documentId={entry.doc.id} caption={null} />
+                      <UsageBadge usage={usage[entry.doc.id]} />
+                    </div>
                     <Button
                       type="button"
                       variant="ghost"

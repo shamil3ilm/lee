@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { withAiUsage } from '@/lib/ai/usage'
 import { scoreCv } from '@/lib/cv-score/score'
 import { MAX_UPLOAD_BYTES } from '@/lib/cv-score/upload'
 import {
@@ -42,14 +43,16 @@ export async function POST(req: Request): Promise<NextResponse> {
     const includeAi = form.get('includeAi') !== 'false'
     const ai = applicationId && includeAi ? await aiForUser(userId) : null
     const bytes = new Uint8Array(await file.arrayBuffer())
-    const result = await scoreCv({
-      userId,
-      source: { upload: { name: file.name || 'upload', bytes } },
-      applicationId,
-      ai,
-      includeAi,
-    })
-    return NextResponse.json({ result })
+    const { result, usage } = await withAiUsage({ userId }, () =>
+      scoreCv({
+        userId,
+        source: { upload: { name: file.name || 'upload', bytes } },
+        applicationId,
+        ai,
+        includeAi,
+      }),
+    )
+    return NextResponse.json({ result: { ...result, usage } })
   } catch (err) {
     return errorResponse(err, 'cv_score_upload_failed', 'Could not score the uploaded CV.')
   }

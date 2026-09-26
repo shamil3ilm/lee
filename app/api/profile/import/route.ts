@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { importProfile } from '@/lib/profile/importer'
 import { getAIProviderForUser } from '@/lib/ai'
+import { withAiUsage } from '@/lib/ai/usage'
 import { logger } from '@/lib/logger'
 
 // Regular route handler for file uploads. Server Actions re-encode FormData
@@ -61,9 +62,11 @@ export async function POST(req: Request): Promise<NextResponse> {
     }
 
     const ai = await getAIProviderForUser(userId)
-    await importProfile({ userId, cvText, profileMd, ai })
+    const { usage } = await withAiUsage({ userId }, () =>
+      importProfile({ userId, cvText, profileMd, ai }),
+    )
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, usage })
   } catch (err) {
     logger.error('importProfile route failed', {
       err: err instanceof Error ? err.message : String(err),

@@ -17,6 +17,8 @@ import {
 } from '@/components/ui/select'
 import { EXPENSE_CATEGORIES } from '@/lib/expenses/categories'
 import { cn } from '@/lib/utils'
+import { UsageBadge } from '@/components/ai/usage-badge'
+import type { AiUsage } from '@/lib/ai/usage-types'
 
 type ProviderKind = 'heuristic' | 'groq' | 'laya'
 type DecisionType = 'choice' | 'yesNo' | 'score'
@@ -33,6 +35,7 @@ interface ResultRow {
   }
   error?: string
   raw?: unknown
+  usage?: AiUsage | null
 }
 
 const PROVIDER_LABEL: Record<ProviderKind, string> = {
@@ -642,6 +645,7 @@ function ResultCard({
             {row.error ?? 'Provider failed.'}
           </div>
         )}
+        <UsageBadge usage={row.usage} />
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}

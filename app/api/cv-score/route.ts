@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { withAiUsage } from '@/lib/ai/usage'
 import { z } from 'zod'
 import { scoreCv } from '@/lib/cv-score/score'
 import {
@@ -35,14 +36,16 @@ export async function POST(req: Request): Promise<NextResponse> {
     if (!parsed.success) return badRequest('Provide a valid documentId.')
     const { documentId, applicationId, includeAi } = parsed.data
     const ai = applicationId && includeAi !== false ? await aiForUser(userId) : null
-    const result = await scoreCv({
-      userId,
-      source: { documentId },
-      applicationId: applicationId ?? null,
-      ai,
-      includeAi: includeAi ?? true,
-    })
-    return NextResponse.json({ result })
+    const { result, usage } = await withAiUsage({ userId }, () =>
+      scoreCv({
+        userId,
+        source: { documentId },
+        applicationId: applicationId ?? null,
+        ai,
+        includeAi: includeAi ?? true,
+      }),
+    )
+    return NextResponse.json({ result: { ...result, usage } })
   } catch (err) {
     return errorResponse(err, 'cv_score_failed', 'Could not score this CV.')
   }
