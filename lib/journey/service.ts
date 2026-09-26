@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, inArray, isNotNull, lt, lte } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gte, inArray, isNotNull, lt, lte, sql } from 'drizzle-orm'
 import { discoveryNotQuarantinedSql } from '@/lib/db/queries/riskAssessments'
 import { db } from '@/lib/db/client'
 import {
@@ -14,7 +14,6 @@ import {
 import { findFollowupCandidates } from '@/lib/followups/service'
 import * as cvScoresQ from '@/lib/db/queries/cvScores'
 import { findLowestCvFit } from './cv-fit'
-import type { NormalizedJob } from '@/lib/discovery/adapters/types'
 
 /**
  * v11 journey dashboard — pure server logic. Every time-dependent function
@@ -122,6 +121,20 @@ export interface NextBestAction {
   ctaLabel: string
 }
 
+// Relational `with` for interview-stage probes: just the job title and
+// company name (never the job description) for the action copy.
+const STAGE_JOB_LABEL = {
+  application: {
+    columns: { id: true },
+    with: {
+      job: {
+        columns: { title: true },
+        with: { company: { columns: { name: true } } },
+      },
+    },
+  },
+} as const
+
 function roleLabel(title: string, company: string | null | undefined): string {
   return company ? `${title} at ${company}` : title
 }
@@ -152,7 +165,7 @@ async function interviewPrepAction(userId: string, now: Date): Promise<NextBestA
       lte(interviewStages.scheduledAt, new Date(now.getTime() + INTERVIEW_PREP_WINDOW_MS)),
     ),
     orderBy: (s, { asc: ascending }) => [ascending(s.scheduledAt)],
-    with: { application: { with: { job: { with: { company: true } } } } },
+    with: STAGE_JOB_LABEL,
   })
   if (upcoming.length === 0) return null
 
@@ -188,7 +201,7 @@ async function debriefAction(userId: string, now: Date): Promise<NextBestAction 
       gte(interviewStages.updatedAt, new Date(now.getTime() - DEBRIEF_LOOKBACK_MS)),
     ),
     orderBy: (s, { desc: descending }) => [descending(s.updatedAt)],
-    with: { application: { with: { job: { with: { company: true } } } } },
+    with: STAGE_JOB_LABEL,
   })
   const stage = completed.find((s) => (s.debriefNotesMd ?? '').trim() === '')
   if (!stage) return null
@@ -233,7 +246,11 @@ async function discoveryAction(userId: string): Promise<NextBestAction | null> {
   })
   const minScore = profile?.notifyDiscoveryMinScore ?? DEFAULT_DISCOVERY_MIN_SCORE
   const [row] = await db
-    .select({ normalized: discoveries.normalized, matchScore: discoveries.matchScore })
+    .select({
+      title: sql<string | null>`${discoveries.normalized}->>'title'`,
+      companyName: sql<string | null>`${discoveries.normalized}->>'companyName'`,
+      matchScore: discoveries.matchScore,
+    })
     .from(discoveries)
     .where(
       and(
@@ -247,11 +264,10 @@ async function discoveryAction(userId: string): Promise<NextBestAction | null> {
     .orderBy(desc(discoveries.matchScore), desc(discoveries.createdAt))
     .limit(1)
   if (!row) return null
-  const job = row.normalized as Partial<NormalizedJob>
   return {
     kind: 'discovery',
     title: `Review a ${row.matchScore}% match`,
-    description: `${roleLabel(job.title ?? 'Untitled role', job.companyName)} is waiting in Discovery.`,
+    description: `${roleLabel(row.title ?? 'Untitled role', row.companyName)} is waiting in Discovery.`,
     href: `/discoveries?sort=match&minScore=${minScore}`,
     ctaLabel: 'Review matches',
   }
@@ -266,25 +282,23 @@ const FALLBACK_ACTION: NextBestAction = {
 }
 
 /**
- * First match wins, in spec §2.7 priority order. Each probe is only run when
- * every higher-priority probe came back empty. The v12 CV-fit nudge sits
+ * First match wins, in spec §2.7 priority order. All probes run in parallel;
+ * the highest-priority non-empty result is returned. The v12 CV-fit nudge sits
  * after follow-ups (time-sensitive, already applied) and before new
  * discoveries: finish preparing roles you saved before adding more.
  */
 export async function getNextBestAction(userId: string, now: Date): Promise<NextBestAction> {
-  const probes: Array<() => Promise<NextBestAction | null>> = [
-    () => overdueTodoAction(userId, now),
-    () => interviewPrepAction(userId, now),
-    () => debriefAction(userId, now),
-    () => followUpAction(userId, now),
-    () => cvFitAction(userId),
-    () => discoveryAction(userId),
-  ]
-  for (const probe of probes) {
-    const action = await probe()
-    if (action) return action
-  }
-  return FALLBACK_ACTION
+  // Every probe is an independent read — run them concurrently (one round
+  // trip of latency instead of six) and keep the first hit in priority order.
+  const results = await Promise.all([
+    overdueTodoAction(userId, now),
+    interviewPrepAction(userId, now),
+    debriefAction(userId, now),
+    followUpAction(userId, now),
+    cvFitAction(userId),
+    discoveryAction(userId),
+  ])
+  return results.find((a): a is NextBestAction => a !== null) ?? FALLBACK_ACTION
 }
 
 // ---------------------------------------------------------------------------

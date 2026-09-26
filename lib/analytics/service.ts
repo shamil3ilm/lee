@@ -489,7 +489,7 @@ export async function aiUsageStats(userId: string, days = 30): Promise<AIUsageSt
   // Per-(provider, kind) aggregation. v10 extends this to pull skip counts
   // and rating averages in the same pass so the per-row breakdown table
   // can render skip % + avg rating without extra round trips.
-  const groupRows = await db
+  const groupQuery = db
     .select({
       provider: aiCallLogs.provider,
       kind: aiCallLogs.kind,
@@ -504,6 +504,52 @@ export async function aiUsageStats(userId: string, days = 30): Promise<AIUsageSt
     .from(aiCallLogs)
     .where(sql`${aiCallLogs.userId} = ${userId} and ${aiCallLogs.createdAt} >= ${since}`)
     .groupBy(aiCallLogs.provider, aiCallLogs.kind)
+
+  const dailyQuery = db.execute(sql`
+    select
+      date_trunc('day', ${aiCallLogs.createdAt})::date as day,
+      ${aiCallLogs.provider} as provider,
+      coalesce(sum(${aiCallLogs.promptTokens}), 0)::int as prompt_tokens,
+      coalesce(sum(${aiCallLogs.completionTokens}), 0)::int as completion_tokens,
+      count(*)::int as calls
+    from ${aiCallLogs}
+    where ${aiCallLogs.userId} = ${userId}
+      and ${aiCallLogs.createdAt} >= ${since}
+    group by day, ${aiCallLogs.provider}
+    order by day asc
+  `)
+
+  const skipQuery = db
+    .select({
+      kind: aiCallLogs.kind,
+      total: sql<number>`count(*)::int`,
+      skipped: sql<number>`sum(case when ${aiCallLogs.signalCheckPassed} = false then 1 else 0 end)::int`,
+    })
+    .from(aiCallLogs)
+    .where(sql`${aiCallLogs.userId} = ${userId} and ${aiCallLogs.createdAt} >= ${since}`)
+    .groupBy(aiCallLogs.kind)
+
+  const versionQuery = db
+    .select({
+      kind: aiCallLogs.kind,
+      promptVersion: aiCallLogs.promptVersion,
+      calls: sql<number>`count(*)::int`,
+      avgLatencyMs: sql<number>`coalesce(avg(${aiCallLogs.latencyMs}), 0)::int`,
+      ratingAvg: sql<number | null>`avg(${aiCallLogs.userRating})::float`,
+      ratingCount: sql<number>`count(${aiCallLogs.userRating})::int`,
+    })
+    .from(aiCallLogs)
+    .where(sql`${aiCallLogs.userId} = ${userId} and ${aiCallLogs.createdAt} >= ${since}`)
+    .groupBy(aiCallLogs.kind, aiCallLogs.promptVersion)
+
+  // The four aggregations are independent reads over the same
+  // (user_id, created_at) index range — run them concurrently.
+  const [groupRows, dailyRaw, skipRows, versionRows] = await Promise.all([
+    groupQuery,
+    dailyQuery,
+    skipQuery,
+    versionQuery,
+  ])
 
   const rows: AIUsageRow[] = groupRows
     .map((r) => {
@@ -533,19 +579,6 @@ export async function aiUsageStats(userId: string, days = 30): Promise<AIUsageSt
 
   // Daily aggregation for the trend bar chart. Group by created_at::date so
   // sparse days collapse; we back-fill missing days below.
-  const dailyRaw = await db.execute(sql`
-    select
-      date_trunc('day', ${aiCallLogs.createdAt})::date as day,
-      ${aiCallLogs.provider} as provider,
-      coalesce(sum(${aiCallLogs.promptTokens}), 0)::int as prompt_tokens,
-      coalesce(sum(${aiCallLogs.completionTokens}), 0)::int as completion_tokens,
-      count(*)::int as calls
-    from ${aiCallLogs}
-    where ${aiCallLogs.userId} = ${userId}
-      and ${aiCallLogs.createdAt} >= ${since}
-    group by day, ${aiCallLogs.provider}
-    order by day asc
-  `)
   const dailyRows = toRows<{
     day: Date | string
     provider: string
@@ -584,15 +617,6 @@ export async function aiUsageStats(userId: string, days = 30): Promise<AIUsageSt
 
   // v10 — compute overall skip rate and average rating across the window.
   // Grouped-by-kind breakdown for the stacked bar chart.
-  const skipRows = await db
-    .select({
-      kind: aiCallLogs.kind,
-      total: sql<number>`count(*)::int`,
-      skipped: sql<number>`sum(case when ${aiCallLogs.signalCheckPassed} = false then 1 else 0 end)::int`,
-    })
-    .from(aiCallLogs)
-    .where(sql`${aiCallLogs.userId} = ${userId} and ${aiCallLogs.createdAt} >= ${since}`)
-    .groupBy(aiCallLogs.kind)
   const signalCheckByKind: AISignalCheckBar[] = skipRows
     .map((r) => {
       const total = Number(r.total)
@@ -616,18 +640,6 @@ export async function aiUsageStats(userId: string, days = 30): Promise<AIUsageSt
   // v10.1 — per (kind, promptVersion) breakdown. Rows with a null
   // promptVersion (older logs from before this column existed) are surfaced
   // under a synthetic 'unversioned' label so the table remains complete.
-  const versionRows = await db
-    .select({
-      kind: aiCallLogs.kind,
-      promptVersion: aiCallLogs.promptVersion,
-      calls: sql<number>`count(*)::int`,
-      avgLatencyMs: sql<number>`coalesce(avg(${aiCallLogs.latencyMs}), 0)::int`,
-      ratingAvg: sql<number | null>`avg(${aiCallLogs.userRating})::float`,
-      ratingCount: sql<number>`count(${aiCallLogs.userRating})::int`,
-    })
-    .from(aiCallLogs)
-    .where(sql`${aiCallLogs.userId} = ${userId} and ${aiCallLogs.createdAt} >= ${since}`)
-    .groupBy(aiCallLogs.kind, aiCallLogs.promptVersion)
   const byPromptVersion: AIPromptVersionRow[] = versionRows
     .map((r) => {
       const ratingCount = Number(r.ratingCount)
