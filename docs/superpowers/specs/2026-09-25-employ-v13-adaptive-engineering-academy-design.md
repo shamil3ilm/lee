@@ -125,6 +125,7 @@ New skill-graph domains (data in `skills.json`, same levels 0–5, same adaptive
 | Pipelines — data | ETL/ELT, idempotent reruns, backfills, late and duplicate data, schema evolution, DAG scheduling |
 | Packages & dependencies | semver ranges, lockfiles, peer/diamond dependency conflicts, ESM/CJS packaging and `exports` maps, vulnerability triage, upgrades |
 | Servers & infrastructure | Linux (processes, permissions, systemd, disk, logs, cron), networking (DNS, ports, firewalls, HTTP/TLS), web servers and reverse proxies, containers (Dockerfile, image size, non-root), Kubernetes basics (probes, resources, CrashLoopBackOff) |
+| Command line & shells | **bash/sh/zsh** (pipes, redirection, quoting and escaping, exit codes, `set -euo pipefail`, functions, globbing), **PowerShell** (object pipeline, cmdlets, `-WhatIf`, error handling, execution policy, remoting basics), **cmd** (batch files, `%VAR%`, `errorlevel`, `for /f`), text tools (grep/sed/awk/jq/cut/sort/uniq/xargs/find), files and permissions (chmod/chown, icacls), processes and services (ps/top/kill/systemctl; Get-Process/Stop-Process/Get-Service; tasklist/taskkill), networking commands (curl/Invoke-WebRequest, ss/netstat, dig/nslookup/Resolve-DnsName, ping/traceroute), ssh/scp/rsync, archives (tar/zip/Compress-Archive), scheduling (cron, Task Scheduler), package managers (apt, brew, winget, choco), developer CLIs (git, docker, kubectl, psql, gh) |
 | Conflicts — technical | git text conflicts, **semantic conflicts** (merges cleanly, breaks behaviour), migration-number and lockfile conflicts, concurrent edits (optimistic locking, CRDT/OT concepts) |
 | Conflicts — people | code-review disagreements, scope pushback, incident blame, estimates under pressure — handled professionally |
 
@@ -139,6 +140,12 @@ New exercise formats:
 | **Dependency resolver** | Resolve semver/peer conflicts, pick safe upgrades, triage advisories, spot a typosquat or malicious postinstall | resolvable tree, vulnerabilities removed, breaking changes avoided | simulated registry; real advisories from the free OSV API (osv.dev) |
 | **Package author** | Publish-ready library: `exports` map, ESM/CJS, types, semver bump from a changelog | consumers in the test matrix import correctly | simulated consumers |
 | **Server lab** | Real Linux shell: service down, disk full, bad permissions, port clash, broken nginx config, runaway process, cron job | service healthy, root cause, commands used, time | **v86** (x86 emulator in WebAssembly, BSD-licensed) running a small Linux image, cached after first load; lighter simulated shell for quick drills |
+| **Terminal tasks** | Real tasks in a virtual filesystem: find the 10 largest logs, extract error rates from a log with a one-liner, bulk-rename files, parse JSON with jq, kill the process on a port, write a safe backup script | end-state correct, command correctness, safety, keystrokes/time | bash on **v86** (real Linux); **PowerShell and cmd via simulated interpreters** covering a curated cmdlet/command set over the same virtual filesystem (with PowerShell's object pipeline modelled). No free in-browser real PowerShell exists, so each exercise states which commands are supported |
+| **Cross-shell translation** | Do the same job in bash, PowerShell and cmd (e.g. recursive search, env vars, loops, piping output to a file) | each version correct, idiomatic for its shell | same runtimes |
+| **Explain / predict** | Predict what a command prints or changes before running it; explain every flag | prediction matches actual, explanation rubric | same runtimes |
+| **Script repair** | Fix a broken bash/PowerShell/batch script: quoting, unset variables, missing error handling, wrong exit codes, Windows vs Unix line endings | script passes scenario tests, no unsafe patterns | same runtimes |
+| **Danger zone** | Spot destructive or unsafe commands before running them (`rm -rf $DIR/` with an empty variable, `Remove-Item -Recurse -Force` on the wrong path, `curl … | sh`, `chmod -R 777`) and rewrite them safely | hazards found, safe rewrite (dry-run flags, `-WhatIf`, guards) | static analyzer + runtimes |
+| **Command builder** | Drag flags and pipeline stages from a palette to build a command (v17 §8.4 Blocks), then run it; the palette fades as the level rises | correct result, fewer hints used | same runtimes |
 | **Container & cluster doctor** | Shrink and secure a Dockerfile; fix pods stuck in CrashLoopBackOff/Pending | image size, security findings, pods healthy | Dockerfile linter rules + Kubernetes state simulator |
 | **Conflict resolver** | Git text conflicts (existing), semantic conflicts caught by tests, colliding migration numbers, lockfile conflicts | tests green, history clean, no lost changes | isomorphic-git + in-browser test runner |
 | **People-conflict scenario** | Role-play a code-review disagreement or scope pushback with an AI counterpart | rubric: clarity, empathy, outcome, trade-offs stated | AI evaluator with a published rubric |
@@ -220,7 +227,7 @@ Skill graph, templates and achievement catalog: versioned JSON under `content/ac
 - **13.7 Path, capstones, boss battles, stats page, journey integrations**
 - **13.8 Security expansion**: blue-team triage, hardening review, crypto, cloud IAM, supply-chain drills
 - **13.9 Delivery**: pipeline debugger, data pipeline lab, dependency resolver, package author
-- **13.10 Infrastructure**: server lab (v86 + simulated shell), container & cluster doctor
+- **13.10 Infrastructure & command line**: server lab (v86 + simulated shell), terminal tasks in bash/PowerShell/cmd, cross-shell translation, explain/predict, script repair, danger zone, command builder, container & cluster doctor
 - **13.11 Conflicts**: semantic, migration and lockfile conflicts; people-conflict scenarios; real-history drills
 
 ## 13. Constraints
