@@ -22,15 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-
-const KINDS = [
-  { value: 'phone_screen', label: 'Phone screen' },
-  { value: 'technical', label: 'Technical' },
-  { value: 'system_design', label: 'System design' },
-  { value: 'onsite', label: 'Onsite' },
-  { value: 'final', label: 'Final' },
-  { value: 'other', label: 'Other' },
-] as const
+import { STAGE_KINDS as KINDS } from '@/lib/stages/kinds'
 
 interface AddStageDialogProps {
   applicationId: string

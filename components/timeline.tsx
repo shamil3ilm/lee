@@ -24,6 +24,7 @@ import { setStageStatus } from '@/app/(authed)/applications/[id]/actions'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DebriefDialog } from '@/components/debrief-dialog'
+import { StageActions } from '@/components/stage-actions'
 import { relativeFromNow, shortDateTime } from '@/lib/ui/date'
 import { STATUS_BADGE, STATUS_LABELS, type ApplicationStatus } from '@/lib/ui/status'
 import type { TimelineActivity, TimelineItem, TimelineStage } from '@/lib/ui/timeline'
@@ -163,6 +164,20 @@ function StageItem({ item }: { item: TimelineStage }) {
                   {item.outcome}
                 </Badge>
               ) : null}
+              <StageActions
+                stageId={item.id}
+                label={label}
+                inCalendar={inCalendar}
+                initial={{
+                  stageKind: item.stageKind,
+                  title: item.title,
+                  scheduledAt: item.scheduledAt,
+                  durationMinutes: item.durationMinutes ?? null,
+                  location: item.location ?? null,
+                  meetingUrl: item.meetingUrl ?? null,
+                  prepNotesMd: item.prepNotesMd,
+                }}
+              />
             </div>
           </div>
           <div className="mt-0.5 text-xs text-muted-foreground">

@@ -9,6 +9,10 @@ import * as applicationContactsQ from '@/lib/db/queries/applicationContacts'
 import * as documentsQ from '@/lib/db/queries/documents'
 import * as todosQ from '@/lib/db/queries/todos'
 import * as cvScoresQ from '@/lib/db/queries/cvScores'
+import * as contactsQ from '@/lib/db/queries/contacts'
+import * as companiesQ from '@/lib/db/queries/companies'
+import { ApplicationActions } from '@/components/application-actions'
+import { ApplicationContactsCard } from '@/components/application-contacts-card'
 import { pickScoringDocument, toCvFitView, toDocScoreMap } from '@/lib/cv-score/fit'
 import { CvFitCard } from '@/components/cv-score/cv-fit-card'
 import { RiskBadge } from '@/components/scam/risk-badge'
@@ -94,6 +98,9 @@ export default async function ApplicationDetail({
     todosQ.list(userId, { applicationId: id }),
     cvScoresQ.listByApplication(userId, id, CV_FIT_HISTORY),
     documentsQ.list(userId, { kind: 'master_cv' }),
+    // Lean id+name pickers for "Link contact" and the job edit form.
+    contactsQ.listOptions(userId),
+    companiesQ.listNames(userId),
   ])
   // Keep a rejection of the batch from surfacing as unhandled while we wait
   // on the application row; it is re-thrown by the await below.
@@ -104,7 +111,10 @@ export default async function ApplicationDetail({
   // v17 §1 — Scam Shield: re-assessed here when missing, stale (rules
   // version) or older than the job's last edit. Never blocks the page, and
   // runs in parallel with the page's other reads.
-  const [riskRow, [stages, activities, contacts, allDocs, todos, scoreRows, masterCvs]] =
+  const [
+    riskRow,
+    [stages, activities, contacts, allDocs, todos, scoreRows, masterCvs, contactOptions, companyNames],
+  ] =
     await Promise.all([
       safely('application_view', () => ensureJobAssessment(userId, app.job.id)),
       restP,
@@ -164,6 +174,9 @@ export default async function ApplicationDetail({
         outcome: s.outcome,
         prepNotesMd: s.prepNotesMd,
         debriefNotesMd: s.debriefNotesMd,
+        durationMinutes: s.durationMinutes,
+        location: s.location,
+        meetingUrl: s.meetingUrl,
         googleEventId: s.googleEventId,
         debriefDocId: latestDebriefByStage.get(s.id) ?? null,
       }),
@@ -187,7 +200,30 @@ export default async function ApplicationDetail({
       <PageHeader
         title={app.job.title}
         description={app.job.company?.name ?? undefined}
-        actions={<StatusPicker applicationId={app.id} current={status} />}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusPicker applicationId={app.id} current={status} />
+            <ApplicationActions
+              applicationId={app.id}
+              title={app.job.title}
+              companies={[...companyNames].sort((a, b) => a.name.localeCompare(b.name))}
+              initial={{
+                title: app.job.title,
+                sourceUrl: app.job.sourceUrl,
+                companyId: app.job.companyId,
+                location: app.job.location,
+                remoteType: app.job.remoteType,
+                employmentType: app.job.employmentType,
+                salaryMin: app.job.salaryMin,
+                salaryMax: app.job.salaryMax,
+                salaryCurrency: app.job.salaryCurrency,
+                descriptionMd: app.job.descriptionMd,
+                source: app.source,
+                interestLevel: app.interestLevel,
+              }}
+            />
+          </div>
+        }
       />
 
       <Card>
@@ -331,31 +367,11 @@ export default async function ApplicationDetail({
             prepDocs={prepDocs}
           />
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-semibold">Points of contact</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {contacts.length === 0 ? (
-                <p className="text-sm text-muted-foreground">None linked yet.</p>
-              ) : (
-                <ul className="space-y-2 text-sm">
-                  {contacts.map((c) => (
-                    <li
-                      key={`${c.id}-${c.role}`}
-                      className="rounded-md border px-3 py-2"
-                    >
-                      <div className="font-medium">{c.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {c.role}
-                        {c.email ? <> · <a className="hover:underline" href={`mailto:${c.email}`}>{c.email}</a></> : null}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
+          <ApplicationContactsCard
+            applicationId={app.id}
+            linked={contacts.map((c) => ({ id: c.id, name: c.name, email: c.email, role: c.role }))}
+            options={contactOptions}
+          />
         </div>
       </div>
 

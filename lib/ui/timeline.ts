@@ -23,6 +23,10 @@ export interface TimelineStage {
   outcome: string | null
   prepNotesMd: string | null
   debriefNotesMd: string | null
+  /** Editable details (optional so older callers/tests need not pass them). */
+  durationMinutes?: number | null
+  location?: string | null
+  meetingUrl?: string | null
   /** Google Calendar event id if the stage has been pushed; null otherwise. */
   googleEventId: string | null
   /**
