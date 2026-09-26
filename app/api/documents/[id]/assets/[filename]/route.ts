@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import * as documentsQ from '@/lib/db/queries/documents'
 import * as assetsQ from '@/lib/db/queries/documentAssets'
+import { getAssetStore } from '@/lib/storage/asset-store'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -35,14 +36,17 @@ export async function GET(
     const doc = await documentsQ.getById(userId, id)
     if (!doc) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
 
-    const asset = await assetsQ.get(userId, id, decoded)
+    const asset = await assetsQ.getMeta(userId, id, decoded)
     if (!asset) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
+    const store = getAssetStore()
+    const bytes = await store.get(userId, store.refForDocumentAsset(asset))
+    if (!bytes) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
 
-    return new Response(new Uint8Array(asset.bytes), {
+    return new Response(new Uint8Array(bytes), {
       status: 200,
       headers: {
         'content-type': asset.mimeType,
-        'content-length': String(asset.sizeBytes),
+        'content-length': String(bytes.byteLength),
         'cache-control': 'private, max-age=3600',
       },
     })
@@ -71,7 +75,10 @@ export async function DELETE(
     const decoded = decodeURIComponent(filename)
     const doc = await documentsQ.getById(userId, id)
     if (!doc) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
-    const removed = await assetsQ.remove(userId, id, decoded)
+    const asset = await assetsQ.getMeta(userId, id, decoded)
+    if (!asset) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
+    const store = getAssetStore()
+    const removed = await store.delete(userId, store.refForDocumentAsset(asset))
     if (!removed) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
     return NextResponse.json({ success: true })
   } catch (err) {

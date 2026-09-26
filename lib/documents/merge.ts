@@ -15,6 +15,7 @@ import {
 } from '@/lib/documents/types'
 import { getMasterCV } from '@/lib/documents/master'
 import { compileLatex } from '@/lib/latex/compile'
+import { getAssetStore } from '@/lib/storage/asset-store'
 
 export interface MergeSource {
   kind: 'document' | 'asset'
@@ -54,14 +55,17 @@ async function bytesForDocument(userId: string, id: string): Promise<Buffer> {
     if (!content.source.trim()) {
       throw new MergeError('LaTeX source is empty', { kind: 'document', id })
     }
-    const assets = await assetsQ.listWithBytes(userId, id)
+    // Asset bytes come from the store (Postgres or Drive), one batch.
+    const store = getAssetStore()
+    const assets = await assetsQ.list(userId, id)
+    const refs = assets.map((a) => store.refForDocumentAsset(a))
+    const bytes = await store.getMany(userId, refs)
     const result = await compileLatex({
       source: content.source,
-      assets: assets.map((a) => ({
-        filename: a.filename,
-        mimeType: a.mimeType,
-        bytes: a.bytes,
-      })),
+      assets: assets.flatMap((a, i) => {
+        const b = bytes.get(refs[i]!)
+        return b ? [{ filename: a.filename, mimeType: a.mimeType, bytes: b }] : []
+      }),
     })
     if (!result.ok) {
       throw new MergeError(`LaTeX compile failed (status ${result.status})`, {
@@ -135,16 +139,20 @@ async function pdfFromImageAsset(
 }
 
 async function bytesForAsset(userId: string, id: string): Promise<Buffer> {
-  const asset = await assetsQ.getById(userId, id)
+  const asset = await assetsQ.getMetaById(userId, id)
   if (!asset) throw new MergeError('asset not found', { kind: 'asset', id })
-  if (asset.mimeType === 'application/pdf') return asset.bytes
-  if (asset.mimeType.startsWith('image/')) {
-    return pdfFromImageAsset(asset.bytes, asset.mimeType)
+  const isPdf = asset.mimeType === 'application/pdf'
+  if (!isPdf && !asset.mimeType.startsWith('image/')) {
+    throw new MergeError(
+      `asset mime ${asset.mimeType} not supported (need pdf or image)`,
+      { kind: 'asset', id },
+    )
   }
-  throw new MergeError(
-    `asset mime ${asset.mimeType} not supported (need pdf or image)`,
-    { kind: 'asset', id },
-  )
+  const store = getAssetStore()
+  const bytes = await store.get(userId, store.refForDocumentAsset(asset))
+  if (!bytes) throw new MergeError('asset not found', { kind: 'asset', id })
+  if (isPdf) return bytes
+  return pdfFromImageAsset(bytes, asset.mimeType)
 }
 
 /**

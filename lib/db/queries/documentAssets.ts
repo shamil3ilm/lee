@@ -146,6 +146,44 @@ export async function get(
 }
 
 /**
+ * Metadata (no bytes) for one asset by (userId, documentId, filename). Routes
+ * use this plus the asset store, so they never touch the payload column.
+ */
+export async function getMeta(
+  userId: string,
+  documentId: string,
+  filename: string,
+  client: DbClient = db,
+): Promise<AssetMetadata | null> {
+  const [row] = await client
+    .select(METADATA_COLUMNS)
+    .from(documentAssets)
+    .where(
+      and(
+        eq(documentAssets.userId, userId),
+        eq(documentAssets.documentId, documentId),
+        eq(documentAssets.filename, filename),
+      ),
+    )
+    .limit(1)
+  return (row as AssetMetadata | undefined) ?? null
+}
+
+/** Metadata (no bytes) for one asset by id, scoped to the user. */
+export async function getMetaById(
+  userId: string,
+  id: string,
+  client: DbClient = db,
+): Promise<AssetMetadata | null> {
+  const [row] = await client
+    .select(METADATA_COLUMNS)
+    .from(documentAssets)
+    .where(and(eq(documentAssets.userId, userId), eq(documentAssets.id, id)))
+    .limit(1)
+  return (row as AssetMetadata | undefined) ?? null
+}
+
+/**
  * Get an asset by its primary-key id. Scoped by userId so cross-tenant
  * reads via a guessed uuid are impossible.
  */
