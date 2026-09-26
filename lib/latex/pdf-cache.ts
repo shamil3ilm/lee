@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import * as assetsQ from '@/lib/db/queries/documentAssets'
 import { compileLatex, type CompileOptions, type CompileResult } from '@/lib/latex/compile'
-import { getAssetStore, MAX_PDF_CACHE_BYTES, type AssetStore } from '@/lib/storage/asset-store'
+import { getAssetStoreForUser, MAX_PDF_CACHE_BYTES, type AssetStore } from '@/lib/storage/asset-store'
 import { logger } from '@/lib/logger'
 
 /**
@@ -52,7 +52,7 @@ export interface CompileDocumentPdfInput {
 }
 
 export async function compileDocumentPdf(input: CompileDocumentPdfInput): Promise<CompiledPdf> {
-  const store = input.store ?? getAssetStore()
+  const store = input.store ?? (await getAssetStoreForUser(input.userId))
   const compile = input.compile ?? compileLatex
   const { cacheKey, assets } = await documentCacheKey(input.userId, input.documentId, input.source)
 

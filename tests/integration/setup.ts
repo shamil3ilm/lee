@@ -16,6 +16,7 @@ const TABLES = [
   'lab_provider_keys',
   'expense_budgets',
   'expenses',
+  'drive_folders',
   'document_pdf_cache',
   'document_assets',
   'documents',

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { DriveError, driveErrorResponse } from '@/lib/drive/errors'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import * as documentsQ from '@/lib/db/queries/documents'
@@ -85,6 +86,8 @@ export async function POST(req: Request): Promise<Response> {
     await documentsQ.update(userId, documentId, { content: updated })
     return NextResponse.json({ error: 'Compile failed', log }, { status: 422 })
   } catch (err) {
+    // Drive-held assets: a revoked grant etc. gets its friendly message.
+    if (err instanceof DriveError) return driveErrorResponse(err)
     logger.error('POST /api/latex/compile failed', {
       err: err instanceof Error ? err.message : String(err),
       stack: err instanceof Error ? err.stack : undefined,

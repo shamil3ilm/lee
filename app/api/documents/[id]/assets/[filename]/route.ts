@@ -2,12 +2,15 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import * as documentsQ from '@/lib/db/queries/documents'
 import * as assetsQ from '@/lib/db/queries/documentAssets'
-import { getAssetStore } from '@/lib/storage/asset-store'
+import { getAssetStoreForUser } from '@/lib/storage/asset-store'
+import { DriveError, driveErrorResponse } from '@/lib/drive/errors'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 export const maxDuration = 30
+
+const INLINE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/pdf'])
 
 /**
  * GET /api/documents/[id]/assets/[filename]
@@ -38,19 +41,27 @@ export async function GET(
 
     const asset = await assetsQ.getMeta(userId, id, decoded)
     if (!asset) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
-    const store = getAssetStore()
-    const bytes = await store.get(userId, store.refForDocumentAsset(asset))
-    if (!bytes) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
+    // Streams from Drive (or Postgres) through this authenticated route: the
+    // browser never sees a Google token, and Drive bytes are piped, not
+    // buffered. Private caching keeps repeat previews off the function.
+    const store = await getAssetStoreForUser(userId)
+    const stream = await store.openStream!(userId, store.refForDocumentAsset(asset))
+    if (!stream) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
 
-    return new Response(new Uint8Array(bytes), {
-      status: 200,
-      headers: {
-        'content-type': asset.mimeType,
-        'content-length': String(bytes.byteLength),
-        'cache-control': 'private, max-age=3600',
-      },
-    })
+    const headers: Record<string, string> = {
+      'content-type': asset.mimeType,
+      'cache-control': 'private, max-age=3600',
+      'x-content-type-options': 'nosniff',
+    }
+    // Only raster images and PDFs render inline; anything else (HTML, SVG,
+    // scripts from a picked Drive file) downloads instead of running on our origin.
+    if (!INLINE_TYPES.has(asset.mimeType)) {
+      headers['content-disposition'] = `attachment; filename="${asset.filename}"`
+    }
+    if (stream.sizeBytes !== null) headers['content-length'] = String(stream.sizeBytes)
+    return new Response(stream.body, { status: 200, headers })
   } catch (err) {
+    if (err instanceof DriveError) return driveErrorResponse(err)
     logger.error('GET /api/documents/[id]/assets/[filename] failed', {
       err: err instanceof Error ? err.message : String(err),
     })
@@ -77,11 +88,12 @@ export async function DELETE(
     if (!doc) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
     const asset = await assetsQ.getMeta(userId, id, decoded)
     if (!asset) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
-    const store = getAssetStore()
+    const store = await getAssetStoreForUser(userId)
     const removed = await store.delete(userId, store.refForDocumentAsset(asset))
     if (!removed) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
     return NextResponse.json({ success: true })
   } catch (err) {
+    if (err instanceof DriveError) return driveErrorResponse(err)
     logger.error('DELETE /api/documents/[id]/assets/[filename] failed', {
       err: err instanceof Error ? err.message : String(err),
     })

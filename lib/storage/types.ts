@@ -15,7 +15,7 @@ export type AssetKey =
   | { kind: 'document-asset'; documentId: string; filename: string }
   | { kind: 'pdf-cache'; documentId: string }
 
-/** Opaque, backend-prefixed reference (`pg:…` for the Postgres backend). */
+/** Opaque, backend-prefixed reference (`pg:…` Postgres, `drive:…` Google Drive). */
 export type AssetRef = string
 
 export interface PutMeta {
@@ -37,6 +37,16 @@ export interface AssetUsage {
   assetBytes: number
   /** Derived, evictable cache bytes (not counted against the quota). */
   cacheBytes: number
+  /** Asset bytes held in the user's Google Drive (no Neon cost, no cap). */
+  driveBytes?: number
+}
+
+/** What a ref needs from asset metadata to pick its backend. */
+export type AssetRefSource = Pick<AssetMetadata, 'id'> & { driveFileId?: string | null }
+
+export interface AssetStream {
+  body: ReadableStream<Uint8Array>
+  sizeBytes: number | null
 }
 
 export interface AssetStore {
@@ -51,7 +61,12 @@ export interface AssetStore {
   delete(userId: string, ref: AssetRef): Promise<boolean>
   usage(userId: string): Promise<AssetUsage>
   /** Ref for an asset listed from document_assets metadata. */
-  refForDocumentAsset(asset: Pick<AssetMetadata, 'id'>): AssetRef
+  refForDocumentAsset(asset: AssetRefSource): AssetRef
+  /**
+   * Optional streaming read (Drive): pipes the bytes to the client without
+   * buffering them in the function. Null when the ref is unknown.
+   */
+  openStream?(userId: string, ref: AssetRef): Promise<AssetStream | null>
   /** Ref for a document's cached PDF compiled under `cacheKey`. */
   refForPdfCache(documentId: string, cacheKey: string): AssetRef
 }

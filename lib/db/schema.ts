@@ -12,6 +12,7 @@ import {
   index,
   uniqueIndex,
   customType,
+  check,
 } from 'drizzle-orm/pg-core'
 import { relations, sql } from 'drizzle-orm'
 
@@ -373,6 +374,9 @@ export const userProfile = pgTable('user_profile', {
   // MX). Off by default: they send posting domains to rdap.org and
   // Cloudflare. Toggled in Settings › Scam Shield.
   scamNetChecks: boolean('scam_net_checks').notNull().default(false),
+  // A2 — store new files in the user's Google Drive once Drive is connected.
+  // Toggled in Settings › Integrations; off → Postgres (capped).
+  driveStorageEnabled: boolean('drive_storage_enabled').notNull().default(true),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
@@ -620,16 +624,26 @@ export const documentAssets = pgTable(
     filename: text('filename').notNull(),
     mimeType: text('mime_type').notNull(),
     sizeBytes: integer('size_bytes').notNull(),
-    bytes: bytea('bytes').notNull(),
+    // Null once the file lives in Google Drive (drive_file_id set): Neon then
+    // holds only metadata. Exactly one of bytes / drive_file_id is the copy.
+    bytes: bytea('bytes'),
     // perf — hex sha256 of `bytes`, written on upload so the LaTeX PDF cache
     // key can be computed without reading asset bytes. Null for rows
     // uploaded before this column existed (hashed in SQL on demand).
     sha256: text('sha256'),
+    // A2 — Google Drive file id when the bytes live in the user's Drive.
+    driveFileId: text('drive_file_id'),
+    // True when attached from the Drive Picker: the file is the user's own,
+    // so removing the asset never trashes it.
+    drivePicked: boolean('drive_picked').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
     documentIdx: index('document_assets_document_idx').on(t.documentId),
     docFilenameUq: uniqueIndex('document_assets_doc_filename_uq').on(t.documentId, t.filename),
+    // Every asset keeps at least one copy: clearing bytes (Drive migration)
+    // is only possible once a Drive file id is recorded.
+    hasCopy: check('document_assets_has_copy', sql`${t.bytes} is not null or ${t.driveFileId} is not null`),
   }),
 )
 
@@ -650,9 +664,32 @@ export const documentPdfCache = pgTable('document_pdf_cache', {
     .references(() => users.id, { onDelete: 'cascade' }),
   cacheKey: text('cache_key').notNull(),
   sizeBytes: integer('size_bytes').notNull(),
-  bytes: bytea('bytes').notNull(),
+  // Null when the cached PDF lives in the user's Drive (Employ/PDFs).
+  bytes: bytea('bytes'),
+  driveFileId: text('drive_file_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-})
+}, (t) => ({
+  hasCopy: check('document_pdf_cache_has_copy', sql`${t.bytes} is not null or ${t.driveFileId} is not null`),
+}))
+
+// ---------------------------------------------------------------------------
+// A2 — Google Drive folder cache. One row per (user, logical folder):
+//   root | documents | exports | pdfs | cvs | doc:<documentId> | doc-assets:<documentId>
+// so the Drive store never searches Drive for its own folders.
+// ---------------------------------------------------------------------------
+
+export const driveFolders = pgTable(
+  'drive_folders',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    folderKey: text('folder_key').notNull(),
+    folderId: text('folder_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.userId, t.folderKey] }) }),
+)
 
 export const documentAssetsRelations = relations(documentAssets, ({ one }) => ({
   document: one(documents, {
@@ -867,6 +904,8 @@ export const cvScores = pgTable(
     meta: jsonb('meta').notNull().default({}),
     scorerVersion: text('scorer_version').notNull(),
     aiCallId: uuid('ai_call_id').references(() => aiCallLogs.id, { onDelete: 'set null' }),
+    // A2 — optional copy of an uploaded CV saved to Employ/CVs in Drive.
+    driveFileId: text('drive_file_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({

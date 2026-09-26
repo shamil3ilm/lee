@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { trashDocumentDriveFiles } from '@/lib/drive/cleanup'
 import { auth } from '@/lib/auth'
 import * as documentsQ from '@/lib/db/queries/documents'
 import { logger } from '@/lib/logger'
@@ -40,6 +41,8 @@ export async function DELETE(
     const { id } = await ctx.params
     const existing = await documentsQ.getById(userId, id)
     if (!existing) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
+    // Drive-held files would outlive the cascading row delete: trash them first.
+    await trashDocumentDriveFiles(userId, id).catch(() => 0)
     await documentsQ.remove(userId, id)
     return NextResponse.json({ success: true })
   } catch (err) {

@@ -84,8 +84,8 @@ describe('documentAssets queries', () => {
     })
     const rows = await q.listWithBytes(u.id, doc.id)
     expect(rows).toHaveLength(2)
-    expect(rows[0]!.bytes.length).toBeGreaterThan(0)
-    expect(rows[1]!.bytes.length).toBeGreaterThan(0)
+    expect(rows[0]!.bytes!.length).toBeGreaterThan(0)
+    expect(rows[1]!.bytes!.length).toBeGreaterThan(0)
   })
 
   it('sanitizes filenames on create', async () => {

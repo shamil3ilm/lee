@@ -15,7 +15,7 @@ import {
 } from '@/lib/documents/types'
 import { getMasterCV } from '@/lib/documents/master'
 import { compileLatex } from '@/lib/latex/compile'
-import { getAssetStore } from '@/lib/storage/asset-store'
+import { getAssetStoreForUser } from '@/lib/storage/asset-store'
 
 export interface MergeSource {
   kind: 'document' | 'asset'
@@ -56,7 +56,7 @@ async function bytesForDocument(userId: string, id: string): Promise<Buffer> {
       throw new MergeError('LaTeX source is empty', { kind: 'document', id })
     }
     // Asset bytes come from the store (Postgres or Drive), one batch.
-    const store = getAssetStore()
+    const store = await getAssetStoreForUser(userId)
     const assets = await assetsQ.list(userId, id)
     const refs = assets.map((a) => store.refForDocumentAsset(a))
     const bytes = await store.getMany(userId, refs)
@@ -148,7 +148,7 @@ async function bytesForAsset(userId: string, id: string): Promise<Buffer> {
       { kind: 'asset', id },
     )
   }
-  const store = getAssetStore()
+  const store = await getAssetStoreForUser(userId)
   const bytes = await store.get(userId, store.refForDocumentAsset(asset))
   if (!bytes) throw new MergeError('asset not found', { kind: 'asset', id })
   if (isPdf) return bytes

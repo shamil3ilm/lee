@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { DriveError, driveErrorResponse } from '@/lib/drive/errors'
 import { auth } from '@/lib/auth'
 import * as documentsQ from '@/lib/db/queries/documents'
 import {
@@ -216,6 +217,8 @@ export async function GET(
       },
     })
   } catch (err) {
+    // Drive-held assets: a revoked grant etc. gets its friendly message.
+    if (err instanceof DriveError) return driveErrorResponse(err)
     logger.error('GET /api/documents/[id]/pdf failed', {
       err: err instanceof Error ? err.message : String(err),
       stack: err instanceof Error ? err.stack : undefined,

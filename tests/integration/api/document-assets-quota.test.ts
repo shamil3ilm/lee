@@ -10,7 +10,8 @@ vi.mock('@/lib/storage/asset-store', async (orig) => {
   const actual = await orig<typeof import('@/lib/storage/asset-store')>()
   const { PostgresAssetStore } = await import('@/lib/storage/postgres-asset-store')
   const small = new PostgresAssetStore({ quotaBytes: 8 })
-  return { ...actual, getAssetStore: () => small }
+  // A user without Drive writes to Postgres, so the per-user store is the capped one.
+  return { ...actual, getAssetStore: () => small, getAssetStoreForUser: async () => small }
 })
 
 function upload(docId: string, files: { name: string; size: number }[]): Request {

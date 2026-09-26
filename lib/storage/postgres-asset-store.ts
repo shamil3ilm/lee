@@ -5,6 +5,7 @@ import {
   formatMegabytes,
   type AssetKey,
   type AssetRef,
+  type AssetRefSource,
   type AssetStore,
   type AssetUsage,
   type PutMeta,
@@ -52,7 +53,7 @@ export class PostgresAssetStore implements AssetStore {
     this.quotaBytes = opts.quotaBytes ?? ASSET_QUOTA_BYTES
   }
 
-  refForDocumentAsset(asset: { id: string }): AssetRef {
+  refForDocumentAsset(asset: AssetRefSource): AssetRef {
     return `pg:asset:${asset.id}`
   }
 

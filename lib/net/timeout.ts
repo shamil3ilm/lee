@@ -25,6 +25,8 @@ export const FIRECRAWL_TIMEOUT_MS = 20_000
 export const GMAIL_TIMEOUT_MS = 15_000
 /** Google Calendar REST calls. */
 export const CALENDAR_TIMEOUT_MS = 15_000
+/** Google Drive REST calls (metadata, folder ops, ≤5 MB uploads/downloads). */
+export const DRIVE_TIMEOUT_MS = 20_000
 /** Google OAuth token refresh. */
 export const GOOGLE_TOKEN_TIMEOUT_MS = 10_000
 /** GitHub public-repos listing. */

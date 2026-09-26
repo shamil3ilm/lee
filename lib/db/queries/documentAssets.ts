@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { and, count, eq, inArray, sql } from 'drizzle-orm'
+import { and, count, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import { db, type DbClient } from '@/lib/db/client'
 import { documentAssets } from '@/lib/db/schema'
@@ -22,6 +22,8 @@ const METADATA_COLUMNS = {
   filename: documentAssets.filename,
   mimeType: documentAssets.mimeType,
   sizeBytes: documentAssets.sizeBytes,
+  driveFileId: documentAssets.driveFileId,
+  drivePicked: documentAssets.drivePicked,
   createdAt: documentAssets.createdAt,
 }
 
@@ -32,15 +34,27 @@ export type AssetMetadata = {
   filename: string
   mimeType: string
   sizeBytes: number
+  /** Google Drive file id when the bytes live in Drive (A2); else null. */
+  driveFileId: string | null
+  /** Attached from the Drive Picker: the user's own file, never trashed. */
+  drivePicked: boolean
   createdAt: Date
 }
 
-export type AssetWithBytes = AssetMetadata & { bytes: Buffer }
+/** A row with its payload column; `bytes` is null for Drive-backed assets. */
+export type AssetWithBytes = AssetMetadata & { bytes: Buffer | null }
 
-function stripBytes(row: AssetWithBytes): AssetMetadata {
-  const { bytes: _bytes, ...rest } = row
+type AssetRow = typeof documentAssets.$inferSelect
+
+function stripBytes(row: AssetRow): AssetMetadata {
+  const { bytes: _bytes, sha256: _sha, ...rest } = row
   void _bytes
+  void _sha
   return rest
+}
+
+function withBytes(row: AssetRow): AssetWithBytes {
+  return { ...stripBytes(row), bytes: row.bytes }
 }
 
 export interface CreateAssetInput {
@@ -142,7 +156,7 @@ export async function get(
       ),
     )
     .limit(1)
-  return row ?? null
+  return row ? withBytes(row) : null
 }
 
 /**
@@ -197,7 +211,7 @@ export async function getById(
     .from(documentAssets)
     .where(and(eq(documentAssets.userId, userId), eq(documentAssets.id, id)))
     .limit(1)
-  return row ?? null
+  return row ? withBytes(row) : null
 }
 
 /**
@@ -210,11 +224,12 @@ export async function listWithBytes(
   documentId: string,
   client: DbClient = db,
 ): Promise<AssetWithBytes[]> {
-  return client
+  const rows = await client
     .select()
     .from(documentAssets)
     .where(and(eq(documentAssets.userId, userId), eq(documentAssets.documentId, documentId)))
     .orderBy(documentAssets.createdAt)
+  return rows.map(withBytes)
 }
 
 /**
@@ -227,12 +242,12 @@ export async function listWithBytes(
  * Throws `AssetValidationError` on failure so the API layer can map to a
  * 4xx status without leaking driver-level errors.
  */
-export async function create(
+export async function validateNew(
   userId: string,
   documentId: string,
-  input: CreateAssetInput,
+  input: { filename: string; sizeBytes: number },
   client: DbClient = db,
-): Promise<AssetMetadata> {
+): Promise<string> {
   const filename = sanitizeFilename(input.filename)
   if (!filename) {
     throw new AssetValidationError('filename_empty', 'Filename is empty after sanitisation.')
@@ -263,7 +278,16 @@ export async function create(
       `Asset "${filename}" already exists for this document.`,
     )
   }
+  return filename
+}
 
+export async function create(
+  userId: string,
+  documentId: string,
+  input: CreateAssetInput,
+  client: DbClient = db,
+): Promise<AssetMetadata> {
+  const filename = await validateNew(userId, documentId, input, client)
   const [row] = await narrow(client)
     .insert(documentAssets)
     .values({
@@ -280,11 +304,142 @@ export async function create(
   return row as AssetMetadata
 }
 
+export interface CreateDriveAssetInput {
+  /** Already sanitised + validated (see validateNew). */
+  filename: string
+  mimeType: string
+  sizeBytes: number
+  sha256: string
+  driveFileId: string
+  drivePicked?: boolean
+}
+
+/** True for a unique-index violation (a concurrent same-name upload). */
+function isUniqueViolation(err: unknown): boolean {
+  const e = err as { code?: unknown; cause?: { code?: unknown } } | null
+  return e?.code === '23505' || e?.cause?.code === '23505'
+}
+
+/**
+ * Insert a metadata-only row whose bytes live in Google Drive. Maps a
+ * same-name race to `filename_conflict` like `create`.
+ */
+export async function createDriveBacked(
+  userId: string,
+  documentId: string,
+  input: CreateDriveAssetInput,
+  client: DbClient = db,
+): Promise<AssetMetadata> {
+  try {
+    const [row] = await narrow(client)
+      .insert(documentAssets)
+      .values({
+        userId,
+        documentId,
+        filename: input.filename,
+        mimeType: input.mimeType,
+        sizeBytes: input.sizeBytes,
+        bytes: null,
+        sha256: input.sha256,
+        driveFileId: input.driveFileId,
+        drivePicked: input.drivePicked ?? false,
+      })
+      .returning(METADATA_COLUMNS)
+    if (!row) throw new Error('failed to insert document asset')
+    return row as AssetMetadata
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      throw new AssetValidationError(
+        'filename_conflict',
+        `Asset "${input.filename}" already exists for this document.`,
+      )
+    }
+    throw err
+  }
+}
+
+/**
+ * Drive migration step: record the Drive copy and clear the bytea in one
+ * statement. It only matches a row that still holds bytes with the expected
+ * hash, so a concurrent change or a second run can never clear the only copy.
+ */
+export async function moveBytesToDrive(
+  userId: string,
+  id: string,
+  expectedSha256: string,
+  driveFileId: string,
+  client: DbClient = db,
+): Promise<boolean> {
+  const rows = await narrow(client)
+    .update(documentAssets)
+    .set({ driveFileId, bytes: null, sha256: expectedSha256 })
+    .where(
+      and(
+        eq(documentAssets.userId, userId),
+        eq(documentAssets.id, id),
+        isNotNull(documentAssets.bytes),
+        sql`coalesce(${documentAssets.sha256}, encode(sha256(${documentAssets.bytes}), 'hex')) = ${expectedSha256}`,
+      ),
+    )
+    .returning({ id: documentAssets.id })
+  return rows.length > 0
+}
+
+export interface PendingDriveMove {
+  id: string
+  documentId: string
+  filename: string
+  mimeType: string
+  sha256: string
+}
+
+/**
+ * Next batch of assets still stored in Postgres (metadata + hash, no bytes),
+ * oldest first: the Drive migration's work list.
+ */
+export async function listPendingDriveMoves(
+  userId: string,
+  limit: number,
+  client: DbClient = db,
+): Promise<PendingDriveMove[]> {
+  return client
+    .select({
+      id: documentAssets.id,
+      documentId: documentAssets.documentId,
+      filename: documentAssets.filename,
+      mimeType: documentAssets.mimeType,
+      sha256: sql<string>`coalesce(${documentAssets.sha256}, encode(sha256(${documentAssets.bytes}), 'hex'))`,
+    })
+    .from(documentAssets)
+    .where(and(eq(documentAssets.userId, userId), isNotNull(documentAssets.bytes)))
+    .orderBy(documentAssets.createdAt, documentAssets.id)
+    .limit(limit)
+}
+
+/** How many assets still hold bytes in Postgres. */
+export async function countPostgresHeld(userId: string, client: DbClient = db): Promise<number> {
+  const [row] = await client
+    .select({ n: count() })
+    .from(documentAssets)
+    .where(and(eq(documentAssets.userId, userId), isNotNull(documentAssets.bytes)))
+  return Number(row?.n ?? 0)
+}
+
+/** Total size of the assets held in Google Drive (from metadata). */
+export async function driveTotalBytes(userId: string, client: DbClient = db): Promise<number> {
+  const [row] = await client
+    .select({ n: sql<string | number>`coalesce(sum(${documentAssets.sizeBytes}), 0)` })
+    .from(documentAssets)
+    .where(and(eq(documentAssets.userId, userId), isNull(documentAssets.bytes)))
+  return Number(row?.n ?? 0)
+}
+
 export interface AssetHash {
   id: string
   filename: string
   mimeType: string
   sha256: string
+  driveFileId: string | null
 }
 
 /**
@@ -303,6 +458,7 @@ export async function listHashes(
       filename: documentAssets.filename,
       mimeType: documentAssets.mimeType,
       sha256: sql<string>`coalesce(${documentAssets.sha256}, encode(sha256(${documentAssets.bytes}), 'hex'))`,
+      driveFileId: documentAssets.driveFileId,
     })
     .from(documentAssets)
     .where(and(eq(documentAssets.userId, userId), eq(documentAssets.documentId, documentId)))
@@ -320,7 +476,9 @@ export async function bytesByIds(
     .select({ id: documentAssets.id, bytes: documentAssets.bytes })
     .from(documentAssets)
     .where(and(eq(documentAssets.userId, userId), inArray(documentAssets.id, [...ids])))
-  return new Map(rows.map((r) => [r.id, r.bytes] as const))
+  const out = new Map<string, Buffer>()
+  for (const r of rows) if (r.bytes) out.set(r.id, r.bytes)
+  return out
 }
 
 /** Delete one asset by id (scoped to the user). */
@@ -336,12 +494,15 @@ export async function removeById(
   return rows.length > 0
 }
 
-/** Total stored asset bytes for a user (the upload quota's "used"). */
+/**
+ * Asset bytes held in Postgres for a user (the upload quota's "used").
+ * Drive-backed rows cost Neon only metadata and do not count.
+ */
 export async function totalBytes(userId: string, client: DbClient = db): Promise<number> {
   const [row] = await client
     .select({ n: sql<string | number>`coalesce(sum(${documentAssets.sizeBytes}), 0)` })
     .from(documentAssets)
-    .where(eq(documentAssets.userId, userId))
+    .where(and(eq(documentAssets.userId, userId), isNotNull(documentAssets.bytes)))
   return Number(row?.n ?? 0)
 }
 
@@ -384,8 +545,7 @@ export async function renameFile(
     throw new AssetValidationError('invalid_new_filename', 'New filename is empty after sanitisation.')
   }
   if (target === oldName) {
-    const same = await get(userId, documentId, oldName, client)
-    return same ? stripBytes(same) : null
+    return getMeta(userId, documentId, oldName, client)
   }
   const conflict = await get(userId, documentId, target, client)
   if (conflict) {

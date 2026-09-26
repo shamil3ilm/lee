@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq, isNotNull, sql } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import { documentPdfCache } from '@/lib/db/schema'
 
@@ -37,7 +37,8 @@ export async function upsert(
   bytes: Buffer,
   client: DbClient = db,
 ): Promise<void> {
-  const values = { cacheKey, sizeBytes: bytes.byteLength, bytes, createdAt: new Date() }
+  // driveFileId is cleared: the Postgres copy is now the cache entry.
+  const values = { cacheKey, sizeBytes: bytes.byteLength, bytes, driveFileId: null, createdAt: new Date() }
   await client
     .insert(documentPdfCache)
     .values({ userId, documentId, ...values })
@@ -45,6 +46,50 @@ export async function upsert(
       target: documentPdfCache.documentId,
       set: values,
       // Never let one user overwrite another's row via a foreign document id.
+      setWhere: eq(documentPdfCache.userId, userId),
+    })
+}
+
+export interface PdfCacheEntry {
+  cacheKey: string
+  bytes: Buffer | null
+  driveFileId: string | null
+}
+
+/** The document's single cache row (any key), scoped to the user. */
+export async function getEntry(
+  userId: string,
+  documentId: string,
+  client: DbClient = db,
+): Promise<PdfCacheEntry | null> {
+  const [row] = await client
+    .select({
+      cacheKey: documentPdfCache.cacheKey,
+      bytes: documentPdfCache.bytes,
+      driveFileId: documentPdfCache.driveFileId,
+    })
+    .from(documentPdfCache)
+    .where(and(eq(documentPdfCache.userId, userId), eq(documentPdfCache.documentId, documentId)))
+    .limit(1)
+  return row ?? null
+}
+
+/** Record a cache entry whose bytes live in Drive (Employ/PDFs). */
+export async function upsertDrive(
+  userId: string,
+  documentId: string,
+  cacheKey: string,
+  sizeBytes: number,
+  driveFileId: string,
+  client: DbClient = db,
+): Promise<void> {
+  const values = { cacheKey, sizeBytes, bytes: null, driveFileId, createdAt: new Date() }
+  await client
+    .insert(documentPdfCache)
+    .values({ userId, documentId, ...values })
+    .onConflictDoUpdate({
+      target: documentPdfCache.documentId,
+      set: values,
       setWhere: eq(documentPdfCache.userId, userId),
     })
 }
@@ -68,6 +113,6 @@ export async function totalBytes(userId: string, client: DbClient = db): Promise
   const [row] = await client
     .select({ n: sql<string | number>`coalesce(sum(${documentPdfCache.sizeBytes}), 0)` })
     .from(documentPdfCache)
-    .where(eq(documentPdfCache.userId, userId))
+    .where(and(eq(documentPdfCache.userId, userId), isNotNull(documentPdfCache.bytes)))
   return Number(row?.n ?? 0)
 }
