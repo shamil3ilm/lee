@@ -15,11 +15,13 @@ export const maxDuration = 30
 const bodySchema = z.object({
   documentId: z.string().min(1),
   source: z.string().min(1),
+  /** Draft mode: graphicx `draft` for a fast preview (never cached). */
+  draft: z.boolean().optional(),
 })
 
 /**
  * POST /api/latex/compile
- *   body: { documentId, source }
+ *   body: { documentId, source, draft? }
  *
  * On success: streams the compiled PDF bytes back (application/pdf) and
  * updates the document row's `compiledAt` + clears any prior error.
@@ -38,7 +40,7 @@ export async function POST(req: Request): Promise<Response> {
     if (!parsed.success) {
       return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 })
     }
-    const { documentId, source } = parsed.data
+    const { documentId, source, draft } = parsed.data
 
     const doc = await documentsQ.getById(userId, documentId)
     if (!doc) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
@@ -51,7 +53,8 @@ export async function POST(req: Request): Promise<Response> {
     // source + asset set was compiled before, serves the cached PDF and
     // skips the compile service entirely. A success also primes the cache
     // for the document's PDF view route.
-    const result = await compileDocumentPdf({ userId, documentId, source })
+    // The saved source never carries the draft option; only the compile does.
+    const result = await compileDocumentPdf({ userId, documentId, source, draft: draft === true })
     // Preserve existing content shape then overlay the new source + compile
     // status. If content isn't a valid latex shape (edge case: schema drift)
     // we fall back to a minimal shape rather than crashing.

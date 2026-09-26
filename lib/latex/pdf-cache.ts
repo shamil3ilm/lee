@@ -3,6 +3,7 @@ import * as assetsQ from '@/lib/db/queries/documentAssets'
 import { compileLatex, type CompileOptions, type CompileResult } from '@/lib/latex/compile'
 import { getAssetStoreForUser, MAX_PDF_CACHE_BYTES, type AssetStore } from '@/lib/storage/asset-store'
 import { logger } from '@/lib/logger'
+import { withDraftMode } from '@/lib/latex/draft'
 
 /**
  * Compiled-PDF cache for LaTeX documents. The key is a sha256 over the .tex
@@ -46,6 +47,11 @@ export interface CompileDocumentPdfInput {
   userId: string
   documentId: string
   source: string
+  /**
+   * Draft mode (graphicx `draft`): compiles the draft source under its own
+   * key and never writes the cache, so the final PDF stays cached.
+   */
+  draft?: boolean
   /** Injected for tests; defaults to the latexonline.cc client. */
   compile?: (input: CompileOptions) => Promise<CompileResult>
   store?: AssetStore
@@ -54,16 +60,19 @@ export interface CompileDocumentPdfInput {
 export async function compileDocumentPdf(input: CompileDocumentPdfInput): Promise<CompiledPdf> {
   const store = input.store ?? (await getAssetStoreForUser(input.userId))
   const compile = input.compile ?? compileLatex
-  const { cacheKey, assets } = await documentCacheKey(input.userId, input.documentId, input.source)
+  const source = input.draft ? withDraftMode(input.source) : input.source
+  const { cacheKey, assets } = await documentCacheKey(input.userId, input.documentId, source)
 
-  const cached = await store.get(input.userId, store.refForPdfCache(input.documentId, cacheKey))
+  const cached = input.draft
+    ? null
+    : await store.get(input.userId, store.refForPdfCache(input.documentId, cacheKey))
   if (cached) return { ok: true, pdf: cached, cacheKey, cached: true }
 
   // Miss: only now load asset bytes (one query) and call the compile service.
   const refs = assets.map((a) => store.refForDocumentAsset(a))
   const bytes = await store.getMany(input.userId, refs)
   const result = await compile({
-    source: input.source,
+    source,
     assets: assets.flatMap((a, i) => {
       const b = bytes.get(refs[i]!)
       return b ? [{ filename: a.filename, mimeType: a.mimeType, bytes: b }] : []
@@ -72,7 +81,7 @@ export async function compileDocumentPdf(input: CompileDocumentPdfInput): Promis
   if (!result.ok) return { ok: false, status: result.status, log: result.log, cacheKey }
 
   const pdf = Buffer.from(result.pdf)
-  if (pdf.byteLength <= MAX_PDF_CACHE_BYTES) {
+  if (!input.draft && pdf.byteLength <= MAX_PDF_CACHE_BYTES) {
     try {
       await store.put(
         input.userId,

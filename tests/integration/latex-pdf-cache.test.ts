@@ -5,6 +5,7 @@ import * as docsQ from '@/lib/db/queries/documents'
 import { getAssetStore, MAX_PDF_CACHE_BYTES } from '@/lib/storage/asset-store'
 import { compileDocumentPdf, latexCacheKey } from '@/lib/latex/pdf-cache'
 import type { CompileOptions, CompileResult } from '@/lib/latex/compile'
+import { withDraftMode } from '@/lib/latex/draft'
 import { makeUser } from '@/tests/factories'
 
 async function seedDoc() {
@@ -81,5 +82,27 @@ describe('compileDocumentPdf', () => {
     const big = await compileDocumentPdf({ userId: u.id, documentId: doc.id, source: 'x', compile: huge })
     expect(big).toMatchObject({ ok: true, cached: false })
     expect(await db.select().from(s.documentPdfCache)).toHaveLength(0)
+  })
+
+  it('draft mode compiles the draft source and never replaces the cached final PDF', async () => {
+    const { u, doc } = await seedDoc()
+    const compile = fakeCompiler()
+    const final = await compileDocumentPdf({ userId: u.id, documentId: doc.id, source: 'src', compile })
+
+    const draft = await compileDocumentPdf({
+      userId: u.id,
+      documentId: doc.id,
+      source: 'src',
+      draft: true,
+      compile,
+    })
+    expect(draft).toMatchObject({ ok: true, cached: false })
+    expect(draft.cacheKey).not.toBe(final.cacheKey)
+    expect(compile.mock.calls[1]![0].source).toBe(withDraftMode('src'))
+
+    // The final PDF is still served from the cache.
+    const again = await compileDocumentPdf({ userId: u.id, documentId: doc.id, source: 'src', compile })
+    expect(again).toMatchObject({ ok: true, cached: true, cacheKey: final.cacheKey })
+    expect(compile).toHaveBeenCalledTimes(2)
   })
 })
