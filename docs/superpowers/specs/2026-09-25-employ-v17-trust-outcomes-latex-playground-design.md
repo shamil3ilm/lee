@@ -238,6 +238,7 @@ When compute or egress is exhausted, **the database is suspended until next mont
 | 2 | Integration pass: CV score surfaces, keys to Settings › AI, **Lab → Playground rename** | v11, v17 §0 |
 | 3 | Visual QA + journey E2E | v17 §9.1 |
 | 3a | **Architecture A1–A3**: production-only migrations + Neon preview branches, file storage budget, durable job queue replacing the monolithic cron | architecture review 2026-09-26 |
+| 3a-2 | **Google Drive file storage** (drive.file scope, Employ/ folder, browser-direct uploads, Picker, migrate existing bytea assets) | architecture review A2 |
 | 3b | **Free-tier meter + guardrails** (usage vs Vercel Hobby / Neon Free limits, staggered daily crons, storage budgets, error_events) | v17 §9.6 |
 | 4 | **Scam Shield** | v17 §1 |
 | 4b | **Opportunity Score** (criteria, weights UI, 2×2 view, questions to ask) | v17 §6.6 |

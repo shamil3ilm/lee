@@ -25,7 +25,14 @@
 - Compress and downscale images in the browser before upload.
 - Deduplicate by content hash, and cap total asset storage (default 150 MB, shown in the free-tier meter).
 - Generated PDFs are rebuilt on demand, never stored.
-- Option to evaluate: move asset bytes out of Neon to Vercel Blob if its Hobby allowance fits (verify before adopting).
+- **Decision (2026-09-26, user request): Google Drive is the primary file store.** Details:
+  - **Scope:** add `https://www.googleapis.com/auth/drive.file` to the existing Google sign-in scopes. It only grants access to files Employ creates or the user explicitly picks, not the whole Drive. It's classed as non-sensitive, so it adds no extra verification on top of the Gmail scopes the app already uses. Existing users re-consent once (incremental authorization).
+  - **Layout:** an `Employ/` folder in the user's Drive with `Documents/<document>/assets`, `Exports/` and `PDFs/`. Neon stores only the Drive file id, name, size, mime type and a content hash (a few hundred bytes per file).
+  - **Access:** uploads and downloads go browser ↔ Drive where possible (resumable upload with a short-lived `drive.file` access token), so bytes don't pass through Vercel functions (4 h CPU, 10 GB origin transfer). The server fetches from Drive only when it must, for example to compile LaTeX, and caches by content hash.
+  - **Picker:** use the Google Picker to attach existing Drive files (CVs, certificates) without re-uploading.
+  - **Storage interface:** `lib/storage/asset-store.ts` (put/get/delete/usage). Backends: `drive` (default once connected) and `postgres` (fallback when Drive isn't connected, capped at 150 MB). Existing bytea assets migrate to Drive with a one-time, resumable job, then their bytes are cleared.
+  - **Failure handling:** if Drive access is revoked or expires, the UI shows "Reconnect Google Drive"; metadata stays, nothing is deleted. Tests mock the Drive API.
+  - **Costs:** uses the user's free Google storage (15 GB shared with Gmail). Zero added cost.
 
 ### A3 — Durable job queue instead of one monolithic cron (urgent before more features)
 - A `jobs` table: type, user, payload, `run_after`, attempts, `locked_until`, last error, idempotency key.
