@@ -1,6 +1,7 @@
 {
   "crons": [
-    { "path": "/api/cron/sync-all", "schedule": "0 9 * * *" }
+    { "path": "/api/cron/sync-all", "schedule": "0 9 * * *" },
+    { "path": "/api/cron/retention", "schedule": "30 3 * * *" }
   ],
   "buildCommand": "pnpm db:migrate && pnpm build",
   "installCommand": "pnpm install --frozen-lockfile"

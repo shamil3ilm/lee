@@ -21,12 +21,30 @@ import {
   saveCompanyDiscovery,
   dismissCompanyDiscovery,
 } from '@/app/(authed)/discoveries/actions'
-import type {
-  NormalizedJob,
-  NormalizedCompany,
-} from '@/lib/discovery/adapters/types'
 import { RiskBadge } from '@/components/scam/risk-badge'
 import type { RiskView } from '@/lib/scam/view'
+
+/**
+ * Only the fields a job row renders — the page never ships the full
+ * normalized payload (description, raw source copy) to the client.
+ */
+export interface DiscoveryJobSummary {
+  title: string
+  companyName: string
+  location?: string | null
+  remoteType?: string | null
+  techStack: string[]
+  applyUrl?: string | null
+}
+
+export interface DiscoveryCompanySummary {
+  name: string
+  domain?: string | null
+  website?: string | null
+  size?: string | null
+  stage?: string | null
+  techStack?: string[]
+}
 
 export interface DiscoveryRowJob {
   id: string
@@ -35,7 +53,7 @@ export interface DiscoveryRowJob {
   benefitsScore: number | null
   createdAt: string
   sourceName: string
-  normalized: NormalizedJob
+  normalized: DiscoveryJobSummary
   reasoning: DiscoveryReasoning | null
   /** v17 §1 — Scam Shield assessment; null when not assessed yet. */
   risk?: RiskView | null
@@ -47,7 +65,7 @@ export interface DiscoveryRowCompany {
   matchScore: number | null
   createdAt: string
   sourceName: string
-  normalized: NormalizedCompany
+  normalized: DiscoveryCompanySummary
   reasoning: DiscoveryReasoning | null
 }
 

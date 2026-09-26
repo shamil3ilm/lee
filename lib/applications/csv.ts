@@ -1,10 +1,10 @@
-import type { ApplicationWithJob } from '@/lib/db/queries/applications'
+import type { ApplicationListRow } from '@/lib/db/queries/applications'
 
 /**
  * Fields exported to CSV. Order matters — this list drives both the header
  * row and every data row. Column names are the header text.
  */
-const COLUMNS: Array<[label: string, extract: (r: ApplicationWithJob) => unknown]> = [
+const COLUMNS: Array<[label: string, extract: (r: ApplicationListRow) => unknown]> = [
   ['Company', (r) => r.job?.company?.name ?? ''],
   ['Title', (r) => r.job?.title ?? ''],
   ['Status', (r) => r.status],
@@ -41,7 +41,7 @@ function escapeCell(value: unknown): string {
  * Windows picks up encoding without prompting. Uses CRLF line endings for
  * RFC 4180 compliance.
  */
-export function applicationsToCsv(rows: ApplicationWithJob[]): string {
+export function applicationsToCsv(rows: readonly ApplicationListRow[]): string {
   const header = COLUMNS.map(([label]) => escapeCell(label)).join(',')
   const body = rows
     .map((r) => COLUMNS.map(([, extract]) => escapeCell(extract(r))).join(','))

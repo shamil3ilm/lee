@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import * as documentsQ from '@/lib/db/queries/documents'
-import * as assetsQ from '@/lib/db/queries/documentAssets'
-import { compileLatex, truncateLog } from '@/lib/latex/compile'
+import { truncateLog } from '@/lib/latex/compile'
+import { compileDocumentPdf } from '@/lib/latex/pdf-cache'
 import { latexDocumentContentSchema } from '@/lib/documents/types'
 import { logger } from '@/lib/logger'
 
@@ -45,18 +45,12 @@ export async function POST(req: Request): Promise<Response> {
       return NextResponse.json({ error: 'Document is not a LaTeX document.' }, { status: 400 })
     }
 
-    // Bundle every asset owned by this document into the compile request.
-    // latexonline.cc drops all `file` fields into the same working dir so
-    // `\includegraphics{name}` etc. resolve without a subdirectory prefix.
-    const assets = await assetsQ.listWithBytes(userId, documentId)
-    const result = await compileLatex({
-      source,
-      assets: assets.map((a) => ({
-        filename: a.filename,
-        mimeType: a.mimeType,
-        bytes: a.bytes,
-      })),
-    })
+    // Bundles every asset of the document with the source (latexonline.cc
+    // drops all `file` fields into one working dir) — or, when this exact
+    // source + asset set was compiled before, serves the cached PDF and
+    // skips the compile service entirely. A success also primes the cache
+    // for the document's PDF view route.
+    const result = await compileDocumentPdf({ userId, documentId, source })
     // Preserve existing content shape then overlay the new source + compile
     // status. If content isn't a valid latex shape (edge case: schema drift)
     // we fall back to a minimal shape rather than crashing.

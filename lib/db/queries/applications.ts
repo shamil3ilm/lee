@@ -67,19 +67,50 @@ export type ApplicationWithJob = Application & {
   }
 }
 
+/**
+ * Job fields a list row needs (pipeline, table, CSV export, pickers). The
+ * heavy text/jsonb columns — description_md, parsed_meta, benefits — are
+ * only loaded by `getById` for the detail page and AI prompts.
+ */
+const LIST_JOB_COLUMNS = {
+  id: true,
+  companyId: true,
+  title: true,
+  sourceUrl: true,
+  location: true,
+  remoteType: true,
+  employmentType: true,
+  salaryMin: true,
+  salaryMax: true,
+  salaryCurrency: true,
+  postedAt: true,
+} as const
+
+type JobRow = (typeof import('@/lib/db/schema').jobs)['$inferSelect']
+
+export type ApplicationListRow = Application & {
+  job: Pick<JobRow, keyof typeof LIST_JOB_COLUMNS> & {
+    company: { id: string; name: string } | null
+  }
+}
+
 export async function list(
   userId: string,
   filters: { status?: ApplicationStatus } = {},
-): Promise<ApplicationWithJob[]> {
+): Promise<ApplicationListRow[]> {
   const where = filters.status
     ? and(eq(applications.userId, userId), eq(applications.status, filters.status))
     : eq(applications.userId, userId)
-  const rows = await db.query.applications.findMany({
+  return db.query.applications.findMany({
     where,
-    with: { job: { with: { company: true } } },
+    with: {
+      job: {
+        columns: LIST_JOB_COLUMNS,
+        with: { company: { columns: { id: true, name: true } } },
+      },
+    },
     orderBy: (a, { desc }) => desc(a.updatedAt),
   })
-  return rows as never
 }
 
 export async function getById(

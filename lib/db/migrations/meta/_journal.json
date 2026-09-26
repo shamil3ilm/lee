@@ -120,6 +120,13 @@
       "when": 1790402463209,
       "tag": "0016_scam_shield",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790411122305,
+      "tag": "0017_perf_indexes_retention",
+      "breakpoints": true
     }
   ]
 }

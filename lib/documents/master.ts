@@ -15,11 +15,7 @@ import type { Document } from '@/lib/db/queries/documents'
  * applicationId=null.
  */
 export async function getMasterCV(userId: string): Promise<MasterCV | null> {
-  const rows = await documentsQ.list(userId, { kind: 'master_cv' })
-  // documents.list orders by createdAt desc, but we want the highest version.
-  const master = rows
-    .filter((r) => r.applicationId === null)
-    .sort((a, b) => b.version - a.version)[0]
+  const master = await documentsQ.getLatestMaster(userId)
   if (!master) return null
   return masterCvSchema.parse(master.content)
 }

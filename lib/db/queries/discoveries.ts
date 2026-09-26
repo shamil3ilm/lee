@@ -1,4 +1,4 @@
-import { and, count, eq, gte, inArray, isNull, lt, or, sql } from 'drizzle-orm'
+import { and, count, desc, eq, gte, inArray, isNull, lt, or, sql, type SQL } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import { discoveries } from '@/lib/db/schema'
 import { discoveryNotQuarantinedSql, discoveryQuarantinedSql } from './riskAssessments'
@@ -47,6 +47,10 @@ export interface ListOpts {
   sourceIds?: string[]
   sort?: 'combined' | 'match' | 'benefits' | 'posted'
   limit?: number
+  /** Rows to skip — pairs with `limit` for inbox pagination. */
+  offset?: number
+  /** Only rows created at or after this instant (dashboard "fresh"). */
+  createdAfter?: Date
   /**
    * v17 §1 — Scam Shield quarantine. 'exclude' (default) hides quarantined
    * rows, 'only' returns just them, 'include' ignores quarantine.
@@ -54,11 +58,76 @@ export interface ListOpts {
   quarantine?: 'exclude' | 'only' | 'include'
 }
 
+/**
+ * Lean inbox row: only what the discovery list renders. The heavy jsonb
+ * columns (`raw`, and `normalized` with its description + raw copy) stay in
+ * the database; the render fields are extracted in SQL.
+ */
+export interface DiscoveryListItem {
+  id: string
+  sourceId: string
+  sourceJobId: string
+  status: string
+  matchScore: number | null
+  benefitsScore: number | null
+  matchReasoning: unknown
+  createdAt: Date
+  updatedAt: Date
+  title: string | null
+  companyName: string | null
+  location: string | null
+  remoteType: string | null
+  techStack: string[]
+  applyUrl: string | null
+}
+
+const n = (key: string) => sql<string | null>`${discoveries.normalized}->>${key}`
+
+const LIST_COLUMNS = {
+  id: discoveries.id,
+  sourceId: discoveries.sourceId,
+  sourceJobId: discoveries.sourceJobId,
+  status: discoveries.status,
+  matchScore: discoveries.matchScore,
+  benefitsScore: discoveries.benefitsScore,
+  matchReasoning: discoveries.matchReasoning,
+  createdAt: discoveries.createdAt,
+  updatedAt: discoveries.updatedAt,
+  title: n('title'),
+  companyName: n('companyName'),
+  location: n('location'),
+  remoteType: n('remoteType'),
+  techStack: sql<unknown>`case when jsonb_typeof(${discoveries.normalized}->'techStack') = 'array'
+    then ${discoveries.normalized}->'techStack' else '[]'::jsonb end`,
+  applyUrl: n('applyUrl'),
+}
+
+function listOrder(sort: ListOpts['sort']): SQL[] {
+  const tiebreak = [desc(discoveries.createdAt), desc(discoveries.id)]
+  switch (sort) {
+    case 'match':
+      return [desc(discoveries.matchScore), ...tiebreak]
+    case 'benefits':
+      return [desc(discoveries.benefitsScore), ...tiebreak]
+    case 'posted':
+      return tiebreak
+    case 'combined':
+    default:
+      // Combined: 0.6 * match + 0.4 * benefits, coalesce nulls to 0.
+      return [
+        desc(
+          sql`(coalesce(${discoveries.matchScore}, 0) * 0.6 + coalesce(${discoveries.benefitsScore}, 0) * 0.4)`,
+        ),
+        ...tiebreak,
+      ]
+  }
+}
+
 export async function list(
   userId: string,
   opts: ListOpts = {},
   client: DbClient = db,
-): Promise<Discovery[]> {
+): Promise<DiscoveryListItem[]> {
   const conds = [eq(discoveries.userId, userId)]
   if (opts.status && opts.status !== 'all') {
     conds.push(eq(discoveries.status, opts.status))
@@ -76,32 +145,22 @@ export async function list(
   if (opts.sourceIds && opts.sourceIds.length > 0) {
     conds.push(inArray(discoveries.sourceId, opts.sourceIds))
   }
+  if (opts.createdAfter) conds.push(gte(discoveries.createdAt, opts.createdAfter))
   const quarantine = opts.quarantine ?? 'exclude'
   if (quarantine === 'exclude') conds.push(discoveryNotQuarantinedSql())
   if (quarantine === 'only') conds.push(discoveryQuarantinedSql())
-  return client.query.discoveries.findMany({
-    where: and(...conds),
-    orderBy: (d, { desc }) => {
-      switch (opts.sort) {
-        case 'match':
-          return [desc(d.matchScore), desc(d.createdAt)]
-        case 'benefits':
-          return [desc(d.benefitsScore), desc(d.createdAt)]
-        case 'posted':
-          return [desc(d.createdAt)]
-        case 'combined':
-        default:
-          // Combined: 0.6 * match + 0.4 * benefits, coalesce nulls to 0.
-          return [
-            desc(
-              sql`(coalesce(${d.matchScore}, 0) * 0.6 + coalesce(${d.benefitsScore}, 0) * 0.4)`,
-            ),
-            desc(d.createdAt),
-          ]
-      }
-    },
-    limit: opts.limit,
-  })
+  const base = client
+    .select(LIST_COLUMNS)
+    .from(discoveries)
+    .where(and(...conds))
+    .orderBy(...listOrder(opts.sort))
+    .$dynamic()
+  const limited = opts.limit !== undefined ? base.limit(opts.limit) : base
+  const rows = await (opts.offset ? limited.offset(opts.offset) : limited)
+  return rows.map((r) => ({
+    ...r,
+    techStack: Array.isArray(r.techStack) ? (r.techStack as unknown[]).map(String) : [],
+  }))
 }
 
 export async function getById(

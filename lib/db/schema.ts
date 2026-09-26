@@ -12,7 +12,7 @@ import {
   uniqueIndex,
   customType,
 } from 'drizzle-orm/pg-core'
-import { relations } from 'drizzle-orm'
+import { relations, sql } from 'drizzle-orm'
 
 // ---------------------------------------------------------------------------
 // bytea custom type. Drizzle has no first-class bytea column; both
@@ -239,6 +239,13 @@ export const interviewStages = pgTable(
   },
   (t) => ({
     appScheduledIx: index('interview_stages_app_scheduled_idx').on(t.applicationId, t.scheduledAt),
+    // perf — journey probes + calendar views filter by (user, status) and
+    // range on scheduled_at without an application id.
+    userStatusScheduledIx: index('interview_stages_user_status_scheduled_idx').on(
+      t.userId,
+      t.status,
+      t.scheduledAt,
+    ),
   }),
 )
 
@@ -281,6 +288,13 @@ export const activities = pgTable(
   },
   (t) => ({
     appCreatedIx: index('activities_app_created_idx').on(t.applicationId, t.createdAt),
+    // perf — dashboard "emails today" + follow-up nudges filter by
+    // (user, kind) and a created_at window.
+    userKindCreatedIx: index('activities_user_kind_created_idx').on(
+      t.userId,
+      t.kind,
+      t.createdAt,
+    ),
   }),
 )
 
@@ -417,6 +431,12 @@ export const discoveries = pgTable(
       t.status,
       t.matchScore,
     ),
+    // perf — FK index so ON DELETE SET NULL from ai_call_logs retention does
+    // not seq-scan discoveries per deleted log row. Partial: most rows are
+    // unscored or already detached.
+    scoredByCallIx: index('discoveries_scored_by_call_idx')
+      .on(t.scoredByCallId)
+      .where(sql`${t.scoredByCallId} is not null`),
   }),
 )
 
@@ -457,6 +477,10 @@ export const companyDiscoveries = pgTable(
       t.status,
       t.matchScore,
     ),
+    // perf — same FK index as discoveries.scored_by_call_id (retention).
+    scoredByCallIx: index('company_discoveries_scored_by_call_idx')
+      .on(t.scoredByCallId)
+      .where(sql`${t.scoredByCallId} is not null`),
   }),
 )
 
@@ -596,6 +620,10 @@ export const documentAssets = pgTable(
     mimeType: text('mime_type').notNull(),
     sizeBytes: integer('size_bytes').notNull(),
     bytes: bytea('bytes').notNull(),
+    // perf — hex sha256 of `bytes`, written on upload so the LaTeX PDF cache
+    // key can be computed without reading asset bytes. Null for rows
+    // uploaded before this column existed (hashed in SQL on demand).
+    sha256: text('sha256'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
@@ -603,6 +631,27 @@ export const documentAssets = pgTable(
     docFilenameUq: uniqueIndex('document_assets_doc_filename_uq').on(t.documentId, t.filename),
   }),
 )
+
+// ---------------------------------------------------------------------------
+// perf — compiled LaTeX PDF cache. At most ONE row per document (PK on
+// document_id) so storage stays bounded; `cache_key` is a sha256 over the
+// .tex source and every asset's sha256, so any edit invalidates it. Written
+// through the Postgres asset store (lib/storage) — a future object-storage
+// backend can hold the bytes elsewhere behind the same interface.
+// ---------------------------------------------------------------------------
+
+export const documentPdfCache = pgTable('document_pdf_cache', {
+  documentId: uuid('document_id')
+    .primaryKey()
+    .references(() => documents.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  cacheKey: text('cache_key').notNull(),
+  sizeBytes: integer('size_bytes').notNull(),
+  bytes: bytea('bytes').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
 
 export const documentAssetsRelations = relations(documentAssets, ({ one }) => ({
   document: one(documents, {
@@ -763,7 +812,15 @@ export const aiCallLogs = pgTable('ai_call_logs', {
   // pre-v14 rows stay valid; Model Lab writes it for every arena call.
   model: text('model'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-})
+}, (t) => ({
+  // perf — every analytics / usage query filters by (user, created_at window).
+  userCreatedIx: index('ai_call_logs_user_created_idx').on(t.userId, t.createdAt),
+  // perf — rating writeback + ON DELETE SET NULL from documents look up by
+  // document_id; only generation calls carry one.
+  documentIx: index('ai_call_logs_document_idx')
+    .on(t.documentId)
+    .where(sql`${t.documentId} is not null`),
+}))
 
 // ---------------------------------------------------------------------------
 // v12.0 — CV scores. One row per scoring run (history + tailoring deltas).
@@ -815,6 +872,10 @@ export const cvScores = pgTable(
       t.documentId,
       t.createdAt.desc(),
     ),
+    // perf — FK index for ON DELETE SET NULL when ai_call_logs are pruned.
+    aiCallIx: index('cv_scores_ai_call_idx')
+      .on(t.aiCallId)
+      .where(sql`${t.aiCallId} is not null`),
   }),
 )
 

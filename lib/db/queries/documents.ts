@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, sql } from 'drizzle-orm'
+import { and, desc, eq, getTableColumns, isNull, sql } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import { documents } from '@/lib/db/schema'
 
@@ -39,21 +39,74 @@ export async function create(
   return row
 }
 
-export async function list(
-  userId: string,
-  opts: ListOptions = {},
-  client: DbClient = db,
-): Promise<Document[]> {
+/** A document row without its `content` payload — what list views render. */
+export type DocumentSummary = Omit<Document, 'content'>
+
+// Every column except `content` (the CV / letter / LaTeX source JSON, often
+// tens of KB per row).
+const { content: _content, ...SUMMARY_COLUMNS } = getTableColumns(documents)
+void _content
+
+function listFilters(userId: string, opts: ListOptions) {
   const filters = [eq(documents.userId, userId)]
   if (opts.applicationId !== undefined) {
     filters.push(eq(documents.applicationId, opts.applicationId))
   }
   if (opts.kind) filters.push(eq(documents.kind, opts.kind))
+  return and(...filters)
+}
+
+/** List documents newest first — metadata only (no `content`). */
+export async function list(
+  userId: string,
+  opts: ListOptions = {},
+  client: DbClient = db,
+): Promise<DocumentSummary[]> {
+  return client
+    .select(SUMMARY_COLUMNS)
+    .from(documents)
+    .where(listFilters(userId, opts))
+    .orderBy(desc(documents.createdAt))
+}
+
+/**
+ * Like `list` but including `content`. Only for callers that render or
+ * parse the payload of every row (e.g. outreach drafts on the application
+ * page) — keep the filter narrow.
+ */
+export async function listWithContent(
+  userId: string,
+  opts: ListOptions = {},
+  client: DbClient = db,
+): Promise<Document[]> {
   return client
     .select()
     .from(documents)
-    .where(and(...filters))
+    .where(listFilters(userId, opts))
     .orderBy(desc(documents.createdAt))
+}
+
+/**
+ * The user's current master CV: highest version among `master_cv` rows with
+ * no application. One row, with content.
+ */
+export async function getLatestMaster(
+  userId: string,
+  client: DbClient = db,
+): Promise<Document | null> {
+  const [row] = await client
+    .select()
+    .from(documents)
+    .where(
+      and(
+        eq(documents.userId, userId),
+        eq(documents.kind, 'master_cv'),
+        isNull(documents.applicationId),
+      ),
+    )
+    .orderBy(desc(documents.version), desc(documents.createdAt))
+    .limit(1)
+  return row ?? null
 }
 
 export async function getById(

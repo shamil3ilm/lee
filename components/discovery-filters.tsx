@@ -60,6 +60,8 @@ export function DiscoveryFilters({
   const update = (patch: Record<string, string>): void => {
     const next = new URLSearchParams(params.toString())
     next.set('tab', tab)
+    // Any filter change starts over at the first page.
+    next.delete('page')
     for (const [k, v] of Object.entries(patch)) {
       if (v === '' || v === 'new' && k === 'status' && !next.has('status')) {
         next.delete(k)

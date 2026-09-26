@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import * as profileQ from '@/lib/db/queries/profile'
 import type { NewUserProfile, UserProfile } from '@/lib/db/queries/profile'
 
@@ -37,9 +38,16 @@ export const DEFAULT_BENEFIT_PREFS = {
   },
 } as const
 
-export async function getProfile(userId: string): Promise<UserProfile | null> {
-  return profileQ.get(userId)
-}
+/**
+ * Read the profile, memoized per request with React `cache()` so a layout,
+ * page and widgets that all need it share one query. Writes go through
+ * `saveProfile` (which reads `profileQ.get` directly, never the memo).
+ * Outside a React server render (route handlers, cron, tests) `cache` is a
+ * pass-through.
+ */
+export const getProfile = cache(
+  (userId: string): Promise<UserProfile | null> => profileQ.get(userId),
+)
 
 /**
  * Upsert a user profile. On the FIRST save (no row exists yet) we merge in

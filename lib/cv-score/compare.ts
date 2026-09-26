@@ -101,8 +101,7 @@ export interface BatchResult {
 }
 
 export async function latestMasterDocument(userId: string): Promise<documentsQ.Document | null> {
-  const rows = await documentsQ.list(userId, { kind: 'master_cv' })
-  return rows.filter((r) => r.applicationId === null).sort((x, y) => y.version - x.version)[0] ?? null
+  return documentsQ.getLatestMaster(userId)
 }
 
 /**

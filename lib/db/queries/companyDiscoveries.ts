@@ -48,6 +48,8 @@ export interface ListOpts {
   minScore?: number
   sourceIds?: string[]
   limit?: number
+  /** Rows to skip — pairs with `limit` for inbox pagination. */
+  offset?: number
 }
 
 export async function list(
@@ -72,8 +74,9 @@ export async function list(
   }
   return client.query.companyDiscoveries.findMany({
     where: and(...conds),
-    orderBy: (d, { desc }) => [desc(d.matchScore), desc(d.createdAt)],
+    orderBy: (d, { desc }) => [desc(d.matchScore), desc(d.createdAt), desc(d.id)],
     limit: opts.limit,
+    offset: opts.offset,
   })
 }
 
