@@ -197,7 +197,7 @@ export function DocumentsTable({ documents, currentFilter, scores = {} }: Docume
                   return (
                     <tr key={doc.id} className="border-b last:border-0 hover:bg-muted/40">
                       <td className="px-4 py-3">
-                        <Badge variant={KIND_BADGE[kind]} className="text-[10px]">
+                        <Badge variant={KIND_BADGE[kind]} className="whitespace-nowrap text-[10px]">
                           {KIND_LABELS[kind] ?? kind}
                         </Badge>
                       </td>

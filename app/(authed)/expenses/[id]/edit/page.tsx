@@ -24,7 +24,7 @@ export default async function EditExpensePage({ params }: EditExpensePageProps) 
   return (
     <div className="space-y-6">
       <Breadcrumbs
-        className="-mb-3"
+        className="mb-3"
         items={[
           { label: 'Money' },
           { label: 'Expenses', href: '/expenses' },

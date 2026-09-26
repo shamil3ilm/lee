@@ -48,11 +48,11 @@ export function ExpenseRow({ expense }: ExpenseRowProps) {
 
   return (
     <tr className="border-b last:border-0 hover:bg-muted/40">
-      <td className="px-3 py-2 text-xs tabular-nums text-muted-foreground">
+      <td className="whitespace-nowrap px-3 py-2 text-xs tabular-nums text-muted-foreground">
         {expense.date}
       </td>
       <td className="px-3 py-2">
-        <Badge variant="outline" className="text-[10px] capitalize">
+        <Badge variant="outline" className="whitespace-nowrap text-[10px] capitalize">
           {expense.category}
           {expense.subcategory ? ` · ${expense.subcategory}` : ''}
         </Badge>
@@ -67,7 +67,7 @@ export function ExpenseRow({ expense }: ExpenseRowProps) {
           </div>
         ) : null}
       </td>
-      <td className="px-3 py-2 text-right text-sm tabular-nums">
+      <td className="whitespace-nowrap px-3 py-2 text-right text-sm tabular-nums">
         {formatMoney(expense.amountCents, expense.currency)}
       </td>
       <td className="px-3 py-2 text-right">

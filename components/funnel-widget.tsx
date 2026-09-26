@@ -73,22 +73,27 @@ export function FunnelWidget({ counts }: FunnelWidgetProps) {
                     <span className="w-20 shrink-0 text-muted-foreground">
                       {stage.label}
                     </span>
-                    <div className="flex-1">
-                      <div className="relative h-6 w-full overflow-hidden rounded bg-muted">
+                    <div className="min-w-0 flex-1">
+                      <div className="h-6 w-full overflow-hidden rounded bg-muted">
                         <div
                           className={`h-full ${stage.bar} transition-all`}
                           style={{ width: `${width}%` }}
                         />
-                        <span className="absolute inset-0 flex items-center px-2 text-xs font-medium text-foreground/90">
-                          {count}
-                          {pct !== null ? (
-                            <span className="ml-2 text-muted-foreground">
-                              {pct}% from {STAGES[i - 1]!.label.toLowerCase()}
-                            </span>
-                          ) : null}
-                        </span>
                       </div>
                     </div>
+                    {/* Figures sit beside the bar, not on it: muted text over a
+                        saturated bar was unreadable (v17 §9.1 visual QA). */}
+                    <span className="w-20 shrink-0 text-right text-xs sm:w-40">
+                      <span className="font-medium tabular-nums text-foreground">{count}</span>
+                      {pct !== null ? (
+                        <span className="ml-1.5 text-muted-foreground">
+                          {pct}%
+                          <span className="hidden sm:inline">
+                            {' '}from {STAGES[i - 1]!.label.toLowerCase()}
+                          </span>
+                        </span>
+                      ) : null}
+                    </span>
                   </div>
                 )
               })}
