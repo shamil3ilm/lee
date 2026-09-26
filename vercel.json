@@ -1,10 +1,29 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": [
+    "sin1"
+  ],
   "crons": [
-    { "path": "/api/cron/schedule", "schedule": "0 9 * * *" },
-    { "path": "/api/cron/drain", "schedule": "0 12 * * *" },
-    { "path": "/api/cron/drain", "schedule": "0 16 * * *" },
-    { "path": "/api/cron/drain", "schedule": "0 21 * * *" },
-    { "path": "/api/cron/retention", "schedule": "30 3 * * *" }
+    {
+      "path": "/api/cron/schedule",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/drain",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/drain",
+      "schedule": "0 16 * * *"
+    },
+    {
+      "path": "/api/cron/drain",
+      "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/cron/retention",
+      "schedule": "30 3 * * *"
+    }
   ],
   "buildCommand": "pnpm db:migrate && pnpm build",
   "installCommand": "pnpm install --frozen-lockfile"
