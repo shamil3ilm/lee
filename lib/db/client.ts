@@ -4,6 +4,7 @@ import { PGlite } from '@electric-sql/pglite'
 import postgres from 'postgres'
 import { env } from '@/lib/env'
 import * as schema from './schema'
+import { PGLITE_QUERY_DELAY_ENV, parseQueryDelay, withSimulatedLatency } from './pglite-latency'
 
 type DbInstance = {
   db: ReturnType<typeof drizzlePg<typeof schema>> | ReturnType<typeof drizzlePglite<typeof schema>>
@@ -19,8 +20,10 @@ function makeDb(): DbInstance {
     // 'pglite:memory://' -> pass 'memory://' (PGlite treats this as in-memory)
     // 'pglite:' or 'pglite:memory://' both default to in-memory
     const client = path === '' || path === 'memory://' ? new PGlite() : new PGlite(path)
+    // Local perf testing only (see ./pglite-latency.ts); a no-op when unset.
+    const delayMs = parseQueryDelay(process.env[PGLITE_QUERY_DELAY_ENV])
     return {
-      db: drizzlePglite(client, { schema }),
+      db: drizzlePglite(withSimulatedLatency(client, delayMs), { schema }),
       close: async () => {
         await client.close()
       },
