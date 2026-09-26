@@ -1,0 +1,64 @@
+# Optional queue worker: drains Employ's background job queue by calling the
+# signed endpoint POST /api/internal/queue/drain. The hook for heavy work that
+# outgrows Vercel Hobby's daily crons (architecture review A3).
+#
+# DISABLED BY DEFAULT — manual trigger only, and the job is skipped unless the
+# repository variable QUEUE_DRAIN_ENABLED is 'true'. To enable:
+#   1. openssl rand -hex 32  → the shared secret
+#   2. Vercel env QUEUE_WORKER_SECRET=<secret> (redeploy; unset = endpoint 404s)
+#   3. GitHub › Settings › Secrets and variables › Actions:
+#        secrets   QUEUE_WORKER_SECRET=<secret>, APP_URL=https://<app>.vercel.app
+#        variables QUEUE_DRAIN_ENABLED=true
+#   4. Run from the Actions tab. For a timer, add e.g.
+#        schedule: [{ cron: '17 */6 * * *' }]
+#      under `on:` (mind the private-repo Actions minutes budget).
+name: queue-drain
+
+on:
+  workflow_dispatch:
+    inputs:
+      budget_ms:
+        description: Drain budget in ms (1000–240000)
+        required: false
+        default: '240000'
+      max_jobs:
+        description: Max jobs to start (1–500)
+        required: false
+        default: '200'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: queue-drain
+  cancel-in-progress: false
+
+jobs:
+  drain:
+    if: vars.QUEUE_DRAIN_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Call the signed drain endpoint
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          QUEUE_WORKER_SECRET: ${{ secrets.QUEUE_WORKER_SECRET }}
+          BUDGET_MS: ${{ inputs.budget_ms }}
+          MAX_JOBS: ${{ inputs.max_jobs }}
+        run: |
+          set -euo pipefail
+          if [ -z "${APP_URL:-}" ] || [ -z "${QUEUE_WORKER_SECRET:-}" ]; then
+            echo "APP_URL and QUEUE_WORKER_SECRET secrets are required" >&2
+            exit 1
+          fi
+          case "$BUDGET_MS" in (*[!0-9]*|'') echo "budget_ms must be a number" >&2; exit 1;; esac
+          case "$MAX_JOBS" in (*[!0-9]*|'') echo "max_jobs must be a number" >&2; exit 1;; esac
+          body=$(printf '{"budgetMs":%s,"maxJobs":%s}' "$BUDGET_MS" "$MAX_JOBS")
+          ts=$(date +%s)
+          sig=$(printf '%s.%s' "$ts" "$body" | openssl dgst -sha256 -hmac "$QUEUE_WORKER_SECRET" -hex | sed 's/^.* //')
+          curl --fail-with-body --silent --show-error --max-time 310 \
+            -X POST "${APP_URL%/}/api/internal/queue/drain" \
+            -H 'content-type: application/json' \
+            -H "x-queue-timestamp: $ts" \
+            -H "x-queue-signature: $sig" \
+            --data "$body"
