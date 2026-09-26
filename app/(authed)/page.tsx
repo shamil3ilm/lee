@@ -6,6 +6,7 @@ import * as appsQ from '@/lib/db/queries/applications'
 import * as todosQ from '@/lib/db/queries/todos'
 import { db } from '@/lib/db/client'
 import { accounts, activities, discoveries } from '@/lib/db/schema'
+import { discoveryNotQuarantinedSql } from '@/lib/db/queries/riskAssessments'
 import { getProfile } from '@/lib/profile/service'
 import { Kanban, type KanbanCard } from '@/components/kanban'
 import {
@@ -97,6 +98,8 @@ export default async function DashboardPage() {
       eq(discoveries.userId, userId),
       eq(discoveries.status, 'new'),
       gte(discoveries.createdAt, new Date(now.getTime() - FRESH_WINDOW_MS)),
+      // v17 §1 — likely-scam discoveries stay in quarantine, off the dashboard.
+      discoveryNotQuarantinedSql(),
     ),
     orderBy: (d, { desc }) => [desc(d.matchScore), desc(d.createdAt)],
     limit: 5,

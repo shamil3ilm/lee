@@ -3,6 +3,7 @@ import { and, desc, eq, gt, gte } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import { discoveries, users } from '@/lib/db/schema'
 import * as profileQ from '@/lib/db/queries/profile'
+import { discoveryNotQuarantinedSql } from '@/lib/db/queries/riskAssessments'
 import { sendEmail as defaultSendEmail } from '@/lib/gmail/send'
 import { logger } from '@/lib/logger'
 
@@ -83,6 +84,8 @@ export async function findNotifiableDiscoveries(
         eq(discoveries.status, 'new'),
         gte(discoveries.matchScore, minScore),
         gt(discoveries.createdAt, since),
+        // v17 §1 — never notify about quarantined (likely-scam) discoveries.
+        discoveryNotQuarantinedSql(),
       ),
     )
     .orderBy(desc(discoveries.matchScore), desc(discoveries.createdAt))
