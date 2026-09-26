@@ -28,7 +28,15 @@ function makeDb(): DbInstance {
       pglite: client,
     }
   }
-  const client = postgres(url, { max: 1 })
+  // Serverless tuning: close a connection idle for 20s so a frozen/recycled
+  // function instance doesn't hold a Neon slot, and fail a connect attempt
+  // after 10s instead of hanging on postgres-js's 30s default.
+  // `prepare` stays on (default): Neon's PgBouncer supports protocol-level
+  // prepared statements.
+  // Not using @vercel/functions attachDatabasePool: it only hooks pools that
+  // emit pool events (pg/mysql/mongo/ioredis `.on(...)`); postgres-js exposes
+  // no event emitter, so it would be a no-op for this client.
+  const client = postgres(url, { max: 1, idle_timeout: 20, connect_timeout: 10 })
   return {
     db: drizzlePg(client, { schema }),
     close: async () => {
