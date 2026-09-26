@@ -57,7 +57,7 @@ describe('truncateLog', () => {
 })
 
 describe('compileLatex with assets', () => {
-  it('sends every asset alongside main.tex as multipart file fields', async () => {
+  it('sends main.tex and every asset in ONE tarball (latexonline.cc rejects loose files)', async () => {
     let captured: FormData | null = null
     const pdfBytes = new Uint8Array([37, 80, 68, 70, 45])
     globalThis.fetch = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
@@ -66,7 +66,7 @@ describe('compileLatex with assets', () => {
     }) as unknown as typeof fetch
 
     const result = await compileLatex({
-      source: '\\documentclass{article}\\begin{document}\\includegraphics{photo.jpg}\\end{document}',
+      source: '\documentclass{article}\begin{document}\includegraphics{photo.jpg}\end{document}',
       assets: [
         { filename: 'photo.jpg', mimeType: 'image/jpeg', bytes: Buffer.from([0xff, 0xd8, 0xff]) },
         { filename: 'cover.pdf', mimeType: 'application/pdf', bytes: Buffer.from([0x25, 0x50]) },
@@ -75,23 +75,37 @@ describe('compileLatex with assets', () => {
     expect(result.ok).toBe(true)
     expect(captured).not.toBeNull()
 
-    // Every `file` field's filename should include main.tex plus each asset.
     const values = captured!.getAll('file') as unknown[]
-    expect(values).toHaveLength(3)
-    const names = values.map((v) => (v as File).name)
-    expect(names).toContain('main.tex')
-    expect(names).toContain('photo.jpg')
-    expect(names).toContain('cover.pdf')
+    expect(values).toHaveLength(1)
+    const tar = new Uint8Array(await (values[0] as File).arrayBuffer())
+    const decoder = new TextDecoder()
+    // Walk the ustar headers and collect the file names and payloads.
+    const files: Record<string, number[]> = {}
+    let off = 0
+    while (off + 512 <= tar.length && tar[off] !== 0) {
+      const name = decoder.decode(tar.subarray(off, off + 100)).replace(/\0.*$/s, '')
+      const size = parseInt(decoder.decode(tar.subarray(off + 124, off + 136)).replace(/\0.*$/s, '').trim(), 8)
+      files[name] = [...tar.subarray(off + 512, off + 512 + size)]
+      off += 512 + Math.ceil(size / 512) * 512
+    }
+    expect(Object.keys(files).sort()).toEqual(['cover.pdf', 'main.tex', 'photo.jpg'])
+    expect(files['photo.jpg']).toEqual([0xff, 0xd8, 0xff])
+    expect(decoder.decode(new Uint8Array(files['main.tex']!))).toContain('includegraphics{photo.jpg}')
+  })
 
-    // MIME types should be preserved on the Blob for each asset.
-    const photoBlob = values.find((v) => (v as File).name === 'photo.jpg') as File
-    expect(photoBlob.type).toBe('image/jpeg')
-    const pdfBlob = values.find((v) => (v as File).name === 'cover.pdf') as File
-    expect(pdfBlob.type).toBe('application/pdf')
-
-    // Byte payload for one asset should round-trip.
-    const photoBytes = new Uint8Array(await photoBlob.arrayBuffer())
-    expect([...photoBytes]).toEqual([0xff, 0xd8, 0xff])
+  it('returns a friendly 422 for an unsafe asset file name instead of calling the service', async () => {
+    const fetchSpy = vi.fn()
+    globalThis.fetch = fetchSpy as unknown as typeof fetch
+    const result = await compileLatex({
+      source: 'x',
+      assets: [{ filename: '../secret.png', mimeType: 'image/png', bytes: Buffer.from([1]) }],
+    })
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.status).toBe(422)
+      expect(result.log).toMatch(/file name/i)
+    }
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 
   it('backwards compatible: bare source string still works', async () => {

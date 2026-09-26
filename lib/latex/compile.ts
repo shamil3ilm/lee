@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger'
 import { fetchWithTimeout, isTimeoutError, LATEX_COMPILE_TIMEOUT_MS } from '@/lib/net/timeout'
+import { createTar, TarNameError } from './tar'
 
 export type CompileResult =
   | { ok: true; pdf: ArrayBuffer }
@@ -15,10 +16,9 @@ export interface CompileAsset {
 export interface CompileOptions {
   source: string
   /**
-   * Optional bundle of assets to POST alongside main.tex. latexonline.cc
-   * accepts multiple `file` fields; every file lands in the same working
-   * directory so `\includegraphics{name}` resolves without a subdirectory
-   * prefix.
+   * Optional assets packed alongside main.tex. Everything lands in the same
+   * working directory, so `\includegraphics{name}` resolves without a
+   * subdirectory prefix.
    */
   assets?: readonly CompileAsset[]
 }
@@ -28,34 +28,32 @@ const MAX_LOG_CHARS = 20_000
 
 /**
  * Compile a full .tex source into PDF bytes via the public latexonline.cc
- * service. Uploads the source as multipart form-data (field name `file`),
- * optionally alongside additional asset files (also `file` fields — each
- * with its filename set so LaTeX can `\includegraphics{name}` them).
+ * service. The service only accepts a tarball upload (a loose .tex gets
+ * "failed to extract tarball"), so main.tex and every asset are packed into
+ * one ustar archive sent as the multipart `file` field.
  *
  * On non-2xx response, returns the response body as the LaTeX log so the
  * editor can surface it inline. Truncated to 20KB to keep the payload sane.
  *
- * Backwards compatible: the signature also accepts a bare source string
- * from the existing callers that predate v5.2's asset bundling.
+ * Backwards compatible: the signature also accepts a bare source string.
  */
 export async function compileLatex(
   input: string | CompileOptions,
 ): Promise<CompileResult> {
   const opts: CompileOptions =
     typeof input === 'string' ? { source: input } : input
-  const form = new FormData()
-  form.append(
-    'file',
-    new Blob([opts.source], { type: 'application/x-tex' }),
-    'main.tex',
-  )
-  for (const asset of opts.assets ?? []) {
-    form.append(
-      'file',
-      new Blob([new Uint8Array(asset.bytes)], { type: asset.mimeType || 'application/octet-stream' }),
-      asset.filename,
-    )
+  let tar: Uint8Array<ArrayBuffer>
+  try {
+    tar = createTar([
+      { name: 'main.tex', bytes: new TextEncoder().encode(opts.source) },
+      ...(opts.assets ?? []).map((a) => ({ name: a.filename, bytes: new Uint8Array(a.bytes) })),
+    ])
+  } catch (err) {
+    if (err instanceof TarNameError) return { ok: false, status: 422, log: err.message }
+    throw err
   }
+  const form = new FormData()
+  form.append('file', new Blob([tar], { type: 'application/x-tar' }), 'bundle.tar')
   let res: Response
   try {
     res = await fetchWithTimeout(
