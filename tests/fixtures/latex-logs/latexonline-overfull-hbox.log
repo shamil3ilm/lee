@@ -1,0 +1,6 @@
+pdflatex -interaction nonstopmode -recorder -output-directory latex.out /tmp/downloads/tmp_4747/main.tex
+/tmp/downloads/tmp_4747/main.tex:3: warning: Underfull \hbox (badness 10000) (page 1)
+/tmp/downloads/tmp_4747/main.tex:3: warning: Overfull \hbox (224.05511pt too wide) (page 1)
+/tmp/downloads/tmp_4747/main.tex:6: error: Undefined control sequence
+      at \undefinedAtTheEnd
+There were errors; /tmp/storage/compilation_333/output.pdf not updated

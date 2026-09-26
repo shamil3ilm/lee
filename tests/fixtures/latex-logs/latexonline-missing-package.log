@@ -1,0 +1,7 @@
+pdflatex -interaction nonstopmode -recorder -output-directory latex.out /tmp/downloads/tmp_4753/main.tex
+/tmp/downloads/tmp_4753/main.tex:3: error: File `doesnotexistpkg.sty' not found
+      at <read *>
+    from \begin{document}
+               ^
+/tmp/downloads/tmp_4753/main.tex: Fatal error (no output file produced)
+There were errors; /tmp/storage/compilation_335/output.pdf not updated

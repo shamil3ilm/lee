@@ -1,0 +1,9 @@
+pdflatex -interaction nonstopmode -recorder -output-directory latex.out /tmp/downloads/tmp_4742/main.tex
+/tmp/downloads/tmp_4742/main.tex: error: File ended while scanning use of \textbf 
+      at <inserted text> \par
+                         ^
+    from <*> /tmp/downloads/tmp_4742/main.tex
+/tmp/downloads/tmp_4742/main.tex: error: Emergency stop: job aborted, no legal \end found
+      at <*> /tmp/downloads/tmp_4742/main.tex
+/tmp/downloads/tmp_4742/main.tex: Fatal error (no output file produced)
+There were errors; /tmp/storage/compilation_331/output.pdf not updated

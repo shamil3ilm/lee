@@ -1,0 +1,7 @@
+pdflatex -interaction nonstopmode -recorder -output-directory latex.out /tmp/downloads/tmp_4750/main.tex
+/usr/share/texlive/texmf-dist/tex/latex/geometry/geometry.sty:994: error: [keyval] notanoption undefined
+      at \ProcessOptionsKV[p]{Gm}%
+                                 ^
+/tmp/downloads/tmp_4750/main.tex:5: error: [xcolor] Undefined color `nosuchcolor'
+      at \textcolor{nosuchcolor}{Hello}
+There were errors; /tmp/storage/compilation_334/output.pdf not updated

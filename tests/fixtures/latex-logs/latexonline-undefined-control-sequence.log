@@ -1,0 +1,5 @@
+pdflatex -interaction nonstopmode -recorder -output-directory latex.out /tmp/downloads/tmp_4739/main.tex
+/tmp/downloads/tmp_4739/main.tex:5: error: Undefined control sequence
+      at This line has \foobarbaz{} an undefined macro.
+                                 ^
+There were errors; /tmp/storage/compilation_330/output.pdf not updated

@@ -1,0 +1,9 @@
+pdflatex -interaction nonstopmode -recorder -output-directory latex.out /tmp/downloads/tmp_4744/main.tex
+/tmp/downloads/tmp_4744/main.tex:5: warning: File `missing-photo.png' not found
+/tmp/downloads/tmp_4744/main.tex:5: error: [pdftex.def] File `missing-photo.png' not found
+      at \includegraphics[width=3cm]{missing-photo.png}
+/tmp/downloads/tmp_4744/main.tex:6: error: File `chapter-two.tex' not found
+      at <read *>
+    from \input{chapter-two}
+/tmp/downloads/tmp_4744/main.tex: Fatal error (no output file produced)
+There were errors; /tmp/storage/compilation_332/output.pdf not updated

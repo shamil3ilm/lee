@@ -29,6 +29,23 @@ describe('extractLatexHint', () => {
     expect(hint?.message).toContain('\\foobar')
   })
 
+  it('names the undefined command (the last one on the context line), not a later one', () => {
+    const service =
+      '/tmp/d/main.tex:6: error: Undefined control sequence\n      at \\textbf{x} \\textbff{PayFlow}\n' +
+      '/tmp/d/main.tex:9: warning: Overfull \\hbox (12.3pt too wide) (page 1)\n'
+    expect(extractLatexHint(service)?.message).toMatch(/^\\textbff is undefined/)
+    const raw = '! Undefined control sequence.\nl.5 This \\emph{line} has \\foobarbaz\n                 {} x\n\\hbox'
+    expect(extractLatexHint(raw)?.message).toMatch(/^\\foobarbaz is undefined/)
+  })
+
+  it('uses the caret of the latexonline context to find the command', () => {
+    const log =
+      '/tmp/d/main.tex:5: error: Undefined control sequence\n' +
+      '      at This line has \\foobarbaz{} then \\textbf{bold}.\n' +
+      '                                 ^\n'
+    expect(extractLatexHint(log)?.message).toMatch(/^\\foobarbaz is undefined/)
+  })
+
   it('detects a mismatched environment', () => {
     const log = '! LaTeX Error: \\begin{itemize} ended by \\end{enumerate}.\n'
     const hint = extractLatexHint(log)
