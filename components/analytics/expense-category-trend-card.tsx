@@ -1,19 +1,20 @@
 'use client'
+import dynamic from 'next/dynamic'
 import { LineChart as LineChartIcon } from 'lucide-react'
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from '@/components/ui/chart'
+import type { ChartConfig } from '@/components/ui/chart'
 import { AnalyticsCardShell } from './card-shell'
+import { ChartSkeleton } from './charts/chart-skeleton'
 import type { CategoryTrendRow } from '@/lib/analytics/service'
-import { colourFor, formatMoney, formatMoneyAxis } from '@/lib/ui/money'
+import { colourFor } from '@/lib/ui/money'
 
 interface ExpenseCategoryTrendCardProps {
   data: CategoryTrendRow[]
 }
+
+const ExpenseCategoryTrendChart = dynamic(
+  () => import('./charts/expense-category-trend-chart').then((m) => m.ExpenseCategoryTrendChart),
+  { ssr: false, loading: ChartSkeleton },
+)
 
 function shortMonthLabel(month: string): string {
   const [y, m] = month.split('-')
@@ -74,41 +75,7 @@ export function ExpenseCategoryTrendCard({ data }: ExpenseCategoryTrendCardProps
       emptyMessage="Log expenses over several months to see category trends."
       emptyIcon={LineChartIcon}
     >
-      <ChartContainer config={config} className="h-full w-full">
-        <LineChart data={chartData} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
-          <CartesianGrid vertical={false} />
-          <XAxis
-            dataKey="month"
-            tickLine={false}
-            axisLine={false}
-            tickMargin={6}
-            interval="preserveStartEnd"
-          />
-          <YAxis
-            tickLine={false}
-            axisLine={false}
-            width={40}
-            tickFormatter={(v: number) => formatMoneyAxis(v)}
-          />
-          <ChartTooltip
-            content={
-              <ChartTooltipContent
-                valueFormatter={(v) => formatMoney(Number(v))}
-              />
-            }
-          />
-          {topCategories.map((c) => (
-            <Line
-              key={c}
-              type="monotone"
-              dataKey={c}
-              stroke={`var(--color-${c})`}
-              strokeWidth={2}
-              dot={false}
-            />
-          ))}
-        </LineChart>
-      </ChartContainer>
+      <ExpenseCategoryTrendChart config={config} categories={topCategories} data={chartData} />
     </AnalyticsCardShell>
   )
 }

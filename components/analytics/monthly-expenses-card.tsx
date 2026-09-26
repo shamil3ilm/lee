@@ -1,19 +1,20 @@
 'use client'
+import dynamic from 'next/dynamic'
 import { Wallet } from 'lucide-react'
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from '@/components/ui/chart'
+import type { ChartConfig } from '@/components/ui/chart'
 import { AnalyticsCardShell } from './card-shell'
+import { ChartSkeleton } from './charts/chart-skeleton'
 import type { MonthlyExpenseBar } from '@/lib/analytics/service'
-import { colourFor, formatMoney, formatMoneyAxis } from '@/lib/ui/money'
+import { colourFor } from '@/lib/ui/money'
 
 interface MonthlyExpensesCardProps {
   data: MonthlyExpenseBar[]
 }
+
+const MonthlyExpensesChart = dynamic(
+  () => import('./charts/monthly-expenses-chart').then((m) => m.MonthlyExpensesChart),
+  { ssr: false, loading: ChartSkeleton },
+)
 
 function shortMonthLabel(month: string): string {
   const [y, m] = month.split('-')
@@ -69,40 +70,7 @@ export function MonthlyExpensesCard({ data }: MonthlyExpensesCardProps) {
       emptyMessage="Log expenses to see your monthly cadence and spending mix."
       emptyIcon={Wallet}
     >
-      <ChartContainer config={config} className="h-full w-full">
-        <BarChart data={enriched} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
-          <CartesianGrid vertical={false} />
-          <XAxis
-            dataKey="month"
-            tickLine={false}
-            axisLine={false}
-            tickMargin={6}
-            interval="preserveStartEnd"
-          />
-          <YAxis
-            tickLine={false}
-            axisLine={false}
-            width={40}
-            tickFormatter={(v: number) => formatMoneyAxis(v)}
-          />
-          <ChartTooltip
-            content={
-              <ChartTooltipContent
-                valueFormatter={(v) => formatMoney(Number(v))}
-              />
-            }
-          />
-          {categories.map((c) => (
-            <Bar
-              key={c}
-              dataKey={c}
-              stackId="expenses"
-              fill={`var(--color-${c})`}
-              radius={[0, 0, 0, 0]}
-            />
-          ))}
-        </BarChart>
-      </ChartContainer>
+      <MonthlyExpensesChart config={config} categories={categories} data={enriched} />
     </AnalyticsCardShell>
   )
 }

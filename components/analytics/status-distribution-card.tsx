@@ -1,15 +1,9 @@
 'use client'
+import dynamic from 'next/dynamic'
 import { PieChart as PieChartIcon } from 'lucide-react'
-import { Cell, Pie, PieChart } from 'recharts'
-import {
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from '@/components/ui/chart'
+import type { ChartConfig } from '@/components/ui/chart'
 import { AnalyticsCardShell } from './card-shell'
+import { ChartSkeleton } from './charts/chart-skeleton'
 import type { StatusSlice } from '@/lib/analytics/service'
 import { STATUS_LABELS, type ApplicationStatus } from '@/lib/ui/status'
 
@@ -28,6 +22,11 @@ const STATUS_COLOR: Record<string, string> = {
   rejected: 'hsl(0 84% 60%)',
   withdrawn: 'hsl(215 14% 45%)',
 }
+
+const StatusDistributionChart = dynamic(
+  () => import('./charts/status-distribution-chart').then((m) => m.StatusDistributionChart),
+  { ssr: false, loading: ChartSkeleton },
+)
 
 function labelFor(status: string): string {
   return STATUS_LABELS[status as ApplicationStatus] ?? status
@@ -65,24 +64,7 @@ export function StatusDistributionCard({ data }: StatusDistributionCardProps) {
       emptyMessage="Add applications to see how your pipeline breaks down by status."
       emptyIcon={PieChartIcon}
     >
-      <ChartContainer config={config} className="h-full w-full">
-        <PieChart>
-          <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-          <Pie
-            data={enriched}
-            dataKey="count"
-            nameKey="status"
-            innerRadius={40}
-            outerRadius={72}
-            paddingAngle={2}
-          >
-            {enriched.map((entry) => (
-              <Cell key={entry.status} fill={entry.fill} />
-            ))}
-          </Pie>
-          <ChartLegend content={<ChartLegendContent />} />
-        </PieChart>
-      </ChartContainer>
+      <StatusDistributionChart config={config} data={enriched} />
     </AnalyticsCardShell>
   )
 }

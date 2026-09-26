@@ -1,15 +1,9 @@
 'use client'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { Bot, Download, HelpCircle } from 'lucide-react'
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from '@/components/ui/chart'
 import {
   Tooltip,
   TooltipContent,
@@ -18,20 +12,24 @@ import {
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import type { AIUsageStats } from '@/lib/analytics/service'
+import { formatCost, formatNumber } from './ai-usage-format'
+import { ChartSkeleton } from './charts/chart-skeleton'
 
 interface AIUsageCardProps {
   data: AIUsageStats
   className?: string
 }
 
-const CHART_CONFIG: ChartConfig = {
-  cost: { label: 'Est. cost ($)', color: 'hsl(217 91% 60%)' },
-}
+// recharts loads lazily; each chart sits in a fixed-height box, so no layout shift.
+const SignalCheckChart = dynamic(
+  () => import('./charts/ai-usage-charts').then((m) => m.SignalCheckChart),
+  { ssr: false, loading: ChartSkeleton },
+)
 
-const SIGNAL_CHART_CONFIG: ChartConfig = {
-  proceeded: { label: 'Proceeded', color: 'hsl(142 71% 45%)' },
-  skipped: { label: 'Skipped', color: 'hsl(0 84% 60%)' },
-}
+const DailyCostChart = dynamic(
+  () => import('./charts/ai-usage-charts').then((m) => m.DailyCostChart),
+  { ssr: false, loading: ChartSkeleton },
+)
 
 function formatPct(v: number): string {
   return `${(v * 100).toFixed(v < 0.01 ? 1 : 0)}%`
@@ -39,16 +37,6 @@ function formatPct(v: number): string {
 
 function formatRating(v: number | null): string {
   return v == null ? '—' : v.toFixed(2)
-}
-
-function formatCost(v: number): string {
-  if (v === 0) return '$0.00'
-  if (v < 0.01) return '<$0.01'
-  return `$${v.toFixed(v < 1 ? 4 : 2)}`
-}
-
-function formatNumber(n: number): string {
-  return n.toLocaleString('en-US')
 }
 
 function shortDayLabel(iso: string): string {
@@ -293,44 +281,7 @@ export function AIUsageCard({ data, className }: AIUsageCardProps) {
                   Signal checks — proceeded vs skipped (last 30 days)
                 </div>
                 <div className="h-40 w-full">
-                  <ChartContainer config={SIGNAL_CHART_CONFIG} className="h-full w-full">
-                    <BarChart
-                      data={data.signalCheckByKind}
-                      margin={{ top: 4, right: 8, left: -18, bottom: 0 }}
-                    >
-                      <CartesianGrid vertical={false} />
-                      <XAxis
-                        dataKey="kind"
-                        tickLine={false}
-                        axisLine={false}
-                        tickMargin={6}
-                        interval={0}
-                        angle={-30}
-                        height={70}
-                        textAnchor="end"
-                        fontSize={10}
-                      />
-                      <YAxis
-                        tickLine={false}
-                        axisLine={false}
-                        width={30}
-                        tickFormatter={(v: number) => formatNumber(v)}
-                      />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar
-                        dataKey="proceeded"
-                        stackId="s"
-                        fill="var(--color-proceeded)"
-                        radius={[0, 0, 0, 0]}
-                      />
-                      <Bar
-                        dataKey="skipped"
-                        stackId="s"
-                        fill="var(--color-skipped)"
-                        radius={[2, 2, 0, 0]}
-                      />
-                    </BarChart>
-                  </ChartContainer>
+                  <SignalCheckChart data={data.signalCheckByKind} />
                 </div>
               </div>
             ) : null}
@@ -340,36 +291,7 @@ export function AIUsageCard({ data, className }: AIUsageCardProps) {
                 Daily cost trend (last 30 days)
               </div>
               <div className="h-32 w-full">
-                <ChartContainer config={CHART_CONFIG} className="h-full w-full">
-                  <BarChart
-                    data={data.byDay.map((b) => ({ ...b, label: shortDayLabel(b.date) }))}
-                    margin={{ top: 4, right: 8, left: -18, bottom: 0 }}
-                  >
-                    <CartesianGrid vertical={false} />
-                    <XAxis
-                      dataKey="label"
-                      tickLine={false}
-                      axisLine={false}
-                      tickMargin={6}
-                      interval="preserveStartEnd"
-                      minTickGap={24}
-                    />
-                    <YAxis
-                      tickLine={false}
-                      axisLine={false}
-                      width={40}
-                      tickFormatter={(v: number) => (v === 0 ? '$0' : `$${v.toFixed(2)}`)}
-                    />
-                    <ChartTooltip
-                      content={
-                        <ChartTooltipContent
-                          valueFormatter={(v) => formatCost(Number(v))}
-                        />
-                      }
-                    />
-                    <Bar dataKey="cost" fill="var(--color-cost)" radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ChartContainer>
+                <DailyCostChart data={data.byDay.map((b) => ({ ...b, label: shortDayLabel(b.date) }))} />
               </div>
             </div>
           </>

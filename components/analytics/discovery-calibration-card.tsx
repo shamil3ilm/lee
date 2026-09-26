@@ -1,20 +1,8 @@
 'use client'
+import dynamic from 'next/dynamic'
 import { Target } from 'lucide-react'
-import {
-  CartesianGrid,
-  Scatter,
-  ScatterChart,
-  XAxis,
-  YAxis,
-  ZAxis,
-} from 'recharts'
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from '@/components/ui/chart'
 import { AnalyticsCardShell } from './card-shell'
+import { ChartSkeleton } from './charts/chart-skeleton'
 import type { CalibrationPoint, CalibrationOutcome } from '@/lib/analytics/service'
 
 interface DiscoveryCalibrationCardProps {
@@ -32,17 +20,10 @@ const OUTCOME_Y: Record<CalibrationOutcome, number> = {
   dismissed: 0,
 }
 
-const OUTCOME_LABEL: Record<number, string> = {
-  0: 'Rejected / Dismissed',
-  1: 'Saved',
-  2: 'Applied',
-  3: 'Interviewed',
-  4: 'Offered',
-}
-
-const CONFIG: ChartConfig = {
-  calibration: { label: 'Discoveries', color: 'hsl(258 90% 66%)' },
-}
+const DiscoveryCalibrationChart = dynamic(
+  () => import('./charts/discovery-calibration-chart').then((m) => m.DiscoveryCalibrationChart),
+  { ssr: false, loading: ChartSkeleton },
+)
 
 /**
  * Scatter: X = discovery match score, Y = outcome (encoded 0..4), dot size
@@ -67,43 +48,7 @@ export function DiscoveryCalibrationCard({ data }: DiscoveryCalibrationCardProps
       emptyMessage="Discovery calibration appears once your discovery feed has scored jobs with recorded outcomes."
       emptyIcon={Target}
     >
-      <ChartContainer config={CONFIG} className="h-full w-full">
-        <ScatterChart margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
-          <CartesianGrid />
-          <XAxis
-            type="number"
-            dataKey="x"
-            name="match score"
-            domain={[0, 100]}
-            tickLine={false}
-            axisLine={false}
-            tickMargin={6}
-          />
-          <YAxis
-            type="number"
-            dataKey="y"
-            name="outcome"
-            domain={[-0.5, 4.5]}
-            ticks={[0, 1, 2, 3, 4]}
-            tickFormatter={(v: number) => OUTCOME_LABEL[v] ?? ''}
-            width={110}
-            tickLine={false}
-            axisLine={false}
-          />
-          <ZAxis type="number" dataKey="z" range={[40, 320]} name="count" />
-          <ChartTooltip
-            content={
-              <ChartTooltipContent
-                hideLabel
-                valueFormatter={(v, name) =>
-                  name === 'y' ? (OUTCOME_LABEL[Number(v)] ?? String(v)) : String(v)
-                }
-              />
-            }
-          />
-          <Scatter data={points} fill="var(--color-calibration)" />
-        </ScatterChart>
-      </ChartContainer>
+      <DiscoveryCalibrationChart points={points} />
     </AnalyticsCardShell>
   )
 }

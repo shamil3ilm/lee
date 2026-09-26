@@ -1,6 +1,6 @@
 'use client'
 import * as React from 'react'
-import * as Recharts from 'recharts'
+import { Legend, ResponsiveContainer, Tooltip } from 'recharts'
 import { cn } from '@/lib/utils'
 
 /**
@@ -62,7 +62,7 @@ export function ChartContainer({ config, className, children }: ChartContainerPr
         )}
         style={cssVars as React.CSSProperties}
       >
-        <Recharts.ResponsiveContainer>{children}</Recharts.ResponsiveContainer>
+        <ResponsiveContainer>{children}</ResponsiveContainer>
       </div>
     </ChartContext.Provider>
   )
@@ -150,7 +150,7 @@ export const ChartTooltipContent = React.forwardRef<HTMLDivElement, TooltipConte
 // Re-export the recharts Tooltip as ChartTooltip so consumers pass content
 // via `<ChartTooltip content={<ChartTooltipContent />} />` — mirrors the
 // shadcn API even though we're just aliasing.
-export const ChartTooltip = Recharts.Tooltip
+export const ChartTooltip = Tooltip
 
 // -----------------------------------------------------------------------
 // Legend
@@ -195,4 +195,4 @@ export function ChartLegendContent({ payload, className, hideIcon }: ChartLegend
   )
 }
 
-export const ChartLegend = Recharts.Legend
+export const ChartLegend = Legend

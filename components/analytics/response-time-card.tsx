@@ -1,22 +1,18 @@
 'use client'
+import dynamic from 'next/dynamic'
 import { Clock } from 'lucide-react'
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from '@/components/ui/chart'
 import { AnalyticsCardShell } from './card-shell'
+import { ChartSkeleton } from './charts/chart-skeleton'
 import type { ResponseTimeBucket } from '@/lib/analytics/service'
 
 interface ResponseTimeCardProps {
   data: ResponseTimeBucket[]
 }
 
-const CONFIG: ChartConfig = {
-  count: { label: 'Applications', color: 'hsl(217 91% 60%)' },
-}
+const ResponseTimeChart = dynamic(
+  () => import('./charts/response-time-chart').then((m) => m.ResponseTimeChart),
+  { ssr: false, loading: ChartSkeleton },
+)
 
 /**
  * Histogram of days-to-first-response across all applied applications.
@@ -36,15 +32,7 @@ export function ResponseTimeCard({ data }: ResponseTimeCardProps) {
       emptyMessage="Log at least a few applied applications with follow-up activity to see the distribution."
       emptyIcon={Clock}
     >
-      <ChartContainer config={CONFIG} className="h-full w-full">
-        <BarChart data={data} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
-          <CartesianGrid vertical={false} />
-          <XAxis dataKey="bucketDays" tickLine={false} axisLine={false} tickMargin={6} />
-          <YAxis tickLine={false} axisLine={false} width={28} allowDecimals={false} />
-          <ChartTooltip content={<ChartTooltipContent />} />
-          <Bar dataKey="count" fill="var(--color-count)" radius={[2, 2, 0, 0]} />
-        </BarChart>
-      </ChartContainer>
+      <ResponseTimeChart data={data} />
     </AnalyticsCardShell>
   )
 }
