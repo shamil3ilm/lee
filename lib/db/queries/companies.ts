@@ -59,6 +59,17 @@ export async function listWatched(userId: string, client: DbClient = db): Promis
   })
 }
 
+/** id + name of every company the user has (watched or not), for labels. */
+export async function listNames(
+  userId: string,
+  client: DbClient = db,
+): Promise<Array<{ id: string; name: string }>> {
+  return client
+    .select({ id: companies.id, name: companies.name })
+    .from(companies)
+    .where(eq(companies.userId, userId))
+}
+
 export async function setWatched(
   userId: string,
   id: string,

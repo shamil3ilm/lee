@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import * as q from '@/lib/db/queries/companies'
-import { makeApplication, makeContact, makeJob, makeUser } from '@/tests/factories'
+import { makeApplication, makeCompany, makeContact, makeJob, makeUser } from '@/tests/factories'
 
 describe('companies queries', () => {
   it('findOrCreateByDomain creates once, returns existing on second call', async () => {
@@ -80,5 +80,17 @@ describe('companies queries', () => {
     expect(await q.remove(u.id, c.id)).toBe(true)
     expect(await q.getById(u.id, c.id)).toBeUndefined()
     expect(await q.remove(u.id, c.id)).toBe(false)
+  })
+})
+
+describe('companies.listNames', () => {
+  it('returns every company of the user, watched or not, and no one else', async () => {
+    const u = await makeUser()
+    const other = await makeUser()
+    const watched = await makeCompany(u.id, { name: 'Watched', isWatched: true })
+    const unwatched = await makeCompany(u.id, { name: 'Unwatched', isWatched: false })
+    await makeCompany(other.id, { name: 'Theirs' })
+    const rows = await q.listNames(u.id)
+    expect(rows.map((r) => r.id).sort()).toEqual([watched.id, unwatched.id].sort())
   })
 })

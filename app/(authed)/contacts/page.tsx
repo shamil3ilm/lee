@@ -41,12 +41,16 @@ function groupByCompany(
 
 export default async function ContactsPage() {
   const userId = await requireUserId()
-  const [contacts, companies] = await Promise.all([
+  const [contacts, companies, companyNames] = await Promise.all([
     contactsQ.list(userId),
     companiesQ.listWatched(userId),
+    companiesQ.listNames(userId),
   ])
   const companyOptions: CompanyOption[] = companies.map((c) => ({ id: c.id, name: c.name }))
-  const groups = groupByCompany(contacts, companyOptions)
+  // Group labels come from every company, not just watched ones — contacts
+  // at unwatched companies were each shown under a separate
+  // "(unknown company)" heading (v17 §9.1 visual QA).
+  const groups = groupByCompany(contacts, companyNames)
 
   return (
     <div>
