@@ -5,6 +5,7 @@ import { PGlite } from '@electric-sql/pglite'
 import postgres from 'postgres'
 import { drizzle as drizzlePg } from 'drizzle-orm/postgres-js'
 import { migrate as migratePg } from 'drizzle-orm/postgres-js/migrator'
+import { resolveMigrationTarget } from './migration-target'
 
 // Load env from .env.local (dev override) then .env (defaults). Missing files
 // are silently ignored — this matches Next.js/Vercel loading order.
@@ -79,10 +80,17 @@ async function runPgliteMigrations(url: string): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  // Match parseEnv's fallback so this script works on Vercel where the Neon
-  // integration may inject only DATABASE_URL_UNPOOLED.
-  const url = process.env.DATABASE_URL || process.env.DATABASE_URL_UNPOOLED
-  if (!url) throw new Error('DATABASE_URL or DATABASE_URL_UNPOOLED required')
+  const plan = resolveMigrationTarget({
+    VERCEL: process.env.VERCEL,
+    VERCEL_ENV: process.env.VERCEL_ENV,
+    DATABASE_URL: process.env.DATABASE_URL,
+    DATABASE_URL_UNPOOLED: process.env.DATABASE_URL_UNPOOLED,
+  })
+  if (plan.action === 'skip') {
+    console.log(`migrations skipped — ${plan.reason}`)
+    return
+  }
+  const { url } = plan
 
   if (url.startsWith('pglite:')) {
     await runPgliteMigrations(url)
