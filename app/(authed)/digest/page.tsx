@@ -29,7 +29,7 @@ export default async function DigestPage() {
   ])
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="max-w-3xl space-y-6">
       <PageHeader
         title="Weekly digest"
         description="What's happening in the next 7 days."
