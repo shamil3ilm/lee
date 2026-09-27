@@ -25,6 +25,14 @@ import { BoardViewToggle } from '@/components/board/view-toggle'
 import type { DiscoveryBoardColumn, DiscoveryBoardItem } from '@/components/discoveries-board'
 import { LazyDiscoveriesBoard } from '@/components/board/lazy'
 import { parseBoardView, viewHref, type BoardView } from '@/lib/board/view'
+import { lastCheck } from '@/lib/discovery/poll-stats'
+import { relativeFromNow } from '@/lib/ui/date'
+
+/** "Last checked 2h ago · 12 new" from the sources' last poll results. */
+function lastCheckedLine(sources: Parameters<typeof lastCheck>[0]): string | null {
+  const c = lastCheck(sources)
+  return c ? `Last checked ${relativeFromNow(c.at)} · ${c.newCount} new` : null
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -91,12 +99,13 @@ export default async function DiscoveriesPage({
   const { view, explicit } = parseBoardView(sp.view, 'list')
 
   if (tab === 'jobs' && view === 'board') {
-    const board = await loadBoard(userId)
+    const [board, boardSources] = await Promise.all([loadBoard(userId), sourcesQ.list(userId)])
+    const checked = lastCheckedLine(boardSources)
     return (
       <div className="space-y-4">
         <PageHeader
           title="Discovery"
-          description="Triage AI-scored roles: shortlist, apply or dismiss."
+          description={`Triage AI-scored roles: shortlist, apply or dismiss.${checked ? ` ${checked}.` : ''}`}
           actions={<ViewToggle sp={sp} view={view} explicit={explicit} />}
         />
         <TabBar tab={tab} />
@@ -122,6 +131,7 @@ export default async function DiscoveriesPage({
       : Promise.resolve([]),
   ])
   const sourceNameById = new Map(sources.map((s) => [s.id, s.name] as const))
+  const checked = lastCheckedLine(sources)
 
   const jobRows = jobs?.rows.slice(0, PAGE_SIZE) ?? []
   const jobItems: DiscoveryRowJob[] = jobRows.map((d) => {
@@ -166,7 +176,7 @@ export default async function DiscoveriesPage({
     <div className="space-y-4">
       <PageHeader
         title="Discovery"
-        description="AI-scored jobs and companies from your sources."
+        description={`AI-scored jobs and companies from your sources.${checked ? ` ${checked}.` : ''}`}
         actions={tab === 'jobs' ? <ViewToggle sp={sp} view={view} explicit={explicit} /> : undefined}
       />
       <TabBar tab={tab} />
