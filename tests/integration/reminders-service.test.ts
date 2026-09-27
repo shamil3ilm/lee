@@ -17,7 +17,11 @@ describe('recordDueReminders', () => {
   it('inserts at most one reminder per overdue application per day', async () => {
     const u = await makeUser()
     const co = await makeCompany(u.id)
-    const now = new Date('2026-09-26T09:00:00Z')
+    // Today 09:00 UTC: reminder rows get the DB's real now(), so a fixed past
+    // date made the "next day" run look like the same day once the calendar
+    // moved past it.
+    const now = new Date()
+    now.setUTCHours(9, 0, 0, 0)
     const due = await makeApplication(u.id, (await makeJob(u.id, co.id)).id, {
       status: 'applied',
       nextActionAt: new Date(now.getTime() - 3 * DAY),
