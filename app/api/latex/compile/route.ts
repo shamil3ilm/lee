@@ -54,7 +54,18 @@ export async function POST(req: Request): Promise<Response> {
     // skips the compile service entirely. A success also primes the cache
     // for the document's PDF view route.
     // The saved source never carries the draft option; only the compile does.
+    const started = Date.now()
     const result = await compileDocumentPdf({ userId, documentId, source, draft: draft === true })
+    // Outcome only (never the source or the log): shown in Settings › Logs.
+    logger.info('latex_compile', {
+      userId,
+      documentId,
+      ok: result.ok,
+      status: result.ok ? 200 : result.status,
+      cached: result.ok && 'cached' in result && result.cached === true,
+      draft: draft === true,
+      durationMs: Date.now() - started,
+    })
     // Preserve existing content shape then overlay the new source + compile
     // status. If content isn't a valid latex shape (edge case: schema drift)
     // we fall back to a minimal shape rather than crashing.

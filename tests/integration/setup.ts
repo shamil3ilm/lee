@@ -10,6 +10,9 @@ import { clearThrottleCache } from '@/lib/usage/throttle'
 const TABLES = [
   'company_reputation',
   'reputation_settings',
+  'system_events',
+  'system_event_counts',
+  'retention_settings',
   'web_vitals_daily',
   'usage_alerts',
   'usage_settings',
