@@ -10,6 +10,11 @@ import {
 } from 'lucide-react'
 import { requireUserId } from '@/lib/auth/require-session'
 import * as companiesQ from '@/lib/db/queries/companies'
+import * as repQ from '@/lib/db/queries/companyReputation'
+import * as repSettingsQ from '@/lib/db/queries/reputationSettings'
+import { PLACES_HARD_MONTHLY_CAP } from '@/lib/reputation/places'
+import { buildReputationView } from '@/lib/reputation/view'
+import { ReputationPanel } from '@/components/reputation/reputation-panel'
 import { CompanyHeaderActions } from '@/components/company-header-actions'
 import { CompanyInterestPicker } from '@/components/company-interest-picker'
 import { CompanyStancePicker } from '@/components/company-stance-picker'
@@ -27,6 +32,8 @@ import {
 } from '@/lib/ui/status'
 
 export const dynamic = 'force-dynamic'
+// The Reputation panel's Refresh and AI draft run as server actions here.
+export const maxDuration = 60
 
 function narrowStatus(s: string): ApplicationStatus {
   return (APPLICATION_STATUSES as readonly string[]).includes(s)
@@ -41,10 +48,21 @@ export default async function CompanyDetailPage({
 }) {
   const { id } = await params
   const userId = await requireUserId()
-  const detail = await companiesQ.getWithApplicationsAndContacts(userId, id)
+  const [detail, reputation, reputationSettings] = await Promise.all([
+    companiesQ.getWithApplicationsAndContacts(userId, id),
+    repQ.get(userId, id),
+    repSettingsQ.get(userId),
+  ])
   if (!detail) notFound()
 
   const { company, applications: apps, jobs, contacts } = detail
+  const reputationView = buildReputationView({
+    companyId: company.id,
+    companyName: company.name,
+    record: reputation,
+    settings: reputationSettings,
+    placesHardCap: PLACES_HARD_MONTHLY_CAP,
+  })
   const unappliedJobs = jobs.filter((j) => !j.hasApplication)
 
   return (
@@ -186,6 +204,8 @@ export default async function CompanyDetailPage({
               </CardContent>
             </Card>
           ) : null}
+
+          <ReputationPanel view={reputationView} />
 
           <Card>
             <CardHeader>

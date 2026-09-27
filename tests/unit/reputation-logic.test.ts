@@ -7,6 +7,7 @@ import { isoWeek } from '@/lib/reputation/schedule'
 import { buildReputationLookup, scamFlagsOf } from '@/lib/reputation/scam-link'
 import { assessScam } from '@/lib/scam/engine'
 import { toPlaceRating } from '@/lib/reputation/places'
+import { buildReputationView } from '@/lib/reputation/view'
 import type { ConfirmedSummary, ReputationSignal, UserRating } from '@/lib/reputation/types'
 import type { ReputationRecord } from '@/lib/db/queries/companyReputation'
 
@@ -187,6 +188,34 @@ describe('Scam Shield reputation boost', () => {
     expect(lookup(posting)?.flags).toHaveLength(1)
     expect(lookup({ ...posting, company: 'Globex', companyDomain: 'globex.com' })).toBeNull()
     expect(scamFlagsOf(summary({ redFlags: [{ category: 'toxic_culture', text: 't', cites: ['g'], gccRelevance: '' }] }))).toEqual([])
+  })
+})
+
+describe('buildReputationView', () => {
+  it('formats US dates, marks alarming news, lists citations and the Places budget left', () => {
+    const view = buildReputationView({
+      companyId: 'c',
+      companyName: 'Acme',
+      record: {
+        companyId: 'c',
+        signals: [sig({ id: 'g1', category: 'wage_theft', date: '2026-09-10' }), sig({ id: 'g2', category: 'funding' })],
+        sourceStatus: { gdelt: { ok: false, at: '2026-09-27T09:00:00.000Z', count: 0, error: 'gdelt: HTTP 503' } },
+        facts: null,
+        userRatings: [{ site: 'glassdoor', rating: 3, summary: '', url: null, recordedAt: NOW.toISOString() }],
+        summary: null,
+        placesPlaceId: null,
+        fetchedAt: NOW,
+      },
+      settings: { placesEnabled: true, placesMonthlyCap: 100, placesMonth: '2026-09', placesCalls: 40 },
+      placesHardCap: 900,
+      now: NOW,
+    })
+    expect(view.signals[0]).toMatchObject({ dateLabel: 'Sep 10, 2026', alarming: true })
+    expect(view.signals[1]?.alarming).toBe(false)
+    expect(view.statuses.map((s) => s.state)).toEqual(['never', 'error', 'never'])
+    expect(view.citations['user:glassdoor']).toBe('Your glassdoor notes (3/5)')
+    expect(view.places).toEqual({ enabled: true, capLeft: 60 })
+    expect(view.criteria[0]?.score).toBe(50)
   })
 })
 
