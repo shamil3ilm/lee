@@ -13,7 +13,22 @@ import { takeUsageSnapshot } from '@/lib/usage/snapshot'
 import { isThrottled } from '@/lib/usage/throttle'
 import { JOB_TYPES } from './job-types'
 import { createRegistry, defineHandler, type HandlerRegistry } from './registry'
+import type { DigestSkipReason, DiscoverySourceSummary } from './run-summary'
 import type { JobResult } from './types'
+
+function emptySourceSummary(source: string): DiscoverySourceSummary {
+  return {
+    kind: 'discovery-source',
+    source,
+    status: 'skipped',
+    fetched: 0,
+    new: 0,
+    scored: 0,
+    quarantined: 0,
+    skipped: 0,
+    errors: 0,
+  }
+}
 
 /**
  * The sync-all steps as small, idempotent jobs. Each handler is the same
@@ -44,7 +59,7 @@ const reminders = defineHandler({
   timeoutMs: 30_000,
   async run() {
     const { inserted } = await recordDueReminders()
-    return { metrics: { reminders_added: inserted } }
+    return { metrics: { reminders_added: inserted }, summary: { kind: 'reminders', added: inserted } }
   },
 })
 
@@ -54,7 +69,8 @@ const followups = defineHandler({
   payload: USER_PAYLOAD,
   timeoutMs: 30_000,
   async run({ job }): Promise<JobResult> {
-    return { metrics: { followups_recommended: await recordFollowupNudges(userId(job)) } }
+    const nudged = await recordFollowupNudges(userId(job))
+    return { metrics: { followups_recommended: nudged }, summary: { kind: 'followups', nudged } }
   },
 })
 
@@ -66,9 +82,14 @@ const gmailSync = defineHandler({
   async run({ job }): Promise<JobResult> {
     try {
       const r = await syncGmail({ userId: userId(job) })
-      return { metrics: { gmail_checked: r.checked, gmail_matched: r.matched } }
+      return {
+        metrics: { gmail_checked: r.checked, gmail_matched: r.matched },
+        summary: { kind: 'gmail-sync', checked: r.checked, matched: r.matched, logged: r.logged },
+      }
     } catch (e) {
-      if (e instanceof NoGoogleAccountError) return { metrics: { gmail_skipped_no_account: 1 } }
+      if (e instanceof NoGoogleAccountError) {
+        return { metrics: { gmail_skipped_no_account: 1 }, summary: { kind: 'gmail-sync', skipped: 'no_google_account' } }
+      }
       throw e
     }
   },
@@ -82,14 +103,18 @@ const digest = defineHandler({
   async run({ job }): Promise<JobResult> {
     const profile = await profileQ.get(userId(job))
     const tz = profile?.timezone
-    if (!profile?.weeklyDigestEnabled || !isMondayInTz(tz) || alreadySentThisTzWeek(profile, tz)) {
-      return { metrics: { digests_sent: 0 } }
-    }
+    const skip = (reason: DigestSkipReason): JobResult => ({
+      metrics: { digests_sent: 0 },
+      summary: { kind: 'digest', sent: false, reason },
+    })
+    if (!profile?.weeklyDigestEnabled) return skip('disabled')
+    if (!isMondayInTz(tz)) return skip('not_monday')
+    if (alreadySentThisTzWeek(profile, tz)) return skip('already_sent')
     try {
       await sendWeeklyDigest({ userId: userId(job) })
-      return { metrics: { digests_sent: 1 } }
+      return { metrics: { digests_sent: 1 }, summary: { kind: 'digest', sent: true } }
     } catch (e) {
-      if (e instanceof NoGoogleAccountError) return { metrics: { digests_sent: 0 } }
+      if (e instanceof NoGoogleAccountError) return skip('no_google_account')
       throw e
     }
   },
@@ -105,7 +130,10 @@ const discoverySource = defineHandler({
     // Free-tier throttle: at ≥90% Neon compute/egress a source is polled at
     // most once a day — a retry (attempt 2+) is skipped, not re-polled.
     if (job.attempts > 1 && (await isThrottled('pause_nonessential'))) {
-      return { metrics: { discovery_paused_by_usage: 1 } }
+      return {
+        metrics: { discovery_paused_by_usage: 1 },
+        summary: { ...emptySourceSummary('Source'), status: 'paused' },
+      }
     }
     const ai = await getAIProviderForUser(userId(job))
     const r = await runDiscoveryForSource({
@@ -124,6 +152,13 @@ const discoverySource = defineHandler({
         discovery_budget_exhausted: r.budgetExhausted ? 1 : 0,
       },
       warnings: r.error ? [`source ${payload.sourceId}: ${r.error}`] : [],
+      summary: {
+        ...emptySourceSummary(r.sourceName ?? 'Removed source'),
+        ...(r.stats ?? {}),
+        status: r.status,
+        errors: r.error ? 1 : 0,
+        ...(r.budgetExhausted ? { budgetExhausted: true } : {}),
+      },
     }
   },
 })
@@ -138,9 +173,17 @@ const discoveryEmail = defineHandler({
       const r = await sendDiscoveryEmailIfEnabled({ userId: userId(job) })
       return {
         metrics: { discovery_emails_sent: r.sent ? 1 : 0, discovery_matches_notified: r.sent ? r.count : 0 },
+        summary: r.sent
+          ? { kind: 'discovery-email', sent: true, count: r.count }
+          : { kind: 'discovery-email', sent: false, reason: r.reason ?? 'no_matches' },
       }
     } catch (e) {
-      if (e instanceof NoGoogleAccountError) return { metrics: { discovery_emails_sent: 0 } }
+      if (e instanceof NoGoogleAccountError) {
+        return {
+          metrics: { discovery_emails_sent: 0 },
+          summary: { kind: 'discovery-email', sent: false, reason: 'no_google_account' },
+        }
+      }
       throw e
     }
   },
@@ -153,8 +196,14 @@ const scamReassess = defineHandler({
   timeoutMs: 45_000,
   async run({ job }): Promise<JobResult> {
     // Non-essential: skipped while the free-tier throttle is on.
-    if (await isThrottled('pause_nonessential')) return { metrics: { scam_reassess_paused_by_usage: 1 } }
-    return { metrics: { scam_reassessed: await reassessStaleDiscoveries(userId(job)) } }
+    if (await isThrottled('pause_nonessential')) {
+      return {
+        metrics: { scam_reassess_paused_by_usage: 1 },
+        summary: { kind: 'scam-reassess', reassessed: 0, paused: true },
+      }
+    }
+    const reassessed = await reassessStaleDiscoveries(userId(job))
+    return { metrics: { scam_reassessed: reassessed }, summary: { kind: 'scam-reassess', reassessed } }
   },
 })
 
@@ -171,6 +220,7 @@ const usageSnapshot = defineHandler({
         usage_todos_created: r.todosCreated,
         usage_throttles: r.throttles.length,
       },
+      summary: { kind: 'usage-snapshot', throttles: [...r.throttles], todosCreated: r.todosCreated },
     }
   },
 })
