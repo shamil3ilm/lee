@@ -276,7 +276,13 @@ export const processedGmailThreads = pgTable(
     }),
     processedAt: timestamp('processed_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => ({ pk: primaryKey({ columns: [t.userId, t.threadId] }) }),
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.threadId] }),
+    // storage cleanup — FK index for ON DELETE SET NULL from applications.
+    matchedApplicationIx: index('processed_gmail_threads_matched_application_idx')
+      .on(t.matchedApplicationId)
+      .where(sql`${t.matchedApplicationId} is not null`),
+  }),
 )
 
 export const activities = pgTable(
@@ -447,6 +453,11 @@ export const discoveries = pgTable(
     scoredByCallIx: index('discoveries_scored_by_call_idx')
       .on(t.scoredByCallId)
       .where(sql`${t.scoredByCallId} is not null`),
+    // storage cleanup — FK index so deleting an application (ON DELETE SET
+    // NULL) does not seq-scan discoveries. Partial: only saved rows carry one.
+    savedApplicationIx: index('discoveries_saved_application_idx')
+      .on(t.savedApplicationId)
+      .where(sql`${t.savedApplicationId} is not null`),
   }),
 )
 
@@ -491,6 +502,10 @@ export const companyDiscoveries = pgTable(
     scoredByCallIx: index('company_discoveries_scored_by_call_idx')
       .on(t.scoredByCallId)
       .where(sql`${t.scoredByCallId} is not null`),
+    // storage cleanup — FK index for ON DELETE SET NULL from companies.
+    addedCompanyIx: index('company_discoveries_added_company_idx')
+      .on(t.addedCompanyId)
+      .where(sql`${t.addedCompanyId} is not null`),
   }),
 )
 
@@ -800,6 +815,11 @@ export const todos = pgTable(
   (t) => ({
     userStatusDueIx: index('todos_user_status_due_idx').on(t.userId, t.status, t.dueAt),
     applicationIx: index('todos_application_idx').on(t.applicationId),
+    // storage cleanup — FK indexes for ON DELETE SET NULL from stages,
+    // contacts and companies (partial: most todos link to none of them).
+    stageIx: index('todos_stage_idx').on(t.stageId).where(sql`${t.stageId} is not null`),
+    contactIx: index('todos_contact_idx').on(t.contactId).where(sql`${t.contactId} is not null`),
+    companyIx: index('todos_company_idx').on(t.companyId).where(sql`${t.companyId} is not null`),
   }),
 )
 
@@ -1172,7 +1192,7 @@ export const queueUserState = pgTable('queue_user_state', {
 // bucket bounds live in lib/vitals/metrics.ts (p75 is estimated from it).
 // `dims` counts samples per device class / connection / navigation type as
 // flat keys like "device:desktop". Rows are pruned after 90 days
-// (lib/db/retention.ts). Worst case ≈ 35 routes × 5 metrics × 90 days rows.
+// (lib/db/retention). Worst case ≈ 35 routes × 5 metrics × 90 days rows.
 // ---------------------------------------------------------------------------
 
 export const webVitalsDaily = pgTable(
@@ -1239,6 +1259,8 @@ export const usageAlerts = pgTable(
       t.meter,
       t.threshold,
     ),
+    // storage cleanup — FK index for ON DELETE SET NULL from todos.
+    todoIx: index('usage_alerts_todo_idx').on(t.todoId).where(sql`${t.todoId} is not null`),
   }),
 )
 
@@ -1266,4 +1288,28 @@ export const userDefaults = pgTable('user_defaults', {
     .references(() => users.id, { onDelete: 'cascade' }),
   version: integer('version').notNull().default(0),
   appliedAt: timestamp('applied_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+// ---------------------------------------------------------------------------
+// Storage cleanup (lib/db/retention). Per-user retention windows, edited in
+// Settings › Storage; a null window means "use the default" from
+// lib/db/retention/policy.ts, so defaults live in code only. `last_run_*`
+// records the latest cleanup (nightly cron or "Clean up now") for display.
+// ---------------------------------------------------------------------------
+export const retentionSettings = pgTable('retention_settings', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  staleDiscoveryDays: smallint('stale_discovery_days'),
+  dismissedDiscoveryDays: smallint('dismissed_discovery_days'),
+  aiCallLogDays: smallint('ai_call_log_days'),
+  cvScoreDays: smallint('cv_score_days'),
+  labRunDays: smallint('lab_run_days'),
+  webVitalsDays: smallint('web_vitals_days'),
+  // 'cron' | 'manual' | 'early' (storage ≥ 90% snapshot)
+  lastRunTrigger: text('last_run_trigger'),
+  lastRunAt: timestamp('last_run_at', { withTimezone: true }),
+  // RetentionCounts (lib/db/retention/types.ts): rows changed per step.
+  lastRunResult: jsonb('last_run_result').notNull().default({}),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })

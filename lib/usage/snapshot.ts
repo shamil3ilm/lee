@@ -57,6 +57,8 @@ export async function resolveNeonCredentials(): Promise<NeonCredentials | null> 
   return { key: envKey, projectId: s?.projectId ?? null }
 }
 
+const EARLY_RETENTION_BUDGET_MS = 20_000
+
 export interface SnapshotResult {
   day: string
   throttles: ThrottleId[]
@@ -86,7 +88,9 @@ export async function takeUsageSnapshot(now: Date = new Date()): Promise<Snapsho
   let retentionRan = false
   if (throttles.includes('early_retention')) {
     try {
-      const r = await runRetention(now)
+      // Bounded: the snapshot runs inside a queue drain or the 60 s
+      // "Refresh now" action; the nightly cron finishes anything left.
+      const r = await runRetention(now, { trigger: 'early', budgetMs: EARLY_RETENTION_BUDGET_MS })
       retentionRan = true
       logger.info('usage_early_retention', { ...r })
     } catch (err) {

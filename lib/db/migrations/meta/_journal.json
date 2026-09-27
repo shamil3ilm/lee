@@ -176,6 +176,13 @@
       "when": 1790436652047,
       "tag": "0024_web_vitals",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1790490854172,
+      "tag": "0025_storage_cleanup",
+      "breakpoints": true
     }
   ]
 }
