@@ -7,6 +7,8 @@ import { Loader2, Pencil, Trash2 } from 'lucide-react'
 import type { Expense } from '@/lib/db/queries/expenses'
 // (Type-only import — Drizzle types erase at compile time, no runtime cost.)
 import { Badge } from '@/components/ui/badge'
+import { TableCell, TableRow } from '@/components/ui/table'
+import { shortDay } from '@/lib/ui/date'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -47,32 +49,33 @@ export function ExpenseRow({ expense }: ExpenseRowProps) {
   }
 
   return (
-    <tr className="border-b last:border-0 hover:bg-muted/40">
-      <td className="whitespace-nowrap px-3 py-2 text-xs tabular-nums text-muted-foreground">
-        {expense.date}
-      </td>
-      <td className="px-3 py-2">
-        <Badge variant="outline" className="whitespace-nowrap text-[10px] capitalize">
+    <TableRow>
+      <TableCell className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">
+        {shortDay(expense.date)}
+      </TableCell>
+      <TableCell className="hidden lg:table-cell">
+        <Badge variant="outline" className="whitespace-nowrap capitalize">
           {expense.category}
           {expense.subcategory ? ` · ${expense.subcategory}` : ''}
         </Badge>
-      </td>
-      <td className="px-3 py-2 text-sm">
-        <div className="max-w-[16rem] truncate font-medium">
-          {expense.vendor ?? '—'}
+      </TableCell>
+      <TableCell className="max-w-0 w-full">
+        <div className="truncate font-medium">{expense.vendor ?? '—'}</div>
+        {/* Narrow screens drop the category column; show it under the vendor. */}
+        <div className="truncate text-xs capitalize text-muted-foreground lg:hidden">
+          {expense.category}
+          {expense.subcategory ? ` · ${expense.subcategory}` : ''}
         </div>
         {expense.description ? (
-          <div className="max-w-[24rem] truncate text-xs text-muted-foreground">
-            {expense.description}
-          </div>
+          <div className="truncate text-xs text-muted-foreground">{expense.description}</div>
         ) : null}
-      </td>
-      <td className="whitespace-nowrap px-3 py-2 text-right text-sm tabular-nums">
+      </TableCell>
+      <TableCell className="whitespace-nowrap text-right tabular-nums">
         {formatMoney(expense.amountCents, expense.currency)}
-      </td>
-      <td className="px-3 py-2 text-right">
-        <div className="flex items-center justify-end gap-1">
-          <Button asChild variant="ghost" size="icon" aria-label="Edit">
+      </TableCell>
+      <TableCell className="w-px whitespace-nowrap pl-0 text-right">
+        <div className="flex items-center justify-end gap-0.5">
+          <Button asChild variant="ghost" size="icon" aria-label="Edit expense">
             <Link href={`/expenses/${expense.id}/edit`}>
               <Pencil className="size-4" />
             </Link>
@@ -81,7 +84,7 @@ export function ExpenseRow({ expense }: ExpenseRowProps) {
             type="button"
             variant="ghost"
             size="icon"
-            aria-label="Delete"
+            aria-label="Delete expense"
             onClick={() => setConfirming(true)}
             disabled={pending}
           >
@@ -103,7 +106,7 @@ export function ExpenseRow({ expense }: ExpenseRowProps) {
               <DialogTitle>Delete expense?</DialogTitle>
               <DialogDescription>
                 This will permanently remove the {expense.category} expense from{' '}
-                {expense.vendor ?? 'this vendor'} on {expense.date}.
+                {expense.vendor ?? 'this vendor'} on {shortDay(expense.date)}.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -127,7 +130,7 @@ export function ExpenseRow({ expense }: ExpenseRowProps) {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   )
 }

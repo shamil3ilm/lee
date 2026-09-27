@@ -2,14 +2,16 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Loader2, Save, Trash2 } from 'lucide-react'
+import { Loader2, PiggyBank, Save, Trash2 } from 'lucide-react'
 import type { ExpenseBudget } from '@/lib/db/queries/expenseBudgets'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormActions, FormField } from '@/components/ui/form-field'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { EmptyState } from '@/components/empty-state'
 import {
   Select,
   SelectContent,
@@ -65,11 +67,13 @@ export function BudgetForm({ budgets }: BudgetFormProps) {
     <div className="space-y-4">
       <Card>
         <CardContent className="pt-6">
-          <form action={onSubmit} className="grid gap-3 sm:grid-cols-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="budget-category">Category</Label>
+          <form
+            action={onSubmit}
+            className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_120px_auto]"
+          >
+            <FormField htmlFor="budget-category" label="Category">
               <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger id="budget-category">
+                <SelectTrigger id="budget-category" className="capitalize">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -80,9 +84,8 @@ export function BudgetForm({ budgets }: BudgetFormProps) {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="monthlyCap">Monthly cap</Label>
+            </FormField>
+            <FormField htmlFor="monthlyCap" label="Monthly cap">
               <Input
                 id="monthlyCap"
                 name="monthlyCap"
@@ -91,13 +94,12 @@ export function BudgetForm({ budgets }: BudgetFormProps) {
                 placeholder="e.g. 500"
                 required
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="currency">Currency</Label>
+            </FormField>
+            <FormField htmlFor="currency" label="Currency">
               <Input id="currency" name="currency" defaultValue={DEFAULT_CURRENCY} maxLength={6} />
-            </div>
-            <div className="flex items-end">
-              <Button type="submit" disabled={pending} className="w-full">
+            </FormField>
+            <FormActions>
+              <Button type="submit" disabled={pending} className="w-full xl:w-auto">
                 {pending ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
@@ -105,60 +107,60 @@ export function BudgetForm({ budgets }: BudgetFormProps) {
                 )}
                 Save budget
               </Button>
-            </div>
+            </FormActions>
           </form>
         </CardContent>
       </Card>
 
       {budgets.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            No budgets set yet. Add a monthly cap per category above.
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={PiggyBank}
+          title="No budgets set yet."
+          description="Pick a category and a monthly cap above. Spending over a cap is flagged on Expenses and Analytics."
+        />
       ) : (
-        <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  <th className="px-4 py-3">Category</th>
-                  <th className="px-4 py-3 text-right">Monthly cap</th>
-                  <th className="px-4 py-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {budgets.map((b) => (
-                  <tr key={b.id} className="border-b last:border-0">
-                    <td className="px-4 py-3">
-                      <Badge variant="outline" className="text-[10px] capitalize">
-                        {b.category}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums">
-                      {formatMoney(b.monthlyCapCents, b.currency)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Remove budget"
-                        onClick={() => setConfirming(b)}
-                        disabled={pending}
-                      >
-                        {deletingId === b.id ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="size-4" />
-                        )}
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <Card className="overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Category</TableHead>
+                <TableHead className="text-right">Monthly cap</TableHead>
+                <TableHead className="w-12">
+                  <span className="sr-only">Actions</span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {budgets.map((b) => (
+                <TableRow key={b.id}>
+                  <TableCell>
+                    <Badge variant="outline" className="capitalize">
+                      {b.category}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {formatMoney(b.monthlyCapCents, b.currency)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Remove ${b.category} budget`}
+                      onClick={() => setConfirming(b)}
+                      disabled={pending}
+                    >
+                      {deletingId === b.id ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="size-4" />
+                      )}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </Card>
       )}
       <ConfirmDialog
