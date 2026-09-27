@@ -1267,3 +1267,47 @@ export const userDefaults = pgTable('user_defaults', {
   version: integer('version').notNull().default(0),
   appliedAt: timestamp('applied_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+// ---------------------------------------------------------------------------
+// Company reputation (docs/company-reviews.md). One compact row per company:
+// capped JSON lists of fetched signals, per-source status, Wikidata facts,
+// the user's own review-site ratings and the summary they confirmed. Google
+// Places content is never stored — only its place id (exempt from the
+// caching terms).
+// ---------------------------------------------------------------------------
+
+export const companyReputation = pgTable(
+  'company_reputation',
+  {
+    companyId: uuid('company_id')
+      .primaryKey()
+      .references(() => companies.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    signals: jsonb('signals').notNull().default([]),
+    sourceStatus: jsonb('source_status').notNull().default({}),
+    facts: jsonb('facts'),
+    userRatings: jsonb('user_ratings').notNull().default([]),
+    // Confirmed by the user; drafts are never stored.
+    summary: jsonb('summary'),
+    placesPlaceId: text('places_place_id'),
+    fetchedAt: timestamp('fetched_at', { withTimezone: true }),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ userIx: index('company_reputation_user_idx').on(t.userId) }),
+)
+
+// Per-user reputation settings: the optional Google Places lookup (off by
+// default) and its monthly call counter. `places_calls` counts calls made in
+// `places_month` (yyyy-mm); a new month starts from zero.
+export const reputationSettings = pgTable('reputation_settings', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  placesEnabled: boolean('places_enabled').notNull().default(false),
+  placesMonthlyCap: integer('places_monthly_cap').notNull().default(100),
+  placesMonth: text('places_month'),
+  placesCalls: integer('places_calls').notNull().default(0),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
