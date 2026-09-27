@@ -27,6 +27,7 @@ import { PrepPackCard } from '@/components/prep-pack-card'
 import { TodosCard } from '@/components/todos-card'
 import { LazyStagesBoard } from '@/components/board/lazy'
 import { PageHeader } from '@/components/page-header'
+import { MarkdownText } from '@/components/markdown-text'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { Timeline } from '@/components/timeline'
 import { mergeTimeline, type TimelineActivity, type TimelineStage } from '@/lib/ui/timeline'
@@ -278,7 +279,7 @@ export default async function ApplicationDetail({
           {stages.length > 0 ? (
             <Card>
               <CardHeader className="flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-sm font-semibold">Interview stages</CardTitle>
+                <CardTitle>Interview stages</CardTitle>
                 <span className="text-xs text-muted-foreground">
                   {stages.length} {stages.length === 1 ? 'stage' : 'stages'}
                 </span>
@@ -302,12 +303,10 @@ export default async function ApplicationDetail({
           {app.job.descriptionMd ? (
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm font-semibold">Job description</CardTitle>
+                <CardTitle>Job description</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
-                  {app.job.descriptionMd}
-                </div>
+                <MarkdownText source={app.job.descriptionMd} />
               </CardContent>
             </Card>
           ) : null}
@@ -315,7 +314,7 @@ export default async function ApplicationDetail({
           {meta.responsibilities?.length || meta.requirements?.length || meta.tech_stack?.length ? (
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm font-semibold">Details</CardTitle>
+                <CardTitle>Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-sm">
                 {meta.requirements && meta.requirements.length > 0 ? (
@@ -345,7 +344,7 @@ export default async function ApplicationDetail({
           {Object.keys(benefits).length > 0 ? (
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm font-semibold">Benefits</CardTitle>
+                <CardTitle>Benefits</CardTitle>
               </CardHeader>
               <CardContent>
                 <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
@@ -364,7 +363,7 @@ export default async function ApplicationDetail({
         <div className="min-w-0 space-y-6">
           <Card>
             <CardHeader className="flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-sm font-semibold">Timeline</CardTitle>
+              <CardTitle>Timeline</CardTitle>
               <AddStageDialog applicationId={app.id} />
             </CardHeader>
             <CardContent>
