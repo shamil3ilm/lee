@@ -10,6 +10,10 @@ import { ASSET_QUOTA_BYTES } from '@/lib/storage/types'
 import { IntegrationsPanel } from '@/components/integrations-panel'
 import { DriveStorageCard } from '@/components/drive/drive-storage-card'
 import { PageHeader } from '@/components/page-header'
+import { PlacesSettingsCard } from '@/components/reputation/places-settings-card'
+import * as repSettingsQ from '@/lib/db/queries/reputationSettings'
+import { PLACES_HARD_MONTHLY_CAP } from '@/lib/reputation/places'
+import { listServiceSecretStatuses } from '@/lib/settings/secrets'
 
 export const dynamic = 'force-dynamic'
 // "Move existing files to Drive" runs as a server action on this page.
@@ -18,7 +22,7 @@ export const maxDuration = 30
 export default async function IntegrationsSettingsPage() {
   const userId = await requireUserId()
   const session = await auth()
-  const [account, profile, drive, postgresBytes, driveBytes, pendingFiles] = await Promise.all([
+  const [account, profile, drive, postgresBytes, driveBytes, pendingFiles, places, secrets] = await Promise.all([
     db.query.accounts.findFirst({
       where: and(eq(accounts.userId, userId), eq(accounts.provider, 'google')),
     }),
@@ -27,7 +31,10 @@ export default async function IntegrationsSettingsPage() {
     assetsQ.totalBytes(userId),
     assetsQ.driveTotalBytes(userId),
     assetsQ.countPostgresHeld(userId),
+    repSettingsQ.get(userId),
+    listServiceSecretStatuses(userId),
   ])
+  const month = new Date().toISOString().slice(0, 7)
   // Google returns granted scopes space-delimited in the `scope` column. Some
   // very old signins left it null; treat that as no scopes so the UI prompts
   // for a reconnect rather than crashing.
@@ -53,6 +60,13 @@ export default async function IntegrationsSettingsPage() {
         quotaBytes={ASSET_QUOTA_BYTES}
         driveBytes={driveBytes}
         pendingFiles={pendingFiles}
+      />
+      <PlacesSettingsCard
+        enabled={places.placesEnabled}
+        cap={places.placesMonthlyCap}
+        hardCap={PLACES_HARD_MONTHLY_CAP}
+        usedThisMonth={places.placesMonth === month ? places.placesCalls : 0}
+        hasKey={secrets.some((s) => s.info.id === 'google_places' && s.source !== 'none')}
       />
     </div>
   )
