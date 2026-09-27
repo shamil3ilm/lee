@@ -5,9 +5,11 @@ import { logger } from '@/lib/logger'
 
 // Daily storage retention (Neon Free = 0.5 GB). Scheduled in vercel.json at
 // a different hour from the queue scheduler and drains so they never overlap.
+// The run stops starting new batches after CRON_BUDGET_MS (240 s), inside
+// Vercel's 300 s cap; anything left over continues the next night.
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
-export const maxDuration = 60
+export const maxDuration = 300
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const auth = req.headers.get('authorization') ?? ''

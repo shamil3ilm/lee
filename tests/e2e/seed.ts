@@ -251,7 +251,14 @@ async function main(): Promise<void> {
   // Discovery sources, job discoveries (mostly new) and company discoveries.
   const [hn] = await db
     .insert(s.sources)
-    .values({ userId, name: 'HN Who is hiring', kind: 'hn', config: {}, lastPolledAt: ago(0.2) })
+    .values({
+      userId,
+      name: 'HN Who is hiring',
+      kind: 'hn',
+      config: {},
+      lastPolledAt: ago(0.2),
+      lastResult: { fetched: 12, new: 3, scored: 3, quarantined: 1, skipped: 9, at: ago(0.2).toISOString() },
+    })
     .returning()
   const [gh] = await db
     .insert(s.sources)
@@ -261,6 +268,7 @@ async function main(): Promise<void> {
       kind: 'greenhouse',
       config: { board: 'postman' },
       lastPolledAt: ago(0.3),
+      lastResult: { fetched: 8, new: 2, scored: 2, quarantined: 0, skipped: 6, at: ago(0.3).toISOString() },
     })
     .returning()
   await db.insert(s.sources).values({
@@ -299,6 +307,76 @@ async function main(): Promise<void> {
       createdAt: ago(i + 1),
     })
   }
+
+  // Run records (Settings › Background jobs) and persisted events (Settings ›
+  // Logs). No idempotency keys, so "Run now" still schedules today's jobs.
+  const run = (type: string, userIdOrNull: string | null, daysAgo: number, extra: Partial<typeof s.queueJobs.$inferInsert>) => ({
+    type,
+    userId: userIdOrNull,
+    status: 'done',
+    attempts: 1,
+    startedAt: ago(daysAgo),
+    finishedAt: new Date(ago(daysAgo).getTime() + 3_200),
+    updatedAt: new Date(ago(daysAgo).getTime() + 3_200),
+    createdAt: ago(daysAgo),
+    runAfter: ago(daysAgo),
+    durationMs: 3_200,
+    ...extra,
+  })
+  const [gmailRun] = await db
+    .insert(s.queueJobs)
+    .values([
+      run('gmail-sync:user', userId, 1, {
+        result: { summary: { kind: 'gmail-sync', checked: 40, matched: 2, logged: 2 }, errors: [] },
+      }),
+      run('gmail-sync:user', userId, 2, {
+        result: {
+          summary: { kind: 'gmail-sync', checked: 35, matched: 0, logged: 0 },
+          errors: [{ attempt: 1, at: ago(2).toISOString(), message: 'Gmail said 503; will retry.' }],
+        },
+        attempts: 2,
+      }),
+      run('discovery-source:user+source', userId, 0.3, {
+        payload: { sourceId: gh!.id },
+        result: {
+          summary: { kind: 'discovery-source', source: 'Greenhouse — Postman', status: 'polled', fetched: 8, new: 2, scored: 2, quarantined: 0, skipped: 6, errors: 0 },
+          errors: [],
+        },
+      }),
+      run('digest:user', userId, 1, {
+        status: 'dead',
+        attempts: 5,
+        lastError: 'Gmail send failed: 401',
+        result: { errors: [{ attempt: 5, at: ago(1).toISOString(), message: 'Gmail send failed: 401' }] },
+      }),
+      run('reminders:all', null, 1, { result: { summary: { kind: 'reminders', added: 1 }, errors: [] } }),
+    ])
+    .returning()
+  const event = (
+    level: string,
+    category: string,
+    name: string,
+    message: string,
+    hoursAgo: number,
+    extra: Partial<typeof s.systemEvents.$inferInsert> = {},
+  ) => ({ userId, level, category, event: name, message, createdAt: new Date(NOW - hoursAgo * 3_600_000), ...extra })
+  await db.insert(s.systemEvents).values([
+    event('info', 'gmail', 'gmail_sync_done', 'Gmail synced: 40 checked · 2 matched', 24, {
+      context: { checked: 40, matched: 2, logged: 2 },
+      jobId: gmailRun!.id,
+    }),
+    event('info', 'source', 'source_polled', 'Greenhouse — Postman polled: 8 found · 2 new · 0 quarantined', 7, {
+      context: { fetched: 8, new: 2, scored: 2, quarantined: 0, skipped: 6, source: 'Greenhouse — Postman' },
+      sourceId: gh!.id,
+    }),
+    event('warn', 'job', 'queue_job_failed', 'Weekly digest failed (attempt 5): Gmail send failed: 401', 24, {
+      context: { attempt: 5, status: 'dead', err: 'Gmail send failed: 401' },
+    }),
+    event('error', 'ai', 'generate_cover_letter_failed', 'Generate cover letter failed: Groq 429 rate limited', 3, {
+      context: { err: 'Groq 429 rate limited' },
+    }),
+    event('info', 'cron', 'cron_schedule', 'Scheduled 9 job(s) for 1 user(s)', 30, { userId: null, context: { users: 1, enqueued: 9 } }),
+  ])
 
   for (const [i, log] of data.AI_CALLS.entries()) {
     await db.insert(s.aiCallLogs).values({ userId, ...log, createdAt: ago(i % 20) })

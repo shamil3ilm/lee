@@ -140,7 +140,14 @@ export default async function UsagePage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Largest tables</CardTitle>
-            <CardDescription>Table, indexes and TOAST together, at the last snapshot.</CardDescription>
+            <CardDescription>
+              Table, indexes and TOAST together, at the last snapshot. Every table, retention windows and cleanup
+              are in{' '}
+              <Link href="/settings/storage" className="underline-offset-2 hover:underline">
+                Settings › Storage
+              </Link>
+              .
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <ul className="divide-y text-sm" data-testid="usage-largest-tables">
