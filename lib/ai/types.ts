@@ -16,6 +16,7 @@ import type {
 } from '@/lib/documents/types'
 import type { InterviewStage } from '@/lib/db/queries/stages'
 import type { CallMeta } from './log'
+import type { ReputationSummaryInput, ReputationSummaryResult } from './prompts/reputation-summary'
 
 export const parsedJobSchema = z.object({
   title: z.string(),
@@ -171,6 +172,9 @@ export interface AIProvider {
   // rejects any rewrite that introduces new digits).
   assessRequirementFit(input: RequirementFitInput, meta?: CallMeta): Promise<RequirementFitResult>
   rewriteCvBullets(input: BulletRewriteInput, meta?: CallMeta): Promise<BulletRewriteResult>
+  // Company reputation — on-demand draft; the caller drops claims whose
+  // cites are not real signal ids and the user confirms before saving.
+  summarizeReputation(input: ReputationSummaryInput, meta?: CallMeta): Promise<ReputationSummaryResult>
 }
 
 export const latexCVResultSchema = z.object({ source: z.string().min(1) })

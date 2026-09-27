@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { companies, discoveries, jobRiskAssessments, jobs, sources } from '@/lib/db/schema'
 import * as riskQ from '@/lib/db/queries/riskAssessments'
@@ -20,6 +20,7 @@ import { assessScam } from './engine'
 import { inputFromJob, inputFromNormalizedJob } from './input'
 import { preloadNetCache, resolveNetContext, type NetBudget, type NetMode } from './net-cache'
 import type { NetDeps } from './net'
+import { loadReputationLookup, type ReputationLookup } from '@/lib/reputation/scam-link'
 import type { ScamInput } from './types'
 import { RULES_VERSION } from './version'
 
@@ -38,6 +39,8 @@ export interface AssessOptions {
   now?: Date
   /** The user's allow-list, when the caller already loaded it for a batch. */
   allowList?: readonly AllowListEntry[]
+  /** Confirmed company reputation, when the caller already loaded it. */
+  reputation?: ReputationLookup
 }
 
 /** Per-cycle cap on fresh network lookups (each is ≤ 2 small requests). */
@@ -58,7 +61,8 @@ export async function assessAndStore(
   opts: AssessOptions = {},
 ): Promise<RiskAssessmentRow> {
   const allow = opts.allowList ?? (await allowQ.list(userId))
-  const write = await computeAssessment(input, opts, allow)
+  const reputation = opts.reputation ?? (await loadReputationLookup(userId))
+  const write = await computeAssessment(input, { ...opts, reputation }, allow)
   return riskQ.upsert(userId, targetType, targetId, write)
 }
 
@@ -75,7 +79,7 @@ async function computeAssessment(
     now: opts.now,
     preloaded: opts.preloaded,
   })
-  const result = assessScam(input, net)
+  const result = assessScam(input, net, opts.reputation?.(input))
   return {
     score: result.score,
     level: result.level,
@@ -99,6 +103,7 @@ async function assessBatch(
 ): Promise<number> {
   if (targets.length === 0) return 0
   const allow = opts.allowList ?? (await allowQ.list(userId))
+  const reputation = opts.reputation ?? (await loadReputationLookup(userId))
   const mode = opts.net ?? 'off'
   // 'fetch' mode refreshes per domain against the shared budget, so it keeps
   // its own per-input cache read; 'cache' mode reads the cache once.
@@ -108,7 +113,7 @@ async function assessBatch(
     writes.push({
       targetType,
       targetId: t.id,
-      data: await computeAssessment(t.input, { ...opts, preloaded }, allow),
+      data: await computeAssessment(t.input, { ...opts, preloaded, reputation }, allow),
     })
   }
   await riskQ.upsertMany(userId, writes)
@@ -234,6 +239,47 @@ export async function reassessStaleDiscoveries(
       assessBatch(userId, 'discovery', targets, { net: 'cache', allowList: opts.allowList }),
     )) ?? 0
   )
+}
+
+/**
+ * Re-assess one company's saved jobs and job discoveries (same name) after
+ * its confirmed reputation changed. Rules + cached net facts; bounded.
+ */
+export async function reassessCompanyPostings(
+  userId: string,
+  company: { id: string; name: string },
+  limit = 100,
+): Promise<number> {
+  const [jobRows, discRows] = await Promise.all([
+    db
+      .select({ id: jobs.id })
+      .from(jobs)
+      .where(and(eq(jobs.userId, userId), eq(jobs.companyId, company.id)))
+      .limit(limit),
+    db
+      .select({ id: discoveries.id })
+      .from(discoveries)
+      .where(
+        and(
+          eq(discoveries.userId, userId),
+          sql`lower(${discoveries.normalized}->>'companyName') = ${company.name.trim().toLowerCase()}`,
+        ),
+      )
+      .limit(limit),
+  ])
+  const [jobMap, discMap] = await Promise.all([
+    jobInputs(userId, jobRows.map((r) => r.id)),
+    discoveryInputs(userId, discRows.map((r) => r.id)),
+  ])
+  const toTargets = (m: Map<string, ScamInput>) => [...m.entries()].map(([id, input]) => ({ id, input }))
+  const opts: AssessOptions = {
+    net: 'cache',
+    allowList: await allowQ.list(userId),
+    reputation: await loadReputationLookup(userId),
+  }
+  const jobsDone = await assessBatch(userId, 'job', toTargets(jobMap), opts)
+  const discDone = await assessBatch(userId, 'discovery', toTargets(discMap), opts)
+  return jobsDone + discDone
 }
 
 /**

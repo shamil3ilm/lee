@@ -5,7 +5,7 @@
  * named by `envKey` is only the fallback default when the user has not
  * saved their own.
  */
-export const SERVICE_SECRET_IDS = ['firecrawl', 'laya', 'neon'] as const
+export const SERVICE_SECRET_IDS = ['firecrawl', 'laya', 'neon', 'google_places'] as const
 
 export type ServiceSecretId = (typeof SERVICE_SECRET_IDS)[number]
 
@@ -13,7 +13,7 @@ export interface ServiceSecretInfo {
   id: ServiceSecretId
   label: string
   description: string
-  envKey: 'FIRECRAWL_API_KEY' | 'LAYA_API_KEY' | 'NEON_API_KEY'
+  envKey: 'FIRECRAWL_API_KEY' | 'LAYA_API_KEY' | 'NEON_API_KEY' | 'GOOGLE_PLACES_API_KEY'
   keyUrl?: string
   /** True when a cheap authenticated call can verify the key. */
   testable: boolean
@@ -44,6 +44,15 @@ export const SERVICE_SECRETS: readonly ServiceSecretInfo[] = [
       'Optional, read-only use: lets Settings › Usage show compute (CU-hours), egress and compute state for your Neon project. Without it, only database size is measured.',
     envKey: 'NEON_API_KEY',
     keyUrl: 'https://neon.com/docs/manage/api-keys',
+    testable: true,
+  },
+  {
+    id: 'google_places',
+    label: 'Google Places',
+    description:
+      "Optional: shows a company's Google rating and reviews on its Reputation panel. Stays off until you enable it in Settings › Integrations, where lee caps its own calls per month below Google's free tier.",
+    envKey: 'GOOGLE_PLACES_API_KEY',
+    keyUrl: 'https://console.cloud.google.com/google/maps-apis/credentials',
     testable: true,
   },
 ]

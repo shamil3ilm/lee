@@ -67,6 +67,8 @@ const CHECK_TIMEOUT_MS = 8_000
  * The cheapest authenticated call each service offers:
  *   - Firecrawl: GET /v1/team/credit-usage (no credits spent)
  *   - Laya: GET {endpoint}/config (Gradio app config) with the bearer token
+ *   - Google Places: Text Search with field mask `places.id` (the free,
+ *     unlimited "Essentials IDs Only" SKU)
  */
 export async function checkServiceKey(
   id: ServiceSecretId,
@@ -74,6 +76,7 @@ export async function checkServiceKey(
   opts: { layaEndpoint?: string | null; fetchImpl?: typeof fetch } = {},
 ): Promise<CheckResult> {
   if (id === 'neon') return checkNeon(key)
+  if (id === 'google_places') return checkGooglePlaces(key, opts.fetchImpl)
   const url =
     id === 'firecrawl'
       ? 'https://api.firecrawl.dev/v1/team/credit-usage'
@@ -114,6 +117,27 @@ async function checkNeon(key: string): Promise<CheckResult> {
   } catch (e) {
     const rejected = e instanceof NeonApiError && e.code === 'rejected'
     return { ok: false, error: neonErrorMessage(e), rejected }
+  }
+}
+
+async function checkGooglePlaces(key: string, fetchImpl?: typeof fetch): Promise<CheckResult> {
+  const url = 'https://places.googleapis.com/v1/places:searchText'
+  const init: RequestInit = {
+    method: 'POST',
+    headers: { 'x-goog-api-key': key, 'x-goog-fieldmask': 'places.id', 'content-type': 'application/json' },
+    body: JSON.stringify({ textQuery: 'Burj Khalifa', pageSize: 1 }),
+  }
+  try {
+    const res = fetchImpl
+      ? await fetchImpl(url, init)
+      : await fetchWithTimeout(url, init, { timeoutMs: CHECK_TIMEOUT_MS, label: 'google_places-check' })
+    if (res.ok) return { ok: true, error: null, rejected: false }
+    if (res.status === 400 || res.status === 401 || res.status === 403) {
+      return { ok: false, error: 'Google rejected this key (check that Places API (New) is enabled).', rejected: true }
+    }
+    return { ok: false, error: 'Google Places did not accept the check.', rejected: false }
+  } catch {
+    return { ok: false, error: 'Could not reach Google Places.', rejected: false }
   }
 }
 

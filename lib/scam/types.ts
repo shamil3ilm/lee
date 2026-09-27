@@ -7,7 +7,7 @@
 
 export type RiskLevel = 'safe' | 'caution' | 'likely_scam'
 
-export type SignalGroup = 'money' | 'identity' | 'channel' | 'sender' | 'content'
+export type SignalGroup = 'money' | 'identity' | 'channel' | 'sender' | 'content' | 'reputation'
 
 /** Every text field a rule may quote from. */
 export type ScamField =
@@ -81,6 +81,21 @@ export interface NetContext {
   domains: DomainNetFacts[]
   /** Domains that receive email for the posting (apply email etc.). */
   mailDomains: string[]
+}
+
+/**
+ * Company reputation the user confirmed (lib/reputation): red flags in the
+ * fraud / unpaid-salaries categories for the posting's company. Absent or
+ * empty never adds risk.
+ */
+export interface ReputationFlag {
+  category: 'fraud' | 'wage_theft'
+  /** The confirmed claim, as the user saved it. */
+  text: string
+}
+
+export interface ReputationContext {
+  flags: ReputationFlag[]
 }
 
 export interface ScamAssessment {

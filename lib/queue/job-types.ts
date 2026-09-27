@@ -12,6 +12,7 @@ export const JOB_TYPES = {
   discoveryEmail: 'discovery-email:user',
   scamReassess: 'scam-reassess:user',
   usageSnapshot: 'usage-snapshot:all',
+  companyReputation: 'company-reputation:user+company',
 } as const
 
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES]
@@ -26,6 +27,9 @@ export const JOB_PRIORITY: Readonly<Record<JobType, number>> = {
   [JOB_TYPES.reminders]: 0,
   // Early, so the day's throttles (lib/usage/throttle) apply to the jobs after it.
   [JOB_TYPES.usageSnapshot]: 5,
+  // Weekly refreshes run after everything else; an on-demand refresh from
+  // the Reputation panel is enqueued with REPUTATION_MANUAL_PRIORITY instead.
+  [JOB_TYPES.companyReputation]: 70,
   [JOB_TYPES.followups]: 10,
   [JOB_TYPES.gmailSync]: 20,
   [JOB_TYPES.digest]: 30,
@@ -44,6 +48,7 @@ export const JOB_LABELS: Readonly<Record<string, string>> = {
   [JOB_TYPES.discoveryEmail]: 'Discovery email',
   [JOB_TYPES.scamReassess]: 'Scam Shield re-check',
   [JOB_TYPES.usageSnapshot]: 'Usage snapshot',
+  [JOB_TYPES.companyReputation]: 'Company reputation refresh',
 }
 
 export function jobLabel(type: string): string {
@@ -69,4 +74,10 @@ export const jobKeys = {
   discoveryEmail: (userId: string, day: string) => `discovery-email:${userId}:${day}`,
   scamReassess: (userId: string, day: string) => `scam-reassess:${userId}:${day}`,
   usageSnapshot: (day: string) => `usage-snapshot:all:${day}`,
+  /** Weekly: once per ISO week (`2026-W39`) per company. */
+  companyReputationWeekly: (userId: string, companyId: string, isoWeek: string) =>
+    `company-reputation:${userId}:${companyId}:${isoWeek}`,
+  /** On demand: at most once per UTC hour (`2026-09-27T10`) per company. */
+  companyReputationManual: (userId: string, companyId: string, hour: string) =>
+    `company-reputation:${userId}:${companyId}:now:${hour}`,
 } as const
