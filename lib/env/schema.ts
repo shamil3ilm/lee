@@ -46,6 +46,9 @@ export const envSchema = z
     // Optional Neon API key for Settings › Usage (compute, egress). A key
     // saved in Settings › AI › Service keys wins over this default.
     NEON_API_KEY: z.string().optional(),
+    // Optional Adzuna job-search key, "APP_ID:APP_KEY". A key saved in
+    // Settings › AI › Service keys wins over this default.
+    ADZUNA_KEY: z.string().optional(),
   })
 
 export type Env = z.infer<typeof envSchema>

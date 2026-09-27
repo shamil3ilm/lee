@@ -213,7 +213,7 @@ async function pollSource(args: {
   const { source, deadline } = args
   const adapter = getAdapter(source.kind)
   if (!adapter) throw new Error(`no adapter registered for kind=${source.kind}`)
-  const items = await adapter.fetch(source.config)
+  const items = await adapter.fetch(source.config, { userId: args.userId })
   const scoring: ScoringBudget = { remaining: MAX_SCORED_PER_SOURCE, deadline, exhausted: false }
   const ingest = { ...args, scoring }
   const newJobs = await ingestJobItems(
