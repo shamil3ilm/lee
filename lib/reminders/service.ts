@@ -31,6 +31,7 @@ function toRows<T>(result: unknown): T[] {
  */
 export async function recordDueReminders(now: Date = new Date()): Promise<ReminderSweepResult> {
   const dayStart = startOfUtcDay(now)
+  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000)
   const terminal = sql.join(
     TERMINAL_STATUSES.map((s) => sql`${s}`),
     sql`, `,
@@ -44,14 +45,15 @@ export async function recordDueReminders(now: Date = new Date()): Promise<Remind
         and a.status not in (${terminal})
     ),
     ins as (
-      insert into ${activities} (user_id, application_id, kind, payload)
-      select d.user_id, d.id, 'reminder', '{"reason":"next_action_at reached"}'::jsonb
+      insert into ${activities} (user_id, application_id, kind, payload, created_at)
+      select d.user_id, d.id, 'reminder', '{"reason":"next_action_at reached"}'::jsonb, ${now.toISOString()}::timestamptz
       from due d
       where not exists (
         select 1 from ${activities} r
         where r.application_id = d.id
           and r.kind = 'reminder'
           and r.created_at >= ${dayStart.toISOString()}::timestamptz
+          and r.created_at < ${dayEnd.toISOString()}::timestamptz
       )
       returning 1
     )

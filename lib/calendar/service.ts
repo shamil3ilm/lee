@@ -6,6 +6,7 @@ import * as appsQ from '@/lib/db/queries/applications'
 import * as stagesQ from '@/lib/db/queries/stages'
 import * as profileQ from '@/lib/db/queries/profile'
 import { DEFAULT_TIMEZONE } from '@/lib/ui/timezone'
+import { logger } from '@/lib/logger'
 import {
   createEvent,
   deleteEvent,
@@ -109,6 +110,7 @@ export async function pushStageToCalendar(args: {
 
   await stagesQ.update(userId, stageId, { googleEventId: eventId })
   await profileQ.upsert(userId, { syncedCalendarAt: new Date() })
+  logger.info('calendar_event_pushed', { userId, stageId })
   return { eventId }
 }
 
@@ -133,6 +135,7 @@ export async function updateStageEvent(args: {
   const event = buildEvent(ctx)
   await updateFn({ tokens, eventId: ctx.stage.googleEventId, event })
   await profileQ.upsert(userId, { syncedCalendarAt: new Date() })
+  logger.info('calendar_event_updated', { userId, stageId })
 }
 
 /**
@@ -154,4 +157,5 @@ export async function deleteStageEvent(args: {
   const tokens = await getGoogleTokens(userId)
   await deleteFn({ tokens, eventId: ctx.stage.googleEventId })
   await stagesQ.update(userId, stageId, { googleEventId: null })
+  logger.info('calendar_event_removed', { userId, stageId })
 }

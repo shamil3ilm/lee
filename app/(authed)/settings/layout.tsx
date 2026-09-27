@@ -9,7 +9,9 @@ const SETTINGS_TABS: RouteTab[] = [
   { href: '/settings/notifications', label: 'Notifications' },
   { href: '/settings/scam-shield', label: 'Scam Shield' },
   { href: '/settings/jobs', label: 'Background jobs' },
+  { href: '/settings/logs', label: 'Logs' },
   { href: '/settings/usage', label: 'Usage' },
+  { href: '/settings/storage', label: 'Storage' },
 ]
 
 /**
