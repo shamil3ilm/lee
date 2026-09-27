@@ -1,0 +1,7 @@
+{
+  "entities": {
+    "Q612": { "id": "Q612", "labels": { "en": { "value": "Dubai" } } },
+    "Q837171": { "id": "Q837171", "labels": { "en": { "value": "financial services" } } }
+  },
+  "success": 1
+}

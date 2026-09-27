@@ -1,0 +1,39 @@
+{
+  "hits": [
+    {
+      "objectID": "42000001",
+      "story_title": "Ask HN: Who is hiring? (September 2026)",
+      "comment_text": "Acme Payments | Senior Backend Engineer | Dubai, UAE | ONSITE | Visa sponsored<p>We build ledgers.",
+      "created_at": "2026-09-02T15:00:00.000Z",
+      "created_at_i": 1788361200
+    },
+    {
+      "objectID": "42000002",
+      "story_title": "Ask HN: Who is hiring? (June 2026)",
+      "comment_text": "<b>Acme Payments</b> | Platform Engineer | REMOTE",
+      "created_at": "2026-06-01T15:00:00.000Z",
+      "created_at_i": 1780326000
+    },
+    {
+      "objectID": "42000003",
+      "story_title": "Ask HN: Who is hiring? (June 2026)",
+      "comment_text": "Acme Payments | Data Engineer | REMOTE",
+      "created_at": "2026-06-03T15:00:00.000Z",
+      "created_at_i": 1780498800
+    },
+    {
+      "objectID": "42000004",
+      "story_title": "Ask HN: Who wants to be hired? (June 2026)",
+      "comment_text": "I used to work at Acme Payments",
+      "created_at": "2026-06-02T15:00:00.000Z",
+      "created_at_i": 1780412400
+    },
+    {
+      "objectID": "42000005",
+      "story_title": "Ask HN: Who is hiring? (May 2026)",
+      "comment_text": "Globex | Engineer | NYC<p>Our competitor Acme Payments is great too, lots of text here that goes on for quite a while so the mention is far away from the header line of the comment and should not count",
+      "created_at": "2026-05-01T15:00:00.000Z",
+      "created_at_i": 1777647600
+    }
+  ]
+}

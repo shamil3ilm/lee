@@ -1,0 +1,41 @@
+{
+  "articles": [
+    {
+      "url": "https://gulfnews.example/acme-payments-unpaid-salaries",
+      "title": "Acme Payments staff in Dubai say salaries unpaid for three months — unpaid salaries dispute",
+      "seendate": "20260910T081500Z",
+      "domain": "gulfnews.example",
+      "language": "English",
+      "sourcecountry": "United Arab Emirates"
+    },
+    {
+      "url": "https://wire.example/acme-payments-unpaid-salaries-copy",
+      "title": "Acme Payments staff in Dubai say salaries unpaid for three months - unpaid salaries dispute",
+      "seendate": "20260910T090000Z",
+      "domain": "wire.example"
+    },
+    {
+      "url": "https://tech.example/acme-payments-layoffs",
+      "title": "Acme Payments lays off 12% of workforce",
+      "seendate": "20260801T120000Z",
+      "domain": "tech.example"
+    },
+    {
+      "url": "https://biz.example/acme-payments-series-c",
+      "title": "Acme Payments raises $80M Series C",
+      "seendate": "20260705T120000Z",
+      "domain": "biz.example"
+    },
+    {
+      "url": "https://other.example/unrelated",
+      "title": "Globex settles lawsuit",
+      "seendate": "20260705T120000Z",
+      "domain": "other.example"
+    },
+    {
+      "url": "javascript:alert(1)",
+      "title": "Acme Payments fraud probe",
+      "seendate": "20260705T120000Z"
+    }
+  ]
+}

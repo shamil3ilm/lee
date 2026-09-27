@@ -1,0 +1,9 @@
+{
+  "searchinfo": { "search": "Acme Payments" },
+  "search": [
+    { "id": "Q900001", "label": "Acme Payments", "description": "fictional band" },
+    { "id": "Q900002", "label": "Acme Payments", "description": "payments company based in Dubai" },
+    { "id": "Q900003", "label": "Acme Payments Park", "description": "park" }
+  ],
+  "success": 1
+}
