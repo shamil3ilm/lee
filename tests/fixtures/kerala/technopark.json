@@ -1,0 +1,146 @@
+{
+ "current_page": 1,
+ "data": [
+  {
+   "id": 33184,
+   "job_listing_id": "JOB-83-33184",
+   "job_title": "Management Trainee",
+   "posted_date": "2026-09-26",
+   "is_walk_in": 1,
+   "walk_in_start_date": "2026-09-28",
+   "closing_date": "2026-09-28",
+   "walk_in_start_time": "10:30:00",
+   "walk_in_end_time": "15:00:00",
+   "company_id": 6756,
+   "promoted": 0,
+   "company": {
+    "id": 6756,
+    "company": "SCALEVEL TECHNOLOGIES",
+    "logo": "/storage/images/3513.jpg"
+   }
+  },
+  {
+   "id": 33183,
+   "job_listing_id": "JOB-40-33183",
+   "job_title": "Tech Services Executive",
+   "posted_date": "2026-09-26",
+   "is_walk_in": 0,
+   "walk_in_start_date": null,
+   "closing_date": "2026-10-20",
+   "walk_in_start_time": null,
+   "walk_in_end_time": null,
+   "company_id": 5884,
+   "promoted": 0,
+   "company": {
+    "id": 5884,
+    "company": "RR Donnelley India Outsource (P) Ltd",
+    "logo": "/storage/company/1644227466998924318_RRD_Logo_Black_RGB.jpg"
+   }
+  },
+  {
+   "id": 33182,
+   "job_listing_id": "JOB-97-33182",
+   "job_title": "Managed Identity Services Engineer I",
+   "posted_date": "2026-09-25",
+   "is_walk_in": 0,
+   "walk_in_start_date": null,
+   "closing_date": "2026-11-02",
+   "walk_in_start_time": null,
+   "walk_in_end_time": null,
+   "company_id": 5618,
+   "promoted": 0,
+   "company": {
+    "id": 5618,
+    "company": "FISCHER SYSTEMS India (P) Ltd",
+    "logo": "/storage/company/1437027441014_fischerlogo.jpg"
+   }
+  }
+ ],
+ "first_page_url": "https://technopark.in/api/paginated-jobs?page=1",
+ "from": 1,
+ "last_page": 19,
+ "last_page_url": "https://technopark.in/api/paginated-jobs?page=19",
+ "links": [
+  {
+   "url": null,
+   "label": "&laquo; Previous",
+   "active": false
+  },
+  {
+   "url": "https://technopark.in/api/paginated-jobs?page=1",
+   "label": "1",
+   "active": true
+  },
+  {
+   "url": "https://technopark.in/api/paginated-jobs?page=2",
+   "label": "2",
+   "active": false
+  },
+  {
+   "url": "https://technopark.in/api/paginated-jobs?page=3",
+   "label": "3",
+   "active": false
+  },
+  {
+   "url": "https://technopark.in/api/paginated-jobs?page=4",
+   "label": "4",
+   "active": false
+  },
+  {
+   "url": "https://technopark.in/api/paginated-jobs?page=5",
+   "label": "5",
+   "active": false
+  },
+  {
+   "url": "https://technopark.in/api/paginated-jobs?page=6",
+   "label": "6",
+   "active": false
+  },
+  {
+   "url": "https://technopark.in/api/paginated-jobs?page=7",
+   "label": "7",
+   "active": false
+  },
+  {
+   "url": "https://technopark.in/api/paginated-jobs?page=8",
+   "label": "8",
+   "active": false
+  },
+  {
+   "url": "https://technopark.in/api/paginated-jobs?page=9",
+   "label": "9",
+   "active": false
+  },
+  {
+   "url": "https://technopark.in/api/paginated-jobs?page=10",
+   "label": "10",
+   "active": false
+  },
+  {
+   "url": null,
+   "label": "...",
+   "active": false
+  },
+  {
+   "url": "https://technopark.in/api/paginated-jobs?page=18",
+   "label": "18",
+   "active": false
+  },
+  {
+   "url": "https://technopark.in/api/paginated-jobs?page=19",
+   "label": "19",
+   "active": false
+  },
+  {
+   "url": "https://technopark.in/api/paginated-jobs?page=2",
+   "label": "Next &raquo;",
+   "active": false
+  }
+ ],
+ "next_page_url": "https://technopark.in/api/paginated-jobs?page=2",
+ "path": "https://technopark.in/api/paginated-jobs",
+ "per_page": 20,
+ "prev_page_url": null,
+ "to": 20,
+ "total": 362
+}

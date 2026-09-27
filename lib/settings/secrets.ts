@@ -5,6 +5,7 @@ import { DEFAULT_LAYA_ENDPOINT } from '@/lib/decisions/laya-http'
 import { fetchWithTimeout } from '@/lib/net/timeout'
 import { assertSafeUrl } from '@/lib/ingest/ssrf'
 import { checkNeonKey, NeonApiError, neonErrorMessage } from '@/lib/usage/neon-api'
+import { parseAdzunaKey } from '@/lib/discovery/adapters/adzuna'
 import {
   SERVICE_SECRETS,
   getServiceSecretInfo,
@@ -74,6 +75,7 @@ export async function checkServiceKey(
   opts: { layaEndpoint?: string | null; fetchImpl?: typeof fetch } = {},
 ): Promise<CheckResult> {
   if (id === 'neon') return checkNeon(key)
+  if (id === 'adzuna') return checkAdzuna(key, opts.fetchImpl)
   const url =
     id === 'firecrawl'
       ? 'https://api.firecrawl.dev/v1/team/credit-usage'
@@ -103,6 +105,35 @@ export async function checkServiceKey(
     return { ok: false, error: `${label} did not accept the check.`, rejected: false }
   } catch {
     return { ok: false, error: `Could not reach ${label}.`, rejected: false }
+  }
+}
+
+/**
+ * Adzuna: one India search with a single result (one of the free tier's
+ * 250 daily hits). The key is "APP_ID:APP_KEY".
+ */
+async function checkAdzuna(key: string, fetchImpl?: typeof fetch): Promise<CheckResult> {
+  const creds = parseAdzunaKey(key)
+  if (!creds) return { ok: false, error: 'Paste the Adzuna key as APP_ID:APP_KEY.', rejected: true }
+  const params = new URLSearchParams({
+    app_id: creds.appId,
+    app_key: creds.appKey,
+    results_per_page: '1',
+    what: 'developer',
+  })
+  const url = `https://api.adzuna.com/v1/api/jobs/in/search/1?${params.toString()}`
+  try {
+    const init: RequestInit = { method: 'GET', headers: { accept: 'application/json' } }
+    const res = fetchImpl
+      ? await fetchImpl(url, init)
+      : await fetchWithTimeout(url, init, { timeoutMs: CHECK_TIMEOUT_MS, label: 'adzuna-check' })
+    if (res.ok) return { ok: true, error: null, rejected: false }
+    if (res.status === 401 || res.status === 403) {
+      return { ok: false, error: 'Adzuna rejected this key.', rejected: true }
+    }
+    return { ok: false, error: 'Adzuna did not accept the check.', rejected: false }
+  } catch {
+    return { ok: false, error: 'Could not reach Adzuna.', rejected: false }
   }
 }
 

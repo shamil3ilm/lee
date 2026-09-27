@@ -1,0 +1,33 @@
+{
+ "refineSearch": {
+  "totalHits": 3,
+  "data": {
+   "jobs": [
+    {
+     "jobId": "592",
+     "title": "Applied Scientist",
+     "location": "Abu Dhabi, Abu Dhabi, United Arab Emirates",
+     "country": "United Arab Emirates",
+     "postedDate": "2026-09-04T08:52:41.000+0000",
+     "descriptionTeaser": "We are expanding our team: As an Applied Scientist, you will drive research and development in AI, focusing on deep-learning and generative AI algorithms. Collaborate with product teams to deliver innovative solutions across diverse industries. Ideal for candidates with significant experience in AI algorithm development and a strong background in computer science or related fields."
+    },
+    {
+     "jobId": "1351",
+     "title": "Senior Applied Scientist",
+     "location": "Abu Dhabi, Abu Dhabi, United Arab Emirates",
+     "country": "United Arab Emirates",
+     "postedDate": "2025-11-06T11:20:50.000+0000",
+     "descriptionTeaser": "We are looking for a Senior Applied Scientist to lead data analytics and business intelligence projects, developing AI-driven solutions for diverse clients. You will design data analysis models and deliver actionable insights. Ideal candidates have significant experience in data analytics and a strong background in AI and machine learning."
+    },
+    {
+     "jobId": "3331",
+     "title": "Payroll Manager",
+     "location": " , United States",
+     "country": "United States",
+     "postedDate": "2026-09-24T12:31:31.000+0000",
+     "descriptionTeaser": "We are looking for an experienced Payroll Manager to lead payroll operations across North America and Europe. Oversee end-to-end payroll processing, ensure compliance, and drive process excellence. Ideal for candidates with extensive US payroll expertise and hands-on experience with Rippling HRIS and Payroll."
+    }
+   ]
+  }
+ }
+}

@@ -8,6 +8,19 @@ import { HnWhoIsHiringAdapter } from './hn-whoishiring'
 import { RssAdapter } from './rss'
 import { JsonLdAdapter } from './jsonld'
 import { YcDirectoryAdapter } from './yc-directory'
+import { RecruiteeAdapter } from './recruitee'
+import { PinpointAdapter } from './pinpoint'
+import { HimalayasAdapter } from './himalayas'
+import { JobicyAdapter } from './jobicy'
+import { WeWorkRemotelyAdapter } from './weworkremotely'
+import { RemotiveAdapter } from './remotive'
+import { AdzunaAdapter } from './adzuna'
+import { EmailAlertAdapter } from './email-alert'
+import { WorkdayAdapter } from './workday'
+import { WatchAdapter } from './watch'
+import { WorkingNomadsAdapter } from './workingnomads'
+import { OracleOrcAdapter, PhenomAdapter, SuccessFactorsAdapter } from './enterprise'
+import { CyberparkAdapter, InfoparkAdapter, KsumAdapter, TechnoparkAdapter, UlCyberparkAdapter } from './kerala-parks'
 
 // Registry is a plain object so tests can iterate keys and mock a single
 // adapter without touching the others. New adapter kinds must be added here
@@ -22,6 +35,25 @@ const registry: Record<string, DiscoveryAdapter> = {
   rss: new RssAdapter(),
   jsonld: new JsonLdAdapter(),
   yc_directory: new YcDirectoryAdapter(),
+  recruitee: new RecruiteeAdapter(),
+  pinpoint: new PinpointAdapter(),
+  himalayas: new HimalayasAdapter(),
+  jobicy: new JobicyAdapter(),
+  weworkremotely: new WeWorkRemotelyAdapter(),
+  remotive: new RemotiveAdapter(),
+  adzuna: new AdzunaAdapter(),
+  email_alert: new EmailAlertAdapter(),
+  workday: new WorkdayAdapter(),
+  watch: new WatchAdapter(),
+  workingnomads: new WorkingNomadsAdapter(),
+  technopark: new TechnoparkAdapter(),
+  infopark: new InfoparkAdapter(),
+  cyberpark: new CyberparkAdapter(),
+  ul_cyberpark: new UlCyberparkAdapter(),
+  ksum: new KsumAdapter(),
+  oracle_orc: new OracleOrcAdapter(),
+  successfactors: new SuccessFactorsAdapter(),
+  phenom: new PhenomAdapter(),
 }
 
 export function getAdapter(kind: string): DiscoveryAdapter | null {
@@ -32,4 +64,4 @@ export function listAdapterKinds(): string[] {
   return Object.keys(registry)
 }
 
-export type { DiscoveryAdapter, DiscoveryItem, NormalizedJob, NormalizedCompany } from './types'
+export type { AdapterContext, DiscoveryAdapter, DiscoveryItem, NormalizedJob, NormalizedCompany } from './types'

@@ -25,6 +25,17 @@ export interface NormalizedJob {
   postedAt?: Date
   techStack: string[]
   salary?: { min?: number; max?: number; currency?: string }
+  /**
+   * The site a posting came from when one source aggregates several
+   * (email_alert: linkedin, indeed, naukri …).
+   */
+  subSource?: string
+  /**
+   * Machine-readable hints for downstream filters, never shown as-is, e.g.
+   * `board:remoteok`, `geo:worldwide` / `geo:restricted`,
+   * `via:email_alert`. Adapters only tag; they don't filter.
+   */
+  tags?: string[]
   raw: unknown
 }
 
@@ -45,8 +56,14 @@ export interface NormalizedCompany {
   raw: unknown
 }
 
+/** Who the poll is for: adapters that need a per-user key, the profile's
+ * search preferences or the user's Gmail read it from here. */
+export interface AdapterContext {
+  userId: string
+}
+
 export interface DiscoveryAdapter {
   /** Matches sources.kind — used as the registry key. */
   kind: string
-  fetch(config: unknown): Promise<DiscoveryItem[]>
+  fetch(config: unknown, ctx?: AdapterContext): Promise<DiscoveryItem[]>
 }
