@@ -399,6 +399,10 @@ export const sources = pgTable(
     lastPolledAt: timestamp('last_polled_at', { withTimezone: true }),
     lastError: text('last_error'),
     errorCount: integer('error_count').notNull().default(0),
+    // Counts from the last successful poll (SourcePollStats in
+    // lib/discovery/poll-stats.ts): fetched / new / scored / quarantined /
+    // skipped. Small; never item content.
+    lastResult: jsonb('last_result'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({ userEnabledIx: index('sources_user_enabled_idx').on(t.userId, t.enabled) }),
@@ -1146,6 +1150,13 @@ export const queueJobs = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     finishedAt: timestamp('finished_at', { withTimezone: true }),
+    // Run record of the latest attempt: when it was claimed, how long it
+    // took, and `result` = JobRunRecord (lib/queue/run-record.ts) — the
+    // handler's typed summary plus each failed attempt's sanitized error.
+    // Capped at ~2 KB; never content.
+    startedAt: timestamp('started_at', { withTimezone: true }),
+    durationMs: integer('duration_ms'),
+    result: jsonb('result'),
   },
   (t) => ({
     statusRunAfterIx: index('queue_jobs_status_run_after_idx').on(t.status, t.runAfter),
@@ -1266,4 +1277,46 @@ export const userDefaults = pgTable('user_defaults', {
     .references(() => users.id, { onDelete: 'cascade' }),
   version: integer('version').notNull().default(0),
   appliedAt: timestamp('applied_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+// ---------------------------------------------------------------------------
+// Persistent event log (architecture review A9 `error_events`, widened to run
+// events). Vercel Hobby keeps runtime logs for one hour, so lib/logger also
+// persists every warn/error and an allow-list of info "run" events here
+// (lib/logs). `context` is allow-listed per event, redacted (no secrets,
+// emails reduced to their domain, never bodies/prompts/CV text) and capped at
+// 2 KB. user_id is null for global events (cron, cross-user sweeps), which
+// carry no personal data. Retention: info 14 days, warn/error 60 days
+// (lib/db/retention.ts). A per-UTC-day cap (system_event_counts) bounds growth.
+// ---------------------------------------------------------------------------
+export const systemEvents = pgTable(
+  'system_events',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+    // 'info' | 'warn' | 'error'
+    level: text('level').notNull(),
+    // lib/logs/types.ts EVENT_CATEGORIES
+    category: text('category').notNull(),
+    // snake_case event name
+    event: text('event').notNull(),
+    message: text('message').notNull(),
+    context: jsonb('context').$type<Record<string, unknown>>().notNull().default({}),
+    // No FKs: jobs are pruned after 14 days and sources can be deleted, but
+    // their events stay until their own retention.
+    jobId: uuid('job_id'),
+    sourceId: uuid('source_id'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    userCreatedIx: index('system_events_user_created_idx').on(t.userId, t.createdAt.desc()),
+    categoryCreatedIx: index('system_events_category_created_idx').on(t.category, t.createdAt.desc()),
+  }),
+)
+
+// Rows persisted per UTC day — the cheap counter behind the daily cap on
+// system_events (one upsert per flushed batch). Pruned after a week.
+export const systemEventCounts = pgTable('system_event_counts', {
+  day: date('day', { mode: 'string' }).primaryKey(),
+  n: integer('n').notNull().default(0),
 })

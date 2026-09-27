@@ -1,4 +1,5 @@
 import type { queueJobs } from '@/lib/db/schema'
+import type { JobSummary } from './run-summary'
 
 /**
  * Durable job queue (architecture review A3). A job moves through:
@@ -37,6 +38,8 @@ export interface JobResult {
    * discovery source returned 500). The job still counts as done.
    */
   warnings?: readonly string[]
+  /** What this run did, stored on the job row (lib/queue/run-summary.ts). */
+  summary?: JobSummary
 }
 
 export interface HandlerContext<P> {
