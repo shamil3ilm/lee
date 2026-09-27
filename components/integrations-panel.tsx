@@ -2,7 +2,16 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { CheckCircle2, ExternalLink, Loader2, Mail, Plug, Calendar as CalendarIcon } from 'lucide-react'
+import {
+  AlertTriangle,
+  Calendar as CalendarIcon,
+  CheckCircle2,
+  CircleDashed,
+  ExternalLink,
+  Loader2,
+  Mail,
+  Plug,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -104,9 +113,15 @@ export function IntegrationsPanel({
               Signed in via Google · access + refresh tokens stored server-side
             </div>
           </div>
-          <Badge variant="emerald" className="shrink-0 text-[10px]">
-            <CheckCircle2 className="mr-1 size-3" /> Connected
-          </Badge>
+          {missingBackgroundScope ? (
+            <Badge variant="warning" className="shrink-0 text-[10px]">
+              <AlertTriangle className="mr-1 size-3" aria-hidden="true" /> Partial access
+            </Badge>
+          ) : (
+            <Badge variant="success" className="shrink-0 text-[10px]">
+              <CheckCircle2 className="mr-1 size-3" aria-hidden="true" /> Connected
+            </Badge>
+          )}
         </div>
 
         {/* Scope chips */}
@@ -120,11 +135,16 @@ export function IntegrationsPanel({
               return (
                 <Badge
                   key={s.id}
-                  variant={granted ? 'emerald' : 'neutral'}
-                  className={granted ? 'text-[11px]' : 'text-[11px] opacity-60'}
+                  variant={granted ? 'success' : 'outline'}
+                  className={granted ? 'text-[11px]' : 'border-dashed text-[11px] text-muted-foreground'}
                 >
-                  {granted ? <CheckCircle2 className="mr-1 size-3" /> : null}
+                  {granted ? (
+                    <CheckCircle2 className="mr-1 size-3" aria-hidden="true" />
+                  ) : (
+                    <CircleDashed className="mr-1 size-3" aria-hidden="true" />
+                  )}
                   {s.label}
+                  <span className="sr-only">{granted ? ' (granted)' : ' (not granted)'}</span>
                 </Badge>
               )
             })}
@@ -133,9 +153,9 @@ export function IntegrationsPanel({
 
         {/* Missing-scope warning */}
         {missingBackgroundScope ? (
-          <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-xs text-yellow-900 dark:border-yellow-900/50 dark:bg-yellow-950/40 dark:text-yellow-200">
+          <div className="rounded-md border border-warning/30 bg-warning-soft p-3 text-xs text-warning">
             <p className="font-medium">Reconnect to grant email + calendar access</p>
-            <p className="mt-0.5 opacity-90">
+            <p className="mt-0.5">
               Your Google connection is missing{' '}
               {!gmailScope ? <span className="font-medium">Gmail read</span> : null}
               {!gmailScope && !calendarScope ? ' and ' : null}
@@ -148,7 +168,7 @@ export function IntegrationsPanel({
         {/* Gmail row */}
         <div className="flex items-center justify-between gap-3 rounded-md border p-3">
           <div className="flex min-w-0 items-start gap-2">
-            <Mail className="mt-0.5 size-4 text-blue-600 dark:text-blue-400" />
+            <Mail className="mt-0.5 size-4 shrink-0 text-info" aria-hidden="true" />
             <div className="min-w-0">
               <div className="text-sm font-medium">Gmail sync</div>
               <div className="text-xs text-muted-foreground">
@@ -178,7 +198,7 @@ export function IntegrationsPanel({
         {/* Calendar row */}
         <div className="flex items-center justify-between gap-3 rounded-md border p-3">
           <div className="flex min-w-0 items-start gap-2">
-            <CalendarIcon className="mt-0.5 size-4 text-violet-600 dark:text-violet-400" />
+            <CalendarIcon className="mt-0.5 size-4 shrink-0 text-stage-interview" aria-hidden="true" />
             <div className="min-w-0">
               <div className="text-sm font-medium">Calendar</div>
               <div className="text-xs text-muted-foreground">
@@ -190,14 +210,14 @@ export function IntegrationsPanel({
                 ) : (
                   'Never'
                 )}
-                <span className="ml-2 opacity-75">· push-only, no manual sync</span>
+                <span className="ml-1">· push-only, no manual sync</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Reconnect */}
-        <div className="flex items-center justify-between border-t pt-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
           <p className="text-xs text-muted-foreground">
             Grant new scopes or re-authorize after a refresh-token failure.
           </p>

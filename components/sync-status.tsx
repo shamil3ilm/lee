@@ -41,12 +41,12 @@ export function SyncStatus({
             <AlertCircle className="mt-0.5 size-4 shrink-0" />
             <p>
               <span className="font-medium">Gmail not connected</span>{' '}
-              <span className="opacity-80">
+              <span>
                 — reconnect Google to auto-log emails and push interviews to Calendar.
               </span>
             </p>
           </div>
-          <Button asChild variant="secondary" size="sm">
+          <Button asChild variant="outline" size="sm">
             <Link href="/settings/integrations">Connect Gmail</Link>
           </Button>
         </CardContent>
