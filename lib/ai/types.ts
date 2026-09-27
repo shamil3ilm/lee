@@ -16,6 +16,8 @@ import type {
 } from '@/lib/documents/types'
 import type { InterviewStage } from '@/lib/db/queries/stages'
 import type { CallMeta } from './log'
+import type { ScoreJobContext } from './prompts/score-job'
+import type { SuggestRolesInput, SuggestRolesResult } from './prompts/suggest-roles'
 
 export const parsedJobSchema = z.object({
   title: z.string(),
@@ -122,7 +124,14 @@ export interface AIProvider {
   // v10.1 — `meta` lets the discovery service capture the ai_call_logs row
   // id via `onLogged`, so the score can be persisted onto the discovery row
   // for later implicit-signal writeback (dismiss/save).
-  scoreJob(job: NormalizedJob, profile: UserProfile, meta?: CallMeta): Promise<JobMatchResult>
+  // Discovery relevance — `context` carries the master-CV digest (never a
+  // tailored CV) for the v1.1 scoring prompt.
+  scoreJob(
+    job: NormalizedJob,
+    profile: UserProfile,
+    meta?: CallMeta,
+    context?: ScoreJobContext,
+  ): Promise<JobMatchResult>
   scoreCompany(
     company: NormalizedCompany,
     profile: UserProfile,
@@ -171,6 +180,9 @@ export interface AIProvider {
   // rejects any rewrite that introduces new digits).
   assessRequirementFit(input: RequirementFitInput, meta?: CallMeta): Promise<RequirementFitResult>
   rewriteCvBullets(input: BulletRewriteInput, meta?: CallMeta): Promise<BulletRewriteResult>
+  // Discovery relevance — optional refinement of the deterministic role
+  // suggestions, from the profile + master-CV digest only.
+  suggestRoles(input: SuggestRolesInput, meta?: CallMeta): Promise<SuggestRolesResult>
 }
 
 export const latexCVResultSchema = z.object({ source: z.string().min(1) })
