@@ -93,7 +93,7 @@ function FreshRow({ item }: { item: FreshDiscoveryItem }) {
           <span className="truncate font-medium">{item.companyName}</span>
           {item.risk ? <RiskBadge risk={item.risk} className="shrink-0" /> : null}
         </div>
-        <div className="truncate text-xs text-muted-foreground">{item.title}</div>
+        <div className="line-clamp-2 text-xs text-muted-foreground">{item.title}</div>
       </div>
       <Badge variant={scoreVariant(item.matchScore)}>
         {item.matchScore === null ? '—' : `Match ${item.matchScore}`}
