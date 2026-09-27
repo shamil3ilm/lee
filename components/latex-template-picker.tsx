@@ -177,7 +177,7 @@ export function LatexTemplatePicker({ templates, hasMaster }: LatexTemplatePicke
         </div>
         <CardHeader>
           <div className="mb-1 flex items-center justify-between gap-2">
-            <CardTitle className="flex items-center gap-2 text-base">
+            <CardTitle className="flex items-center gap-2">
               {isLetter ? (
                 <Mail className="size-4" />
               ) : (

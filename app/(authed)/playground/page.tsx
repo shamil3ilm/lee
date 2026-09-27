@@ -53,7 +53,7 @@ function SectionCard({ section }: { section: PlaygroundSection }) {
     <Card className="flex flex-col">
       <CardHeader className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="flex items-center gap-2 text-base">
+          <CardTitle className="flex items-center gap-2">
             <Icon className="size-4 text-muted-foreground" aria-hidden />
             {section.title}
           </CardTitle>

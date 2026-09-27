@@ -66,7 +66,7 @@ export default async function UsagePage() {
       {requested.length > 0 ? (
         <Card className={cn('border', TONE_BORDER.warning)} data-testid="usage-throttles">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Automatic throttles</CardTitle>
+            <CardTitle>Automatic throttles</CardTitle>
             <CardDescription>Reversible: each lifts when usage drops under 90% or the month resets.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -91,7 +91,7 @@ export default async function UsagePage() {
         return (
           <Card key={g.id} data-testid={`usage-group-${g.id}`}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">{g.title}</CardTitle>
+              <CardTitle>{g.title}</CardTitle>
               <CardDescription>{g.description}</CardDescription>
             </CardHeader>
             <CardContent>
@@ -122,7 +122,7 @@ export default async function UsagePage() {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">AI tokens and quotas (today)</CardTitle>
+          <CardTitle>AI tokens and quotas (today)</CardTitle>
           <CardDescription>
             Per-model free-tier limits reset daily. More detail in{' '}
             <Link href="/analytics" className="underline-offset-2 hover:underline">
@@ -139,7 +139,7 @@ export default async function UsagePage() {
       {data.largestTables.length > 0 ? (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Largest tables</CardTitle>
+            <CardTitle>Largest tables</CardTitle>
             <CardDescription>Table, indexes and TOAST together, at the last snapshot.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -157,7 +157,7 @@ export default async function UsagePage() {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Neon connection</CardTitle>
+          <CardTitle>Neon connection</CardTitle>
           <CardDescription>
             Optional. With a Neon API key, snapshots also read compute (CU-hours), egress and compute state. Add the key
             under{' '}

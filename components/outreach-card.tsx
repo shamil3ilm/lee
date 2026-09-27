@@ -505,7 +505,7 @@ export function OutreachCard({
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <MessageSquare className="size-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-semibold">Outreach</CardTitle>
+          <CardTitle>Outreach</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">

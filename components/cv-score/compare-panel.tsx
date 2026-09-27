@@ -59,7 +59,7 @@ export function ComparePanel({ documents, applications }: ComparePanelProps) {
       {result ? (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">{result.summary}</CardTitle>
+            <CardTitle>{result.summary}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">

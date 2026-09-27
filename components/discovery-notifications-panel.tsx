@@ -126,7 +126,7 @@ export function DiscoveryNotificationsPanel({
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <Bell className="size-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-semibold">
+          <CardTitle>
             Discovery notifications
           </CardTitle>
         </div>

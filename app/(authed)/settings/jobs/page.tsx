@@ -29,7 +29,7 @@ export default async function BackgroundJobsPage() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
-          <CardTitle className="text-base">Status</CardTitle>
+          <CardTitle>Status</CardTitle>
           <RunJobsNowButton />
         </CardHeader>
         <CardContent className="space-y-4">
@@ -56,7 +56,7 @@ export default async function BackgroundJobsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Recent failures</CardTitle>
+          <CardTitle>Recent failures</CardTitle>
         </CardHeader>
         <CardContent>
           {overview.failures.length === 0 ? (

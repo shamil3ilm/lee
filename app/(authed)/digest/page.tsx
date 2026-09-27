@@ -39,7 +39,7 @@ export default async function DigestPage() {
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
           <div className="flex items-center gap-2">
             <CalendarClock className="size-4 text-muted-foreground" />
-            <CardTitle className="text-sm font-semibold">Actions due (7 days)</CardTitle>
+            <CardTitle>Actions due (7 days)</CardTitle>
           </div>
           <Badge variant="secondary">{upcoming.length}</Badge>
         </CardHeader>
@@ -88,7 +88,7 @@ export default async function DigestPage() {
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
           <div className="flex items-center gap-2">
             <ActivityIcon className="size-4 text-muted-foreground" />
-            <CardTitle className="text-sm font-semibold">Recent activity (7 days)</CardTitle>
+            <CardTitle>Recent activity (7 days)</CardTitle>
           </div>
           <Badge variant="secondary">{recent.length}</Badge>
         </CardHeader>

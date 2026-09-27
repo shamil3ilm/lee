@@ -105,7 +105,7 @@ export function ServiceSecretsPanel({ statuses }: ServiceSecretsPanelProps) {
           <Card key={id} className="flex flex-col">
             <CardHeader className="space-y-2 pb-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <CardTitle className="text-base">{s.info.label}</CardTitle>
+                <CardTitle>{s.info.label}</CardTitle>
                 <SourceBadge status={s} />
               </div>
               <CardDescription className="text-xs">{s.info.description}</CardDescription>

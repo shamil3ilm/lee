@@ -107,7 +107,7 @@ export function ScoreResults({ result, history, onPreviewFix }: ScoreResultsProp
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Details</CardTitle>
+          <CardTitle>Details</CardTitle>
         </CardHeader>
         <CardContent>
           <Tabs value={tab} onValueChange={setTab}>
