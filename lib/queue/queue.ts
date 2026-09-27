@@ -3,6 +3,7 @@ import { db, type DbClient } from '@/lib/db/client'
 import { queueJobs } from '@/lib/db/schema'
 import { backoffMs } from './backoff'
 import { sanitizeError } from './errors'
+import { capSummary, MAX_ATTEMPT_ERRORS, type JobSummary } from './run-summary'
 import type { ClaimedJob, JobStatus } from './types'
 
 /**
@@ -156,6 +157,8 @@ export async function claim(
         attempts = j.attempts + 1,
         locked_by = ${workerId},
         locked_until = ${lockUntil.toISOString()}::timestamptz,
+        started_at = ${now.toISOString()}::timestamptz,
+        duration_ms = null,
         updated_at = ${now.toISOString()}::timestamptz
     where j.id in (
       select c.id from queue_jobs c
@@ -184,18 +187,56 @@ function ownedBy(jobId: string, workerId: string): SQL | undefined {
 }
 
 /**
- * Mark a claimed job done. Returns false when the worker no longer owns it
- * (its lock expired and another drain recovered it) — nothing is written.
+ * `result.errors` with one more failed attempt appended, newest
+ * MAX_ATTEMPT_ERRORS kept (one SQL expression, no read-back).
+ */
+function appendAttemptError(attempt: SQL, at: Date, message: string): SQL {
+  const entry = sql`jsonb_build_array(jsonb_build_object('attempt', ${attempt}, 'at', ${at.toISOString()}::text, 'message', ${message}::text))`
+  return sql`jsonb_build_object('errors', coalesce((
+    select jsonb_agg(x.e order by x.i) from (
+      select t.e, t.i from jsonb_array_elements(coalesce(${queueJobs.result}->'errors', '[]'::jsonb) || ${entry})
+        with ordinality as t(e, i)
+      order by t.i desc limit ${MAX_ATTEMPT_ERRORS}
+    ) x
+  ), '[]'::jsonb))`
+}
+
+export interface CompleteRun {
+  /** Wall time of this attempt's handler. */
+  durationMs?: number
+  /** The handler's typed summary (capped before it is stored). */
+  summary?: JobSummary
+}
+
+/**
+ * Mark a claimed job done and store its run record: duration, summary, and
+ * the errors of any earlier failed attempts. Returns false when the worker
+ * no longer owns it (its lock expired and another drain recovered it) —
+ * nothing is written.
  */
 export async function complete(
   jobId: string,
   workerId: string,
   now: Date = new Date(),
+  run: CompleteRun = {},
   client: DbClient = db,
 ): Promise<boolean> {
+  const summary = capSummary(run.summary)
   const rows = await client
     .update(queueJobs)
-    .set({ status: 'done', finishedAt: now, updatedAt: now, lockedBy: null, lockedUntil: null, lastError: null })
+    .set({
+      status: 'done',
+      finishedAt: now,
+      updatedAt: now,
+      lockedBy: null,
+      lockedUntil: null,
+      lastError: null,
+      durationMs: run.durationMs === undefined ? null : Math.max(0, Math.round(run.durationMs)),
+      result: sql`jsonb_build_object(
+        'summary', ${summary === null ? null : JSON.stringify(summary)}::jsonb,
+        'errors', coalesce(${queueJobs.result}->'errors', '[]'::jsonb)
+      )`,
+    })
     .where(ownedBy(jobId, workerId))
     .returning()
   return rows.length > 0
@@ -230,6 +271,8 @@ export interface FailOptions {
   random?: () => number
   /** Skip retries (bad payload, unknown type). */
   permanent?: boolean
+  /** Wall time of the failed attempt. */
+  durationMs?: number
 }
 
 export interface FailOutcome {
@@ -253,11 +296,14 @@ export async function fail(
   const now = opts.now ?? new Date()
   const dead = opts.permanent === true || job.attempts >= job.maxAttempts
   const retryAt = dead ? null : new Date(now.getTime() + backoffMs(job.attempts, opts.random))
+  const message = sanitizeError(err)
   const rows = await client
     .update(queueJobs)
     .set({
       status: dead ? 'dead' : 'failed',
-      lastError: sanitizeError(err),
+      lastError: message,
+      result: appendAttemptError(sql`${job.attempts}::int`, now, message),
+      durationMs: opts.durationMs === undefined ? null : Math.max(0, Math.round(opts.durationMs)),
       updatedAt: now,
       lockedBy: null,
       lockedUntil: null,
@@ -267,6 +313,8 @@ export async function fail(
     .returning()
   return { owned: rows.length > 0, status: dead ? 'dead' : 'failed', retryAt }
 }
+
+const STALE_MESSAGE = 'Stopped before finishing; will retry.'
 
 /**
  * Stale lock recovery: running jobs whose lock expired (the worker died or
@@ -282,7 +330,8 @@ export async function recoverStale(now: Date = new Date(), client: DbClient = db
         run_after = ${ts}::timestamptz,
         locked_by = null,
         locked_until = null,
-        last_error = 'Stopped before finishing; will retry.',
+        last_error = ${STALE_MESSAGE},
+        result = ${appendAttemptError(sql`attempts`, now, STALE_MESSAGE)},
         updated_at = ${ts}::timestamptz
     where status = 'running' and locked_until < ${ts}::timestamptz
   `)
