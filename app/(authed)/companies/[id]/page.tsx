@@ -15,6 +15,7 @@ import { CompanyInterestPicker } from '@/components/company-interest-picker'
 import { CompanyStancePicker } from '@/components/company-stance-picker'
 import { EmptyState } from '@/components/empty-state'
 import { PageHeader } from '@/components/page-header'
+import { MarkdownText } from '@/components/markdown-text'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -115,7 +116,7 @@ export default async function CompanyDetailPage({
         <div className="space-y-6 lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              <CardTitle>
                 Applications
               </CardTitle>
             </CardHeader>
@@ -155,7 +156,7 @@ export default async function CompanyDetailPage({
           {unappliedJobs.length > 0 ? (
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                <CardTitle>
                   Jobs seen
                 </CardTitle>
               </CardHeader>
@@ -189,15 +190,13 @@ export default async function CompanyDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              <CardTitle>
                 Notes
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
               {company.notesMd ? (
-                <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground/90">
-                  {company.notesMd}
-                </pre>
+                <MarkdownText source={company.notesMd} />
               ) : (
                 <EmptyState
                   icon={StickyNote}
@@ -212,7 +211,7 @@ export default async function CompanyDetailPage({
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              <CardTitle>
                 Interest
               </CardTitle>
             </CardHeader>
@@ -223,7 +222,7 @@ export default async function CompanyDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              <CardTitle>
                 Stance
               </CardTitle>
             </CardHeader>
@@ -234,7 +233,7 @@ export default async function CompanyDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              <CardTitle>
                 Details
               </CardTitle>
             </CardHeader>
@@ -273,7 +272,7 @@ export default async function CompanyDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              <CardTitle>
                 Contacts
               </CardTitle>
             </CardHeader>
