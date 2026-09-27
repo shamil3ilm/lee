@@ -450,6 +450,28 @@ export const discoveries = pgTable(
   }),
 )
 
+// Job-alert emails read by the `email_alert` discovery source: one row per
+// Gmail message, for Settings › Sources ("sites seen, last alert, jobs
+// extracted"). Only these counters are kept — never the email body; the
+// jobs themselves are ordinary discoveries.
+export const emailAlertMessages = pgTable(
+  'email_alert_messages',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    messageId: text('message_id').notNull(),
+    site: text('site').notNull(),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull(),
+    jobsFound: integer('jobs_found').notNull().default(0),
+    processedAt: timestamp('processed_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.messageId] }),
+    userSiteIx: index('email_alert_messages_user_site_idx').on(t.userId, t.site, t.receivedAt),
+  }),
+)
+
 export const companyDiscoveries = pgTable(
   'company_discoveries',
   {
