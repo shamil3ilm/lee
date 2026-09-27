@@ -64,7 +64,7 @@ export function parseMarkdownLite(source: string): MdBlock[] {
     if (heading) {
       flushPara()
       flushList()
-      blocks.push({ type: 'heading', level: heading[1].length, inline: parseInline(heading[2]) })
+      blocks.push({ type: 'heading', level: (heading[1] ?? '#').length, inline: parseInline(heading[2] ?? '') })
       continue
     }
     const bullet = BULLET.exec(line)
@@ -75,12 +75,12 @@ export function parseMarkdownLite(source: string): MdBlock[] {
       const isOrdered = Boolean(ordered)
       if (list && list.ordered !== isOrdered) flushList()
       list ??= { ordered: isOrdered, items: [] }
-      list.items.push(parseInline(item[1]))
+      list.items.push(parseInline(item[1] ?? ''))
       continue
     }
     // A plain line right after a list item continues that item.
-    if (list && /^\s/.test(raw) && list.items.length) {
-      const lastItem = list.items[list.items.length - 1]
+    const lastItem = list?.items[list.items.length - 1]
+    if (list && lastItem && /^\s/.test(raw)) {
       list.items[list.items.length - 1] = [...lastItem, { type: 'text', text: ` ${line.trim()}` }]
       continue
     }
