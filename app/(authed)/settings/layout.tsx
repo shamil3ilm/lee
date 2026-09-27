@@ -10,6 +10,7 @@ const SETTINGS_TABS: RouteTab[] = [
   { href: '/settings/scam-shield', label: 'Scam Shield' },
   { href: '/settings/jobs', label: 'Background jobs' },
   { href: '/settings/usage', label: 'Usage' },
+  { href: '/settings/storage', label: 'Storage' },
 ]
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
