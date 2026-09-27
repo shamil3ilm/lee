@@ -37,6 +37,13 @@ import {
   CV_BULLET_REWRITE_PROMPT_VERSION,
 } from './prompts/cv-bullet-rewrite'
 import {
+  buildReputationSummaryPrompt,
+  REPUTATION_SUMMARY_PROMPT_VERSION,
+  reputationSummaryResultSchema,
+  type ReputationSummaryInput,
+  type ReputationSummaryResult,
+} from './prompts/reputation-summary'
+import {
   bulletRewriteResultSchema,
   requirementFitResultSchema,
   type BulletRewriteInput,
@@ -382,6 +389,18 @@ export class GroqProvider implements AIProvider {
       promptVersion: CV_BULLET_REWRITE_PROMPT_VERSION,
     })
     return bulletRewriteResultSchema.parse(JSON.parse(raw))
+  }
+
+  async summarizeReputation(
+    input: ReputationSummaryInput,
+    meta: CallMeta = {},
+  ): Promise<ReputationSummaryResult> {
+    const raw = await this.generate(buildReputationSummaryPrompt(input), {
+      ...meta,
+      kind: 'company_reputation_summary',
+      promptVersion: REPUTATION_SUMMARY_PROMPT_VERSION,
+    })
+    return reputationSummaryResultSchema.parse(JSON.parse(raw))
   }
 }
 

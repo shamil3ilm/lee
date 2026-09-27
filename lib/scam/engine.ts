@@ -1,12 +1,14 @@
 import { buildContext } from './context'
 import { hostOf, registrableDomain } from './domains'
 import { RULES } from './rules'
+import { reputationSignals } from './rules/reputation'
 import type { ObservedHost, RuleContext } from './rules/types'
 import { toFields } from './text'
 import type {
   DomainNetFacts,
   EvidenceSpan,
   NetContext,
+  ReputationContext,
   RiskLevel,
   ScamAssessment,
   ScamInput,
@@ -116,11 +118,15 @@ function netSignals(ctx: RuleContext, net: NetContext | null | undefined): ScamS
 
 /**
  * Pure, deterministic Scam Shield assessment. Same input + same net facts
- * + same RULES_VERSION → same output.
+ * + same confirmed reputation + same RULES_VERSION → same output.
  */
-export function assessScam(input: ScamInput, net?: NetContext | null): ScamAssessment {
+export function assessScam(
+  input: ScamInput,
+  net?: NetContext | null,
+  reputation?: ReputationContext | null,
+): ScamAssessment {
   const ctx = buildContext(toFields(input))
-  const signals = [...runRules(ctx), ...netSignals(ctx, net)]
+  const signals = [...runRules(ctx), ...netSignals(ctx, net), ...reputationSignals(ctx, reputation)]
   const score = scoreSignals(signals)
   return { score, level: levelFor(score), signals, rulesVersion: RULES_VERSION }
 }

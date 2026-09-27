@@ -12,6 +12,7 @@ import type {
 import { contentStems } from '@/lib/cv-score/text'
 import { replacementVerb, weakOpenerOf } from '@/lib/cv-score/dimensions/impact'
 import type { CallMeta } from './log'
+import type { ReputationSummaryInput, ReputationSummaryResult } from './prompts/reputation-summary'
 import type { NormalizedCompany, NormalizedJob } from '@/lib/discovery/adapters/types'
 import type { UserProfile } from '@/lib/db/queries/profile'
 import type { ApplicationWithJob } from '@/lib/db/queries/applications'
@@ -70,6 +71,7 @@ export class FixtureAIProvider implements AIProvider {
       }) => { source: string }
       assessRequirementFit?: (input: RequirementFitInput) => RequirementFitResult
       rewriteCvBullets?: (input: BulletRewriteInput) => BulletRewriteResult
+      summarizeReputation?: (input: ReputationSummaryInput) => ReputationSummaryResult
     } = {},
   ) {}
 
@@ -238,6 +240,39 @@ export class FixtureAIProvider implements AIProvider {
     if (this.fixtures.rewriteCvBullets) return this.fixtures.rewriteCvBullets(input)
     return pseudoRewriteBullets(input)
   }
+
+  async summarizeReputation(
+    input: ReputationSummaryInput,
+    meta?: CallMeta,
+  ): Promise<ReputationSummaryResult> {
+    await this.emitLoggedCallId('company_reputation_summary', meta)
+    if (this.fixtures.summarizeReputation) return this.fixtures.summarizeReputation(input)
+    return pseudoReputationSummary(input)
+  }
+}
+
+/**
+ * Deterministic reputation draft: each alarming news headline becomes a
+ * cited red flag, funding news a cited pro. Mirrors the real contract
+ * (only ids from the input are cited).
+ */
+function pseudoReputationSummary(input: ReputationSummaryInput): ReputationSummaryResult {
+  const flagFor: Record<string, ReputationSummaryResult['red_flags'][number]['category']> = {
+    wage_theft: 'unpaid_salaries',
+    fraud: 'fraud',
+    layoffs: 'layoffs',
+    visa_contract: 'visa_contract',
+  }
+  const red_flags = input.signals.flatMap((s) => {
+    const category = s.category ? flagFor[s.category] : undefined
+    return category
+      ? [{ category, text: `Reported: ${s.title}`, cites: [s.id], gcc_relevance: '' }]
+      : []
+  })
+  const pros = input.signals
+    .filter((s) => s.category === 'funding')
+    .map((s) => ({ text: `Reported: ${s.title}`, cites: [s.id] }))
+  return { pros, cons: [], red_flags, gcc_note: '' }
 }
 
 /**

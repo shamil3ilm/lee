@@ -8,6 +8,7 @@ import { syncGmail } from '@/lib/gmail/sync'
 import { NoGoogleAccountError } from '@/lib/google/tokens'
 import { sendDiscoveryEmailIfEnabled } from '@/lib/notifications/discovery'
 import { recordDueReminders } from '@/lib/reminders/service'
+import { refreshCompanyReputation } from '@/lib/reputation/refresh'
 import { reassessStaleDiscoveries } from '@/lib/scam/service'
 import { takeUsageSnapshot } from '@/lib/usage/snapshot'
 import { isThrottled } from '@/lib/usage/throttle'
@@ -175,6 +176,30 @@ const usageSnapshot = defineHandler({
   },
 })
 
+const companyReputation = defineHandler({
+  type: JOB_TYPES.companyReputation,
+  scope: 'user',
+  payload: z.object({ companyId: z.string().uuid(), trigger: z.enum(['weekly', 'manual']).default('weekly') }),
+  // Three sources in sequence; GDELT's 5 s spacing can add a wait.
+  timeoutMs: 60_000,
+  minBudgetMs: 15_000,
+  async run({ job, payload }): Promise<JobResult> {
+    // The weekly refresh is non-essential; a refresh the user asked for runs.
+    if (payload.trigger === 'weekly' && (await isThrottled('pause_nonessential'))) {
+      return { metrics: { reputation_paused_by_usage: 1 } }
+    }
+    const r = await refreshCompanyReputation(userId(job), payload.companyId)
+    return {
+      metrics: {
+        reputation_refreshed: r.status === 'refreshed' ? 1 : 0,
+        reputation_signals: r.signals,
+        reputation_source_errors: r.errors.length,
+      },
+      warnings: r.errors.map((e) => `company ${payload.companyId}: ${e}`),
+    }
+  },
+})
+
 export const appHandlers = [
   reminders,
   followups,
@@ -184,6 +209,7 @@ export const appHandlers = [
   discoveryEmail,
   scamReassess,
   usageSnapshot,
+  companyReputation,
 ] as const
 
 export const appRegistry: HandlerRegistry = createRegistry(appHandlers)

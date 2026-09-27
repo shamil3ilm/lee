@@ -97,4 +97,5 @@ export const GROUP_LABEL: Record<SignalGroup, string> = {
   channel: 'Channel',
   sender: 'Sender / domain',
   content: 'Content',
+  reputation: 'Company reputation',
 }
