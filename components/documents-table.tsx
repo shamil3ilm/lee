@@ -8,7 +8,9 @@ import { Download, FileText, Loader2, Pencil, TextCursorInput, Trash2 } from 'lu
 import type { DocumentSummary as Document } from '@/lib/db/queries/documents'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
+import { EmptyState } from '@/components/empty-state'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import {
   Dialog,
   DialogContent,
@@ -172,46 +174,54 @@ export function DocumentsTable({ documents, currentFilter, scores = {} }: Docume
       </div>
 
       {documents.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-2 py-12 text-center text-sm text-muted-foreground">
-            <FileText className="size-6" />
-            <p className="font-medium text-foreground">No documents yet.</p>
-            <p>Tailored CVs and cover letters start from your master CV in Settings › CV.</p>
-            <Button asChild size="sm" className="mt-1">
+        <EmptyState
+          icon={FileText}
+          title="No documents yet."
+          description="Tailored CVs and cover letters start from your master CV in Settings › CV."
+          action={
+            <Button asChild size="sm">
               <Link href="/settings/cv">Set up your CV</Link>
             </Button>
-          </CardContent>
-        </Card>
+          }
+        />
       ) : (
-        <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  <th className="px-4 py-3">Kind</th>
-                  <th className="px-4 py-3">Title</th>
-                  <th className="px-4 py-3">Application</th>
-                  <th className="px-4 py-3">Version</th>
-                  <th className="px-4 py-3">CV score</th>
-                  <th className="px-4 py-3">Freshness</th>
-                  <th className="px-4 py-3">Created</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+        <Card className="overflow-hidden">
+          {/* Columns fold away as the screen narrows (kind and date move under
+              the title) so Title and Actions always fit without clipping. */}
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="hidden md:table-cell">Kind</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead className="hidden lg:table-cell">Application</TableHead>
+                <TableHead className="hidden xl:table-cell">Version</TableHead>
+                <TableHead className="hidden whitespace-nowrap sm:table-cell">CV score</TableHead>
+                <TableHead className="hidden xl:table-cell">Freshness</TableHead>
+                <TableHead className="hidden md:table-cell">Created</TableHead>
+                <TableHead className="text-right">
+                  <span className="sr-only">Actions</span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
                 {documents.map((doc) => {
                   const kind = doc.kind as DocumentKind
                   return (
-                    <tr key={doc.id} className="border-b last:border-0 hover:bg-muted/40">
-                      <td className="px-4 py-3">
+                    <TableRow key={doc.id}>
+                      <TableCell className="hidden md:table-cell">
                         <Badge variant={KIND_BADGE[kind]} className="whitespace-nowrap text-[10px]">
                           {KIND_LABELS[kind] ?? kind}
                         </Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="max-w-[26rem] truncate font-medium">{doc.title}</div>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                      </TableCell>
+                      <TableCell className="w-full max-w-0">
+                        <div className="truncate font-medium" title={doc.title}>
+                          {doc.title}
+                        </div>
+                        <div className="truncate text-xs text-muted-foreground md:hidden">
+                          {KIND_LABELS[kind] ?? kind} · {relativeFromNow(doc.createdAt)}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden text-xs text-muted-foreground lg:table-cell">
                         {doc.applicationId ? (
                           <Link
                             href={`/applications/${doc.applicationId}`}
@@ -222,29 +232,32 @@ export function DocumentsTable({ documents, currentFilter, scores = {} }: Docume
                         ) : (
                           <span>—</span>
                         )}
-                      </td>
-                      <td className="px-4 py-3 text-xs">v{doc.version}</td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell className="hidden text-xs tabular-nums xl:table-cell">v{doc.version}</TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         <CvScoreBadge
                           documentId={doc.id}
                           score={scores[doc.id]}
                           fallback={<span className="text-xs text-muted-foreground">—</span>}
                         />
-                      </td>
-                      <td className="px-4 py-3">
-                        <StalenessBadge documentId={doc.id} />
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell">
+                        <StalenessBadge
+                          documentId={doc.id}
+                          fallback={<span className="text-xs text-muted-foreground">—</span>}
+                        />
+                      </TableCell>
+                      <TableCell className="hidden whitespace-nowrap text-xs text-muted-foreground md:table-cell">
                         {relativeFromNow(doc.createdAt)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-1">
+                      </TableCell>
+                      <TableCell className="w-px whitespace-nowrap pl-0 text-right">
+                        <div className="flex items-center justify-end gap-0.5">
                           {isLatexKind(kind) ? (
                             <Button
                               asChild
                               variant="ghost"
                               size="icon"
-                              aria-label="Edit"
+                              aria-label={`Edit ${doc.title}`}
                             >
                               <Link href={`/documents/${doc.id}/edit`}>
                                 <Pencil className="size-4" />
@@ -264,7 +277,7 @@ export function DocumentsTable({ documents, currentFilter, scores = {} }: Docume
                             asChild
                             variant="ghost"
                             size="icon"
-                            aria-label="Download PDF"
+                            aria-label={`Download ${doc.title} as PDF`}
                           >
                             <Link href={`/api/documents/${doc.id}/pdf`} target="_blank">
                               <Download className="size-4" />
@@ -274,7 +287,7 @@ export function DocumentsTable({ documents, currentFilter, scores = {} }: Docume
                             type="button"
                             variant="ghost"
                             size="icon"
-                            aria-label="Delete"
+                            aria-label={`Delete ${doc.title}`}
                             onClick={() => setConfirmDelete(doc)}
                             disabled={deletingId === doc.id}
                           >
@@ -285,13 +298,12 @@ export function DocumentsTable({ documents, currentFilter, scores = {} }: Docume
                             )}
                           </Button>
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   )
                 })}
-              </tbody>
-            </table>
-          </div>
+            </TableBody>
+          </Table>
         </Card>
       )}
 
