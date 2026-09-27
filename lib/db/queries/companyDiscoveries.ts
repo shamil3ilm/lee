@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, isNull, or, sql } from 'drizzle-orm'
+import { and, count, eq, gte, inArray, isNull, or, sql, type SQL } from 'drizzle-orm'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import { db, type DbClient } from '@/lib/db/client'
 import { companyDiscoveries } from '@/lib/db/schema'
@@ -119,12 +119,8 @@ export interface ListOpts {
   offset?: number
 }
 
-export async function list(
-  userId: string,
-  opts: ListOpts = {},
-  client: DbClient = db,
-): Promise<CompanyDiscovery[]> {
-  const conds = [eq(companyDiscoveries.userId, userId)]
+function listWhere(userId: string, opts: ListOpts): SQL {
+  const conds: SQL[] = [eq(companyDiscoveries.userId, userId)]
   if (opts.status && opts.status !== 'all') {
     conds.push(eq(companyDiscoveries.status, opts.status))
   }
@@ -139,12 +135,30 @@ export async function list(
   if (opts.sourceIds && opts.sourceIds.length > 0) {
     conds.push(inArray(companyDiscoveries.sourceId, opts.sourceIds))
   }
+  return and(...conds)!
+}
+
+export async function list(
+  userId: string,
+  opts: ListOpts = {},
+  client: DbClient = db,
+): Promise<CompanyDiscovery[]> {
   return client.query.companyDiscoveries.findMany({
-    where: and(...conds),
+    where: listWhere(userId, opts),
     orderBy: (d, { desc }) => [desc(d.matchScore), desc(d.createdAt), desc(d.id)],
     limit: opts.limit,
     offset: opts.offset,
   })
+}
+
+/** Rows `list` would return without limit/offset — one count query for the pager. */
+export async function countList(
+  userId: string,
+  opts: Omit<ListOpts, 'limit' | 'offset'> = {},
+  client: DbClient = db,
+): Promise<number> {
+  const [row] = await client.select({ c: count() }).from(companyDiscoveries).where(listWhere(userId, opts))
+  return Number(row?.c ?? 0)
 }
 
 export async function getById(

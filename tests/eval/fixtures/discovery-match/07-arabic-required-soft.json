@@ -1,0 +1,22 @@
+{
+  "name": "Fluent Arabic required with basic Arabic: kept, ranked lower",
+  "inputs": {
+    "profile": {
+      "discoveryPrefs": {
+        "languages": [
+          { "name": "English", "level": "professional" },
+          { "name": "Arabic", "level": "basic" }
+        ]
+      }
+    },
+    "job": {
+      "title": "Laravel Developer",
+      "location": "Doha, Qatar",
+      "descriptionMd": "Fluent Arabic is required for client meetings."
+    }
+  },
+  "expect": {
+    "pass": true,
+    "penalties": ["language: Arabic required (you: basic)"]
+  }
+}

@@ -1,6 +1,9 @@
 import type { JobMatchResult } from '@/lib/ai/types'
 import type { NormalizedJob } from './adapters/types'
 import type { UserProfile } from '@/lib/db/queries/profile'
+import { evaluateRelevance } from './relevance/gate'
+import { searchPrefsFromProfile } from './relevance/prefs'
+import { findTerms, normalizeForMatch } from './relevance/text'
 
 /**
  * Deterministic post-AI score caps per v1 spec §8.2. The AI produces a raw
@@ -36,7 +39,62 @@ export function applyCaps(
     if (missingAny) score = Math.min(score, 25)
   }
 
-  return Math.max(0, Math.round(score))
+  score = applyPreferenceCaps(score, job, profile)
+  return Math.max(0, Math.min(100, Math.round(score)))
+}
+
+/** Caps and bonus from the user's search preferences (lib/discovery/relevance). */
+export const PREFERENCE_CAPS = {
+  /** Title seniority outside the selected levels (a "Show anyway" row). */
+  seniority: 40,
+  /** Role family outside the targets. */
+  role: 50,
+  /** Named place outside the selected regions. */
+  location: 30,
+  /** Posting located in a selected GCC/India region. */
+  regionBonus: 5,
+  /** GCC posting about e-invoicing / ZATCA for a profile with that evidence. */
+  einvoicingBonus: 8,
+} as const
+
+const EINVOICING = ['zatca', 'fatoora', 'e-invoicing', 'einvoicing', 'e-invoice', 'electronic invoicing']
+
+/**
+ * The gate already filters mismatches, but a row the user restored with
+ * "Show anyway" (or one scored before preferences changed) is still scored:
+ * cap it so it cannot outrank real matches, and prefer the selected regions.
+ */
+function applyPreferenceCaps(score: number, job: NormalizedJob, profile: UserProfile): number {
+  const prefs = searchPrefsFromProfile(profile)
+  if (!prefs.active) return score
+  const r = evaluateRelevance(
+    {
+      title: job.title,
+      location: job.location,
+      remoteType: job.remoteType,
+      descriptionMd: job.descriptionMd,
+      techStack: job.techStack,
+      employmentType: job.employmentType,
+      salary: job.salary,
+    },
+    prefs,
+  )
+  let s = score
+  const has = (prefix: string): boolean => r.reasons.some((x) => x.startsWith(prefix))
+  if (has('seniority:')) s = Math.min(s, PREFERENCE_CAPS.seniority)
+  if (has('role:')) s = Math.min(s, PREFERENCE_CAPS.role)
+  if (has('location:')) s = Math.min(s, PREFERENCE_CAPS.location)
+  // Bonuses only for postings that pass every preference.
+  if (!r.pass) return s
+  if (r.regions.some((t) => t !== 'remote')) s += PREFERENCE_CAPS.regionBonus
+  if (r.regions.includes('gcc')) {
+    const posting = normalizeForMatch(`${job.title} ${job.descriptionMd ?? ''}`.slice(0, 8_000))
+    const mine = normalizeForMatch((profile.skills ?? []).join(' | '))
+    if (findTerms(posting, EINVOICING).length > 0 && findTerms(mine, [...EINVOICING, 'vat', 'xades', 'ubl']).length > 0) {
+      s += PREFERENCE_CAPS.einvoicingBonus
+    }
+  }
+  return s
 }
 
 /**

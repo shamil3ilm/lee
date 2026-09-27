@@ -1,0 +1,11 @@
+{
+  "name": "Remote non-engineering role",
+  "inputs": {
+    "job": { "title": "Junior Payroll Assistant", "remoteType": "remote", "location": "" }
+  },
+  "expect": {
+    "pass": false,
+    "reasons": ["role: not engineering"],
+    "regions": ["remote"]
+  }
+}

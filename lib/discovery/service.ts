@@ -14,6 +14,9 @@ import { addWatchedCompany } from '@/lib/companies/service'
 import { getAdapter } from './adapters'
 import type { NormalizedCompany, NormalizedJob } from './adapters/types'
 import { ingestCompanyItems, ingestJobItems, type ScamCtx, type ScoringBudget } from './ingest'
+import { loadMasterCv, relevanceContext, type RelevanceContext } from './relevance/service'
+import { profileDigest } from './relevance/suggest'
+import type { ScoreJobContext } from '@/lib/ai/prompts/score-job'
 import { checkDiscoveryScoringSignal } from '@/lib/ai/signal'
 import { writeSkipLog } from '@/lib/ai/log'
 import type { Source } from '@/lib/db/queries/sources'
@@ -75,7 +78,7 @@ export async function runDiscoveryCycleForUser(args: {
 }): Promise<DiscoveryCycleResult> {
   const { userId, ai } = args
   const deadline = args.deadline ?? Number.POSITIVE_INFINITY
-  const { active, scoringProfile, signalSkip } = await loadCycleContext(userId)
+  const { active, scoringProfile, signalSkip, relevance, scoreContext } = await loadCycleContext(userId)
 
   const result: DiscoveryCycleResult = {
     sourcesPolled: 0,
@@ -100,7 +103,7 @@ export async function runDiscoveryCycleForUser(args: {
       return
     }
     try {
-      const perSource = await pollSource({ userId, source, ai, profile: scoringProfile, scam, deadline })
+      const perSource = await pollSource({ userId, source, ai, profile: scoringProfile, scam, deadline, relevance, scoreContext })
       result.sourcesPolled += 1
       result.newJobDiscoveries += perSource.newJobs
       result.newCompanyDiscoveries += perSource.newCompanies
@@ -127,6 +130,10 @@ interface CycleContext {
   active: Source[]
   scoringProfile: UserProfile | null
   signalSkip?: { code: string; message: string }
+  /** Relevance gate prefs + key; applies even when scoring is skipped. */
+  relevance: RelevanceContext
+  /** Master-CV digest for the scoring prompt (only loaded when scoring). */
+  scoreContext?: ScoreJobContext
 }
 
 /** Enabled sources that are not failing, plus the v10 scoring signal gate. */
@@ -134,12 +141,22 @@ async function loadCycleContext(userId: string): Promise<CycleContext> {
   const profile = await profileQ.get(userId)
   const sources = await sourcesQ.list(userId, { enabled: true })
   const active = sources.filter((s) => s.errorCount < MAX_ERRORS_BEFORE_SKIP)
+  const relevance = relevanceContext(profile)
   // v10 — signal-check gate. If the user's profile is too thin to produce
   // grounded match scores, we still ingest fresh discoveries but skip the
   // AI scoring pass entirely.
   const signal = checkDiscoveryScoringSignal(profile)
-  if (signal.ok) return { active, scoringProfile: profile }
-  return { active, scoringProfile: null, signalSkip: { code: signal.code, message: signal.message } }
+  if (signal.ok) {
+    const masterCv = active.length > 0 ? await loadMasterCv(userId) : null
+    const cvDigest = profileDigest({ profile, masterCv })
+    return { active, scoringProfile: profile, relevance, scoreContext: { cvDigest } }
+  }
+  return {
+    active,
+    scoringProfile: null,
+    signalSkip: { code: signal.code, message: signal.message },
+    relevance,
+  }
 }
 
 /** Scam Shield context; the allow-list is loaded once, not per item. */
@@ -178,7 +195,7 @@ export async function runDiscoveryForSource(args: {
   const { userId, ai } = args
   const deadline = args.deadline ?? Number.POSITIVE_INFINITY
   const empty = { newJobDiscoveries: 0, newCompanyDiscoveries: 0, budgetExhausted: false }
-  const { active, scoringProfile, signalSkip } = await loadCycleContext(userId)
+  const { active, scoringProfile, signalSkip, relevance, scoreContext } = await loadCycleContext(userId)
   const index = active.findIndex((s) => s.id === args.sourceId)
   const source = active[index]
   if (!source) return { status: 'skipped', ...empty }
@@ -188,7 +205,7 @@ export async function runDiscoveryForSource(args: {
   }
   const scam = await loadScamCtx(userId, Math.ceil(NET_LOOKUPS_PER_CYCLE / active.length))
   try {
-    const r = await pollSource({ userId, source, ai, profile: scoringProfile, scam, deadline })
+    const r = await pollSource({ userId, source, ai, profile: scoringProfile, scam, deadline, relevance, scoreContext })
     return {
       status: 'polled',
       newJobDiscoveries: r.newJobs,
@@ -209,6 +226,8 @@ async function pollSource(args: {
   profile: UserProfile | null
   scam: ScamCtx
   deadline: number
+  relevance: RelevanceContext
+  scoreContext?: ScoreJobContext
 }): Promise<{ newJobs: number; newCompanies: number; budgetExhausted: boolean }> {
   const { source, deadline } = args
   const adapter = getAdapter(source.kind)

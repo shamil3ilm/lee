@@ -11,6 +11,7 @@ export const JOB_TYPES = {
   discoverySource: 'discovery-source:user+source',
   discoveryEmail: 'discovery-email:user',
   scamReassess: 'scam-reassess:user',
+  discoveryRelevance: 'discovery-relevance:user',
   usageSnapshot: 'usage-snapshot:all',
 } as const
 
@@ -30,6 +31,8 @@ export const JOB_PRIORITY: Readonly<Record<JobType, number>> = {
   [JOB_TYPES.gmailSync]: 20,
   [JOB_TYPES.digest]: 30,
   [JOB_TYPES.discoverySource]: 40,
+  // Queued by a search-preferences save; DB-only and batched.
+  [JOB_TYPES.discoveryRelevance]: 45,
   [JOB_TYPES.scamReassess]: 50,
   [JOB_TYPES.discoveryEmail]: 60,
 }
@@ -43,6 +46,7 @@ export const JOB_LABELS: Readonly<Record<string, string>> = {
   [JOB_TYPES.discoverySource]: 'Discovery source poll',
   [JOB_TYPES.discoveryEmail]: 'Discovery email',
   [JOB_TYPES.scamReassess]: 'Scam Shield re-check',
+  [JOB_TYPES.discoveryRelevance]: 'Discovery relevance re-check',
   [JOB_TYPES.usageSnapshot]: 'Usage snapshot',
 }
 
@@ -67,6 +71,8 @@ export const jobKeys = {
   discoverySource: (userId: string, sourceId: string, day: string) =>
     `discovery-source:${userId}:${sourceId}:${day}`,
   discoveryEmail: (userId: string, day: string) => `discovery-email:${userId}:${day}`,
+  /** One per preferences save (`stamp` = save time), so every change re-runs. */
+  discoveryRelevance: (userId: string, stamp: string) => `discovery-relevance:${userId}:${stamp}`,
   scamReassess: (userId: string, day: string) => `scam-reassess:${userId}:${day}`,
   usageSnapshot: (day: string) => `usage-snapshot:all:${day}`,
 } as const
