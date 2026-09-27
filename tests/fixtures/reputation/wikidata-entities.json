@@ -1,0 +1,33 @@
+{
+  "entities": {
+    "Q900001": {
+      "id": "Q900001",
+      "labels": { "en": { "value": "Acme Payments" } },
+      "descriptions": { "en": { "value": "fictional band" } },
+      "claims": {}
+    },
+    "Q900002": {
+      "id": "Q900002",
+      "labels": { "en": { "value": "Acme Payments" } },
+      "descriptions": { "en": { "value": "payments company based in Dubai" } },
+      "claims": {
+        "P571": [{ "rank": "normal", "mainsnak": { "datavalue": { "value": { "time": "+2011-03-01T00:00:00Z", "precision": 11 } } } }],
+        "P159": [{ "rank": "normal", "mainsnak": { "datavalue": { "value": { "id": "Q612" } } } }],
+        "P452": [{ "rank": "normal", "mainsnak": { "datavalue": { "value": { "id": "Q837171" } } } }],
+        "P1128": [
+          { "rank": "deprecated", "mainsnak": { "datavalue": { "value": { "amount": "+50" } } } },
+          { "rank": "preferred", "mainsnak": { "datavalue": { "value": { "amount": "+1450" } } } }
+        ],
+        "P856": [{ "rank": "normal", "mainsnak": { "datavalue": { "value": "https://www.acmepay.com" } } }]
+      },
+      "sitelinks": { "enwiki": { "title": "Acme Payments" } }
+    },
+    "Q900003": {
+      "id": "Q900003",
+      "labels": { "en": { "value": "Acme Payments Park" } },
+      "descriptions": { "en": { "value": "park" } },
+      "claims": {}
+    }
+  },
+  "success": 1
+}
