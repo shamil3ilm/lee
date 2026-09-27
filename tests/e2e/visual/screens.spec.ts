@@ -11,8 +11,12 @@ const OUT = path.resolve('.e2e/screens')
 
 const VIEWPORTS = [
   { name: 'mobile', width: 390, height: 844 },
-  { name: 'desktop', width: 1440, height: 900 },
+  { name: 'tablet', width: 768, height: 1024 },
+  { name: 'desktop', width: 1280, height: 900 },
 ] as const
+
+const ONLY = process.env.E2E_SCREENS_ONLY?.split(',')
+const VIEWPORT_FILTER = process.env.E2E_SCREENS_VIEWPORTS?.split(',')
 
 const THEMES = (process.env.E2E_SCREENS_THEMES ?? 'light,dark').split(',') as Array<'light' | 'dark'>
 
@@ -51,6 +55,19 @@ const TARGETS: Target[] = [
   { name: 'settings-sources', path: '/settings/sources' },
   { name: 'settings-integrations', path: '/settings/integrations' },
   { name: 'settings-notifications', path: '/settings/notifications' },
+  { name: 'settings-index', path: '/settings' },
+  { name: 'settings-jobs', path: '/settings/jobs' },
+  { name: 'settings-usage', path: '/settings/usage' },
+  { name: 'settings-scam-shield', path: '/settings/scam-shield' },
+  { name: 'analytics-performance', path: '/analytics/performance' },
+  { name: 'documents-merge', path: '/documents/merge' },
+]
+
+// Public pages render without the session cookie.
+const PUBLIC_TARGETS: Target[] = [
+  { name: 'signin', path: '/signin' },
+  { name: 'about', path: '/about' },
+  { name: 'privacy', path: '/privacy' },
 ]
 
 interface Finding {
@@ -112,31 +129,41 @@ async function measure(page: Page): Promise<{ scrollWidth: number; clientWidth: 
 
 for (const theme of THEMES) {
   for (const vp of VIEWPORTS) {
-    test.describe(`${vp.name} ${theme}`, () => {
-      test.use({ viewport: { width: vp.width, height: vp.height }, colorScheme: theme })
-
-      for (const t of TARGETS) {
-        test(t.name, async ({ page }) => {
-          const errors: string[] = []
-          page.on('console', (m) => {
-            if (m.type() === 'error') errors.push(m.text().slice(0, 300))
-          })
-          page.on('pageerror', (e) => errors.push(`pageerror: ${e.message.slice(0, 300)}`))
-          const target = await resolvePath(page, t)
-          errors.length = 0
-          await page.goto(target)
-          await page.waitForLoadState('networkidle').catch(() => undefined)
-          await expect(page).not.toHaveURL(/\/signin/)
-          // Let chart enter-animations settle so screenshots show real data.
-          await page.waitForTimeout(1200)
-          const m = await measure(page)
-          const finding: Finding = { page: t.name, viewport: vp.name, theme, url: target, ...m, consoleErrors: errors }
-          await mkdir(OUT, { recursive: true })
-          await appendFile(path.join(OUT, 'findings.jsonl'), `${JSON.stringify(finding)}
-`)
-          await page.screenshot({ path: path.join(OUT, `${vp.name}-${theme}-${t.name}.png`), fullPage: true })
+    if (VIEWPORT_FILTER && !VIEWPORT_FILTER.includes(vp.name)) continue
+    for (const group of [
+      { label: 'authed', targets: TARGETS, anonymous: false },
+      { label: 'public', targets: PUBLIC_TARGETS, anonymous: true },
+    ]) {
+      test.describe(`${vp.name} ${theme} ${group.label}`, () => {
+        test.use({
+          viewport: { width: vp.width, height: vp.height },
+          colorScheme: theme,
+          ...(group.anonymous ? { storageState: { cookies: [], origins: [] } } : {}),
         })
-      }
-    })
+
+        for (const t of group.targets) {
+          if (ONLY && !ONLY.includes(t.name)) continue
+          test(t.name, async ({ page }) => {
+            const errors: string[] = []
+            page.on('console', (m) => {
+              if (m.type() === 'error') errors.push(m.text().slice(0, 300))
+            })
+            page.on('pageerror', (e) => errors.push(`pageerror: ${e.message.slice(0, 300)}`))
+            const target = await resolvePath(page, t)
+            errors.length = 0
+            await page.goto(target)
+            await page.waitForLoadState('networkidle').catch(() => undefined)
+            if (!group.anonymous) await expect(page).not.toHaveURL(/\/signin/)
+            // Let chart enter-animations settle so screenshots show real data.
+            await page.waitForTimeout(1200)
+            const m = await measure(page)
+            const finding: Finding = { page: t.name, viewport: vp.name, theme, url: target, ...m, consoleErrors: errors }
+            await mkdir(OUT, { recursive: true })
+            await appendFile(path.join(OUT, 'findings.jsonl'), `${JSON.stringify(finding)}\n`)
+            await page.screenshot({ path: path.join(OUT, `${vp.name}-${theme}-${t.name}.png`), fullPage: true })
+          })
+        }
+      })
+    }
   }
 }
