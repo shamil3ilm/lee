@@ -12,10 +12,15 @@ const SETTINGS_TABS: RouteTab[] = [
   { href: '/settings/usage', label: 'Usage' },
 ]
 
+/**
+ * Settings share one reading-width column, left-aligned on the page gutter
+ * like every other page, so the tab bar, page header and cards all start at
+ * the same x (pages keep their own max-w-4xl, which is then a no-op).
+ */
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="space-y-6">
-      <RouteTabs tabs={SETTINGS_TABS} label="Settings sections" className="mx-auto max-w-4xl" />
+    <div className="max-w-4xl space-y-6">
+      <RouteTabs tabs={SETTINGS_TABS} label="Settings sections" />
       {children}
     </div>
   )

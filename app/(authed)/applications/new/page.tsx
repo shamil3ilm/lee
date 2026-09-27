@@ -30,7 +30,7 @@ export default async function NewApplicationPage({ searchParams }: NewApplicatio
   const rawUrl = firstParam(sp.url)
   const prefillUrl = rawUrl && isSafeUrl(rawUrl) ? rawUrl : undefined
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="max-w-2xl">
       <PageHeader
         title="Add application"
         description="Paste a job posting URL — or enter details manually."
