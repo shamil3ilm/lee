@@ -64,7 +64,7 @@ function NetChecksCard({ initial }: { initial: boolean }) {
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <Globe className="size-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-semibold">Network checks</CardTitle>
+          <CardTitle>Network checks</CardTitle>
         </div>
       </CardHeader>
       <CardContent>
@@ -135,7 +135,7 @@ function AllowListCard({ entries }: { entries: AllowEntry[] }) {
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <ListChecks className="size-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-semibold">Allow-list</CardTitle>
+          <CardTitle>Allow-list</CardTitle>
           <Badge variant="secondary">{entries.length}</Badge>
         </div>
       </CardHeader>

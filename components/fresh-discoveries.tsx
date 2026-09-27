@@ -37,7 +37,7 @@ export function FreshDiscoveries({ items }: FreshDiscoveriesProps) {
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
         <div className="flex items-center gap-2">
           <Sparkles className="size-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-semibold">Fresh discoveries</CardTitle>
+          <CardTitle>Fresh discoveries</CardTitle>
           <Badge variant="secondary">{items.length}</Badge>
         </div>
         <Link
@@ -87,7 +87,7 @@ function FreshRow({ item }: { item: FreshDiscoveryItem }) {
   }
 
   return (
-    <li className="grid grid-cols-[1fr_auto_auto] items-center gap-3 py-2 text-sm">
+    <li className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 py-2 text-sm">
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-1.5">
           <span className="truncate font-medium">{item.companyName}</span>

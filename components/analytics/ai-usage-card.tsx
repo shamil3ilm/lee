@@ -63,7 +63,7 @@ export function AIUsageCard({ data, className }: AIUsageCardProps) {
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <CardTitle className="text-sm font-semibold">AI usage & cost</CardTitle>
+            <CardTitle>AI usage & cost</CardTitle>
             <TooltipProvider delayDuration={200}>
               <Tooltip>
                 <TooltipTrigger asChild>

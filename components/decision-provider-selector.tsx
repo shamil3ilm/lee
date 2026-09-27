@@ -81,7 +81,7 @@ export function DecisionProviderSelector({
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <Cog className="size-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-semibold">Decision provider</CardTitle>
+          <CardTitle>Decision provider</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">

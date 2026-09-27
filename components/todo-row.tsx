@@ -99,7 +99,7 @@ export function TodoRow({ todo, applicationLabel, now }: TodoRowProps) {
   }
 
   return (
-    <li className="grid grid-cols-[auto_1fr_auto] items-start gap-3 rounded-md border bg-background px-3 py-2 text-sm shadow-sm">
+    <li className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 rounded-md border bg-background px-3 py-2 text-sm shadow-sm">
       <label
         className="mt-1 inline-flex cursor-pointer items-center"
         aria-label={isDone ? 'Mark as open' : 'Mark as done'}

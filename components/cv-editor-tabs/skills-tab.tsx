@@ -166,7 +166,7 @@ export function SkillsTab({ cv, setCv }: SkillsTabProps) {
             <p className="text-xs text-muted-foreground">No languages.</p>
           ) : (
             languages.map((l, i) => (
-              <div key={i} className="grid gap-2 rounded-md border p-3 sm:grid-cols-[1fr_1fr_auto]">
+              <div key={i} className="grid gap-2 rounded-md border p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
                 <Input
                   placeholder="Language"
                   value={l.name}

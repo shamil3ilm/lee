@@ -92,7 +92,7 @@ export function IntegrationsPanel({
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <Plug className="size-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-semibold">Google account</CardTitle>
+          <CardTitle>Google account</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="space-y-5">

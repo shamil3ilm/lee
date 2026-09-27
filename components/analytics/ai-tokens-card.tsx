@@ -117,7 +117,7 @@ export function AITokensCard({ data, meters, estimatedCostUsd, className }: AITo
   return (
     <Card className={cn('flex flex-col md:col-span-2', className)}>
       <CardHeader className="space-y-1 pb-3">
-        <CardTitle className="text-sm font-semibold">AI tokens & quotas</CardTitle>
+        <CardTitle>AI tokens & quotas</CardTitle>
         <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <Stat value={formatNumber(t.inputTokens)} label="input tokens" />
           <Stat value={formatNumber(t.outputTokens)} label="output tokens" />

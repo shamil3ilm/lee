@@ -296,7 +296,7 @@ export function DecisionPlayground({ defaultLayaEndpoint }: DecisionPlaygroundPr
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Beaker className="size-4 text-muted-foreground" />
-            <CardTitle className="text-sm font-semibold">Input</CardTitle>
+            <CardTitle>Input</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -593,7 +593,7 @@ function ResultCard({
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <CardTitle className="text-sm font-semibold">
+            <CardTitle>
               {PROVIDER_LABEL[row.provider]}
             </CardTitle>
             {row.ok ? (

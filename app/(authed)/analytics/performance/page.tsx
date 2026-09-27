@@ -66,7 +66,7 @@ export default async function PerformancePage() {
             {report.overall.map((o) => (
               <Card key={o.metric} className="min-w-0">
                 <CardHeader className="space-y-1 pb-2">
-                  <CardTitle className="text-sm font-semibold" title={VITAL_LABELS[o.metric]}>
+                  <CardTitle title={VITAL_LABELS[o.metric]}>
                     {o.metric}
                   </CardTitle>
                   <p className="text-xs text-muted-foreground">{thresholdText(o.metric)}</p>
@@ -96,7 +96,7 @@ export default async function PerformancePage() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-semibold">By route (p75)</CardTitle>
+              <CardTitle>By route (p75)</CardTitle>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <Table>

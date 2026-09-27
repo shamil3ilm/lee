@@ -173,7 +173,7 @@ export function PrepPackCard({
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Sparkles className="size-4 text-muted-foreground" />
-            <CardTitle className="text-sm font-semibold">Interview prep</CardTitle>
+            <CardTitle>Interview prep</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
@@ -190,7 +190,7 @@ export function PrepPackCard({
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <Sparkles className="size-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-semibold">Interview prep</CardTitle>
+          <CardTitle>Interview prep</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">

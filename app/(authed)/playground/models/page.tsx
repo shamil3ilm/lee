@@ -49,7 +49,7 @@ export default async function ModelPlaygroundPage() {
             <Card key={s.info.id} className="flex flex-col">
               <CardHeader className="space-y-2 p-4 pb-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <CardTitle className="text-sm">{s.info.label}</CardTitle>
+                  <CardTitle>{s.info.label}</CardTitle>
                   <KeyStatusBadge
                     keySource={s.keySource}
                     last4={s.last4}

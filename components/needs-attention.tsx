@@ -80,7 +80,7 @@ export function NeedsAttention({
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
         <div className="flex items-center gap-2">
           <Bell className="size-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-semibold">Needs attention</CardTitle>
+          <CardTitle>Needs attention</CardTitle>
         </div>
         <Badge variant="secondary">{totalCount}</Badge>
       </CardHeader>
@@ -93,7 +93,7 @@ export function NeedsAttention({
               <li key={`att-${it.id}`}>
                 <Link
                   href={`/applications/${it.id}`}
-                  className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors hover:bg-accent/60 sm:grid-cols-[1fr_120px_auto] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors hover:bg-accent/60 sm:grid-cols-[minmax(0,1fr)_120px_auto] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
                   <div className="min-w-0">
                     <div className="truncate font-medium">{it.companyName ?? 'Unknown'}</div>
@@ -171,7 +171,7 @@ function FollowupRow({ nudge }: { nudge: FollowupNudge }): React.ReactElement {
 
   return (
     <li>
-      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-md px-2 py-2 text-sm hover:bg-accent/40">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-2 py-2 text-sm hover:bg-accent/40">
         <Clock className="size-4 shrink-0 text-stage-interview" />
         <Link
           href={`/applications/${nudge.applicationId}?tab=followup`}
@@ -214,7 +214,7 @@ function TodoNudgeRow({
     <li>
       <Link
         href={href}
-        className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         <CheckSquare className="size-4 shrink-0 text-success" />
         <div className="min-w-0">

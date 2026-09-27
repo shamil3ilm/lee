@@ -226,7 +226,7 @@ export function DocumentsCard({
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-sm font-semibold">Documents</CardTitle>
+        <CardTitle>Documents</CardTitle>
         <Badge variant="outline" className="text-[10px]">
           {documents.length}
         </Badge>
