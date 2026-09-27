@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Building2, ExternalLink, MapPin } from 'lucide-react'
 import { requireUserId } from '@/lib/auth/require-session'
@@ -33,7 +32,6 @@ import { Timeline } from '@/components/timeline'
 import { mergeTimeline, type TimelineActivity, type TimelineStage } from '@/lib/ui/timeline'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
 import { STATUS_BADGE, STATUS_LABELS, type ApplicationStatus } from '@/lib/ui/status'
 import { APPLICATION_STATUSES } from '@/lib/ui/status'
 
@@ -256,8 +254,8 @@ export default async function ApplicationDetail({
             </Badge>
           ) : null}
           {app.job.employmentType ? (
-            <Badge variant="outline" className="capitalize">
-              {app.job.employmentType.replace(/_/g, ' ')}
+            <Badge variant="outline">
+              {employmentLabel(app.job.employmentType)}
             </Badge>
           ) : null}
           {salary ? <span className="font-medium">{salary}</span> : null}
@@ -358,6 +356,22 @@ export default async function ApplicationDetail({
               </CardContent>
             </Card>
           ) : null}
+
+          {/* Outreach and prep are working tools with tabs and long titles:
+              they get the wide column, the rail keeps the compact cards. */}
+          <OutreachCard
+            applicationId={app.id}
+            outreachDocs={outreachDocs}
+            appliedAt={app.appliedAt ? app.appliedAt.toISOString() : null}
+            usage={docUsage}
+          />
+
+          <PrepPackCard
+            applicationId={app.id}
+            stages={stages}
+            prepDocs={prepDocs}
+            usage={docUsage}
+          />
         </div>
 
         <div className="min-w-0 space-y-6">
@@ -386,20 +400,6 @@ export default async function ApplicationDetail({
             usage={docUsage}
           />
 
-          <OutreachCard
-            applicationId={app.id}
-            outreachDocs={outreachDocs}
-            appliedAt={app.appliedAt ? app.appliedAt.toISOString() : null}
-            usage={docUsage}
-          />
-
-          <PrepPackCard
-            applicationId={app.id}
-            stages={stages}
-            prepDocs={prepDocs}
-            usage={docUsage}
-          />
-
           <ApplicationContactsCard
             applicationId={app.id}
             linked={contacts.map((c) => ({ id: c.id, name: c.name, email: c.email, role: c.role }))}
@@ -408,15 +408,6 @@ export default async function ApplicationDetail({
         </div>
       </div>
 
-      <Separator />
-      <div className="flex justify-end">
-        <Link
-          href="/applications"
-          className="text-xs text-muted-foreground hover:text-foreground hover:underline"
-        >
-          Back to applications
-        </Link>
-      </div>
     </div>
   )
 }
@@ -436,6 +427,20 @@ function withoutContent<T extends { content: unknown }>(doc: T): Omit<T, 'conten
   const { content: _content, ...rest } = doc
   void _content
   return rest
+}
+
+const EMPLOYMENT_LABELS: Record<string, string> = {
+  fulltime: 'Full-time',
+  full_time: 'Full-time',
+  parttime: 'Part-time',
+  part_time: 'Part-time',
+  contract: 'Contract',
+  internship: 'Internship',
+  temporary: 'Temporary',
+}
+
+function employmentLabel(value: string): string {
+  return EMPLOYMENT_LABELS[value.toLowerCase()] ?? value.replace(/_/g, ' ')
 }
 
 function hostLabel(url: string): string | null {

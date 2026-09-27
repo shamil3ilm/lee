@@ -11,6 +11,7 @@ import {
   Loader2,
   MoreHorizontal,
   Pencil,
+  Plus,
   RefreshCw,
   TextCursorInput,
   Trash2,
@@ -224,7 +225,7 @@ export function DocumentsCard({
   }
 
   return (
-    <Card>
+    <Card className="@container">
       <CardHeader className="flex-row items-center justify-between space-y-0">
         <CardTitle>Documents</CardTitle>
         <Badge variant="outline" className="text-[10px]">
@@ -334,7 +335,9 @@ export function DocumentsCard({
             })}
           </ul>
         )}
-        <div className="grid gap-2 pt-1 sm:grid-cols-2">
+        {/* Container query, not viewport: in the detail page's rail the card
+            is narrow even on wide screens, where two columns clipped labels. */}
+        <div className="grid gap-2 pt-1 @md:grid-cols-2">
           <Button
             type="button"
             variant="outline"
@@ -346,8 +349,10 @@ export function DocumentsCard({
           >
             {busy === 'tailored' ? (
               <Loader2 className="size-4 animate-spin" />
-            ) : null}
-            {busy === 'tailored' ? 'Generating…' : '+ Generate tailored CV'}
+            ) : (
+              <Plus className="size-4" />
+            )}
+            {busy === 'tailored' ? 'Generating…' : 'Generate tailored CV'}
           </Button>
           <Button
             type="button"
@@ -360,8 +365,10 @@ export function DocumentsCard({
           >
             {busy === 'cover_letter' ? (
               <Loader2 className="size-4 animate-spin" />
-            ) : null}
-            {busy === 'cover_letter' ? 'Generating…' : '+ Draft cover letter'}
+            ) : (
+              <Plus className="size-4" />
+            )}
+            {busy === 'cover_letter' ? 'Generating…' : 'Draft cover letter'}
           </Button>
         </div>
         {documents.length > 0 ? (

@@ -16,6 +16,7 @@ import {
   Loader2,
   Mail,
   MessageSquare,
+  Plus,
   Sparkles,
   StickyNote,
   type LucideIcon,
@@ -24,6 +25,7 @@ import { setStageStatus } from '@/app/(authed)/applications/[id]/actions'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DebriefDialog } from '@/components/debrief-dialog'
+import { MarkdownText } from '@/components/markdown-text'
 import { StageActions } from '@/components/stage-actions'
 import { relativeFromNow, shortDateTime } from '@/lib/ui/date'
 import { STATUS_BADGE, STATUS_LABELS, type ApplicationStatus } from '@/lib/ui/status'
@@ -150,20 +152,11 @@ function StageItem({ item }: { item: TimelineStage }) {
           <Calendar className="size-3.5" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <div className="font-medium leading-tight">{label}</div>
-            <div className="flex items-center gap-1.5">
-              <Badge variant="outline" className="text-[10px] capitalize">
-                {item.status}
-              </Badge>
-              {item.outcome ? (
-                <Badge
-                  variant={item.outcome === 'pass' ? 'emerald' : item.outcome === 'fail' ? 'rose' : 'neutral'}
-                  className="text-[10px] capitalize"
-                >
-                  {item.outcome}
-                </Badge>
-              ) : null}
+          {/* Title and menu on one row; status, outcome and time on the next,
+              so a long title in the narrow rail never collides with badges. */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1 pt-1 font-medium leading-snug">{label}</div>
+            <div className="shrink-0">
               <StageActions
                 stageId={item.id}
                 label={label}
@@ -180,39 +173,42 @@ function StageItem({ item }: { item: TimelineStage }) {
               />
             </div>
           </div>
-          <div className="mt-0.5 text-xs text-muted-foreground">
+          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            <Badge variant="outline" className="text-[10px] capitalize">
+              {item.status.replace(/_/g, ' ')}
+            </Badge>
+            {item.outcome ? (
+              <Badge
+                variant={outcomeVariant(item.outcome)}
+                className="text-[10px] capitalize"
+              >
+                {item.outcome}
+              </Badge>
+            ) : null}
             {item.scheduledAt ? (
-              <>
-                <span>{shortDateTime(item.scheduledAt)}</span>
-                <span className="mx-1">·</span>
-                <span>{relativeFromNow(item.scheduledAt)}</span>
-              </>
+              <span>
+                {shortDateTime(item.scheduledAt)} · {relativeFromNow(item.scheduledAt)}
+              </span>
             ) : (
               <span>Unscheduled</span>
             )}
           </div>
-          {item.prepNotesMd ? (
-            <p className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">Prep: </span>
-              {item.prepNotesMd}
-            </p>
-          ) : null}
-          {item.debriefNotesMd ? (
-            <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">Debrief: </span>
-              {item.debriefNotesMd}
-            </p>
-          ) : null}
+          {item.prepNotesMd ? <StageNote label="Prep" source={item.prepNotesMd} /> : null}
+          {item.debriefNotesMd ? <StageNote label="Debrief" source={item.debriefNotesMd} /> : null}
+
+          {/* One action row: complete / debrief / calendar controls share a
+              line and a button style instead of stacking in separate rows. */}
+          <div className="mt-2 flex flex-wrap items-center gap-2 empty:hidden">
 
           {/* Mark-complete: shown for stages that haven't reached a terminal
               status yet so the user can flip to 'completed' and unlock the
               debrief affordance. Kept separate from calendar controls because
               cancelling/no-showing is out of scope for this button. */}
           {!isCompleted && item.status !== 'cancelled' && item.status !== 'no_show' ? (
-            <div className="mt-2">
+            <div className="contents">
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 className="h-7 px-2 text-xs"
                 onClick={() =>
@@ -239,10 +235,10 @@ function StageItem({ item }: { item: TimelineStage }) {
               modal is controlled from here so the chip and the trigger can
               live in the same row without duplicating the button visual. */}
           {isCompleted ? (
-            <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="contents">
               {hasDebriefNotes ? (
                 <>
-                  <Badge variant="emerald" className="text-[10px]">
+                  <Badge variant="success" className="text-[10px]">
                     <CheckCircle2 className="mr-1 size-3" /> Debrief added
                   </Badge>
                   <Button
@@ -280,12 +276,13 @@ function StageItem({ item }: { item: TimelineStage }) {
               ) : (
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   className="h-7 px-2 text-xs"
                   onClick={() => setDebriefOpen(true)}
                 >
-                  + Add debrief
+                  <Plus className="size-3" />
+                  Add debrief
                 </Button>
               )}
               <DebriefDialog
@@ -303,10 +300,10 @@ function StageItem({ item }: { item: TimelineStage }) {
           {/* Calendar push controls — only meaningful when the stage has a
               scheduled time. An unscheduled stage cannot land on a calendar. */}
           {(inCalendar || canPush) ? (
-            <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="contents">
               {inCalendar ? (
                 <>
-                  <Badge variant="emerald" className="text-[10px]">
+                  <Badge variant="success" className="text-[10px]">
                     <CheckCircle2 className="mr-1 size-3" /> In Calendar
                   </Badge>
                   <Button
@@ -336,9 +333,27 @@ function StageItem({ item }: { item: TimelineStage }) {
               )}
             </div>
           ) : null}
+          </div>
         </div>
       </div>
     </li>
+  )
+}
+
+/** Stage outcomes are free text ("passed", "pass", "failed"): tone by prefix. */
+function outcomeVariant(outcome: string): 'success' | 'danger' | 'neutral' {
+  const o = outcome.toLowerCase()
+  if (o.startsWith('pass')) return 'success'
+  if (o.startsWith('fail')) return 'danger'
+  return 'neutral'
+}
+
+function StageNote({ label, source }: { label: string; source: string }) {
+  return (
+    <div className="mt-2 text-xs">
+      <div className="font-medium text-foreground">{label}</div>
+      <MarkdownText source={source} className="mt-0.5 space-y-1 text-xs text-muted-foreground" />
+    </div>
   )
 }
 
@@ -351,7 +366,7 @@ function ActivityItem({ item }: { item: TimelineActivity }) {
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <span className="font-medium capitalize">
+          <span className="block min-w-0 font-medium first-letter:uppercase">
             {activityLabel(item.activityKind, item.payload)}
           </span>
           <span className="text-xs text-muted-foreground">
@@ -421,15 +436,17 @@ function activityLabel(kind: string, payload: unknown): React.ReactNode {
   if (kind === 'status_change' && isStatusPayload(payload)) {
     return (
       <span className="flex flex-wrap items-center gap-1.5">
-        <span className="text-muted-foreground">Moved</span>
         {payload.from ? (
-          <Badge variant={STATUS_BADGE[payload.from]} className="text-[10px]">
-            {STATUS_LABELS[payload.from]}
-          </Badge>
+          <>
+            <span className="text-muted-foreground">Moved</span>
+            <Badge variant={STATUS_BADGE[payload.from]} className="text-[10px]">
+              {STATUS_LABELS[payload.from]}
+            </Badge>
+            <span className="text-muted-foreground" aria-label="to">→</span>
+          </>
         ) : (
-          <span className="text-muted-foreground">created</span>
+          <span className="text-muted-foreground">Created as</span>
         )}
-        <span className="text-muted-foreground">→</span>
         <Badge variant={STATUS_BADGE[payload.to]} className="text-[10px]">
           {STATUS_LABELS[payload.to]}
         </Badge>
