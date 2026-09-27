@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   XCircle,
   Sparkles,
+  Filter,
 } from 'lucide-react'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -22,6 +23,7 @@ import {
   dismissCompanyDiscovery,
   restoreDiscoveries,
   restoreCompanyDiscovery,
+  showFilteredAnyway,
 } from '@/app/(authed)/discoveries/actions'
 import { toastDismissedCompany, toastDismissedJobs } from '@/components/discovery-undo'
 import { RiskBadge } from '@/components/scam/risk-badge'
@@ -63,6 +65,10 @@ export interface DiscoveryRowJob {
   scoredByCallId?: string | null
   /** v17 §1 — Scam Shield assessment; null when not assessed yet. */
   risk?: RiskView | null
+  /** Relevance gate: why the posting was filtered out (status 'filtered'). */
+  filterReason?: string | null
+  /** Soft-rule chips: lower priority, boosts and neutral info. */
+  notes?: { penalties?: string[]; boosts?: string[]; infos?: string[] } | null
 }
 
 export interface DiscoveryRowCompany {
@@ -98,6 +104,50 @@ function scoreLabel(score: number | null, prefix: string): string {
   return `${prefix} ${score}`
 }
 
+/** Match badge: "Not scored" instead of a bare dash, with a hint why. */
+function MatchBadge({ score, filtered }: { score: number | null; filtered: boolean }) {
+  if (score === null || score === undefined) {
+    return (
+      <Badge variant="neutral" title={filtered ? 'Filtered postings are not AI-scored' : 'Scored on the next discovery run'}>
+        Not scored
+      </Badge>
+    )
+  }
+  return <Badge variant={scoreVariant(score)}>{scoreLabel(score, 'Match')}</Badge>
+}
+
+/** Filter reason and soft-rule chips under a job row. */
+function RelevanceChips({ item }: { item: DiscoveryRowJob }) {
+  const n = item.notes ?? {}
+  const hasAny = Boolean(item.filterReason && item.status === 'filtered') || (n.penalties?.length ?? 0) + (n.boosts?.length ?? 0) + (n.infos?.length ?? 0) > 0
+  if (!hasAny) return null
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-1.5" data-testid="relevance-chips">
+      {item.status === 'filtered' && item.filterReason ? (
+        <Badge variant="warning" title="Why this posting was filtered out">
+          <Filter className="mr-1 size-3" aria-hidden="true" />
+          {item.filterReason}
+        </Badge>
+      ) : null}
+      {(n.penalties ?? []).map((p) => (
+        <Badge key={`p-${p}`} variant="warning" title="Ranked lower by your search preferences">
+          lower priority: {p}
+        </Badge>
+      ))}
+      {(n.boosts ?? []).map((b) => (
+        <Badge key={`b-${b}`} variant="success">
+          + {b}
+        </Badge>
+      ))}
+      {(n.infos ?? []).map((i) => (
+        <Badge key={`i-${i}`} variant="outline">
+          {i}
+        </Badge>
+      ))}
+    </div>
+  )
+}
+
 // ---------- Job row -----------------------------------------------------
 
 interface JobDiscoveryRowProps {
@@ -112,6 +162,15 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
   const router = useRouter()
   const n = item.normalized
   const isActionable = item.status === 'new' || item.status === 'shortlisted'
+  const isFiltered = item.status === 'filtered'
+
+  const handleShowAnyway = (): void => {
+    startTransition(async () => {
+      const result = await showFilteredAnyway([item.id])
+      if ('success' in result) toast.success('Moved to your inbox')
+      else toast.error(result.error)
+    })
+  }
 
   const handleSave = (): void => {
     startTransition(async () => {
@@ -144,7 +203,7 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
   }
 
   return (
-    <Card className="overflow-hidden">
+    <Card className={isFiltered ? 'overflow-hidden opacity-80' : 'overflow-hidden'} data-status={item.status}>
       <CardContent className="p-3">
         {/*
           Mobile: content stacks (checkbox + meta on top, actions row below)
@@ -153,7 +212,7 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
         */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
           <div className="flex min-w-0 flex-1 items-start gap-3">
-          {isActionable && onToggleSelect ? (
+          {(isActionable || isFiltered) && onToggleSelect ? (
             <input
               type="checkbox"
               checked={selected ?? false}
@@ -176,9 +235,7 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               {item.risk ? <RiskBadge risk={item.risk} /> : null}
-              <Badge variant={scoreVariant(item.matchScore)}>
-                {scoreLabel(item.matchScore, 'Match')}
-              </Badge>
+              <MatchBadge score={item.matchScore} filtered={isFiltered} />
               <Badge variant={scoreVariant(item.benefitsScore)}>
                 {scoreLabel(item.benefitsScore, 'Benefits')}
               </Badge>
@@ -190,6 +247,7 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
                 {relativeFromNow(item.createdAt)}
               </span>
             </div>
+            <RelevanceChips item={item} />
           </div>
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
@@ -217,6 +275,15 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
                   onClick={handleDismiss}
                   disabled={isPending}
                 >
+                  Dismiss
+                </Button>
+              </>
+            ) : isFiltered ? (
+              <>
+                <Button size="sm" variant="outline" onClick={handleShowAnyway} disabled={isPending}>
+                  Show anyway
+                </Button>
+                <Button size="sm" variant="ghost" onClick={handleDismiss} disabled={isPending}>
                   Dismiss
                 </Button>
               </>
@@ -249,6 +316,7 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
             reasoning={item.reasoning}
             techStack={n.techStack}
             callId={item.scoredByCallId}
+            filtered={isFiltered}
           />
         ) : null}
       </CardContent>
@@ -385,15 +453,19 @@ function ReasoningBlock({
   reasoning,
   techStack,
   callId,
+  filtered = false,
 }: {
   reasoning: DiscoveryReasoning | null
   techStack?: string[]
   callId?: string | null
+  filtered?: boolean
 }) {
   if (!reasoning && (!techStack || techStack.length === 0)) {
     return (
       <div className="mt-3 rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-        Not yet scored. Discovery will re-score on the next cycle.
+        {filtered
+          ? 'Filtered postings are not AI-scored. Use “Show anyway” to move it to your inbox; it is scored on the next run.'
+          : 'Not yet scored. Discovery will re-score on the next cycle.'}
       </div>
     )
   }
