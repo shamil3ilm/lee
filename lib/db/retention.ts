@@ -259,6 +259,39 @@ export async function pruneWebVitals(
   }, opts.batchSize ?? RETENTION_BATCH_SIZE)
 }
 
+export const INFO_EVENT_RETENTION_DAYS = 14
+export const PROBLEM_EVENT_RETENTION_DAYS = 60
+/** Daily-cap counters (system_event_counts) are only read for today. */
+export const EVENT_COUNT_RETENTION_DAYS = 7
+
+/**
+ * Delete persisted events (system_events): info rows after
+ * INFO_EVENT_RETENTION_DAYS, warn/error rows after
+ * PROBLEM_EVENT_RETENTION_DAYS; plus daily-cap counters older than a week.
+ */
+export async function pruneSystemEvents(
+  now: Date = new Date(),
+  opts: BatchOpts & { infoDays?: number; problemDays?: number } = {},
+): Promise<number> {
+  const client = opts.client ?? db
+  const infoBefore = cutoff(now, opts.infoDays ?? INFO_EVENT_RETENTION_DAYS)
+  const problemBefore = cutoff(now, opts.problemDays ?? PROBLEM_EVENT_RETENTION_DAYS)
+  const deleted = await inBatches(async (limit) => {
+    const res = await client.execute(sql`
+      delete from system_events where id in (
+        select id from system_events
+        where (level = 'info' and created_at < ${infoBefore})
+           or (level <> 'info' and created_at < ${problemBefore})
+        limit ${limit}
+      )
+    `)
+    return affected(res)
+  }, opts.batchSize ?? RETENTION_BATCH_SIZE)
+  const countsBefore = cutoff(now, EVENT_COUNT_RETENTION_DAYS).toISOString().slice(0, 10)
+  await client.execute(sql`delete from system_event_counts where day < ${countsBefore}::date`)
+  return deleted
+}
+
 export interface RetentionResult {
   tombstonedDiscoveries: number
   aiCallLogs: number
@@ -266,6 +299,7 @@ export interface RetentionResult {
   compactedDiscoveries: number
   queueJobs: number
   webVitals: number
+  systemEvents: number
 }
 
 /** Run every retention step in sequence (each step is independent). */
@@ -276,5 +310,6 @@ export async function runRetention(now: Date = new Date()): Promise<RetentionRes
   const compactedDiscoveries = await compactDiscoveryPayloads(now)
   const queueJobs = await pruneQueueJobs(now)
   const webVitals = await pruneWebVitals(now)
-  return { tombstonedDiscoveries, aiCallLogs, gmailThreads, compactedDiscoveries, queueJobs, webVitals }
+  const systemEvents = await pruneSystemEvents(now)
+  return { tombstonedDiscoveries, aiCallLogs, gmailThreads, compactedDiscoveries, queueJobs, webVitals, systemEvents }
 }

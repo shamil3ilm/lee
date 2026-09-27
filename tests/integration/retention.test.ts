@@ -265,6 +265,7 @@ describe('runRetention', () => {
       compactedDiscoveries: 0,
       queueJobs: 1,
       webVitals: 0,
+      systemEvents: 0,
     })
   })
 })
