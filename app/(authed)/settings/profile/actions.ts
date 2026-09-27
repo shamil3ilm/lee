@@ -36,7 +36,6 @@ const scalarSchema = z.object({
   seniority: z.string().optional(),
   yearsExperience: z.coerce.number().int().nonnegative().optional().or(z.literal('')),
   remotePref: z.string().optional(),
-  acceptRelocation: z.string().optional(),
   compFloorAnnual: z.coerce.number().int().nonnegative().optional().or(z.literal('')),
   compCurrency: z.string().optional(),
   timezone: z.string().optional(),
@@ -53,7 +52,6 @@ export async function saveProfileAction(formData: FormData): Promise<ActionResul
     seniority: formData.get('seniority') ?? undefined,
     yearsExperience: formData.get('yearsExperience') ?? undefined,
     remotePref: formData.get('remotePref') ?? undefined,
-    acceptRelocation: formData.get('acceptRelocation') ?? undefined,
     compFloorAnnual: formData.get('compFloorAnnual') ?? undefined,
     compCurrency: formData.get('compCurrency') ?? undefined,
     timezone: formData.get('timezone') ?? undefined,
@@ -67,31 +65,25 @@ export async function saveProfileAction(formData: FormData): Promise<ActionResul
     yearsExperience:
       typeof scalars.yearsExperience === 'number' ? scalars.yearsExperience : null,
     remotePref: scalars.remotePref || 'any',
-    acceptRelocation: scalars.acceptRelocation === 'on',
     compFloorAnnual:
       typeof scalars.compFloorAnnual === 'number' ? scalars.compFloorAnnual : null,
     compCurrency: scalars.compCurrency || null,
     // Only overwrite when the form actually sent a non-empty tz — omitting
     // keeps the existing default without null-out risk.
     ...(scalars.timezone ? { timezone: scalars.timezone } : {}),
+    // Target roles, locations, relocation and include/exclude keywords are
+    // edited in the Search preferences form (search-actions.ts), which also
+    // re-gates Discovery; this form never overwrites them.
     skills: csvToArray(formData.get('skills')),
     industries: csvToArray(formData.get('industries')),
-    roleTypes: csvToArray(formData.get('roleTypes')),
     employmentTypes: csvToArray(formData.get('employmentTypes')),
-    willingToRelocateTo: csvToArray(formData.get('willingToRelocateTo')),
     mustHaves: csvToArray(formData.get('mustHaves')),
-    dealbreakers: csvToArray(formData.get('dealbreakers')),
-    keywords: csvToArray(formData.get('keywords')),
     stackWeights: parseJsonField(formData.get('stackWeights'), {}) as NewUserProfile['stackWeights'],
     companySizeWeights: parseJsonField(
       formData.get('companySizeWeights'),
       {},
     ) as NewUserProfile['companySizeWeights'],
     benefitPrefs: parseJsonField(formData.get('benefitPrefs'), {}) as NewUserProfile['benefitPrefs'],
-    locationPrefs: parseJsonField(
-      formData.get('locationPrefs'),
-      [],
-    ) as NewUserProfile['locationPrefs'],
   }
 
   await saveProfile(userId, patch)

@@ -28,22 +28,19 @@ interface ProfileFormProps {
 
 const REMOTE_OPTIONS = ['any', 'remote', 'hybrid', 'onsite'] as const
 
+// Target roles, locations, relocation and include/exclude keywords live in
+// the Search preferences card (components/search-prefs), not here.
 const ARRAY_FIELDS = [
   ['skills', 'Skills'],
   ['industries', 'Industries'],
-  ['roleTypes', 'Role types'],
   ['employmentTypes', 'Employment types'],
-  ['willingToRelocateTo', 'Willing to relocate to (ISO-2)'],
   ['mustHaves', 'Must-haves'],
-  ['dealbreakers', 'Dealbreakers'],
-  ['keywords', 'Keywords'],
 ] as const
 
 const JSON_FIELDS = [
   ['stackWeights', 'Stack weights'],
   ['companySizeWeights', 'Company size weights'],
   ['benefitPrefs', 'Benefit prefs'],
-  ['locationPrefs', 'Location prefs (array)'],
 ] as const
 
 function arr(v: string[] | null | undefined): string {
@@ -90,7 +87,6 @@ export function ProfileForm({ profile }: ProfileFormProps) {
           <TabsList className="w-max">
             <TabsTrigger value="basics">Basics</TabsTrigger>
             <TabsTrigger value="skills">Skills</TabsTrigger>
-            <TabsTrigger value="location">Location</TabsTrigger>
             <TabsTrigger value="preferences">Preferences</TabsTrigger>
             <TabsTrigger value="narrative">Narrative</TabsTrigger>
           </TabsList>
@@ -185,7 +181,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
               <p className="text-xs text-muted-foreground">
                 Comma-separated. Order matters — put strongest signals first.
               </p>
-              {ARRAY_FIELDS.slice(0, 4).map(([field, label]) => (
+              {ARRAY_FIELDS.slice(0, 3).map(([field, label]) => (
                 <Field
                   key={field}
                   label={label}
@@ -197,45 +193,10 @@ export function ProfileForm({ profile }: ProfileFormProps) {
           </Card>
         </TabsContent>
 
-        <TabsContent value="location">
-          <Card>
-            <CardContent className="space-y-4 pt-6">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  name="acceptRelocation"
-                  type="checkbox"
-                  defaultChecked={profile?.acceptRelocation ?? false}
-                  className="size-4 rounded border-input"
-                />
-                Accept relocation
-              </label>
-              <Field
-                label="Willing to relocate to (ISO-2, comma separated)"
-                name="willingToRelocateTo"
-                defaultValue={arr(profile?.willingToRelocateTo ?? null)}
-                placeholder="AE, US, DE"
-              />
-              <div className="space-y-1.5">
-                <Label htmlFor="locationPrefs">Location prefs (JSON array)</Label>
-                <Textarea
-                  id="locationPrefs"
-                  name="locationPrefs"
-                  rows={4}
-                  defaultValue={json(profile?.locationPrefs)}
-                  className="font-mono text-xs"
-                />
-                <p className="text-xs text-muted-foreground">
-                  {`Format: [{ "country": "AE", "priority": 1 }, ...]`}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         <TabsContent value="preferences">
           <Card>
             <CardContent className="space-y-4 pt-6">
-              {ARRAY_FIELDS.slice(4).map(([field, label]) => (
+              {ARRAY_FIELDS.slice(3).map(([field, label]) => (
                 <Field
                   key={field}
                   label={label}
