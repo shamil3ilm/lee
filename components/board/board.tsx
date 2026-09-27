@@ -118,10 +118,11 @@ export function Board<C extends string, T extends BoardItem>(props: BoardProps<C
   )
 
   return (
-    // contain: inline-size keeps the columns' combined width from leaking
+    // @container (container-type: inline-size) sizes phone columns in cqw and,
+    // like contain: inline-size, keeps the columns' combined width from leaking
     // into ancestors (flex/grid items would otherwise grow and scroll the
     // whole page sideways); the grid scrolls inside instead.
-    <div className={cn('w-full min-w-0 [contain:inline-size]', props.className)}>
+    <div className={cn('@container w-full min-w-0', props.className)}>
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         {announcement}
       </div>
