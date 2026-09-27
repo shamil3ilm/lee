@@ -11,6 +11,9 @@ import type { Severity, StalenessResult } from '@/lib/staleness/types'
 interface StalenessBadgeProps {
   documentId: string
   className?: string
+  /** Rendered while loading, when the check fails and for fresh documents
+   *  (so a table cell is never mysteriously blank). */
+  fallback?: React.ReactNode
 }
 
 const LABEL: Record<Severity, string> = {
@@ -25,13 +28,13 @@ const DOT: Record<Severity, string> = {
   critical: 'bg-danger',
 }
 
-const VARIANT: Record<Severity, 'emerald' | 'slate' | 'rose'> = {
-  fresh: 'emerald',
-  minor: 'slate',
-  critical: 'rose',
+const VARIANT: Record<Severity, 'success' | 'warning' | 'danger'> = {
+  fresh: 'success',
+  minor: 'warning',
+  critical: 'danger',
 }
 
-export function StalenessBadge({ documentId, className }: StalenessBadgeProps) {
+export function StalenessBadge({ documentId, className, fallback = null }: StalenessBadgeProps) {
   const [severity, setSeverity] = useState<Severity | null>(null)
 
   useEffect(() => {
@@ -51,9 +54,9 @@ export function StalenessBadge({ documentId, className }: StalenessBadgeProps) {
     }
   }, [documentId])
 
-  if (!severity) return null
+  if (!severity) return <>{fallback}</>
   // Suppress the "Fresh" chip to avoid visual noise — no news is good news.
-  if (severity === 'fresh') return null
+  if (severity === 'fresh') return <>{fallback}</>
 
   return (
     <Badge
