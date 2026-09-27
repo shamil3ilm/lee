@@ -90,6 +90,18 @@ test('source: edit name and board slug', async ({ page }) => {
   )
 })
 
+test('sources: job alerts by email panel shows every alert site with setup steps', async ({ page }) => {
+  await page.goto('/settings/sources')
+  const panel = page.locator('section#email-alerts')
+  await expect(panel.getByRole('heading', { name: 'Job alerts by email' })).toBeVisible()
+  const senders = panel.getByRole('list', { name: 'Alert senders' })
+  for (const site of ['LinkedIn', 'Indeed', 'Naukri', 'NaukriGulf', 'Bayt', 'GulfTalent', 'Glassdoor']) {
+    await expect(senders.getByText(site, { exact: true })).toBeVisible()
+  }
+  await panel.getByText('NaukriGulf', { exact: true }).last().click()
+  await expect(panel.getByText(/Pick Location UAE/)).toBeVisible()
+})
+
 test('application: edit job details, link and unlink a contact', async ({ page }) => {
   await page.goto('/applications')
   await page.getByRole('link', { name: /Senior Engineer, Wallet/ }).first().click()

@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { requireUserId } from '@/lib/auth/require-session'
 import * as sourcesQ from '@/lib/db/queries/sources'
 import { getAdapter, listAdapterKinds } from '@/lib/discovery/adapters'
-import { BOARD_SLUG_RE, sourceKindNeeds } from '@/lib/discovery/source-kinds'
+import { BOARD_SLUG_RE, getSourceKind, sourceKindNeeds } from '@/lib/discovery/source-kinds'
 import { logger } from '@/lib/logger'
 import { queueFirstPoll } from '@/lib/queue/first-poll'
 
@@ -52,17 +52,23 @@ export async function addSource(formData: FormData): Promise<ActionResult> {
     if (!getAdapter(kind)) {
       return { error: `Unknown source kind: ${kind}` }
     }
-    if (!listAdapterKinds().includes(kind)) {
+    if (!listAdapterKinds().includes(kind) || getSourceKind(kind)?.catalogOnly) {
       return { error: `Unsupported source kind: ${kind}` }
     }
     const { config, summary } = buildConfig(kind, company, url)
     const finalName = name?.trim() || `${kind} — ${summary}`
+    // A watch link is never polled: it's saved switched off.
+    const pollable = kind !== 'watch'
     const created = await sourcesQ.create(userId, {
       name: finalName,
       kind,
       config,
-      enabled: true,
+      enabled: pollable,
     })
+    if (!pollable) {
+      revalidatePath('/settings/sources')
+      return { success: true }
+    }
     // First search now (right after the response) instead of at the next
     // daily scheduler run. Best effort: the source is saved either way.
     await queueFirstPoll(userId, created.id).catch((err: unknown) =>
