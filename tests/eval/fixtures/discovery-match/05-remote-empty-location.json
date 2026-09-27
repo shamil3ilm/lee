@@ -1,0 +1,13 @@
+{
+  "name": "Remote backend role with no location: kept",
+  "inputs": {
+    "job": { "title": "Backend Developer", "remoteType": "remote", "location": "", "techStack": ["php", "laravel"] },
+    "aiScore": 70
+  },
+  "expect": {
+    "pass": true,
+    "reasons": [],
+    "regions": ["remote"],
+    "score": 70
+  }
+}

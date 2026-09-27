@@ -9,6 +9,8 @@ import { NoGoogleAccountError } from '@/lib/google/tokens'
 import { sendDiscoveryEmailIfEnabled } from '@/lib/notifications/discovery'
 import { recordDueReminders } from '@/lib/reminders/service'
 import { reassessStaleDiscoveries } from '@/lib/scam/service'
+import { reevaluateRelevance } from '@/lib/discovery/relevance/service'
+import { enqueueRelevanceJob } from '@/lib/discovery/relevance/enqueue'
 import { takeUsageSnapshot } from '@/lib/usage/snapshot'
 import { isThrottled } from '@/lib/usage/throttle'
 import { JOB_TYPES } from './job-types'
@@ -158,6 +160,31 @@ const scamReassess = defineHandler({
   },
 })
 
+/**
+ * Re-gate the user's discoveries under their current search preferences
+ * (queued on every preferences save). Batched and time-boxed; when rows
+ * remain at the deadline a follow-up job is queued, so a large inbox is
+ * finished over several drains. Idempotent: rows already under the current
+ * key are skipped.
+ */
+const discoveryRelevance = defineHandler({
+  type: JOB_TYPES.discoveryRelevance,
+  scope: 'user',
+  payload: USER_PAYLOAD,
+  timeoutMs: 60_000,
+  async run({ job, deadline }): Promise<JobResult> {
+    const r = await reevaluateRelevance(userId(job), { deadline: Math.min(deadline, Date.now() + 50_000) })
+    if (r.remaining) await enqueueRelevanceJob(userId(job))
+    return {
+      metrics: {
+        relevance_evaluated: r.evaluated,
+        relevance_filtered: r.filtered,
+        relevance_continued: r.remaining ? 1 : 0,
+      },
+    }
+  },
+})
+
 const usageSnapshot = defineHandler({
   type: JOB_TYPES.usageSnapshot,
   scope: 'global',
@@ -183,6 +210,7 @@ export const appHandlers = [
   discoverySource,
   discoveryEmail,
   scamReassess,
+  discoveryRelevance,
   usageSnapshot,
 ] as const
 
