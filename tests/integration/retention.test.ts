@@ -14,6 +14,7 @@ import {
   tombstoneDismissedDiscoveries,
   pruneProcessedGmailThreads,
   runRetention,
+  emptyRetentionResult,
 } from '@/lib/db/retention'
 import * as discQ from '@/lib/db/queries/discoveries'
 import * as compDiscQ from '@/lib/db/queries/companyDiscoveries'
@@ -44,7 +45,7 @@ async function aiLog(userId: string, createdAt: Date) {
 
 describe('retention defaults', () => {
   it('keeps the documented windows', () => {
-    expect(DISMISSED_DISCOVERY_RETENTION_DAYS).toBe(90)
+    expect(DISMISSED_DISCOVERY_RETENTION_DAYS).toBe(30)
     expect(AI_CALL_LOG_RETENTION_DAYS).toBe(180)
     expect(GMAIL_THREAD_RETENTION_DAYS).toBe(35)
   })
@@ -69,7 +70,7 @@ describe('tombstoneDismissedDiscoveries', () => {
       ...heavy,
       normalized: heavyJob(1),
       status: 'dismissed',
-      updatedAt: daysAgo(91),
+      updatedAt: daysAgo(31),
     })
     const freshDismissed = await makeDiscovery(u.id, src.id, {
       ...heavy,
@@ -98,7 +99,7 @@ describe('tombstoneDismissedDiscoveries', () => {
       normalized: { kind: 'job', title: 'Engineer 1', companyName: 'Acme' },
       matchReasoning: null,
     })
-    expect(tomb!.updatedAt.getTime()).toBe(daysAgo(91).getTime())
+    expect(tomb!.updatedAt.getTime()).toBe(daysAgo(31).getTime())
     expect(tomb!.createdAt.getTime()).toBe(oldDismissed.createdAt.getTime())
 
     // Rows inside the window or not dismissed keep their payload.
@@ -259,13 +260,11 @@ describe('runRetention', () => {
     await db.insert(s.queueJobs).values({ type: 't', status: 'done', finishedAt: daysAgo(20) })
     const result = await runRetention(NOW)
     expect(result).toEqual({
-      tombstonedDiscoveries: 0,
+      ...emptyRetentionResult(),
       aiCallLogs: 1,
       gmailThreads: 1,
-      compactedDiscoveries: 0,
       queueJobs: 1,
-      webVitals: 0,
-      systemEvents: 0,
+      users: 1,
     })
   })
 })
