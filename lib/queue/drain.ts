@@ -3,8 +3,11 @@ import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { queueUserState } from '@/lib/db/schema'
 import { logger } from '@/lib/logger'
+import { withLogContext } from '@/lib/logs/context'
 import { JobTimeoutError, PermanentJobError, sanitizeError } from './errors'
+import { jobLabel } from './job-types'
 import { claim, complete, fail, recoverStale, release } from './queue'
+import { describeSummary } from './run-summary'
 import type { HandlerRegistry, RegisteredHandler } from './registry'
 import type { ClaimedJob, JobResult } from './types'
 
@@ -123,25 +126,46 @@ export async function drain(opts: DrainOptions): Promise<DrainResult> {
       return 'released'
     }
     if (job.userId) tally.users.add(job.userId)
+    const t0 = clock()
     try {
       if (!handler) throw new PermanentJobError(`unknown job type ${job.type}`)
       const timeoutMs = Math.max(1, Math.min(handler.timeoutMs, budgetDeadline - now))
-      const result = await withTimeout(handler, job, timeoutMs, now + timeoutMs)
-      await complete(job.id, workerId, new Date(clock()))
+      // Everything the handler logs is attributed to this user and job.
+      const result = await withLogContext({ userId: job.userId, jobId: job.id }, () =>
+        withTimeout(handler, job, timeoutMs, now + timeoutMs),
+      )
+      const durationMs = clock() - t0
+      await complete(job.id, workerId, new Date(clock()), { durationMs, summary: result.summary })
       tally.done += 1
       addMetrics(tally.metrics, result.metrics)
       for (const w of result.warnings ?? []) tally.errors.push(`${job.type}: ${sanitizeError(w)}`)
+      logger.info('queue_job_done', {
+        jobId: job.id,
+        userId: job.userId,
+        type: job.type,
+        jobLabel: jobLabel(job.type),
+        attempt: job.attempts,
+        durationMs,
+        summary: describeSummary(result.summary),
+      })
     } catch (err) {
       const outcome = await fail(job, workerId, err, {
         now: new Date(clock()),
         random: opts.random,
         permanent: err instanceof PermanentJobError,
+        durationMs: clock() - t0,
       })
       if (outcome.status === 'dead') tally.dead += 1
       else tally.failed += 1
       tally.errors.push(`${job.type}: ${sanitizeError(err)}`)
       logger.warn('queue_job_failed', {
-        jobId: job.id, type: job.type, attempt: job.attempts, status: outcome.status, err: sanitizeError(err),
+        jobId: job.id,
+        userId: job.userId,
+        type: job.type,
+        jobLabel: jobLabel(job.type),
+        attempt: job.attempts,
+        status: outcome.status,
+        err: sanitizeError(err),
       })
     }
     return 'ran'
@@ -191,8 +215,10 @@ export async function drain(opts: DrainOptions): Promise<DrainResult> {
     metrics: tally.metrics,
     errors: tally.errors,
   }
-  logger.info('queue_drain', {
-    workerId, userScoped: Boolean(opts.userId), recovered, claimed: result.claimed, done: result.done,
+  // An idle drain (nothing due) is stdout-only; a drain that ran jobs is a
+  // persisted run event (lib/logs/catalog.ts).
+  logger.info(result.claimed + recovered > 0 ? 'queue_drain' : 'queue_drain_idle', {
+    userId: opts.userId, workerId, userScoped: Boolean(opts.userId), recovered, claimed: result.claimed, done: result.done,
     failed: result.failed, dead: result.dead, released: result.released, stoppedBy, durationMs: result.durationMs,
   })
   return result

@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import { sources } from '@/lib/db/schema'
+import type { SourcePollStats } from '@/lib/discovery/poll-stats'
 
 export type Source = typeof sources.$inferSelect
 export type NewSource = typeof sources.$inferInsert
@@ -76,12 +77,20 @@ export async function setPolled(
   userId: string,
   id: string,
   error?: string,
+  /** Counts from a successful poll, stored as `last_result` (with `at`). */
+  stats?: SourcePollStats,
   client: DbClient = db,
 ): Promise<void> {
   if (!error) {
+    const now = new Date()
     await client
       .update(sources)
-      .set({ lastPolledAt: new Date(), lastError: null, errorCount: 0 })
+      .set({
+        lastPolledAt: now,
+        lastError: null,
+        errorCount: 0,
+        ...(stats ? { lastResult: { ...stats, at: now.toISOString() } } : {}),
+      })
       .where(and(eq(sources.userId, userId), eq(sources.id, id)))
     return
   }

@@ -2,7 +2,8 @@
 import { useState, useTransition } from 'react'
 import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
-import { AlertTriangle, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import Link from 'next/link'
+import { AlertTriangle, MoreVertical, Pencil, ScrollText, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -41,6 +42,8 @@ export interface SourceRowItem {
   lastPolledAt: string | null
   lastError: string | null
   errorCount: number
+  /** Last successful poll, e.g. "12 found · 3 new · 1 quarantined". */
+  lastResult: string | null
 }
 
 export function SourceRow({ source }: { source: SourceRowItem }) {
@@ -85,11 +88,17 @@ export function SourceRow({ source }: { source: SourceRowItem }) {
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span>{source.configSummary}</span>
             <span>·</span>
-            <span>
+            <span suppressHydrationWarning>
               {source.lastPolledAt
-                ? `polled ${relativeFromNow(source.lastPolledAt)}`
-                : 'never polled'}
+                ? `checked ${relativeFromNow(source.lastPolledAt)}`
+                : 'never checked'}
             </span>
+            {source.lastResult && source.errorCount === 0 ? (
+              <>
+                <span>·</span>
+                <span data-testid="source-last-result">{source.lastResult}</span>
+              </>
+            ) : null}
             {source.errorCount > 0 && source.lastError ? (
               <TooltipProvider delayDuration={100}>
                 <Tooltip>
@@ -105,7 +114,21 @@ export function SourceRow({ source }: { source: SourceRowItem }) {
                 </Tooltip>
               </TooltipProvider>
             ) : null}
+            {source.lastPolledAt ? (
+              <Link
+                href={`/settings/logs?category=source&source=${source.id}&range=30d`}
+                className="inline-flex items-center gap-1 underline-offset-2 hover:underline"
+              >
+                <ScrollText className="size-3.5" aria-hidden />
+                Log
+              </Link>
+            ) : null}
           </div>
+          {source.errorCount > 0 && source.lastError ? (
+            <p className="mt-1 line-clamp-1 break-all text-xs text-danger" data-testid="source-last-error">
+              Last error: {source.lastError}
+            </p>
+          ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
