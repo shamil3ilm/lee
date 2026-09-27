@@ -1,10 +1,14 @@
 import { Rss } from 'lucide-react'
 import { requireUserId } from '@/lib/auth/require-session'
 import * as sourcesQ from '@/lib/db/queries/sources'
+import * as emailAlertsQ from '@/lib/db/queries/emailAlerts'
+import { getSourceKind, sourceKindNeeds } from '@/lib/discovery/source-kinds'
 import { PageHeader } from '@/components/page-header'
 import { AddSourceDialog } from '@/components/add-source-dialog'
 import { SourceRow, type SourceRowItem } from '@/components/source-row'
 import { EmptyState } from '@/components/empty-state'
+import { EmailAlertsPanel } from '@/components/email-alerts-panel'
+import { WatchListPanel, type WatchItem } from '@/components/watch-list-panel'
 import { PopularStarters } from './popular-starters'
 
 export const dynamic = 'force-dynamic'
@@ -12,15 +16,15 @@ export const dynamic = 'force-dynamic'
 interface SourceConfig {
   company?: string
   url?: string
+  reason?: string
   [k: string]: unknown
 }
 
 function configSummary(kind: string, config: SourceConfig): string {
   if (config.company) return `company: ${config.company}`
   if (config.url) return String(config.url)
-  return kind === 'remoteok' || kind === 'hn_whoishiring' || kind === 'yc_directory'
-    ? 'all'
-    : '—'
+  if (typeof config.host === 'string') return `site: ${config.host}`
+  return sourceKindNeeds(kind) === 'none' ? 'all' : '—'
 }
 
 function configValue(config: SourceConfig): string {
@@ -31,9 +35,18 @@ function configValue(config: SourceConfig): string {
 
 export default async function SourcesSettingsPage(): Promise<React.ReactElement> {
   const userId = await requireUserId()
-  const sources = await sourcesQ.list(userId)
+  const [sources, alertStats] = await Promise.all([sourcesQ.list(userId), emailAlertsQ.summaryBySite(userId)])
 
-  const rows: SourceRowItem[] = sources.map((s) => ({
+  const polled = sources.filter((s) => s.kind !== 'watch')
+  const watch: WatchItem[] = sources
+    .filter((s) => s.kind === 'watch')
+    .map((s) => {
+      const c = (s.config ?? {}) as SourceConfig
+      return { id: s.id, name: s.name, url: String(c.url ?? ''), reason: typeof c.reason === 'string' ? c.reason : null }
+    })
+    .filter((w) => /^https?:\/\//i.test(w.url))
+
+  const rows: SourceRowItem[] = polled.map((s) => ({
     id: s.id,
     name: s.name,
     kind: s.kind,
@@ -44,6 +57,17 @@ export default async function SourcesSettingsPage(): Promise<React.ReactElement>
     lastError: s.lastError,
     errorCount: s.errorCount,
   }))
+
+  const alertSource = sources.find((s) => s.kind === 'email_alert')
+  // Providers whose terms ask for a visible credit (Himalayas, Adzuna …).
+  const credits = [
+    ...new Map(
+      polled
+        .map((s) => getSourceKind(s.kind)?.attribution)
+        .filter((a): a is NonNullable<typeof a> => Boolean(a))
+        .map((a) => [a.url, a] as const),
+    ).values(),
+  ]
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -71,6 +95,28 @@ export default async function SourcesSettingsPage(): Promise<React.ReactElement>
           ))}
         </div>
       )}
+
+      <EmailAlertsPanel
+        stats={alertStats.map((s) => ({ ...s, lastAlertAt: s.lastAlertAt ? s.lastAlertAt.toISOString() : null }))}
+        source={alertSource ? { enabled: alertSource.enabled, lastError: alertSource.lastError } : null}
+      />
+
+      <WatchListPanel items={watch} />
+
+      {credits.length > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          Job listings from{' '}
+          {credits.map((c, i) => (
+            <span key={c.url}>
+              {i > 0 ? ', ' : ''}
+              <a href={c.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+                {c.label}
+              </a>
+            </span>
+          ))}
+          . Each discovery links back to the original posting on that site.
+        </p>
+      ) : null}
     </div>
   )
 }
