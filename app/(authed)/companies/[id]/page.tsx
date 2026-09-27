@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import {
   Briefcase,
-  Building2,
   ExternalLink,
   Globe,
   MapPin,
@@ -297,16 +296,6 @@ export default async function CompanyDetailPage({
             </CardContent>
           </Card>
         </div>
-      </div>
-
-      <div className="flex justify-end pt-2">
-        <Link
-          href="/companies"
-          className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground hover:underline"
-        >
-          <Building2 className="size-3" />
-          Back to companies
-        </Link>
       </div>
     </div>
   )
