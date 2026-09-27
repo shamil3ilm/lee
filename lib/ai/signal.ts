@@ -269,6 +269,27 @@ export function checkDiscoveryScoringSignal(
   return { ok: true }
 }
 
+/** Minimum profile + master-CV digest length for AI role suggestions. */
+const ROLE_SUGGESTION_MIN_CHARS = 80
+
+/**
+ * `suggest_roles` signal check. The digest (profile + master CV only) must
+ * hold enough evidence to ground suggestions; otherwise the model would
+ * guess from a job title.
+ */
+export function checkRoleSuggestionSignal(digest: string | null | undefined): SignalResult {
+  const len = (digest ?? '').replace(/\s+/g, ' ').trim().length
+  if (len < ROLE_SUGGESTION_MIN_CHARS) {
+    return {
+      ok: false,
+      code: 'suggest_roles_profile_thin',
+      message: 'Your profile and master CV are too sparse for AI role suggestions.',
+      fixHint: 'Complete Settings › Profile, or import a CV or LinkedIn export into your profile.',
+    }
+  }
+  return { ok: true }
+}
+
 /**
  * `expense_classify` signal check. Fails when both description and vendor
  * are empty — the LLM would just pick "other" with high confidence.
