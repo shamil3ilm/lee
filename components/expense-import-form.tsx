@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Loader2, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 
@@ -73,7 +74,7 @@ export function ExpenseImportForm() {
       <CardContent className="space-y-4 pt-6">
         <div className="space-y-1.5">
           <Label htmlFor="csv-file">Upload CSV</Label>
-          <input
+          <Input
             id="csv-file"
             type="file"
             accept=".csv,text/csv"
@@ -81,7 +82,6 @@ export function ExpenseImportForm() {
               const f = e.target.files?.[0]
               if (f) void readFile(f)
             }}
-            className="block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:font-medium hover:file:bg-secondary/80"
           />
         </div>
         <div className="space-y-1.5">
@@ -92,6 +92,7 @@ export function ExpenseImportForm() {
             onChange={(e) => setCsv(e.target.value)}
             placeholder={SAMPLE_CSV}
             rows={12}
+            wrap="off"
             className="font-mono text-xs"
           />
           <p className="text-xs text-muted-foreground">
@@ -103,7 +104,6 @@ export function ExpenseImportForm() {
           <Button
             type="button"
             variant="outline"
-            size="sm"
             onClick={() => setCsv(SAMPLE_CSV)}
           >
             Load sample

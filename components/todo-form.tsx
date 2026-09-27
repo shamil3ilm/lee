@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { Loader2, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormActions, FormField } from '@/components/ui/form-field'
 import {
   Select,
   SelectContent,
@@ -85,9 +85,8 @@ export function TodoForm({ applicationId, onCreated }: TodoFormProps) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-[1fr_140px_180px_auto]">
-        <div className="space-y-1.5">
-          <Label htmlFor="todo-title">Title</Label>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_160px_180px]">
+        <FormField htmlFor="todo-title" label="Title" className="sm:col-span-2 xl:col-span-1">
           <div className="flex items-stretch gap-2">
             <Input
               id="todo-title"
@@ -104,9 +103,8 @@ export function TodoForm({ applicationId, onCreated }: TodoFormProps) {
               }}
             />
           </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="todo-priority">Priority</Label>
+        </FormField>
+        <FormField htmlFor="todo-priority" label="Priority">
           <Select value={priority} onValueChange={setPriority}>
             <SelectTrigger id="todo-priority">
               <SelectValue />
@@ -118,34 +116,32 @@ export function TodoForm({ applicationId, onCreated }: TodoFormProps) {
               <SelectItem value="3">High</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="todo-due">Due date</Label>
+        </FormField>
+        <FormField htmlFor="todo-due" label="Due date">
           <Input
             id="todo-due"
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.currentTarget.value)}
           />
-        </div>
-        <div className="flex items-end">
+        </FormField>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <FormField htmlFor="todo-notes" label="Notes" hint="(optional)">
+          <Input
+            id="todo-notes"
+            value={notes}
+            onChange={(e) => setNotes(e.currentTarget.value)}
+            placeholder="Extra context…"
+            autoComplete="off"
+          />
+        </FormField>
+        <FormActions>
           <Button type="submit" disabled={pending} className="w-full sm:w-auto">
             {pending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
             Add todo
           </Button>
-        </div>
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="todo-notes" className="text-xs text-muted-foreground">
-          Notes (optional)
-        </Label>
-        <Input
-          id="todo-notes"
-          value={notes}
-          onChange={(e) => setNotes(e.currentTarget.value)}
-          placeholder="Extra context…"
-          autoComplete="off"
-        />
+        </FormActions>
       </div>
     </form>
   )
