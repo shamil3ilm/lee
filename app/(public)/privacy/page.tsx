@@ -102,11 +102,15 @@ export default function PrivacyPage() {
 
       <Section title="Retention and deletion">
         <p>
-          Your data is kept while you use the app. Old AI usage logs (after 180 days), processed-email markers
-          (after 35 days) and the bulky content of dismissed job listings (after 90 days) are removed
-          automatically. Activity logs of background runs, syncs and errors (Settings › Logs) are deleted after 14
-          days, and warnings and errors after 60 days; background job records after 14 days (30 if a job failed).
-          These logs hold counts, timings and short error messages only: secrets are removed, email addresses are
+          Your data is kept while you use the app. Clutter is removed automatically every night: by default,
+          unreviewed job listings move to Dismissed after 60 days, the bulky content of dismissed listings is
+          removed after 30 days, AI usage logs after 180 days, processed-email markers after 35 days, and old
+          CV score runs, Model Lab runs and cached PDFs after their own windows. The owner can change these
+          windows in Settings › Storage. Applications, saved jobs, notes and documents are never removed by
+          this cleanup.
+          Activity logs of background runs, syncs and errors (Settings › Logs) are deleted after 14 days, and
+          warnings and errors after 60 days; background job records after 14 days (30 if a job failed). These
+          logs hold counts, timings and short error messages only: secrets are removed, email addresses are
           reduced to their domain, and email bodies, prompts, CV text and document content are never stored in
           them. You can revoke {APP_NAME}&rsquo;s access to your Google account at any time at{' '}
           <a className="underline underline-offset-4" href="https://myaccount.google.com/permissions">
