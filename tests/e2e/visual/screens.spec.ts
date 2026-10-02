@@ -58,6 +58,8 @@ const TARGETS: Target[] = [
   { name: 'settings-index', path: '/settings' },
   { name: 'settings-jobs', path: '/settings/jobs' },
   { name: 'settings-usage', path: '/settings/usage' },
+  { name: 'settings-logs', path: '/settings/logs' },
+  { name: 'settings-storage', path: '/settings/storage' },
   { name: 'settings-scam-shield', path: '/settings/scam-shield' },
   { name: 'analytics-performance', path: '/analytics/performance' },
   { name: 'documents-merge', path: '/documents/merge' },
