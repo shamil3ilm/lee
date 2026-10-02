@@ -97,7 +97,7 @@ export function AddSourceDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {KINDS.map((k) => (
+                {KINDS.filter((k) => !k.catalogOnly).map((k) => (
                   <SelectItem key={k.id} value={k.id}>
                     {k.label}
                   </SelectItem>

@@ -3,8 +3,11 @@ import {
   extractAllEmailAddresses,
   extractDomain,
   extractEmailAddress,
+  extractBodies,
   extractHeader,
+  getMessageContent,
   getThread,
+  listMessageIds,
   listThreads,
   type GmailMessage,
 } from '@/lib/gmail/adapter'
@@ -127,5 +130,53 @@ describe('gmail adapter — REST calls', () => {
     expect(url).toContain('format=metadata')
     expect(url).toContain('metadataHeaders=From')
     expect(url).toContain('metadataHeaders=Subject')
+  })
+})
+
+describe('gmail adapter — job-alert message bodies', () => {
+  const b64 = (s: string): string => Buffer.from(s, 'utf8').toString('base64url')
+
+  it('extractBodies finds the first html and text parts in a nested MIME tree', () => {
+    const payload = {
+      mimeType: 'multipart/mixed',
+      parts: [
+        {
+          mimeType: 'multipart/alternative',
+          parts: [
+            { mimeType: 'text/plain', body: { data: b64('Backend Developer — Noon') } },
+            { mimeType: 'text/html', body: { data: b64('<p>Backend Developer — Noon</p>') } },
+          ],
+        },
+        { mimeType: 'text/html', body: { data: b64('<p>second</p>') } },
+      ],
+    }
+    expect(extractBodies(payload)).toEqual({
+      html: '<p>Backend Developer — Noon</p>',
+      text: 'Backend Developer — Noon',
+    })
+    expect(extractBodies({ mimeType: 'text/plain' })).toEqual({ html: null, text: null })
+  })
+
+  it('listMessageIds sends the query; getMessageContent decodes format=full', async () => {
+    const fetchMock = vi.fn(async (url: string) =>
+      url.includes('/messages?')
+        ? new Response(JSON.stringify({ messages: [{ id: 'm1', threadId: 't1' }] }), { status: 200 })
+        : new Response(
+            JSON.stringify({
+              id: 'm1',
+              internalDate: '1790000000000',
+              payload: { mimeType: 'text/html', headers: [{ name: 'From', value: 'alert@indeed.com' }], body: { data: b64('<b>hi</b>') } },
+            }),
+            { status: 200 },
+          ),
+    )
+    globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch
+    const refs = await listMessageIds({ tokens: { accessToken: 'a' }, q: 'from:(indeed.com)' })
+    expect(refs).toEqual([{ id: 'm1', threadId: 't1' }])
+    expect(String(fetchMock.mock.calls[0]![0])).toContain('q=from%3A%28indeed.com%29')
+    const msg = await getMessageContent({ tokens: { accessToken: 'a' }, id: 'm1' })
+    expect(msg).toMatchObject({ id: 'm1', html: '<b>hi</b>', text: null })
+    expect(String(fetchMock.mock.calls[1]![0])).toContain('format=full')
+    globalThis.fetch = originalFetch
   })
 })

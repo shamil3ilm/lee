@@ -14,6 +14,7 @@ import {
   dismissDiscovery,
 } from '@/lib/discovery/service'
 import * as adapters from '@/lib/discovery/adapters'
+import { SOURCE_KINDS } from '@/lib/discovery/source-kinds'
 import type { DiscoveryAdapter, DiscoveryItem } from '@/lib/discovery/adapters/types'
 
 // Helper: swap in a fake adapter registered under a real kind key.
@@ -376,20 +377,8 @@ describe('per-discovery scoring rows + implicit signal', () => {
 // Ensure listAdapterKinds still returns all 9 (guard against accidental
 // registry regressions).
 describe('adapter registry', () => {
-  it('exposes all 9 adapter kinds', () => {
-    expect(adapters.listAdapterKinds().sort()).toEqual(
-      [
-        'ashby',
-        'greenhouse',
-        'hn_whoishiring',
-        'jsonld',
-        'lever',
-        'remoteok',
-        'rss',
-        'workable',
-        'yc_directory',
-      ].sort(),
-    )
+  it('has exactly one adapter per source kind offered in Settings', () => {
+    expect(adapters.listAdapterKinds().sort()).toEqual(SOURCE_KINDS.map((k) => k.id).sort())
   })
 })
 

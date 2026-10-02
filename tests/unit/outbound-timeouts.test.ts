@@ -6,7 +6,7 @@ import { GroqDecisionProvider } from '@/lib/decisions/groq'
 import { LayaHttpDecisionProvider } from '@/lib/decisions/laya-http'
 import { LayaUnavailableError } from '@/lib/decisions/types'
 import { compileLatex } from '@/lib/latex/compile'
-import { getThread, listThreads } from '@/lib/gmail/adapter'
+import { getMessageContent, getThread, listMessageIds, listThreads } from '@/lib/gmail/adapter'
 import { createEvent, deleteEvent, updateEvent } from '@/lib/calendar/adapter'
 import { getGoogleTokens } from '@/lib/google/tokens'
 import { fetchPublicRepos } from '@/lib/github/adapter'
@@ -120,15 +120,47 @@ describe('outbound timeouts', () => {
     rss: { url: 'https://feed.test/rss' },
     jsonld: { url: 'https://careers.test/jobs' },
     yc_directory: {},
+    recruitee: { company: 'acme' },
+    pinpoint: { company: 'acme' },
+    workday: { url: 'https://acme.wd1.myworkdayjobs.com/External' },
+    himalayas: {},
+    jobicy: {},
+    weworkremotely: {},
+    remotive: {},
+    workingnomads: {},
+    adzuna: {},
+    technopark: {},
+    infopark: {},
+    cyberpark: {},
+    ul_cyberpark: {},
+    ksum: {},
+    oracle_orc: { host: 'acme.fa.em2.oraclecloud.com', siteNumber: 'CX_1', displayName: 'Acme' },
+    successfactors: { host: 'careers.acme.com', displayName: 'Acme' },
+    phenom: { host: 'careers.acme.com', pageId: 'page1', displayName: 'Acme' },
   }
+  // No network of their own: `watch` never fetches; `email_alert` reads
+  // Gmail through lib/gmail/adapter (timeouts covered in the Gmail case).
+  const noFetchKinds = ['watch', 'email_alert']
 
   it('covers every registered discovery adapter', () => {
-    expect(Object.keys(adapterConfigs).sort()).toEqual(listAdapterKinds().sort())
+    expect([...Object.keys(adapterConfigs), ...noFetchKinds].sort()).toEqual(listAdapterKinds().sort())
+  })
+
+  it('Gmail job-alert reads time out as Error', async () => {
+    const tokens = { accessToken: 'a' }
+    await expect(listMessageIds({ tokens, q: 'x' })).rejects.toThrow(/gmail listMessages timed out/)
+    await expect(getMessageContent({ tokens, id: 'm1' })).rejects.toThrow(/gmail getMessage timed out/)
   })
 
   it.each(Object.keys(adapterConfigs))('discovery adapter %s: every request has a timeout', async (kind) => {
     const adapter = getAdapter(kind)!
+    const savedKey = process.env.ADZUNA_KEY
+    if (kind === 'adzuna') process.env.ADZUNA_KEY = 'app-id:app-key'
     const result = await adapter.fetch(adapterConfigs[kind]).catch((e: unknown) => e)
+    if (kind === 'adzuna') {
+      if (savedKey === undefined) delete process.env.ADZUNA_KEY
+      else process.env.ADZUNA_KEY = savedKey
+    }
     // jsonld swallows per-URL failures; everything else throws an Error.
     if (kind === 'jsonld') expect(result).toEqual([])
     else expect((result as Error).message).toMatch(/timed out/)
