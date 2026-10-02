@@ -113,7 +113,7 @@ export function ScorePanel({ documents, applications, initialDocumentId, initial
       <Card>
         <CardContent className="space-y-4 p-4">
           <SourceToggle mode={mode} onMode={setMode} />
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 @2xl/main:grid-cols-2">
             {mode === 'document' ? (
               documents.length ? (
                 <DocumentSelect id="cv-doc" label="CV" documents={documents} value={documentId} onChange={setDocumentId} />

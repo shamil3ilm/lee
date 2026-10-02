@@ -2,7 +2,6 @@
 import { useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { FileText, Loader2, Mail, Sparkles } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -60,17 +59,6 @@ const CATEGORY_LABEL: Record<TemplateCategory, string> = {
   creative: 'Creative',
 }
 
-const CATEGORY_BADGE: Record<
-  TemplateCategory,
-  'blue' | 'violet' | 'emerald' | 'neutral' | 'indigo'
-> = {
-  minimalist: 'neutral',
-  modern: 'blue',
-  classic: 'indigo',
-  academic: 'emerald',
-  creative: 'violet',
-}
-
 function groupByCategory(templates: TemplateSummary[]): Array<{
   category: TemplateCategory
   items: TemplateSummary[]
@@ -86,6 +74,9 @@ function groupByCategory(templates: TemplateSummary[]): Array<{
     items: byCategory.get(c)!,
   }))
 }
+
+/** Card buttons may wrap to two lines in narrow grid cells. */
+const WRAPPING_BUTTON = 'h-auto min-h-8 w-full whitespace-normal py-1.5 text-center leading-tight'
 
 export function LatexTemplatePicker({ templates, hasMaster }: LatexTemplatePickerProps) {
   const [pending, setPending] = useState<PendingAction>(null)
@@ -175,30 +166,28 @@ export function LatexTemplatePicker({ templates, hasMaster }: LatexTemplatePicke
             </div>
           )}
         </div>
-        <CardHeader>
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <CardTitle className="flex items-center gap-2">
-              {isLetter ? (
-                <Mail className="size-4" />
-              ) : (
-                <FileText className="size-4" />
-              )}
-              {t.name}
-            </CardTitle>
-            <Badge variant={CATEGORY_BADGE[t.category]} className="text-[10px]">
-              {CATEGORY_LABEL[t.category]}
-            </Badge>
-          </div>
-          <CardDescription>{t.description}</CardDescription>
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            <span className="font-semibold">Packages:</span>{' '}
-            {t.packages.join(', ')}
+        {/* Compact card: the group heading already names the category, so
+            no badge; buttons may wrap so two columns fit on a phone. */}
+        <CardHeader className="space-y-1 p-4">
+          <CardTitle className="flex items-start gap-2">
+            {isLetter ? (
+              <Mail className="mt-px size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            ) : (
+              <FileText className="mt-px size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            )}
+            <span className="min-w-0">{t.name}</span>
+          </CardTitle>
+          <CardDescription className="line-clamp-3 text-xs">{t.description}</CardDescription>
+          <p className="hidden text-[11px] text-muted-foreground @2xl/main:block">
+            <span className="font-semibold">Packages:</span> {t.packages.join(', ')}
           </p>
         </CardHeader>
-        <CardContent className="mt-auto flex flex-col gap-2">
+        <CardContent className="mt-auto flex flex-col gap-2 p-4 pt-0">
           <Button
             type="button"
             variant="default"
+            size="sm"
+            className={WRAPPING_BUTTON}
             onClick={() => pickTemplate(t.id)}
             disabled={isBusy()}
           >
@@ -209,6 +198,8 @@ export function LatexTemplatePicker({ templates, hasMaster }: LatexTemplatePicke
             <Button
               type="button"
               variant="outline"
+              size="sm"
+              className={WRAPPING_BUTTON}
               onClick={() => pickAI(t.id)}
               disabled={isBusy() || !hasMaster}
               title={
@@ -222,7 +213,7 @@ export function LatexTemplatePicker({ templates, hasMaster }: LatexTemplatePicke
               ) : (
                 <Sparkles className="size-4" />
               )}
-              AI-generate from master CV
+              AI from master CV
             </Button>
           )}
         </CardContent>
@@ -246,7 +237,7 @@ export function LatexTemplatePicker({ templates, hasMaster }: LatexTemplatePicke
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {CATEGORY_LABEL[group.category]}
             </h3>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 @3xl/main:grid-cols-3 @5xl/main:grid-cols-4">
               {group.items.map(renderCard)}
             </div>
           </div>
@@ -267,7 +258,7 @@ export function LatexTemplatePicker({ templates, hasMaster }: LatexTemplatePicke
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {CATEGORY_LABEL[group.category]}
             </h3>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 @3xl/main:grid-cols-3 @5xl/main:grid-cols-4">
               {group.items.map(renderCard)}
             </div>
           </div>
@@ -277,13 +268,13 @@ export function LatexTemplatePicker({ templates, hasMaster }: LatexTemplatePicke
       {/* --- Blank --- */}
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Or start blank</h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 @2xl/main:grid-cols-2">
           <Card>
-            <CardContent className="flex items-center justify-between gap-3 py-5">
-              <div>
+            <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+              <div className="min-w-0 flex-1 basis-48">
                 <p className="font-medium">Empty CV</p>
                 <p className="text-xs text-muted-foreground">
-                  A minimal \documentclass stub. Write from scratch.
+                  A minimal LaTeX skeleton. Write from scratch.
                 </p>
               </div>
               <Button
@@ -300,8 +291,8 @@ export function LatexTemplatePicker({ templates, hasMaster }: LatexTemplatePicke
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="flex items-center justify-between gap-3 py-5">
-              <div>
+            <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+              <div className="min-w-0 flex-1 basis-48">
                 <p className="font-medium">Empty cover letter</p>
                 <p className="text-xs text-muted-foreground">
                   A minimal letter stub. Fill in recipient, greeting, body.

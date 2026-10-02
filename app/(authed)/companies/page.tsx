@@ -42,7 +42,7 @@ export default async function CompaniesPage() {
           action={<AddCompanyDialog />}
         />
       ) : (
-        <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-3 @2xl/main:grid-cols-2 xl:grid-cols-3">
           {rows.map((c) => (
             <li key={c.id}>
               <Link

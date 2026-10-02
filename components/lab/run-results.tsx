@@ -58,7 +58,7 @@ export function RunResults({ run: initialRun, streaming, onRunChange }: RunResul
           Blind mode: pick the best answer to reveal which model wrote each one.
         </p>
       ) : null}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 @2xl/main:grid-cols-2 xl:grid-cols-3">
         {run.results.map((r) => (
           <ResultCard
             key={r.id}

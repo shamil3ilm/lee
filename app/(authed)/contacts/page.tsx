@@ -124,31 +124,33 @@ export default async function ContactsPage({ searchParams }: ContactsPageProps) 
                 <h2 className="text-sm font-semibold">{g.label}</h2>
                 <Badge variant="secondary">{g.rows.length}</Badge>
               </div>
-              <ul className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
+              <ul className="grid grid-cols-1 gap-2 @2xl/main:grid-cols-2 @5xl/main:grid-cols-3">
                 {g.rows.map((c) => (
-                  <li key={c.id}>
-                    <Card>
-                      <CardContent className="flex items-start gap-2 py-3">
+                  <li key={c.id} className="min-w-0">
+                    <Card className="h-full">
+                      <CardContent className="flex items-start gap-2 p-4">
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-medium">{c.name}</span>
+                            <span className="min-w-0 truncate font-medium">{c.name}</span>
                             {c.pipelineStage ? (
                               <Badge variant={CONTACT_STAGE_TONE[contactStageOf(c.pipelineStage)]} className="text-[10px]">
                                 {CONTACT_STAGE_LABELS[contactStageOf(c.pipelineStage)]}
                               </Badge>
                             ) : null}
                           </div>
-                          <div className="mt-0.5 text-xs text-muted-foreground">
+                          {/* Role and email on their own lines: joined with a
+                              dot they wrapped mid-way and left a dangling "·". */}
+                          <div className="mt-0.5 truncate text-xs text-muted-foreground">
                             {c.role ?? 'No role'}
-                            {c.email ? (
-                              <>
-                                {' · '}
-                                <a className="hover:underline" href={`mailto:${c.email}`}>
-                                  {c.email}
-                                </a>
-                              </>
-                            ) : null}
                           </div>
+                          {c.email ? (
+                            <a
+                              className="block truncate text-xs text-muted-foreground hover:text-foreground hover:underline"
+                              href={`mailto:${c.email}`}
+                            >
+                              {c.email}
+                            </a>
+                          ) : null}
                         </div>
                         <ContactActions
                           contact={{

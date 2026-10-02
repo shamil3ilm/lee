@@ -53,11 +53,15 @@ function SectionCard({ section }: { section: PlaygroundSection }) {
     <Card className="flex flex-col">
       <CardHeader className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex min-w-0 items-center gap-2">
             <Icon className="size-4 text-muted-foreground" aria-hidden />
             {section.title}
           </CardTitle>
-          {section.href ? null : <Badge variant="neutral">Coming soon</Badge>}
+          {section.href ? null : (
+            <Badge variant="neutral" className="shrink-0 whitespace-nowrap">
+              Coming soon
+            </Badge>
+          )}
         </div>
         <CardDescription>{section.description}</CardDescription>
       </CardHeader>
@@ -84,7 +88,7 @@ export default function PlaygroundPage() {
         title="Playground"
         description="Hands-on space to practise, compare AI models and tune the decision engine."
       />
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 @3xl/main:grid-cols-3">
         {SECTIONS.map((s) => (
           <SectionCard key={s.key} section={s} />
         ))}
