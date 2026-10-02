@@ -73,7 +73,7 @@ export function BatchPanel() {
       {result ? (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">
+            <CardTitle>
               {result.masterLabel} vs {result.rows.length} active application{result.rows.length === 1 ? '' : 's'}
             </CardTitle>
           </CardHeader>

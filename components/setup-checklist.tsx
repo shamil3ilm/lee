@@ -40,7 +40,7 @@ export function SetupChecklist({ checklist }: SetupChecklistProps) {
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 pb-3">
           <div className="space-y-1">
-            <CardTitle id="setup-checklist-title" className="text-base">
+            <CardTitle id="setup-checklist-title">
               {complete ? 'You are all set up' : 'Get set up'}
             </CardTitle>
             <p className="text-xs text-muted-foreground">
@@ -74,7 +74,7 @@ export function SetupChecklist({ checklist }: SetupChecklistProps) {
               style={{ width: `${pct}%` }}
             />
           </div>
-          <ul className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="grid gap-1 sm:grid-cols-2 @4xl/main:grid-cols-3">
             {items.map((item) => (
               <li key={item.key}>
                 <Link

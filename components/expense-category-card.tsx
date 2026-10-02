@@ -34,21 +34,21 @@ export function ExpenseCategoryCard({
       : colourFor(category)
   return (
     <Card>
-      <CardContent className="space-y-2 pt-4">
-        <div className="flex items-baseline justify-between gap-2">
-          <div className="flex items-center gap-2">
+      <CardContent className="space-y-2 p-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <span
               aria-hidden
-              className="inline-block h-2 w-2 rounded-full"
+              className="inline-block size-2 shrink-0 rounded-full"
               style={{ backgroundColor: colourFor(category) }}
             />
-            <span className="text-sm font-semibold capitalize">{category}</span>
+            <span className="truncate text-sm font-semibold capitalize">{category}</span>
           </div>
-          <span className="text-xs text-muted-foreground">
+          <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">
             {count} {count === 1 ? 'txn' : 'txns'}
           </span>
         </div>
-        <div className="text-xl font-semibold tabular-nums">
+        <div className="whitespace-nowrap text-xl font-semibold tabular-nums">
           {formatMoney(totalCents, currency)}
         </div>
         {hasBudget ? (
@@ -64,15 +64,15 @@ export function ExpenseCategoryCard({
             </div>
             <div
               className={cn(
-                'text-[11px] text-muted-foreground',
-                overBudget ? 'text-destructive' : undefined,
+                'text-xs',
+                overBudget ? 'text-destructive' : 'text-muted-foreground',
               )}
             >
               {pct.toFixed(0)}% of {formatMoney(budgetCents!, currency)}
             </div>
           </div>
         ) : (
-          <div className="text-[11px] text-muted-foreground">No budget set</div>
+          <div className="text-xs text-muted-foreground">No budget set</div>
         )}
       </CardContent>
     </Card>

@@ -189,7 +189,7 @@ export function Arena({ providers }: ArenaProps) {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <Card className="min-w-0">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Models</CardTitle>
+            <CardTitle>Models</CardTitle>
           </CardHeader>
           <CardContent>
             <ModelPicker providers={providers} selected={selected} onChange={setSelected} />
@@ -198,7 +198,7 @@ export function Arena({ providers }: ArenaProps) {
 
         <Card className="min-w-0">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Prompt</CardTitle>
+            <CardTitle>Prompt</CardTitle>
           </CardHeader>
           <CardContent>
             <form

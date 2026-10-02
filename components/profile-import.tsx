@@ -46,7 +46,7 @@ export function ProfileImport() {
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <Upload className="size-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-semibold">Import from CV / markdown</CardTitle>
+          <CardTitle>Import from CV / markdown</CardTitle>
         </div>
       </CardHeader>
       <CardContent>
@@ -63,7 +63,6 @@ export function ProfileImport() {
                 name="cv"
                 type="file"
                 accept=".pdf,.docx,.md,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/markdown,text/plain"
-                className="cursor-pointer"
               />
             </div>
             <div className="space-y-1.5">
@@ -73,7 +72,6 @@ export function ProfileImport() {
                 name="profile_md"
                 type="file"
                 accept=".md,.txt,text/markdown,text/plain"
-                className="cursor-pointer"
               />
             </div>
           </div>

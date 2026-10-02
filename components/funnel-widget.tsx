@@ -1,5 +1,5 @@
 import { TONE_BG } from '@/lib/ui/tones'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface FunnelWidgetProps {
   /** Count of applications in each active pipeline stage. */
@@ -49,15 +49,11 @@ export function FunnelWidget({ counts }: FunnelWidgetProps) {
 
   return (
     <Card>
-      <CardContent className="space-y-4 pt-6">
-        <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            Funnel
-          </h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Conversion between pipeline stages.
-          </p>
-        </div>
+      <CardHeader>
+        <CardTitle>Funnel</CardTitle>
+        <CardDescription className="text-xs">Conversion between pipeline stages.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
 
         {isEmpty ? (
           <p className="text-sm text-muted-foreground">No applications yet.</p>
@@ -84,10 +80,12 @@ export function FunnelWidget({ counts }: FunnelWidgetProps) {
                     </div>
                     {/* Figures sit beside the bar, not on it: muted text over a
                         saturated bar was unreadable (v17 §9.1 visual QA). */}
-                    <span className="w-20 shrink-0 text-right text-xs sm:w-40">
-                      <span className="font-medium tabular-nums text-foreground">{count}</span>
+                    <span className="flex w-20 shrink-0 items-baseline gap-1.5 text-xs sm:w-44">
+                      <span className="w-6 text-right font-medium tabular-nums text-foreground">
+                        {count}
+                      </span>
                       {pct !== null ? (
-                        <span className="ml-1.5 text-muted-foreground">
+                        <span className="truncate text-muted-foreground">
                           {pct}%
                           <span className="hidden sm:inline">
                             {' '}from {STAGES[i - 1]!.label.toLowerCase()}

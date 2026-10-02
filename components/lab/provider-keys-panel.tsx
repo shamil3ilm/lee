@@ -118,7 +118,7 @@ export function ProviderKeysPanel({ initialStatuses }: ProviderKeysPanelProps) {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid gap-4 @2xl/main:grid-cols-2">
       {statuses.map((s) => {
         const id = s.info.id
         const isBusy = (a: NonNullable<Busy>['action']) => busy?.provider === id && busy.action === a
@@ -126,8 +126,8 @@ export function ProviderKeysPanel({ initialStatuses }: ProviderKeysPanelProps) {
         return (
           <Card key={id} className="flex flex-col">
             <CardHeader className="space-y-2 pb-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <CardTitle className="text-base">{s.info.label}</CardTitle>
+              <div className="flex items-start justify-between gap-2">
+                <CardTitle className="min-w-0 pt-0.5">{s.info.label}</CardTitle>
                 <KeyStatusBadge
                   keySource={s.keySource}
                   last4={s.last4}

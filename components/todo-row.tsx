@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { Briefcase, Loader2, Pencil, Trash2 } from 'lucide-react'
 import type { Todo } from '@/lib/db/queries/todos'
 import { Badge } from '@/components/ui/badge'
+import { priorityBadge } from '@/lib/todos/priority'
 import { Button } from '@/components/ui/button'
 import { DISPLAY_LOCALE, relativeFromNow } from '@/lib/ui/date'
 import { cn } from '@/lib/utils'
@@ -29,20 +30,6 @@ interface TodoRowProps {
   now: number
 }
 
-const PRIORITY_LABEL: Record<number, string> = {
-  0: 'None',
-  1: 'Low',
-  2: 'Med',
-  3: 'High',
-}
-
-const PRIORITY_VARIANT = {
-  0: 'outline',
-  1: 'secondary',
-  2: 'default',
-  3: 'destructive',
-} as const
-
 /**
  * Single row rendering of a todo. Checkbox flips status via /api/todos/[id]
  * with `{toggle: true}`; the pencil opens an edit dialog (loaded on open);
@@ -55,6 +42,7 @@ export function TodoRow({ todo, applicationLabel, now }: TodoRowProps) {
   const [editOpen, setEditOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const isDone = todo.status === 'done'
+  const priority = priorityBadge(todo.priority)
   const overdue =
     todo.dueAt !== null && !isDone && new Date(todo.dueAt).getTime() < now
 
@@ -99,7 +87,7 @@ export function TodoRow({ todo, applicationLabel, now }: TodoRowProps) {
   }
 
   return (
-    <li className="grid grid-cols-[auto_1fr_auto] items-start gap-3 rounded-md border bg-background px-3 py-2 text-sm shadow-sm">
+    <li className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 rounded-md border bg-background px-3 py-2 text-sm shadow-sm">
       <label
         className="mt-1 inline-flex cursor-pointer items-center"
         aria-label={isDone ? 'Mark as open' : 'Mark as done'}
@@ -139,12 +127,9 @@ export function TodoRow({ todo, applicationLabel, now }: TodoRowProps) {
           </div>
         ) : null}
         <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-          {todo.priority > 0 ? (
-            <Badge
-              variant={PRIORITY_VARIANT[todo.priority as 0 | 1 | 2 | 3] ?? 'outline'}
-              className="text-[10px]"
-            >
-              {PRIORITY_LABEL[todo.priority] ?? PRIORITY_LABEL[0]}
+          {priority ? (
+            <Badge variant={priority.variant} className="text-[10px]">
+              {priority.label}
             </Badge>
           ) : null}
           {todo.status === 'in_progress' || todo.status === 'waiting' ? (

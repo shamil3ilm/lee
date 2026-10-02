@@ -91,7 +91,7 @@ export function DriveStorageCard(props: DriveStorageCardProps) {
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <HardDrive className="size-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-semibold">Google Drive storage</CardTitle>
+          <CardTitle>Google Drive storage</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

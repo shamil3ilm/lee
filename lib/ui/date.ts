@@ -16,6 +16,7 @@ export function relativeFromNow(date: Date | string): string {
   const sign = diffMs >= 0 ? 1 : -1
 
   const minutes = Math.round(abs / (60 * 1000))
+  if (minutes < 1) return 'just now'
   if (minutes < 60) {
     return sign > 0 ? `in ${minutes}m` : `${minutes}m ago`
   }
@@ -34,6 +35,18 @@ export function relativeFromNow(date: Date | string): string {
 export function shortDate(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date
   return d.toLocaleDateString(DISPLAY_LOCALE, { month: 'short', day: 'numeric' })
+}
+
+/**
+ * A calendar day stored as `YYYY-MM-DD` (expense dates, CSV rows) in the app's
+ * "Sep 21" style. Formatted in UTC so the day never shifts with the viewer's
+ * timezone. Anything that isn't a valid day is returned unchanged.
+ */
+export function shortDay(isoDay: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDay)) return isoDay
+  const d = new Date(`${isoDay}T00:00:00Z`)
+  if (Number.isNaN(d.getTime())) return isoDay
+  return d.toLocaleDateString(DISPLAY_LOCALE, { month: 'short', day: 'numeric', timeZone: 'UTC' })
 }
 
 export function shortDateTime(date: Date | string): string {

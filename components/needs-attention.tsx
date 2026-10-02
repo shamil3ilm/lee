@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   Bell,
+  Briefcase,
   CheckCircle2,
   CheckSquare,
   Clock,
@@ -12,6 +13,9 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { focusRing } from '@/components/ui/focus-ring'
+import { cn } from '@/lib/utils'
+import { priorityBadge } from '@/lib/todos/priority'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DISPLAY_LOCALE, relativeFromNow, shortDate } from '@/lib/ui/date'
@@ -66,6 +70,10 @@ interface NeedsAttentionProps {
   now: number
 }
 
+/** Every row: a 16px icon column, the text, then trailing meta, so titles line up. */
+const ROW = 'grid grid-cols-[1rem_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-2 py-2 text-sm'
+const ROW_LINK = cn('transition-colors hover:bg-accent/60', focusRing)
+
 export function NeedsAttention({
   items,
   followups = [],
@@ -80,7 +88,7 @@ export function NeedsAttention({
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
         <div className="flex items-center gap-2">
           <Bell className="size-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-semibold">Needs attention</CardTitle>
+          <CardTitle>Needs attention</CardTitle>
         </div>
         <Badge variant="secondary">{totalCount}</Badge>
       </CardHeader>
@@ -93,13 +101,14 @@ export function NeedsAttention({
               <li key={`att-${it.id}`}>
                 <Link
                   href={`/applications/${it.id}`}
-                  className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors hover:bg-accent/60 sm:grid-cols-[1fr_120px_auto] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className={cn(ROW, 'sm:grid-cols-[1rem_minmax(0,1fr)_8rem_auto]', ROW_LINK)}
                 >
+                  <Briefcase className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                   <div className="min-w-0">
                     <div className="truncate font-medium">{it.companyName ?? 'Unknown'}</div>
                     <div className="truncate text-xs text-muted-foreground">{it.title}</div>
                   </div>
-                  <div className="hidden text-xs text-muted-foreground sm:block">
+                  <div className="hidden whitespace-nowrap text-right text-xs text-muted-foreground sm:block">
                     {it.nextActionAt ? (
                       <>
                         <span className="font-medium text-foreground">
@@ -171,8 +180,8 @@ function FollowupRow({ nudge }: { nudge: FollowupNudge }): React.ReactElement {
 
   return (
     <li>
-      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-md px-2 py-2 text-sm hover:bg-accent/40">
-        <Clock className="size-4 shrink-0 text-stage-interview" />
+      <div className={cn(ROW, 'hover:bg-accent/40')}>
+        <Clock className="size-4 shrink-0 text-stage-interview" aria-hidden="true" />
         <Link
           href={`/applications/${nudge.applicationId}?tab=followup`}
           className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -210,13 +219,15 @@ function TodoNudgeRow({
 }): React.ReactElement {
   const overdue = todo.dueAt !== null && new Date(todo.dueAt).getTime() < now
   const href = todo.applicationId ? `/applications/${todo.applicationId}` : '/todos'
+  // Only Med and High earn a badge here; Low would be noise on the dashboard.
+  const priority = todo.priority >= 2 ? priorityBadge(todo.priority) : null
   return (
     <li>
       <Link
         href={href}
-        className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className={cn(ROW, ROW_LINK)}
       >
-        <CheckSquare className="size-4 shrink-0 text-success" />
+        <CheckSquare className="size-4 shrink-0 text-success" aria-hidden="true" />
         <div className="min-w-0">
           <div className="truncate font-medium">{todo.title}</div>
           <div className="truncate text-xs text-muted-foreground">
@@ -233,11 +244,7 @@ function TodoNudgeRow({
             )}
           </div>
         </div>
-        {todo.priority >= 2 ? (
-          <Badge variant={todo.priority === 3 ? 'destructive' : 'default'}>
-            {todo.priority === 3 ? 'High' : 'Med'}
-          </Badge>
-        ) : null}
+        {priority ? <Badge variant={priority.variant}>{priority.label}</Badge> : null}
       </Link>
     </li>
   )

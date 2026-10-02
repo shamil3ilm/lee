@@ -6,6 +6,8 @@ import * as budgetsQ from '@/lib/db/queries/expenseBudgets'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { EmptyState } from '@/components/empty-state'
 import { ExpenseForm } from '@/components/expense-form'
 import { ExpenseRow } from '@/components/expense-row'
 import { ExpenseCategoryCard } from '@/components/expense-category-card'
@@ -99,7 +101,7 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             Top categories this month
           </h2>
-          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+          <div className="grid gap-3 @lg/main:grid-cols-2 @4xl/main:grid-cols-3">
             {topCategories.map((c) => {
               const budget = budgetByCategory.get(c.category)
               return (
@@ -122,33 +124,36 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
           Recent transactions
         </h2>
         {monthExpenses.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center gap-2 py-12 text-center text-sm text-muted-foreground">
-              <Wallet className="size-6" />
-              <p className="font-medium text-foreground">No expenses this month.</p>
-              <p>Log an expense above or import a CSV to backfill.</p>
-            </CardContent>
-          </Card>
+          <EmptyState
+            icon={Wallet}
+            title="No expenses this month."
+            description="Log an expense above, or import a CSV to backfill earlier months."
+            action={
+              <Button asChild variant="outline" size="sm">
+                <Link href="/expenses/import">Import CSV</Link>
+              </Button>
+            }
+          />
         ) : (
-          <Card>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    <th className="px-3 py-2">Date</th>
-                    <th className="px-3 py-2">Category</th>
-                    <th className="px-3 py-2">Vendor</th>
-                    <th className="px-3 py-2 text-right">Amount</th>
-                    <th className="px-3 py-2"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {monthExpenses.map((e) => (
-                    <ExpenseRow key={e.id} expense={e} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <Card className="overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Date</TableHead>
+                  <TableHead className="hidden lg:table-cell">Category</TableHead>
+                  <TableHead>Vendor</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {monthExpenses.map((e) => (
+                  <ExpenseRow key={e.id} expense={e} />
+                ))}
+              </TableBody>
+            </Table>
           </Card>
         )}
       </div>

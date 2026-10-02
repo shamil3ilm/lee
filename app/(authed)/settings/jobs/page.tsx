@@ -37,7 +37,7 @@ export default async function BackgroundJobsPage({ searchParams }: BackgroundJob
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
-          <CardTitle className="text-base">Status</CardTitle>
+          <CardTitle>Status</CardTitle>
           <RunJobsNowButton />
         </CardHeader>
         <CardContent className="space-y-4">
@@ -64,7 +64,7 @@ export default async function BackgroundJobsPage({ searchParams }: BackgroundJob
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
-          <CardTitle className="text-base">Last runs</CardTitle>
+          <CardTitle>Last runs</CardTitle>
           <Link href="/settings/logs?category=job" className="text-sm text-muted-foreground underline-offset-2 hover:underline">
             Job logs
           </Link>
@@ -81,7 +81,7 @@ export default async function BackgroundJobsPage({ searchParams }: BackgroundJob
       {history ? (
         <Card id="run-history">
           <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
-            <CardTitle className="text-base">Run history: {jobLabel(history)}</CardTitle>
+            <CardTitle>Run history: {jobLabel(history)}</CardTitle>
             <Link href="/settings/jobs" scroll={false} className="text-sm text-muted-foreground underline-offset-2 hover:underline">
               Close
             </Link>
@@ -94,7 +94,7 @@ export default async function BackgroundJobsPage({ searchParams }: BackgroundJob
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Recent failures</CardTitle>
+          <CardTitle>Recent failures</CardTitle>
         </CardHeader>
         <CardContent>
           {overview.failures.length === 0 ? (

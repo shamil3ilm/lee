@@ -37,8 +37,9 @@ export function BoardGrid({
     <section
       aria-label={label}
       data-board={id}
-      // Mobile: horizontal snap scroll, one column ≈ 85% of the screen.
-      // lg+: columns share the width and scroll only when they can't fit.
+      // Mobile: horizontal snap scroll, one column ≈ 85% of the board's width.
+      // lg+: columns share the width between a common min and max (so every
+      // board has the same column proportions) and scroll when they can't fit.
       // `relative` makes this the containing block for sr-only text, so it is
       // clipped by the scroller instead of widening the page.
       className="relative -mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto lg:gap-2 px-1 pb-2 lg:snap-none"
@@ -121,8 +122,8 @@ export function BoardColumnFrame<C extends string>({
       aria-labelledby={headingId}
       data-board-column={def.id}
       className={cn(
-        'flex w-[85vw] shrink-0 snap-start flex-col rounded-lg border bg-muted/40 transition-colors',
-        'sm:w-72 lg:w-auto lg:min-w-[9.5rem] lg:flex-1 lg:shrink',
+        'flex w-[min(18rem,85cqw)] shrink-0 snap-start flex-col rounded-lg border bg-muted/40 transition-colors',
+        'lg:w-auto lg:min-w-56 lg:max-w-80 lg:flex-1 lg:basis-0',
         isOver && 'border-ring bg-accent/70',
       )}
     >

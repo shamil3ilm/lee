@@ -68,7 +68,7 @@ export function NotificationsPanel({
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <Mail className="size-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-semibold">Weekly digest</CardTitle>
+          <CardTitle>Weekly digest</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

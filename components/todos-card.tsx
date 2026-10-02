@@ -36,7 +36,7 @@ export function TodosCard({ applicationId, todos, now }: TodosCardProps) {
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
         <div className="flex items-center gap-2">
           <CheckSquare className="size-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-semibold">Todos</CardTitle>
+          <CardTitle>Todos</CardTitle>
           <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] text-secondary-foreground">
             {openCount} open
           </span>

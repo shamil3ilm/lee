@@ -6,7 +6,7 @@ import { Loader2, Plus, Sparkles } from 'lucide-react'
 import { addExpense, updateExpense } from '@/app/(authed)/expenses/actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormField } from '@/components/ui/form-field'
 import {
   Select,
   SelectContent,
@@ -139,9 +139,8 @@ export function ExpenseForm({
 
   return (
     <form id="expense-form" action={onSubmit} className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-4">
-        <div className="space-y-1.5">
-          <Label htmlFor="amount">Amount</Label>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <FormField htmlFor="amount" label="Amount">
           <Input
             id="amount"
             name="amount"
@@ -152,12 +151,11 @@ export function ExpenseForm({
             autoComplete="off"
             required
           />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="category">Category</Label>
+        </FormField>
+        <FormField htmlFor="category" label="Category">
           <div className="flex items-stretch gap-1.5">
             <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger id="category" className="flex-1">
+              <SelectTrigger id="category" className="min-w-0 flex-1 capitalize">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -187,9 +185,8 @@ export function ExpenseForm({
               )}
             </Button>
           </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="vendor">Vendor</Label>
+        </FormField>
+        <FormField htmlFor="vendor" label="Vendor">
           <Input
             id="vendor"
             name="vendor"
@@ -198,9 +195,8 @@ export function ExpenseForm({
             onChange={(e) => setVendor(e.currentTarget.value)}
             autoComplete="off"
           />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="date">Date</Label>
+        </FormField>
+        <FormField htmlFor="date" label="Date">
           <Input
             id="date"
             name="date"
@@ -208,12 +204,8 @@ export function ExpenseForm({
             defaultValue={initial?.date ?? todayIso()}
             required
           />
-        </div>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="subcategory">Subcategory</Label>
+        </FormField>
+        <FormField htmlFor="subcategory" label="Subcategory">
           <Input
             id="subcategory"
             name="subcategory"
@@ -221,9 +213,8 @@ export function ExpenseForm({
             defaultValue={initial?.subcategory ?? ''}
             autoComplete="off"
           />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="currency">Currency</Label>
+        </FormField>
+        <FormField htmlFor="currency" label="Currency">
           <Input
             id="currency"
             name="currency"
@@ -231,9 +222,8 @@ export function ExpenseForm({
             maxLength={6}
             autoComplete="off"
           />
-        </div>
-        <div className="space-y-1.5 sm:col-span-1">
-          <Label htmlFor="description">Description</Label>
+        </FormField>
+        <FormField htmlFor="description" label="Description" className="sm:col-span-2">
           <div className="flex items-stretch gap-1.5">
             <Input
               id="description"
@@ -249,7 +239,7 @@ export function ExpenseForm({
               }}
             />
           </div>
-        </div>
+        </FormField>
       </div>
 
       <div className="flex justify-end">
