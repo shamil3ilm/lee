@@ -1,6 +1,6 @@
 import { buildParseJobPrompt, PARSE_JOB_PROMPT_VERSION } from './prompts/parse-job'
 import { buildParseProfilePrompt, PARSE_PROFILE_PROMPT_VERSION } from './prompts/parse-profile'
-import { buildScoreJobPrompt, SCORE_JOB_PROMPT_VERSION } from './prompts/score-job'
+import { buildScoreJobPrompt, SCORE_JOB_PROMPT_VERSION, type ScoreJobContext } from './prompts/score-job'
 import { buildScoreCompanyPrompt, SCORE_COMPANY_PROMPT_VERSION } from './prompts/score-company'
 import { buildTailorCVPrompt, TAILOR_CV_PROMPT_VERSION } from './prompts/tailor-cv'
 import { buildCoverLetterPrompt, COVER_LETTER_PROMPT_VERSION } from './prompts/cover-letter'
@@ -28,6 +28,14 @@ import {
   GENERATE_LATEX_CV_PROMPT_VERSION,
 } from './prompts/generate-latex-cv'
 import { hashPrompt } from './prompts/hash'
+import { withSharedLinks, type SharedLink } from './prompts/shared-links'
+import {
+  buildSuggestRolesPrompt,
+  SUGGEST_ROLES_PROMPT_VERSION,
+  suggestRolesResultSchema,
+  type SuggestRolesInput,
+  type SuggestRolesResult,
+} from './prompts/suggest-roles'
 import {
   buildCvRequirementFitPrompt,
   CV_REQUIREMENT_FIT_PROMPT_VERSION,
@@ -242,8 +250,9 @@ export class GroqProvider implements AIProvider {
     job: NormalizedJob,
     profile: UserProfile,
     meta: CallMeta = {},
+    context?: ScoreJobContext,
   ): Promise<JobMatchResult> {
-    const raw = await this.generate(buildScoreJobPrompt(job, profile), {
+    const raw = await this.generate(buildScoreJobPrompt(job, profile, context), {
       ...meta,
       kind: 'score_job',
       promptVersion: SCORE_JOB_PROMPT_VERSION,
@@ -278,8 +287,9 @@ export class GroqProvider implements AIProvider {
   async draftCoverLetter(input: {
     master: MasterCV
     application: ApplicationWithJob
+    links?: SharedLink[]
   }): Promise<CoverLetter> {
-    const raw = await this.generate(buildCoverLetterPrompt(input), {
+    const raw = await this.generate(withSharedLinks(buildCoverLetterPrompt(input), input.links), {
       kind: 'cover_letter',
       promptVersion: COVER_LETTER_PROMPT_VERSION,
     })
@@ -310,8 +320,9 @@ export class GroqProvider implements AIProvider {
     kind: OutreachKind
     tone: OutreachTone
     daysSince?: number
+    links?: SharedLink[]
   }): Promise<OutreachDraft> {
-    const prompt = buildOutreachPromptGroq(input)
+    const prompt = withSharedLinks(buildOutreachPromptGroq(input), input.links)
     const raw = await this.generate(prompt, {
       kind: `outreach_${input.kind}`,
       promptVersion: outreachPromptVersionGroq(input.kind),
@@ -401,6 +412,15 @@ export class GroqProvider implements AIProvider {
       promptVersion: REPUTATION_SUMMARY_PROMPT_VERSION,
     })
     return reputationSummaryResultSchema.parse(JSON.parse(raw))
+  }
+
+  async suggestRoles(input: SuggestRolesInput, meta: CallMeta = {}): Promise<SuggestRolesResult> {
+    const raw = await this.generate(buildSuggestRolesPrompt(input), {
+      ...meta,
+      kind: 'suggest_roles',
+      promptVersion: SUGGEST_ROLES_PROMPT_VERSION,
+    })
+    return suggestRolesResultSchema.parse(JSON.parse(raw))
   }
 }
 

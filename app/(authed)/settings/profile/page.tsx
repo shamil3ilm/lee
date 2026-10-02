@@ -3,13 +3,21 @@ import { getProfile } from '@/lib/profile/service'
 import { PageHeader } from '@/components/page-header'
 import { ProfileForm } from '@/components/profile-form'
 import { ProfileImport } from '@/components/profile-import'
+import { SearchPrefsForm } from '@/components/search-prefs/search-prefs-form'
+import { RoleSuggestions } from '@/components/search-prefs/role-suggestions'
+import { loadRoleSuggestions } from '@/lib/discovery/relevance/service'
+import { searchPrefsFormValues } from '@/lib/discovery/relevance/view'
 import { APP_NAME } from '@/lib/brand'
+import { ProfileLinksCard } from '@/components/profile/profile-links-card'
+import { UrlImportCard } from '@/components/profile/url-import-card'
+import { readProfileLinks } from '@/lib/profile/links'
 
 export const dynamic = 'force-dynamic'
 
 export default async function ProfileSettingsPage() {
   const userId = await requireUserId()
   const profile = await getProfile(userId)
+  const suggestions = await loadRoleSuggestions(userId, profile)
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <PageHeader
@@ -17,6 +25,10 @@ export default async function ProfileSettingsPage() {
         description={`What ${APP_NAME} knows about you — used to tailor matching, discovery, and CV generation.`}
       />
       <ProfileImport />
+      <UrlImportCard />
+      <SearchPrefsForm values={searchPrefsFormValues(profile)} />
+      <RoleSuggestions result={suggestions} />
+      <ProfileLinksCard initial={readProfileLinks(profile?.links)} />
       <ProfileForm profile={profile} />
     </div>
   )

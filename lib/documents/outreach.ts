@@ -15,6 +15,7 @@ import {
 } from '@/lib/staleness/snapshot'
 import type { StateSnapshot } from '@/lib/staleness/types'
 import type { AIProvider } from '@/lib/ai/types'
+import type { SharedLink } from '@/lib/ai/prompts/shared-links'
 import type { Document, DocumentKind } from '@/lib/db/queries/documents'
 
 const KIND_LABELS: Record<OutreachKind, string> = {
@@ -64,6 +65,8 @@ export async function generateOutreachDraft(input: {
   tone: OutreachTone
   ai: AIProvider
   daysSince?: number
+  /** Profile links the user confirmed for this draft. */
+  links?: SharedLink[]
 }): Promise<Document> {
   const master = await getMasterCV(input.userId)
   if (!master) throw new MasterCVNotFoundError()
@@ -122,6 +125,7 @@ export async function generateOutreachDraft(input: {
     kind: input.kind,
     tone: input.tone,
     daysSince,
+    links: input.links,
   })
   // The prompt asks the model to echo daysSince back on the draft; some models
   // will drop it. Server-side truth wins so the UI can group by day reliably.

@@ -1,0 +1,22 @@
+{
+  "name": "GCC role offering a visa, pay shown in SAR with the AED equivalent",
+  "inputs": {
+    "profile": {
+      "discoveryPrefs": {
+        "basedIn": "IN",
+        "sponsorshipFor": ["AE", "SA", "QA", "KW", "BH", "OM"],
+        "payFloors": [{ "scope": "GCC", "amount": 8000, "currency": "AED", "period": "month" }]
+      }
+    },
+    "job": {
+      "title": "Backend Developer",
+      "location": "Jeddah",
+      "descriptionMd": "Salary SAR 12,000 per month. Employment visa provided."
+    }
+  },
+  "expect": {
+    "pass": true,
+    "boosts": ["visa / relocation offered"],
+    "infos": ["pay: SAR 12,000/mo (≈ AED 11,752/mo)"]
+  }
+}

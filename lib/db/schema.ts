@@ -328,6 +328,30 @@ export const userProfile = pgTable('user_profile', {
   industries: text('industries').array().notNull().default([]),
   roleTypes: text('role_types').array().notNull().default([]),
   seniority: text('seniority'),
+  // Discovery relevance — target seniority levels (lib/discovery/relevance/
+  // seniority.ts ids). `seniority` above stays the user's own free-text level.
+  seniorityLevels: text('seniority_levels').array().notNull().default([]),
+  // 'worldwide' (any remote role open to the user's location) · 'regions'
+  // (remote only when tied to a selected region) · 'none'.
+  remoteScope: text('remote_scope').notNull().default('worldwide'),
+  // Set when the user saves search preferences; null → the gate filters
+  // nothing (the default location seeds alone never activate it).
+  searchPrefsSavedAt: timestamp('search_prefs_saved_at', { withTimezone: true }),
+  // Per-rule hard/soft modes, work authorisation, pay floors, languages and
+  // notice period — validated by lib/discovery/relevance/discovery-prefs.ts.
+  discoveryPrefs: jsonb('discovery_prefs').notNull().default({}),
+  // Labelled links (portfolio, case studies, GitHub, LinkedIn, résumé page):
+  // [{ id, label, url, kind }] — validated by lib/profile/links.ts.
+  links: jsonb('links').notNull().default([]),
+  // A public résumé/portfolio page imported into the profile, kept as
+  // evidence for role suggestions and scoring like the master CV:
+  // { url, fetchedAt, text, experience[], projects[], metrics[] }.
+  linkedProfile: jsonb('linked_profile'),
+  // Suggested role families the user dismissed (never re-suggested).
+  dismissedRoleSuggestions: text('dismissed_role_suggestions').array().notNull().default([]),
+  // Relevance key (prefs + rules version) every discovery row was last
+  // gated with; differs from the current key → re-evaluation pending.
+  relevanceAppliedKey: text('relevance_applied_key'),
   yearsExperience: integer('years_experience'),
   employmentTypes: text('employment_types').array().notNull().default([]),
   remotePref: text('remote_pref').notNull().default('any'),
@@ -441,6 +465,22 @@ export const discoveries = pgTable(
     scoredByCallId: uuid('scored_by_call_id').references(() => aiCallLogs.id, {
       onDelete: 'set null',
     }),
+    // Relevance gate (lib/discovery/relevance). A posting that fails the
+    // user's search preferences gets status 'filtered' and the reason(s),
+    // e.g. "seniority: Senior · location: US-only".
+    filterReason: text('filter_reason'),
+    // "Show anyway": the user restored a filtered posting; re-evaluation
+    // never filters it again.
+    filterOverride: boolean('filter_override').notNull().default(false),
+    // Prefs + rules key the row was gated with (see relevanceKey()).
+    relevanceKey: text('relevance_key'),
+    // Target-region tags for the Region filter: 'ae' | 'gcc' | 'in' | 'remote'.
+    regions: text('regions').array().notNull().default([]),
+    // Soft rule outcomes shown as chips: { penalties: string[], boosts: string[] }.
+    relevanceNotes: jsonb('relevance_notes').notNull().default({}),
+    // Ranking nudge from soft rules (boosts minus penalties), added to the
+    // inbox sort so "lower priority" rows sink without being hidden.
+    rankAdjust: smallint('rank_adjust').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -450,6 +490,12 @@ export const discoveries = pgTable(
       t.userId,
       t.status,
       t.matchScore,
+    ),
+    // "Recently posted" sort and the default tiebreak within a status tab.
+    userStatusCreatedIx: index('discoveries_user_status_created_idx').on(
+      t.userId,
+      t.status,
+      t.createdAt,
     ),
     // perf — FK index so ON DELETE SET NULL from ai_call_logs retention does
     // not seq-scan discoveries per deleted log row. Partial: most rows are

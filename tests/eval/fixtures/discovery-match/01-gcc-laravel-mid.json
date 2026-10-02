@@ -1,0 +1,18 @@
+{
+  "name": "Mid-level Laravel role in Dubai: kept, region bonus",
+  "inputs": {
+    "job": {
+      "title": "PHP Laravel Developer",
+      "location": "Dubai, United Arab Emirates",
+      "descriptionMd": "Build REST APIs in Laravel and MySQL. 2-4 years of experience."
+    },
+    "aiScore": 78
+  },
+  "expect": {
+    "pass": true,
+    "reasons": [],
+    "regions": ["ae", "gcc"],
+    "score": 83,
+    "promptIncludes": ["\"target_roles\"", "\"target_seniority\"", "\"target_regions\"", "--- MASTER CV DIGEST ---"]
+  }
+}

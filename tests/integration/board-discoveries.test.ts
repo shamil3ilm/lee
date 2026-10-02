@@ -114,7 +114,7 @@ describe('discovery board queries', () => {
       rulesVersion: 'test',
     })
 
-    expect(await discQ.countByStatus(me.id)).toEqual({ new: 2, shortlisted: 1, saved: 0, dismissed: 1 })
+    expect(await discQ.countByStatus(me.id)).toEqual({ new: 2, shortlisted: 1, saved: 0, dismissed: 1, filtered: 0 })
     const firstNew = await discQ.list(me.id, { status: 'new', quarantine: 'exclude', limit: 1 })
     expect(firstNew).toHaveLength(1)
     expect(firstNew[0]!.id).not.toBe(scam.id)

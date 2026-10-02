@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, inArray, isNull, lt, or, sql, type SQL } from 'drizzle-orm'
+import { and, count, desc, eq, gte, inArray, isNotNull, isNull, lt, or, sql, type SQL } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import { discoveries } from '@/lib/db/schema'
@@ -9,10 +9,14 @@ export type Discovery = typeof discoveries.$inferSelect
 export type NewDiscovery = typeof discoveries.$inferInsert
 /**
  * 'new' (inbox) · 'shortlisted' (triaged, worth a closer look) · 'saved'
- * (promoted to an application) · 'dismissed'. Plain text column.
+ * (promoted to an application) · 'dismissed' · 'filtered' (failed the
+ * user's search preferences; see lib/discovery/relevance). Plain text column.
  */
-export type DiscoveryStatus = 'new' | 'shortlisted' | 'saved' | 'dismissed'
-export const DISCOVERY_STATUSES: readonly DiscoveryStatus[] = ['new', 'shortlisted', 'saved', 'dismissed']
+export type DiscoveryStatus = 'new' | 'shortlisted' | 'saved' | 'dismissed' | 'filtered'
+export const DISCOVERY_STATUSES: readonly DiscoveryStatus[] = ['new', 'shortlisted', 'saved', 'dismissed', 'filtered']
+/** Region filter values, stored in `discoveries.regions` by the relevance gate. */
+export type DiscoveryRegion = 'ae' | 'gcc' | 'in' | 'remote'
+export const DISCOVERY_REGIONS: readonly DiscoveryRegion[] = ['ae', 'gcc', 'in', 'remote']
 
 /**
  * `DbClient` is a union of the postgres-js and PGlite drivers, and the union
@@ -61,6 +65,7 @@ export async function upsertBySource(
 export interface SeenDiscovery {
   id: string
   sourceJobId: string
+  status: string
   /** No match score yet (thin profile, scoring cap, AI failure) — re-score. */
   unscored: boolean
 }
@@ -80,6 +85,7 @@ export async function seenBySourceJobIds(
     .select({
       id: discoveries.id,
       sourceJobId: discoveries.sourceJobId,
+      status: discoveries.status,
       unscored: sql<boolean>`${discoveries.matchScore} is null`,
     })
     .from(discoveries)
@@ -91,6 +97,24 @@ export interface NewDiscoveryItem {
   sourceJobId: string
   raw: unknown
   normalized: unknown
+  /** Relevance gate outcome (lib/discovery/relevance); absent → an ungated 'new' row. */
+  gate?: GateColumns
+}
+
+/** Columns the relevance gate writes. */
+export interface GateColumns {
+  status: 'new' | 'filtered'
+  filterReason: string | null
+  relevanceKey: string
+  regions: string[]
+  relevanceNotes: RelevanceNotes
+  rankAdjust: number
+}
+
+export interface RelevanceNotes {
+  penalties?: string[]
+  boosts?: string[]
+  infos?: string[]
 }
 
 /** Rows per INSERT — keeps statements (and their jsonb payloads) bounded. */
@@ -119,6 +143,16 @@ export async function insertManyForSource(
           sourceJobId: it.sourceJobId,
           raw: it.raw as never,
           normalized: it.normalized as never,
+          ...(it.gate
+            ? {
+                status: it.gate.status,
+                filterReason: it.gate.filterReason,
+                relevanceKey: it.gate.relevanceKey,
+                regions: it.gate.regions,
+                relevanceNotes: it.gate.relevanceNotes as never,
+                rankAdjust: it.gate.rankAdjust,
+              }
+            : {}),
         })),
       )
       .onConflictDoNothing({ target: [discoveries.sourceId, discoveries.sourceJobId] })
@@ -130,8 +164,18 @@ export async function insertManyForSource(
 
 export interface ListOpts {
   status?: DiscoveryStatus | 'all'
+  /** Several statuses at once (e.g. the inbox with "Hide filtered" off). Wins over `status`. */
+  statuses?: readonly DiscoveryStatus[]
+  /**
+   * Minimum match score. Unscored rows are included unless `scoredOnly`
+   * (fresh items that have not been scored yet stay visible).
+   */
   minScore?: number
+  /** Only rows with a match score. */
+  scoredOnly?: boolean
   sourceIds?: string[]
+  /** Region tag written by the relevance gate. */
+  region?: DiscoveryRegion
   sort?: 'combined' | 'match' | 'benefits' | 'posted'
   limit?: number
   /** Rows to skip — pairs with `limit` for inbox pagination. */
@@ -168,6 +212,9 @@ export interface DiscoveryListItem {
   remoteType: string | null
   techStack: string[]
   applyUrl: string | null
+  filterReason: string | null
+  filterOverride: boolean
+  relevanceNotes: RelevanceNotes
 }
 
 const n = (key: string) => sql<string | null>`${discoveries.normalized}->>${key}`
@@ -192,27 +239,58 @@ const LIST_COLUMNS = {
   techStack: sql<unknown>`case when jsonb_typeof(${discoveries.normalized}->'techStack') = 'array'
     then ${discoveries.normalized}->'techStack' else '[]'::jsonb end`,
   applyUrl: n('applyUrl'),
+  filterReason: discoveries.filterReason,
+  filterOverride: discoveries.filterOverride,
+  relevanceNotes: discoveries.relevanceNotes,
 }
 
 function listOrder(sort: ListOpts['sort']): SQL[] {
   const tiebreak = [desc(discoveries.createdAt), desc(discoveries.id)]
   switch (sort) {
     case 'match':
-      return [desc(discoveries.matchScore), ...tiebreak]
+      // Soft-rule nudges (rank_adjust) sink "lower priority" rows.
+      return [desc(sql`(${discoveries.matchScore} + ${discoveries.rankAdjust})`), ...tiebreak]
     case 'benefits':
       return [desc(discoveries.benefitsScore), ...tiebreak]
     case 'posted':
       return tiebreak
     case 'combined':
     default:
-      // Combined: 0.6 * match + 0.4 * benefits, coalesce nulls to 0.
+      // Combined: 0.6 * match + 0.4 * benefits (nulls as 0) + rank_adjust.
       return [
         desc(
-          sql`(coalesce(${discoveries.matchScore}, 0) * 0.6 + coalesce(${discoveries.benefitsScore}, 0) * 0.4)`,
+          sql`(coalesce(${discoveries.matchScore}, 0) * 0.6 + coalesce(${discoveries.benefitsScore}, 0) * 0.4 + ${discoveries.rankAdjust})`,
         ),
         ...tiebreak,
       ]
   }
+}
+
+/** One WHERE for the list and its count, so "1–50 of 734" always agrees. */
+function listWhere(userId: string, opts: ListOpts): SQL {
+  const conds: SQL[] = [eq(discoveries.userId, userId)]
+  if (opts.statuses && opts.statuses.length > 0) {
+    conds.push(inArray(discoveries.status, [...opts.statuses]))
+  } else if (opts.status && opts.status !== 'all') {
+    conds.push(eq(discoveries.status, opts.status))
+  }
+  if (opts.scoredOnly) conds.push(isNotNull(discoveries.matchScore))
+  if (typeof opts.minScore === 'number' && opts.minScore > 0) {
+    conds.push(
+      opts.scoredOnly
+        ? gte(discoveries.matchScore, opts.minScore)
+        : or(gte(discoveries.matchScore, opts.minScore), isNull(discoveries.matchScore))!,
+    )
+  }
+  if (opts.sourceIds && opts.sourceIds.length > 0) {
+    conds.push(inArray(discoveries.sourceId, opts.sourceIds))
+  }
+  if (opts.region) conds.push(sql`${discoveries.regions} @> array[${opts.region}]::text[]`)
+  if (opts.createdAfter) conds.push(gte(discoveries.createdAt, opts.createdAfter))
+  const quarantine = opts.quarantine ?? 'exclude'
+  if (quarantine === 'exclude') conds.push(discoveryNotQuarantinedSql())
+  if (quarantine === 'only') conds.push(discoveryQuarantinedSql())
+  return and(...conds)!
 }
 
 export async function list(
@@ -220,31 +298,10 @@ export async function list(
   opts: ListOpts = {},
   client: DbClient = db,
 ): Promise<DiscoveryListItem[]> {
-  const conds = [eq(discoveries.userId, userId)]
-  if (opts.status && opts.status !== 'all') {
-    conds.push(eq(discoveries.status, opts.status))
-  }
-  if (typeof opts.minScore === 'number') {
-    // Include rows without a score too (matchScore IS NULL) so users see fresh
-    // items that haven't been scored yet.
-    conds.push(
-      or(
-        gte(discoveries.matchScore, opts.minScore),
-        isNull(discoveries.matchScore),
-      )!,
-    )
-  }
-  if (opts.sourceIds && opts.sourceIds.length > 0) {
-    conds.push(inArray(discoveries.sourceId, opts.sourceIds))
-  }
-  if (opts.createdAfter) conds.push(gte(discoveries.createdAt, opts.createdAfter))
-  const quarantine = opts.quarantine ?? 'exclude'
-  if (quarantine === 'exclude') conds.push(discoveryNotQuarantinedSql())
-  if (quarantine === 'only') conds.push(discoveryQuarantinedSql())
   const base = client
     .select(LIST_COLUMNS)
     .from(discoveries)
-    .where(and(...conds))
+    .where(listWhere(userId, opts))
     .orderBy(...listOrder(opts.sort))
     .$dynamic()
   const limited = opts.limit !== undefined ? base.limit(opts.limit) : base
@@ -252,7 +309,18 @@ export async function list(
   return rows.map((r) => ({
     ...r,
     techStack: Array.isArray(r.techStack) ? (r.techStack as unknown[]).map(String) : [],
+    relevanceNotes: (r.relevanceNotes ?? {}) as RelevanceNotes,
   }))
+}
+
+/** Total rows `list` would return without limit/offset — one count query. */
+export async function countList(
+  userId: string,
+  opts: Omit<ListOpts, 'limit' | 'offset' | 'sort'> = {},
+  client: DbClient = db,
+): Promise<number> {
+  const [row] = await client.select({ c: count() }).from(discoveries).where(listWhere(userId, opts))
+  return Number(row?.c ?? 0)
 }
 
 export async function getById(
@@ -317,7 +385,7 @@ export async function setStatus(
 
 /**
  * Dismiss many discoveries in a single UPDATE. Empty `ids` is a no-op.
- * Returns the number of rows that transitioned.
+ * Inbox (`new`) and filtered-out rows transition; returns how many did.
  */
 export async function dismissByIds(
   userId: string,
@@ -325,17 +393,17 @@ export async function dismissByIds(
   client: DbClient = db,
 ): Promise<number> {
   if (ids.length === 0) return 0
-  const rows = await client
+  const rows = await writer(client)
     .update(discoveries)
     .set({ status: 'dismissed', updatedAt: new Date() })
     .where(
       and(
         eq(discoveries.userId, userId),
         inArray(discoveries.id, ids),
-        eq(discoveries.status, 'new'),
+        inArray(discoveries.status, ['new', 'filtered']),
       ),
     )
-    .returning()
+    .returning({ id: discoveries.id })
   return rows.length
 }
 
@@ -408,18 +476,20 @@ export async function countNew(userId: string, client: DbClient = db): Promise<n
 
 /**
  * Per-status counts for the triage board, excluding Scam Shield quarantine.
- * One grouped scan on (user_id, status).
+ * One grouped scan on (user_id, status); `filters` (region, source, minimum
+ * score, scored only) narrow it the same way they narrow the list.
  */
 export async function countByStatus(
   userId: string,
   client: DbClient = db,
+  filters: Pick<ListOpts, 'region' | 'sourceIds' | 'minScore' | 'scoredOnly'> = {},
 ): Promise<Record<DiscoveryStatus, number>> {
   const rows = await client
     .select({ status: discoveries.status, c: count() })
     .from(discoveries)
-    .where(and(eq(discoveries.userId, userId), discoveryNotQuarantinedSql()))
+    .where(listWhere(userId, { ...filters, quarantine: 'exclude' }))
     .groupBy(discoveries.status)
-  const out: Record<DiscoveryStatus, number> = { new: 0, shortlisted: 0, saved: 0, dismissed: 0 }
+  const out: Record<DiscoveryStatus, number> = { new: 0, shortlisted: 0, saved: 0, dismissed: 0, filtered: 0 }
   for (const r of rows) {
     if ((DISCOVERY_STATUSES as readonly string[]).includes(r.status)) {
       out[r.status as DiscoveryStatus] = Number(r.c)

@@ -8,6 +8,8 @@ import type { AllowListEntry } from '@/lib/db/queries/scamAllowList'
 import type { NetBudget, NetMode } from '@/lib/scam/net-cache'
 import type { DiscoveryItem, NormalizedCompany, NormalizedJob } from './adapters/types'
 import { applyCaps, benefitsScore } from './scoring'
+import { gateColumns, type RelevanceContext } from './relevance/service'
+import type { ScoreJobContext } from '@/lib/ai/prompts/score-job'
 import type { SourcePollStats } from './poll-stats'
 
 /**
@@ -16,9 +18,12 @@ import type { SourcePollStats } from './poll-stats'
  *   1. One query loads which of the fetched ids this source already has
  *      (ids + a scored flag only, never the jsonb payload).
  *   2. Only unseen items are inserted, in bulk.
- *   3. AI scoring covers new items first, then rows an earlier run left
- *      unscored (match_score IS NULL) — at most `scoring.remaining` calls,
- *      and none once the deadline has passed.
+ *   3. The relevance gate (lib/discovery/relevance) marks each new item
+ *      'new' or 'filtered' (with reasons) before any AI call.
+ *   4. AI scoring covers RELEVANT new items first, then relevant rows an
+ *      earlier run left unscored (match_score IS NULL) — at most
+ *      `scoring.remaining` calls, and none once the deadline has passed.
+ *      Filtered rows are never scored, which saves the free AI quota.
  */
 
 export interface ScamCtx {
@@ -41,6 +46,10 @@ export interface IngestArgs {
   profile: UserProfile | null
   scam: ScamCtx
   scoring: ScoringBudget
+  /** Search preferences + key for the gate (applies even when scoring is skipped). */
+  relevance: RelevanceContext
+  /** Master-CV digest and preferences for the scoring prompt. */
+  scoreContext?: ScoreJobContext
   /** Optional tally for the poll's run summary. */
   stats?: SourcePollStats
 }
@@ -73,24 +82,44 @@ interface ToScore<N> {
 }
 
 export async function ingestJobItems(args: IngestArgs, items: readonly DiscoveryItem[]): Promise<number> {
-  const { userId, source, ai, profile, scam, scoring, stats } = args
+  const { userId, source, ai, profile, scam, scoring, relevance, scoreContext, stats } = args
   const unique = uniqueById(items)
   const seen = await discQ.seenBySourceJobIds(
     source.id,
     unique.map((i) => i.sourceItemId),
   )
   const fresh = unique.filter((i) => !seen.has(i.sourceItemId))
-  const inserted = await discQ.insertManyForSource(
-    userId,
-    source.id,
-    fresh.map((i) => ({ sourceJobId: i.sourceItemId, raw: i.raw, normalized: i.normalized })),
-  )
+  const gated = fresh.map((i) => {
+    const job = i.normalized as NormalizedJob
+    return {
+      sourceJobId: i.sourceItemId,
+      raw: i.raw,
+      normalized: i.normalized,
+      gate: gateColumns(
+        {
+          title: job.title,
+          location: job.location,
+          remoteType: job.remoteType,
+          employmentType: job.employmentType,
+          descriptionMd: job.descriptionMd,
+          techStack: job.techStack,
+          salary: job.salary,
+        },
+        relevance,
+      ),
+    }
+  })
+  const relevant = new Set(gated.filter((g) => g.gate.status === 'new').map((g) => g.sourceJobId))
+  const inserted = await discQ.insertManyForSource(userId, source.id, gated)
   tallyIngest(stats, unique.length, inserted.length)
   const bySourceId = new Map(unique.map((i) => [i.sourceItemId, i.normalized as NormalizedJob]))
   const newRows: ToScore<NormalizedJob>[] = inserted.map((r) => ({
     id: r.id,
     normalized: bySourceId.get(r.sourceJobId)!,
   }))
+  const newRelevant = inserted
+    .filter((r) => relevant.has(r.sourceJobId))
+    .map((r) => ({ id: r.id, normalized: bySourceId.get(r.sourceJobId)! }))
 
   await safely('discovery', () =>
     assessNewDiscoveries(
@@ -101,12 +130,14 @@ export async function ingestJobItems(args: IngestArgs, items: readonly Discovery
   )
 
   if (profile) {
+    // Only relevant rows reach the AI: new ones first, then inbox rows an
+    // earlier run left unscored. Filtered and dismissed rows never do.
     const retry: ToScore<NormalizedJob>[] = [...seen.values()]
-      .filter((s) => s.unscored)
+      .filter((s) => s.unscored && (s.status === 'new' || s.status === 'shortlisted'))
       .map((s) => ({ id: s.id, normalized: bySourceId.get(s.sourceJobId)! }))
-    for (const row of [...newRows, ...retry]) {
+    for (const row of [...newRelevant, ...retry]) {
       if (!takeScoringSlot(scoring)) break
-      if ((await scoreJobRow(userId, ai, profile, row)) && stats) stats.scored += 1
+      if ((await scoreJobRow(userId, ai, profile, row, scoreContext)) && stats) stats.scored += 1
     }
   }
   return inserted.length
@@ -117,18 +148,24 @@ async function scoreJobRow(
   ai: AIProvider,
   profile: UserProfile,
   row: ToScore<NormalizedJob>,
+  context?: ScoreJobContext,
 ): Promise<boolean> {
   try {
     // v10.1 — capture the ai_call_logs row id via the `onLogged` callback so
     // we can persist it onto the discovery row for later implicit-signal
     // writeback when the user dismisses or promotes the discovery.
     let capturedCallId: string | null = null
-    const scored = await ai.scoreJob(row.normalized, profile, {
-      userId,
-      onLogged: (id) => {
-        capturedCallId = id
+    const scored = await ai.scoreJob(
+      row.normalized,
+      profile,
+      {
+        userId,
+        onLogged: (id) => {
+          capturedCallId = id
+        },
       },
-    })
+      context,
+    )
     const finalScore = applyCaps(scored, row.normalized, profile)
     const benefitsRaw =
       (row.normalized as unknown as { benefits?: Record<string, unknown> }).benefits ?? {}

@@ -14,6 +14,7 @@ import { getAIProviderForUser } from '@/lib/ai'
 import { AISkippedError } from '@/lib/ai/signal'
 import { AiUsageScope } from '@/lib/ai/usage'
 import { logger } from '@/lib/logger'
+import { parseLinkIds, resolveSharedLinks } from '@/lib/profile/shared-links'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -42,12 +43,14 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 })
     }
     const ai = await getAIProviderForUser(userId)
+    const links = await resolveSharedLinks(userId, parseLinkIds(rawBody))
     const doc = await aiUsage.run(() => generateOutreachDraft({
       userId,
       applicationId,
       kind: parsed.data.kind,
       tone: parsed.data.tone,
       ai,
+      links,
     }))
     return NextResponse.json({
       documentId: doc.id,

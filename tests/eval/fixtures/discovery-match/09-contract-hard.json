@@ -1,0 +1,16 @@
+{
+  "name": "Contract-only role: filtered by the default hard rule",
+  "inputs": {
+    "job": {
+      "title": "Freelance Laravel Developer",
+      "location": "Remote - India",
+      "remoteType": "remote",
+      "descriptionMd": "Paid per hour."
+    }
+  },
+  "expect": {
+    "pass": false,
+    "reasons": ["contract / freelance (freelance)"],
+    "regions": ["in", "remote"]
+  }
+}

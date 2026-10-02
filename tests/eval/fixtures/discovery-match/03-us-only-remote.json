@@ -1,0 +1,17 @@
+{
+  "name": "Remote role restricted to the US",
+  "inputs": {
+    "job": {
+      "title": "Backend Engineer",
+      "location": "Remote",
+      "remoteType": "remote",
+      "descriptionMd": "Fully remote. You must be authorized to work in the United States."
+    },
+    "aiScore": 75
+  },
+  "expect": {
+    "pass": false,
+    "reasons": ["location: US-only"],
+    "score": 30
+  }
+}
