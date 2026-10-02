@@ -12,6 +12,7 @@ import {
   moveFilesToDriveAction,
   setDriveStorageEnabledAction,
 } from '@/app/(authed)/settings/integrations/actions'
+import { LastActivity, type LastActivityItem } from '@/components/settings/last-activity'
 
 export interface DriveStorageCardProps {
   hasGoogleAccount: boolean
@@ -23,6 +24,8 @@ export interface DriveStorageCardProps {
   driveBytes: number
   /** Assets still held in Postgres (what "Move existing files" moves). */
   pendingFiles: number
+  /** Latest persisted Drive event (Settings › Logs). */
+  lastActivity?: LastActivityItem | null
 }
 
 function mb(bytes: number): string {
@@ -163,6 +166,7 @@ export function DriveStorageCard(props: DriveStorageCardProps) {
             <DriveConnectButton returnTo="/settings/integrations" />
           </div>
         )}
+        <LastActivity item={props.lastActivity ?? null} logsHref="/settings/logs?category=drive" testId="drive-last-activity" />
       </CardContent>
     </Card>
   )

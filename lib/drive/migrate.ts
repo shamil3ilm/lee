@@ -75,7 +75,9 @@ export async function migrateAssetsToDrive(userId: string, opts: MigrateOptions 
       failed++
     }
   }
-  return { migrated, failed, remaining: await assetsQ.countPostgresHeld(userId), error }
+  const remaining = await assetsQ.countPostgresHeld(userId)
+  logger.info('drive_migrate_done', { userId, migrated, failed, remaining, code: error?.code })
+  return { migrated, failed, remaining, error }
 }
 
 async function migrateOne(
