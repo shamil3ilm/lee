@@ -340,6 +340,13 @@ export const userProfile = pgTable('user_profile', {
   // Per-rule hard/soft modes, work authorisation, pay floors, languages and
   // notice period — validated by lib/discovery/relevance/discovery-prefs.ts.
   discoveryPrefs: jsonb('discovery_prefs').notNull().default({}),
+  // Labelled links (portfolio, case studies, GitHub, LinkedIn, résumé page):
+  // [{ id, label, url, kind }] — validated by lib/profile/links.ts.
+  links: jsonb('links').notNull().default([]),
+  // A public résumé/portfolio page imported into the profile, kept as
+  // evidence for role suggestions and scoring like the master CV:
+  // { url, fetchedAt, text, experience[], projects[], metrics[] }.
+  linkedProfile: jsonb('linked_profile'),
   // Suggested role families the user dismissed (never re-suggested).
   dismissedRoleSuggestions: text('dismissed_role_suggestions').array().notNull().default([]),
   // Relevance key (prefs + rules version) every discovery row was last

@@ -30,6 +30,7 @@ import {
   GENERATE_LATEX_CV_PROMPT_VERSION,
 } from './prompts/generate-latex-cv'
 import { hashPrompt } from './prompts/hash'
+import { withSharedLinks, type SharedLink } from './prompts/shared-links'
 import {
   buildSuggestRolesPrompt,
   SUGGEST_ROLES_PROMPT_VERSION,
@@ -263,8 +264,9 @@ export class GeminiProvider implements AIProvider {
   async draftCoverLetter(input: {
     master: MasterCV
     application: ApplicationWithJob
+    links?: SharedLink[]
   }): Promise<CoverLetter> {
-    const raw = await this.generate(buildCoverLetterPrompt(input), {
+    const raw = await this.generate(withSharedLinks(buildCoverLetterPrompt(input), input.links), {
       kind: 'cover_letter',
       promptVersion: COVER_LETTER_PROMPT_VERSION,
     })
@@ -295,8 +297,9 @@ export class GeminiProvider implements AIProvider {
     kind: OutreachKind
     tone: OutreachTone
     daysSince?: number
+    links?: SharedLink[]
   }): Promise<OutreachDraft> {
-    const prompt = buildOutreachPrompt(input)
+    const prompt = withSharedLinks(buildOutreachPrompt(input), input.links)
     const raw = await this.generate(prompt, {
       kind: `outreach_${input.kind}`,
       promptVersion: outreachPromptVersion(input.kind),
