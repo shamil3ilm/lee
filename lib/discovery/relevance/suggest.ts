@@ -2,6 +2,7 @@ import type { MasterCV } from '@/lib/documents/types'
 import type { UserProfile } from '@/lib/db/queries/profile'
 import { resolveRoleFamily, roleFamilyLabel, SKILL_GROUPS, ROLE_FAMILIES } from './roles'
 import { normalizeForMatch, findTerms } from './text'
+import { readLinkedProfile } from '@/lib/profile/url-import'
 
 /**
  * "What else suits me": deterministic role suggestions from the user's
@@ -44,7 +45,8 @@ export type SuggestionProfile = Pick<
   | 'yearsExperience'
   | 'stackWeights'
   | 'dismissedRoleSuggestions'
->
+> &
+  Partial<Pick<UserProfile, 'linkedProfile'>>
 
 export interface SuggestionInput {
   profile: SuggestionProfile | null
@@ -76,6 +78,7 @@ function buildCorpus({ profile, masterCv }: SuggestionInput): Corpus {
     ? Object.keys(profile.stackWeights as Record<string, unknown>)
     : []
   const cv = masterCv
+  const page = readLinkedProfile(profile?.linkedProfile)
   return {
     profileList: joinNorm([...(profile?.skills ?? []), ...weights]),
     cvList: joinNorm([
@@ -84,13 +87,18 @@ function buildCorpus({ profile, masterCv }: SuggestionInput): Corpus {
       ...(cv?.experience ?? []).flatMap((e) => e.tech ?? []),
       ...(cv?.projects ?? []).flatMap((p) => p.tech ?? []),
     ]),
-    profileText: joinNorm([profile?.headline, profile?.summaryMd, profile?.careerNarrativeMd]),
+    // An imported résumé/portfolio page (lib/profile/url-import.ts) counts
+    // like the profile's own text and the CV's bullets.
+    profileText: joinNorm([profile?.headline, profile?.summaryMd, profile?.careerNarrativeMd, page?.text]),
     cvText: joinNorm([
       cv?.basics.headline,
       cv?.summary,
       ...(cv?.experience ?? []).flatMap((e) => [e.role, ...e.bullets]),
       ...(cv?.projects ?? []).flatMap((p) => [p.name, p.description, ...(p.highlights ?? [])]),
       ...(cv?.certifications ?? []).map((c) => c.name),
+      ...(page?.experience ?? []),
+      ...(page?.projects ?? []),
+      ...(page?.metrics ?? []),
     ]),
     industries: joinNorm(profile?.industries ?? []),
   }
@@ -174,6 +182,11 @@ const RULES: readonly Rule[] = [
   {
     id: 'backend', family: 'backend', label: 'Backend', priority: 'strong',
     test: (c) => { const e = evidence(c, G.backend.filter((t) => !PHP_TERMS.includes(t))); return count(evidence(c, PHP_TERMS)) === 0 && count(e) >= 2 ? { e } : null },
+  },
+  {
+    // Multi-tenant SaaS engineering (tenancy, idempotency, audit trails, RLS).
+    id: 'platform_backend', family: 'backend', label: 'Platform / Backend Engineer (multi-tenant SaaS)', priority: 'possible',
+    test: (c) => { const e = evidence(c, G.platform); return count(e) >= 2 ? { e } : null },
   },
   {
     id: 'fullstack_laravel', family: 'fullstack', label: 'Full-stack (Laravel + React/Next.js/Angular)', priority: 'strong',
@@ -278,7 +291,12 @@ export function suggestRoles(input: SuggestionInput): SuggestionResult {
     })
   }
   suggestions.sort((a, b) => PRIORITY_ORDER.indexOf(a.priority) - PRIORITY_ORDER.indexOf(b.priority))
-  const signals = (profile?.skills?.length ?? 0) + (masterCv?.experience.length ?? 0) + (masterCv?.skills.primary.length ?? 0)
+  const page = readLinkedProfile(profile?.linkedProfile)
+  const signals =
+    (profile?.skills?.length ?? 0) +
+    (masterCv?.experience.length ?? 0) +
+    (masterCv?.skills.primary.length ?? 0) +
+    (page?.experience.length ?? 0)
   return {
     suggestions,
     sparse: signals < SPARSE_BELOW,
@@ -296,6 +314,12 @@ export function profileDigest(input: SuggestionInput, maxChars = 3_000): string 
   if (profile?.skills?.length) lines.push(`Profile skills: ${profile.skills.join(', ')}`)
   if (profile?.industries?.length) lines.push(`Industries: ${profile.industries.join(', ')}`)
   if (profile?.summaryMd) lines.push(`Summary: ${profile.summaryMd}`)
+  const page = readLinkedProfile(profile?.linkedProfile)
+  if (page) {
+    for (const e of page.experience.slice(0, 6)) lines.push(`Page experience: ${e}`)
+    for (const p of page.projects.slice(0, 4)) lines.push(`Page project: ${p}`)
+    for (const m of page.metrics.slice(0, 4)) lines.push(`Page result: ${m}`)
+  }
   if (masterCv) {
     if (masterCv.skills.primary.length) lines.push(`CV skills: ${masterCv.skills.primary.join(', ')}`)
     for (const e of masterCv.experience.slice(0, 5)) {

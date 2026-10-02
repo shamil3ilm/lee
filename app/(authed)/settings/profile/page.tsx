@@ -8,6 +8,9 @@ import { RoleSuggestions } from '@/components/search-prefs/role-suggestions'
 import { loadRoleSuggestions } from '@/lib/discovery/relevance/service'
 import { searchPrefsFormValues } from '@/lib/discovery/relevance/view'
 import { APP_NAME } from '@/lib/brand'
+import { ProfileLinksCard } from '@/components/profile/profile-links-card'
+import { UrlImportCard } from '@/components/profile/url-import-card'
+import { readProfileLinks } from '@/lib/profile/links'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,8 +25,10 @@ export default async function ProfileSettingsPage() {
         description={`What ${APP_NAME} knows about you — used to tailor matching, discovery, and CV generation.`}
       />
       <ProfileImport />
+      <UrlImportCard />
       <SearchPrefsForm values={searchPrefsFormValues(profile)} />
       <RoleSuggestions result={suggestions} />
+      <ProfileLinksCard initial={readProfileLinks(profile?.links)} />
       <ProfileForm profile={profile} />
     </div>
   )
