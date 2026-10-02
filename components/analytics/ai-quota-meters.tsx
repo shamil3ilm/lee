@@ -92,7 +92,7 @@ export function AiQuotaMeters({ meters }: AiQuotaMetersProps) {
   }
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 @2xl/main:grid-cols-2">
         {meters.map((m) => {
           const badge = LEVEL_BADGE[m.level]
           return (

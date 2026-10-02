@@ -3,7 +3,7 @@ import { CheckSquare } from 'lucide-react'
 import { requireUserId } from '@/lib/auth/require-session'
 import * as todosQ from '@/lib/db/queries/todos'
 import * as appsQ from '@/lib/db/queries/applications'
-import { PageHeader } from '@/components/page-header'
+import { PageHeader, Toolbar } from '@/components/page-header'
 import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -85,32 +85,17 @@ export default async function TodosPage({ searchParams }: TodosPageProps) {
       <PageHeader
         title="Todos"
         description="Plan the next move: link a todo to any application, contact, or company."
-        actions={
-          board ? (
-            toggle
-          ) : (
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              {toggle}
-              <FilterChip href="/todos" current={!filter && !status} label="All open" />
-              <FilterChip
-                href="/todos?filter=today"
-                current={filter === 'today'}
-                label="Today"
-              />
-              <FilterChip
-                href="/todos?filter=week"
-                current={filter === 'week'}
-                label="This week"
-              />
-              <FilterChip
-                href="/todos?status=done"
-                current={status === 'done'}
-                label="Done"
-              />
-            </div>
-          )
-        }
+        actions={toggle}
       />
+
+      {board ? null : (
+        <Toolbar label="Filter todos" className="-mt-2">
+          <FilterChip href="/todos" current={!filter && !status} label="All open" />
+          <FilterChip href="/todos?filter=today" current={filter === 'today'} label="Today" />
+          <FilterChip href="/todos?filter=week" current={filter === 'week'} label="This week" />
+          <FilterChip href="/todos?status=done" current={status === 'done'} label="Done" />
+        </Toolbar>
+      )}
 
       <Card>
         <CardContent className="pt-6">
@@ -173,7 +158,9 @@ function FilterChip({
 }) {
   return (
     <Button asChild variant={current ? 'default' : 'outline'} size="sm">
-      <Link href={href}>{label}</Link>
+      <Link href={href} aria-current={current ? 'page' : undefined}>
+        {label}
+      </Link>
     </Button>
   )
 }

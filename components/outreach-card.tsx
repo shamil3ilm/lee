@@ -118,6 +118,9 @@ function followupDocsByInterval(docs: Document[]): Record<FollowupInterval, Docu
   return out
 }
 
+/** Four tabs share the card width; compact until the card is 24rem wide. */
+const TAB_TRIGGER = 'min-w-0 gap-1 px-1.5 text-xs @sm:px-3 @sm:text-sm'
+
 export function OutreachCard({
   applicationId,
   outreachDocs,
@@ -501,11 +504,11 @@ export function OutreachCard({
   }
 
   return (
-    <Card>
+    <Card className="@container">
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <MessageSquare className="size-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-semibold">Outreach</CardTitle>
+          <CardTitle>Outreach</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -515,10 +518,10 @@ export function OutreachCard({
           className="w-full"
         >
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="connection">Connection</TabsTrigger>
-            <TabsTrigger value="message">Message</TabsTrigger>
-            <TabsTrigger value="recruiter">Recruiter</TabsTrigger>
-            <TabsTrigger value="followup" className="gap-1">
+            <TabsTrigger value="connection" className={TAB_TRIGGER}>Connection</TabsTrigger>
+            <TabsTrigger value="message" className={TAB_TRIGGER}>Message</TabsTrigger>
+            <TabsTrigger value="recruiter" className={TAB_TRIGGER}>Recruiter</TabsTrigger>
+            <TabsTrigger value="followup" className={TAB_TRIGGER}>
               <Clock className="size-3" />
               Follow-up
             </TabsTrigger>

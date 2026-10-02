@@ -318,7 +318,7 @@ export function LatexEditor({
       <div
         className={cn(
           'grid min-h-0 flex-1 grid-cols-1 overflow-hidden',
-          outlineOpen ? 'md:grid-cols-[13rem_1fr_1fr]' : 'md:grid-cols-2',
+          outlineOpen ? 'md:grid-cols-[13rem_minmax(0,1fr)_minmax(0,1fr)]' : 'md:grid-cols-2',
         )}
       >
         {outlineOpen ? <aside className="hidden min-h-0 border-r md:block">{outlinePanel}</aside> : null}

@@ -45,7 +45,7 @@ export function AiModelSelector({ currentModelId }: AiModelSelectorProps) {
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <Cpu className="size-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-semibold">AI model</CardTitle>
+          <CardTitle>AI model</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">

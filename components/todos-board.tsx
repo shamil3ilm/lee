@@ -8,6 +8,7 @@ import { Briefcase, Pencil, Trash2 } from 'lucide-react'
 import { moveTodo } from '@/app/(authed)/todos/actions'
 import { Board, type BoardColumnDef, type BoardQuickAction } from '@/components/board/board'
 import { Badge } from '@/components/ui/badge'
+import { priorityBadge } from '@/lib/todos/priority'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { groupBy } from '@/lib/board/move'
 import {
@@ -57,12 +58,6 @@ const COLUMNS: readonly BoardColumnDef<TodoBoardStatus>[] = [
   { id: 'done', title: TODO_STATUS_LABELS.done, tone: TODO_STATUS_TONE.done, emptyText: 'Nothing finished yet' },
 ]
 
-const PRIORITY: Record<number, { label: string; variant: 'secondary' | 'warning' | 'danger' } | undefined> = {
-  1: { label: 'Low', variant: 'secondary' },
-  2: { label: 'Med', variant: 'warning' },
-  3: { label: 'High', variant: 'danger' },
-}
-
 interface TodosBoardProps {
   todos: TodoBoardItem[]
   applicationLabels: Record<string, string>
@@ -107,7 +102,7 @@ export function TodosBoard({ todos, applicationLabels, doneTotal, now }: TodosBo
   const renderCard = (t: TodoBoardItem): React.ReactNode => {
     const done = t.status === 'done'
     const overdue = !done && t.dueAt !== null && new Date(t.dueAt).getTime() < now
-    const priority = PRIORITY[t.priority]
+    const priority = priorityBadge(t.priority)
     const appLabel = t.applicationId ? applicationLabels[t.applicationId] : undefined
     return (
       <>

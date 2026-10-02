@@ -6,6 +6,9 @@ import { CATEGORY_LABELS, EVENT_CATEGORIES } from '@/lib/logs/types'
 import { PageHeader } from '@/components/page-header'
 import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
+import { FormActions, FormField } from '@/components/ui/form-field'
+import { Input } from '@/components/ui/input'
+import { NativeSelect } from '@/components/ui/native-select'
 import { EventList } from '@/components/settings/event-list'
 
 export const dynamic = 'force-dynamic'
@@ -22,9 +25,6 @@ const RANGE_LABELS: Record<keyof typeof TIME_RANGES, string> = {
   '30d': 'Last 30 days',
   '60d': 'Last 60 days',
 }
-
-const FIELD =
-  'h-9 rounded-md border border-input bg-card px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
 function hrefFor(filters: EventFilters, page: number): string {
   const qs = new URLSearchParams()
@@ -46,60 +46,64 @@ export default async function LogsPage({ searchParams }: LogsPageProps) {
   const scoped = filters.sourceId || filters.jobId
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4">
+    <div className="mx-auto max-w-4xl space-y-6">
       <PageHeader
         title="Logs"
         description="Background runs, syncs and problems, kept after the server logs expire: info for 14 days, warnings and errors for 60. Secrets are removed and email addresses reduced to their domain."
       />
 
-      <form method="get" action="/settings/logs" className="flex flex-wrap items-end gap-2" role="search" aria-label="Filter logs">
-        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-          Category
-          <select name="category" defaultValue={filters.category ?? ''} className={FIELD}>
+      <form
+        method="get"
+        action="/settings/logs"
+        role="search"
+        aria-label="Filter logs"
+        className="grid gap-3 sm:grid-cols-3 lg:grid-cols-[repeat(3,minmax(0,11rem))_minmax(0,1fr)_auto]"
+      >
+        <FormField htmlFor="logs-category" label="Category">
+          <NativeSelect id="logs-category" name="category" defaultValue={filters.category ?? ''}>
             <option value="">All</option>
             {EVENT_CATEGORIES.map((c) => (
               <option key={c} value={c}>
                 {CATEGORY_LABELS[c]}
               </option>
             ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-          Level
-          <select name="level" defaultValue={filters.level ?? ''} className={FIELD}>
+          </NativeSelect>
+        </FormField>
+        <FormField htmlFor="logs-level" label="Level">
+          <NativeSelect id="logs-level" name="level" defaultValue={filters.level ?? ''}>
             <option value="">All</option>
             <option value="problems">Warnings and errors</option>
             <option value="error">Errors</option>
             <option value="warn">Warnings</option>
             <option value="info">Info</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-          Time
-          <select name="range" defaultValue={filters.range} className={FIELD}>
+          </NativeSelect>
+        </FormField>
+        <FormField htmlFor="logs-range" label="Time">
+          <NativeSelect id="logs-range" name="range" defaultValue={filters.range}>
             {Object.entries(RANGE_LABELS).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
               </option>
             ))}
-          </select>
-        </label>
-        <label className="flex min-w-[10rem] flex-1 flex-col gap-1 text-xs text-muted-foreground">
-          Search
-          <input
+          </NativeSelect>
+        </FormField>
+        <FormField htmlFor="logs-q" label="Search" className="sm:col-span-2 lg:col-span-1">
+          <Input
+            id="logs-q"
             type="search"
             name="q"
             defaultValue={filters.q ?? ''}
             placeholder="Message or event"
             maxLength={100}
-            className={`${FIELD} w-full px-3`}
           />
-        </label>
+        </FormField>
         {filters.sourceId ? <input type="hidden" name="source" value={filters.sourceId} /> : null}
         {filters.jobId ? <input type="hidden" name="job" value={filters.jobId} /> : null}
-        <Button type="submit" size="default">
-          Filter
-        </Button>
+        <FormActions>
+          <Button type="submit" className="w-full sm:w-auto">
+            Filter
+          </Button>
+        </FormActions>
       </form>
 
       <p className="text-xs text-muted-foreground">
@@ -126,7 +130,7 @@ export default async function LogsPage({ searchParams }: LogsPageProps) {
       {rows.length === 0 ? (
         <EmptyState
           icon={ScrollText}
-          title="No events"
+          title="No events match."
           description="Nothing matches these filters. Background runs, syncs and any problems will show up here."
         />
       ) : (
@@ -134,19 +138,19 @@ export default async function LogsPage({ searchParams }: LogsPageProps) {
       )}
 
       {page > 1 || hasNext ? (
-        <nav aria-label="Log pages" className="flex items-center justify-between pt-2">
+        <nav aria-label="Log pages" className="flex items-center justify-between">
           {page > 1 ? (
-            <Link href={hrefFor(filters, page - 1)} className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted">
-              Newer
-            </Link>
+            <Button asChild variant="outline" size="sm">
+              <Link href={hrefFor(filters, page - 1)}>Newer</Link>
+            </Button>
           ) : (
             <span />
           )}
           <span className="text-xs text-muted-foreground">Page {page}</span>
           {hasNext ? (
-            <Link href={hrefFor(filters, page + 1)} className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted">
-              Older
-            </Link>
+            <Button asChild variant="outline" size="sm">
+              <Link href={hrefFor(filters, page + 1)}>Older</Link>
+            </Button>
           ) : (
             <span />
           )}

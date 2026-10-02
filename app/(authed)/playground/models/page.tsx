@@ -44,12 +44,12 @@ export default async function ModelPlaygroundPage() {
             Manage keys
           </Link>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
           {statuses.map((s) => (
             <Card key={s.info.id} className="flex flex-col">
-              <CardHeader className="space-y-2 p-4 pb-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <CardTitle className="text-sm">{s.info.label}</CardTitle>
+              <CardHeader className="space-y-2 pb-3">
+                <div className="flex items-start justify-between gap-2">
+                  <CardTitle className="min-w-0 pt-0.5">{s.info.label}</CardTitle>
                   <KeyStatusBadge
                     keySource={s.keySource}
                     last4={s.last4}
@@ -59,7 +59,7 @@ export default async function ModelPlaygroundPage() {
                 </div>
                 <CardDescription className="text-xs">{s.info.freeTierNote}</CardDescription>
               </CardHeader>
-              <CardContent className="mt-auto p-4 pt-0">
+              <CardContent className="mt-auto">
                 <a
                   href={s.info.docsUrl}
                   target="_blank"

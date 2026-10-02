@@ -36,7 +36,7 @@ export default async function StoragePage() {
 
       <Card data-testid="storage-last-run">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Last cleanup</CardTitle>
+          <CardTitle>Last cleanup</CardTitle>
           <CardDescription>
             {lastRun ? (
               <>
@@ -69,7 +69,7 @@ export default async function StoragePage() {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Retention windows</CardTitle>
+          <CardTitle>Retention windows</CardTitle>
           <CardDescription>
             How long lee keeps data it can clean up. Queue jobs, Gmail sync markers and cached PDFs use fixed windows.
           </CardDescription>
@@ -81,7 +81,7 @@ export default async function StoragePage() {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Storage per table</CardTitle>
+          <CardTitle>Storage per table</CardTitle>
           <CardDescription>
             {data.dbSizeBytes === null
               ? 'Database size is unavailable right now.'

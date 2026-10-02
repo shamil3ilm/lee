@@ -173,7 +173,7 @@ export function PrepPackCard({
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Sparkles className="size-4 text-muted-foreground" />
-            <CardTitle className="text-sm font-semibold">Interview prep</CardTitle>
+            <CardTitle>Interview prep</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
@@ -190,7 +190,7 @@ export function PrepPackCard({
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <Sparkles className="size-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-semibold">Interview prep</CardTitle>
+          <CardTitle>Interview prep</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -200,16 +200,14 @@ export function PrepPackCard({
           const busy = busyStageId === stage.id
           return (
             <div key={stage.id} className="rounded-md border p-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <Badge variant="violet" className="text-[10px]">
-                      {label}
-                    </Badge>
-                    <span className="truncate text-sm font-medium">
-                      {stage.title ?? label}
-                    </span>
-                  </div>
+              <div className="flex items-start justify-between gap-2">
+                {/* Kind chip always sits above the title (it wrapped inline for
+                    short titles and above for long ones, so rows differed). */}
+                <div className="min-w-0 flex-1">
+                  <Badge variant="interview" className="text-[10px]">
+                    {label}
+                  </Badge>
+                  <div className="mt-1 line-clamp-2 text-sm font-medium">{stage.title ?? label}</div>
                   {entry ? (
                     <div className="mt-0.5 text-xs text-muted-foreground">
                       v{entry.doc.version} · {relativeFromNow(entry.doc.createdAt)}
@@ -217,7 +215,7 @@ export function PrepPackCard({
                   ) : null}
                 </div>
                 {entry ? (
-                  <div className="flex items-center gap-1">
+                  <div className="flex shrink-0 items-center gap-1">
                     <Button
                       asChild
                       type="button"
@@ -251,6 +249,7 @@ export function PrepPackCard({
                     type="button"
                     variant="outline"
                     size="sm"
+                    className="shrink-0"
                     onClick={() => {
                       void generate(stage)
                     }}
@@ -425,7 +424,7 @@ function LikelyQuestionsSection({
                     <span className="flex-1 font-medium">{q.question}</span>
                     <Badge
                       variant={DIFFICULTY_BADGE[q.difficulty]}
-                      className="text-[9px]"
+                      className="text-[10px]"
                     >
                       {q.difficulty}
                     </Badge>

@@ -98,7 +98,7 @@ export default async function AuthedLayout({ children }: { children: React.React
             </div>
           </header>
           <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
-            <div className="mx-auto w-full max-w-[1600px]">{children}</div>
+            <div className="@container/main mx-auto w-full max-w-[1600px]">{children}</div>
           </main>
         </div>
         <NotificationScheduler />

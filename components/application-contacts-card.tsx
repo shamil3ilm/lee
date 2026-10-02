@@ -86,7 +86,7 @@ export function ApplicationContactsCard({ applicationId, linked, options }: Appl
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-sm font-semibold">Points of contact</CardTitle>
+        <CardTitle>Points of contact</CardTitle>
         <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
           <Link2 className="size-3.5" />
           Link contact
