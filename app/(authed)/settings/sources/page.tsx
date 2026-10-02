@@ -6,6 +6,12 @@ import { AddSourceDialog } from '@/components/add-source-dialog'
 import { SourceRow, type SourceRowItem } from '@/components/source-row'
 import { EmptyState } from '@/components/empty-state'
 import { PopularStarters } from './popular-starters'
+import { describePollStats, readSourceLastResult } from '@/lib/discovery/poll-stats'
+
+function lastResultLine(raw: unknown): string | null {
+  const r = readSourceLastResult(raw)
+  return r ? describePollStats(r) : null
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -43,6 +49,7 @@ export default async function SourcesSettingsPage(): Promise<React.ReactElement>
     lastPolledAt: s.lastPolledAt ? s.lastPolledAt.toISOString() : null,
     lastError: s.lastError,
     errorCount: s.errorCount,
+    lastResult: lastResultLine(s.lastResult),
   }))
 
   return (

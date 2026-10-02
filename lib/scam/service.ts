@@ -17,6 +17,7 @@ import type { NormalizedJob } from '@/lib/discovery/adapters/types'
 import { logger } from '@/lib/logger'
 import { allowListEntriesFor, matchesAllowList } from './allow-list'
 import { assessScam } from './engine'
+import { isQuarantined } from './view'
 import { inputFromJob, inputFromNormalizedJob } from './input'
 import { preloadNetCache, resolveNetContext, type NetBudget, type NetMode } from './net-cache'
 import type { NetDeps } from './net'
@@ -38,6 +39,8 @@ export interface AssessOptions {
   now?: Date
   /** The user's allow-list, when the caller already loaded it for a batch. */
   allowList?: readonly AllowListEntry[]
+  /** Incremented per assessment that lands in quarantine (run summaries). */
+  counts?: { quarantined: number }
 }
 
 /** Per-cycle cap on fresh network lookups (each is ≤ 2 small requests). */
@@ -112,6 +115,10 @@ async function assessBatch(
     })
   }
   await riskQ.upsertMany(userId, writes)
+  if (opts.counts) {
+    // Fresh rows carry no verdict yet: quarantined = likely scam, not allow-listed.
+    opts.counts.quarantined += writes.filter((w) => isQuarantined({ ...w.data, userVerdict: null })).length
+  }
   return writes.length
 }
 

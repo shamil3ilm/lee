@@ -19,6 +19,7 @@ const FIRST_POLL_BUDGET_MS = 45_000
 export async function queueFirstPoll(userId: string, sourceId: string, now: Date = new Date()): Promise<boolean> {
   const queued = await enqueueSourcePollNow(userId, sourceId, now)
   if (!queued) return false
+  logger.info('source_first_poll_queued', { userId, sourceId })
   try {
     after(async () => {
       try {
