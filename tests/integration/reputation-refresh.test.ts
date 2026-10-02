@@ -8,6 +8,7 @@ import { refreshNow, scheduleReputationRefresh, WEEKLY_REFRESH_PER_DAY } from '@
 import { defaultLimiter, NO_WAIT } from '@/lib/reputation/rate-limit'
 import { REPUTATION_USER_AGENT } from '@/lib/reputation/http'
 import { drain } from '@/lib/queue/drain'
+import { appRegistry } from '@/lib/queue/handlers'
 import { JOB_TYPES } from '@/lib/queue/job-types'
 import { allSourceRoutes, fixtureFetch, type Route } from '@/tests/fixtures/reputation/fetch'
 import { makeCompany, makeUser } from '@/tests/factories'
@@ -99,7 +100,8 @@ describe('reputation refresh job', () => {
     const { u, c } = await acme()
     const net = stubNetwork()
     await scheduleReputationRefresh(NOW)
-    const r = await drain({ budgetMs: 30_000, types: [JOB_TYPES.companyReputation] })
+    const r = await drain({ budgetMs: 30_000, types: [JOB_TYPES.companyReputation], registry: appRegistry })
+    expect(r.errors.filter((e) => !e.includes(`company `)), JSON.stringify(r)).toEqual([])
     expect(r.done).toBe(1)
     expect(r.metrics).toMatchObject({ reputation_refreshed: 1, reputation_source_errors: 0 })
     expect((await repQ.get(u.id, c.id))?.signals.length).toBeGreaterThan(0)
@@ -111,7 +113,8 @@ describe('reputation refresh job', () => {
     const { u, c } = await acme()
     stubNetwork([{ match: () => true, status: 503, body: 'down' }])
     await scheduleReputationRefresh(NOW)
-    const r = await drain({ budgetMs: 30_000, types: [JOB_TYPES.companyReputation] })
+    const r = await drain({ budgetMs: 30_000, types: [JOB_TYPES.companyReputation], registry: appRegistry })
+    expect(r.errors.filter((e) => !e.includes(`company `)), JSON.stringify(r)).toEqual([])
     expect(r.done).toBe(1)
     expect(r.errors.filter((e) => e.includes(`company ${c.id}`))).toHaveLength(3)
     expect((await repQ.get(u.id, c.id))?.sourceStatus.wikidata?.ok).toBe(false)

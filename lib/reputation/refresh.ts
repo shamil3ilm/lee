@@ -73,7 +73,9 @@ export async function refreshCompanyReputation(
   const facts = wiki?.ok ? (wiki.result.facts ?? null) : (existing?.facts ?? null)
   const signals = mergeSignals(existing?.signals ?? [], fresh, now)
   await repQ.saveFetched(userId, companyId, { signals, sourceStatus, facts, fetchedAt: now })
-  const errors = outcomes.flatMap((o) => (o.ok ? [] : [`${o.source}: ${o.error}`]))
-  if (errors.length > 0) logger.warn('reputation.source_errors', { companyId, errors })
+  const failed = outcomes.flatMap((o) => (o.ok ? [] : [o]))
+  for (const o of failed) logger.warn('reputation_source_failed', { source: o.source, err: o.error })
+  logger.info('reputation_refreshed', { signals: signals.length, failedSources: failed.length })
+  const errors = failed.map((o) => `${o.source}: ${o.error}`)
   return { status: 'refreshed', signals: signals.length, errors }
 }

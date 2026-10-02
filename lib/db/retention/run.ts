@@ -10,6 +10,7 @@ import {
   pruneScamDomainCache,
   pruneUsageHistory,
 } from './housekeeping'
+import { pruneReputationCache } from './reputation'
 import { pruneAiCallLogs, pruneProcessedGmailThreads, pruneQueueJobs, pruneSystemEvents, pruneWebVitals } from './logs'
 import {
   EMPTY_GLOBAL_COUNTS,
@@ -65,6 +66,7 @@ export async function runUserCleanup(
     driveDuplicateBytes: await dropDriveDuplicatedBytes(o),
     orphanRiskAssessments: await pruneOrphanRiskAssessments(o),
     orphanDriveFolders: await pruneOrphanDriveFolders(o),
+    reputationCache: await pruneReputationCache(now, o),
   }
 }
 

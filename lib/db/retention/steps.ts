@@ -17,6 +17,7 @@ export const USER_STEP_IDS = [
   'driveDuplicateBytes',
   'orphanRiskAssessments',
   'orphanDriveFolders',
+  'reputationCache',
 ] as const
 
 export const GLOBAL_STEP_IDS = [
@@ -56,6 +57,7 @@ export const STEP_LABELS: Readonly<Record<RetentionStepId, string>> = {
   driveDuplicateBytes: 'File copies already in Drive cleared',
   orphanRiskAssessments: 'Orphaned Scam Shield checks deleted',
   orphanDriveFolders: 'Stale Drive folder links deleted',
+  reputationCache: 'Old company reputation signals cleared',
   queueJobs: 'Finished background jobs deleted',
   orphanAiCallLogs: 'AI call logs of deleted users deleted',
   expiredAuth: 'Expired sign-in records deleted',

@@ -103,6 +103,23 @@ export const EVENT_CATALOG: Readonly<Record<string, EventSpec>> = {
     strings: ['source'],
     message: (c) => `${s(c, 'source') || 'Source'} poll failed: ${s(c, 'err')}`,
   },
+  // Company reputation (lib/reputation)
+  reputation_refreshed: {
+    category: 'source',
+    persist: true,
+    message: (c) =>
+      `Company reputation refreshed: ${n(c, 'signals')} signal(s)${n(c, 'failedSources') > 0 ? ` · ${n(c, 'failedSources')} source(s) failed` : ''}`,
+  },
+  reputation_source_failed: {
+    category: 'source',
+    strings: ['source'],
+    message: (c) => `Reputation source ${s(c, 'source') || '?'} failed: ${s(c, 'err')}`,
+  },
+  reputation_summary_confirmed: {
+    category: 'ai',
+    persist: true,
+    message: (c) => `Company reputation summary confirmed (${n(c, 'redFlags')} red flag(s))`,
+  },
   // Gmail / digest / notifications
   gmail_sync_done: {
     category: 'gmail',
