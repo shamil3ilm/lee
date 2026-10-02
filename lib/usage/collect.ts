@@ -40,9 +40,13 @@ export async function databaseSizeBytes(client: DbClient = db, exact = EXACT_SIZ
 
 export const LARGEST_TABLES_LIMIT = 8
 
+/** Every app table fits well under this; Settings › Storage lists them all. */
+export const ALL_TABLES_LIMIT = 200
+
 export async function largestTables(
   client: DbClient = db,
   exact = EXACT_SIZES,
+  limit = LARGEST_TABLES_LIMIT,
 ): Promise<{ name: string; bytes: number }[]> {
   const rows = toRows<{ name: string; bytes: string | number }>(
     await client.execute(
@@ -53,7 +57,7 @@ export async function largestTables(
             join pg_namespace n on n.oid = c.relnamespace
             where c.relkind = 'r' and n.nspname = 'public'
             order by pg_total_relation_size(c.oid) desc
-            limit ${LARGEST_TABLES_LIMIT}
+            limit ${limit}
           `
         : sql`
             select c.relname as name, (c.relpages * current_setting('block_size')::bigint)::bigint as bytes
@@ -61,7 +65,7 @@ export async function largestTables(
             join pg_namespace n on n.oid = c.relnamespace
             where c.relkind = 'r' and n.nspname = 'public'
             order by c.relpages desc, c.relname
-            limit ${LARGEST_TABLES_LIMIT}
+            limit ${limit}
           `,
     ),
   )

@@ -14,6 +14,8 @@ import { addWatchedCompany } from '@/lib/companies/service'
 import { getAdapter } from './adapters'
 import type { NormalizedCompany, NormalizedJob } from './adapters/types'
 import { ingestCompanyItems, ingestJobItems, type ScamCtx, type ScoringBudget } from './ingest'
+import { emptyPollStats, type SourcePollStats } from './poll-stats'
+import { logger } from '@/lib/logger'
 import { checkDiscoveryScoringSignal } from '@/lib/ai/signal'
 import { writeSkipLog } from '@/lib/ai/log'
 import type { Source } from '@/lib/db/queries/sources'
@@ -108,7 +110,7 @@ export async function runDiscoveryCycleForUser(args: {
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e)
       result.errors.push({ sourceId: source.id, message })
-      await sourcesQ.setPolled(userId, source.id, message)
+      await recordPollFailure(userId, source, message)
     }
   })
 
@@ -158,6 +160,10 @@ export interface SourcePollResult {
   newCompanyDiscoveries: number
   budgetExhausted: boolean
   error?: string
+  /** The source's display name (null when it no longer exists). */
+  sourceName?: string | null
+  /** Counts for the run summary (zeros unless polled). */
+  stats?: SourcePollStats
 }
 
 /**
@@ -177,10 +183,16 @@ export async function runDiscoveryForSource(args: {
 }): Promise<SourcePollResult> {
   const { userId, ai } = args
   const deadline = args.deadline ?? Number.POSITIVE_INFINITY
-  const empty = { newJobDiscoveries: 0, newCompanyDiscoveries: 0, budgetExhausted: false }
   const { active, scoringProfile, signalSkip } = await loadCycleContext(userId)
   const index = active.findIndex((s) => s.id === args.sourceId)
   const source = active[index]
+  const empty = {
+    newJobDiscoveries: 0,
+    newCompanyDiscoveries: 0,
+    budgetExhausted: false,
+    sourceName: source?.name ?? null,
+    stats: emptyPollStats(),
+  }
   if (!source) return { status: 'skipped', ...empty }
   if (Date.now() >= deadline) return { status: 'skipped', ...empty, budgetExhausted: true }
   if (signalSkip && index === 0) {
@@ -194,12 +206,20 @@ export async function runDiscoveryForSource(args: {
       newJobDiscoveries: r.newJobs,
       newCompanyDiscoveries: r.newCompanies,
       budgetExhausted: r.budgetExhausted,
+      sourceName: source.name,
+      stats: r.stats,
     }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
-    await sourcesQ.setPolled(userId, source.id, message)
+    await recordPollFailure(userId, source, message)
     return { status: 'failed', ...empty, error: message }
   }
+}
+
+/** A failed poll: counted on the source (auto-skip after N) and logged. */
+async function recordPollFailure(userId: string, source: Source, message: string): Promise<void> {
+  await sourcesQ.setPolled(userId, source.id, message)
+  logger.warn('source_poll_failed', { userId, sourceId: source.id, source: source.name, kind: source.kind, err: message })
 }
 
 async function pollSource(args: {
@@ -209,13 +229,15 @@ async function pollSource(args: {
   profile: UserProfile | null
   scam: ScamCtx
   deadline: number
-}): Promise<{ newJobs: number; newCompanies: number; budgetExhausted: boolean }> {
+}): Promise<{ newJobs: number; newCompanies: number; budgetExhausted: boolean; stats: SourcePollStats }> {
   const { source, deadline } = args
   const adapter = getAdapter(source.kind)
   if (!adapter) throw new Error(`no adapter registered for kind=${source.kind}`)
+  const started = Date.now()
   const items = await adapter.fetch(source.config, { userId: args.userId })
   const scoring: ScoringBudget = { remaining: MAX_SCORED_PER_SOURCE, deadline, exhausted: false }
-  const ingest = { ...args, scoring }
+  const stats = emptyPollStats()
+  const ingest = { ...args, scoring, stats }
   const newJobs = await ingestJobItems(
     ingest,
     items.filter((i) => i.normalized.kind === 'job'),
@@ -224,8 +246,17 @@ async function pollSource(args: {
     ingest,
     items.filter((i) => i.normalized.kind !== 'job'),
   )
-  await sourcesQ.setPolled(args.userId, source.id)
-  return { newJobs, newCompanies, budgetExhausted: scoring.exhausted }
+  await sourcesQ.setPolled(args.userId, source.id, undefined, { ...stats })
+  logger.info('source_polled', {
+    userId: args.userId,
+    sourceId: source.id,
+    source: source.name,
+    kind: source.kind,
+    ...stats,
+    budgetExhausted: scoring.exhausted,
+    durationMs: Date.now() - started,
+  })
+  return { newJobs, newCompanies, budgetExhausted: scoring.exhausted, stats }
 }
 
 // ---------------------------------------------------------------------------

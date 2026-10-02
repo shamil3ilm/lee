@@ -251,14 +251,7 @@ describe('takeUsageSnapshot', () => {
       queue: { backlog: 0, dead: 0, doneRecent: 0 },
       assetBytes: new Map(),
     })
-    const spy = vi.spyOn(retention, 'runRetention').mockResolvedValue({
-      tombstonedDiscoveries: 0,
-      aiCallLogs: 0,
-      gmailThreads: 0,
-      compactedDiscoveries: 0,
-      queueJobs: 0,
-      webVitals: 0,
-    })
+    const spy = vi.spyOn(retention, 'runRetention').mockResolvedValue(retention.emptyRetentionResult())
     const r = await takeUsageSnapshot()
     expect(r.throttles).toEqual(['early_retention'])
     expect(r.retentionRan).toBe(true)
@@ -289,9 +282,7 @@ describe('warnings', () => {
 
     vi.restoreAllMocks()
     measure(0.93)
-    vi.spyOn(retention, 'runRetention').mockResolvedValue({
-      tombstonedDiscoveries: 0, aiCallLogs: 0, gmailThreads: 0, compactedDiscoveries: 0, queueJobs: 0, webVitals: 0,
-    })
+    vi.spyOn(retention, 'runRetention').mockResolvedValue(retention.emptyRetentionResult())
     expect((await takeUsageSnapshot(new Date('2026-09-11T09:00:00Z'))).todosCreated).toBe(1)
     list = await db.select().from(todos).where(eq(todos.userId, u.id))
     expect(list.map((t) => t.priority).sort()).toEqual([2, 3])

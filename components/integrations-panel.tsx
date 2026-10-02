@@ -8,12 +8,16 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DISPLAY_LOCALE, relativeFromNow } from '@/lib/ui/date'
 import { APP_NAME } from '@/lib/brand'
+import { LastActivity, type LastActivityItem } from '@/components/settings/last-activity'
 
 interface IntegrationsPanelProps {
   email: string | null
   scopes: string[]
   syncedGmailAt: string | null
   syncedCalendarAt: string | null
+  /** Latest persisted Gmail / Calendar events (Settings › Logs). */
+  gmailActivity?: LastActivityItem | null
+  calendarActivity?: LastActivityItem | null
 }
 
 /**
@@ -44,6 +48,8 @@ export function IntegrationsPanel({
   scopes,
   syncedGmailAt,
   syncedCalendarAt,
+  gmailActivity = null,
+  calendarActivity = null,
 }: IntegrationsPanelProps) {
   const router = useRouter()
   const [syncing, startSync] = useTransition()
@@ -161,6 +167,7 @@ export function IntegrationsPanel({
                   'Never'
                 )}
               </div>
+              <LastActivity item={gmailActivity} logsHref="/settings/logs?category=gmail" testId="gmail-last-activity" />
             </div>
           </div>
           <Button
@@ -192,6 +199,7 @@ export function IntegrationsPanel({
                 )}
                 <span className="ml-2 opacity-75">· push-only, no manual sync</span>
               </div>
+              <LastActivity item={calendarActivity} logsHref="/settings/logs?category=calendar" testId="calendar-last-activity" />
             </div>
           </div>
         </div>
