@@ -7,12 +7,15 @@ import { snapshotForCoverLetter } from '@/lib/staleness/snapshot'
 import { AISkippedError, checkCoverLetterSignal } from '@/lib/ai/signal'
 import { linkLatestCallToDocument, writeSkipLog } from '@/lib/ai/log'
 import type { AIProvider } from '@/lib/ai/types'
+import type { SharedLink } from '@/lib/ai/prompts/shared-links'
 import type { Document } from '@/lib/db/queries/documents'
 
 export async function generateCoverLetter(input: {
   userId: string
   applicationId: string
   ai: AIProvider
+  /** Profile links the user confirmed for this draft. */
+  links?: SharedLink[]
 }): Promise<Document> {
   const master = await getMasterCV(input.userId)
   if (!master) throw new MasterCVNotFoundError()
@@ -29,7 +32,7 @@ export async function generateCoverLetter(input: {
     throw new AISkippedError(signal.code, signal.message, signal.fixHint)
   }
 
-  const letter = await input.ai.draftCoverLetter({ master, application })
+  const letter = await input.ai.draftCoverLetter({ master, application, links: input.links })
   const validated = coverLetterSchema.parse(letter)
 
   const version = await documentsQ.nextVersion(input.userId, input.applicationId, 'cover_letter')

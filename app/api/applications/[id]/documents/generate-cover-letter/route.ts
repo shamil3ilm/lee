@@ -5,13 +5,14 @@ import { getAIProviderForUser } from '@/lib/ai'
 import { AISkippedError } from '@/lib/ai/signal'
 import { AiUsageScope } from '@/lib/ai/usage'
 import { logger } from '@/lib/logger'
+import { parseLinkIds, resolveSharedLinks } from '@/lib/profile/shared-links'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 export const maxDuration = 30
 
 export async function POST(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   // Collects the AI calls made for this response → `usage` in the JSON.
@@ -23,7 +24,9 @@ export async function POST(
     aiUsage.bindUser(userId)
     const { id: applicationId } = await params
     const ai = await getAIProviderForUser(userId)
-    const doc = await aiUsage.run(() => generateCoverLetter({ userId, applicationId, ai }))
+    // Optional body: { linkIds } — profile links the user ticked for this draft.
+    const links = await resolveSharedLinks(userId, parseLinkIds(await req.json().catch(() => null)))
+    const doc = await aiUsage.run(() => generateCoverLetter({ userId, applicationId, ai, links }))
     return NextResponse.json({
       documentId: doc.id,
       downloadUrl: `/api/documents/${doc.id}/pdf`,

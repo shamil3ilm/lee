@@ -17,6 +17,7 @@ import type {
 import type { InterviewStage } from '@/lib/db/queries/stages'
 import type { CallMeta } from './log'
 import type { ScoreJobContext } from './prompts/score-job'
+import type { SharedLink } from './prompts/shared-links'
 import type { SuggestRolesInput, SuggestRolesResult } from './prompts/suggest-roles'
 
 export const parsedJobSchema = z.object({
@@ -139,9 +140,11 @@ export interface AIProvider {
   ): Promise<CompanyMatchResult>
   // v2 additions — CV & document generation.
   tailorCV(input: { master: MasterCV; application: ApplicationWithJob }): Promise<TailoredCV>
+  // `links` — profile links the user confirmed for this draft.
   draftCoverLetter(input: {
     master: MasterCV
     application: ApplicationWithJob
+    links?: SharedLink[]
   }): Promise<CoverLetter>
   distillGithubProjects(input: { repos: GitHubRepo[] }): Promise<CvProjects>
   // v4 additions — outreach + interview prep.
@@ -153,6 +156,7 @@ export interface AIProvider {
     kind: OutreachKind
     tone: OutreachTone
     daysSince?: number
+    links?: SharedLink[]
   }): Promise<OutreachDraft>
   generateInterviewPrepPack(input: {
     master: MasterCV

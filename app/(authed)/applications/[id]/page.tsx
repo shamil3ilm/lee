@@ -35,6 +35,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { STATUS_BADGE, STATUS_LABELS, type ApplicationStatus } from '@/lib/ui/status'
 import { APPLICATION_STATUSES } from '@/lib/ui/status'
+import { ShareLinksProvider } from '@/components/profile/share-links'
+import { readProfileLinks, suggestLinksForJob } from '@/lib/profile/links'
+import { getProfile } from '@/lib/profile/service'
 
 export const dynamic = 'force-dynamic'
 
@@ -122,6 +125,11 @@ export default async function ApplicationDetail({
       restP,
     ])
   const risk = riskRow ? toRiskView(riskRow, hostLabel(app.job.sourceUrl)) : null
+  // Profile links suggested for this job's drafts (the user confirms them).
+  const linkSuggestions = suggestLinksForJob(readProfileLinks((await getProfile(userId))?.links), {
+    title: app.job.title,
+    description: app.job.descriptionMd,
+  })
 
   // Split the app's documents so each card only sees the shapes it renders.
   const cvDocs = allDocs.filter((d) =>
@@ -380,6 +388,7 @@ export default async function ApplicationDetail({
             scoringDocument={scoringDoc ? { id: scoringDoc.id, title: scoringDoc.title } : null}
           />
 
+          <ShareLinksProvider suggestions={linkSuggestions}>
           <DocumentsCard
             applicationId={app.id}
             documents={cvDocs.map(withoutContent)}
@@ -393,6 +402,7 @@ export default async function ApplicationDetail({
             appliedAt={app.appliedAt ? app.appliedAt.toISOString() : null}
             usage={docUsage}
           />
+          </ShareLinksProvider>
 
           <PrepPackCard
             applicationId={app.id}
