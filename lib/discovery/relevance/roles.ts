@@ -22,6 +22,15 @@ const BACKEND_SKILLS = [
   'mongodb', 'redis', 'rabbitmq', 'kafka', 'sqs', 'microservices', 'rest api', 'restful',
   'graphql', 'grpc', 'backend', 'back-end', 'server-side', 'sql', 'orm', 'eloquent',
 ]
+/**
+ * Platform / backend domain terms (multi-tenant SaaS engineering). They
+ * count as backend evidence and drive the platform-backend suggestion.
+ */
+const PLATFORM_SKILLS = [
+  'multi-tenancy', 'multi-tenant', 'multitenancy', 'idempotency', 'idempotent', 'audit trail',
+  'audit trails', 'audit logging', 'audit log', 'row-level security', 'row level security', 'rls',
+  'rate limiting', 'background jobs', 'job queues', 'event sourcing', 'feature flags',
+]
 const FRONTEND_SKILLS = [
   'react', 'react.js', 'reactjs', 'next.js', 'nextjs', 'vue', 'vue.js', 'vuejs', 'nuxt',
   'angular', 'svelte', 'javascript', 'typescript', 'html', 'css', 'tailwind', 'sass',
@@ -36,13 +45,16 @@ const API_SKILLS = [
   'rest api', 'restful', 'api', 'apis', 'webhooks', 'webhook', 'integrations', 'integration',
   'third-party api', 'third party apis', 'oauth', 'soap', 'graphql', 'openapi', 'swagger',
   'postman', 'api design', 'sdk', 'middleware', 'zapier', 'partner apis', 'third-party integrations',
+  'idempotency', 'idempotent', 'idempotency keys', 'webhook signatures', 'webhook retries',
 ]
 const PAYMENTS_SKILLS = [
   'payments', 'payment', 'payment gateway', 'payment gateways', 'stripe', 'paypal', 'adyen',
   'checkout.com', 'braintree', 'razorpay', 'paytabs', 'telr', 'fintech', 'banking', 'pci',
   'pci dss', 'ach', 'plaid', 'open banking', 'e-check', 'echeck', 'cheque', 'invoicing',
   'billing', 'ledger', 'reconciliation', 'wallet', 'wallets', 'remittance', 'card issuing', 'kyc',
-  'kyb', 'aml', 'payouts', 'payment approvals', 'cheques', 'check printing', 'e-checks', 'acquiring',
+  'kyb', 'aml', 'payouts', 'payment approvals', 'approval workflows', 'cheques', 'check printing',
+  'e-checks', 'acquiring', 'positive pay', 'ach payments', 'ach transfers', 'nacha', 'remote deposit',
+  'bank reconciliation', 'payment orchestration',
 ]
 const EINVOICING_SKILLS = [
   'zatca', 'fatoora', 'e-invoicing', 'einvoicing', 'e-invoice', 'electronic invoicing',
@@ -90,7 +102,7 @@ export const ROLE_FAMILIES: readonly RoleFamily[] = [
       'blockchain developer', 'smart contract developer', 'solidity developer',
       'salesforce developer',
     ],
-    skills: BACKEND_SKILLS,
+    skills: [...BACKEND_SKILLS, ...PLATFORM_SKILLS],
   },
   {
     id: 'fullstack',
@@ -338,6 +350,7 @@ export const SKILL_GROUPS = {
   qa: QA_SKILLS,
   support: SUPPORT_SKILLS,
   client: CLIENT_SKILLS,
+  platform: PLATFORM_SKILLS,
   einvoicing: EINVOICING_SKILLS,
   llm: LLM_SKILLS,
   integrations: INTEGRATION_PLATFORMS,
