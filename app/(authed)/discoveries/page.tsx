@@ -25,7 +25,15 @@ import { cn } from '@/lib/utils'
 import { BoardViewToggle } from '@/components/board/view-toggle'
 import { LazyDiscoveriesBoard } from '@/components/board/lazy'
 import { parseBoardView, viewHref, type BoardView } from '@/lib/board/view'
+import { lastCheck } from '@/lib/discovery/poll-stats'
+import { relativeFromNow } from '@/lib/ui/date'
 import { catchUp, loadBoard, loadJobs, parseDiscoveryParams, type DiscoveryParams, type JobsData } from './data'
+
+/** "Last checked 2h ago · 12 new" from the sources' last poll results. */
+function lastCheckedLine(sources: Parameters<typeof lastCheck>[0]): string | null {
+  const c = lastCheck(sources)
+  return c ? `Last checked ${relativeFromNow(c.at)} · ${c.newCount} new` : null
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -49,6 +57,7 @@ export default async function DiscoveriesPage({
     p.tab === 'jobs' ? loadRoleSuggestions(userId, profile) : Promise.resolve(null),
   ])
   const sourceOptions = sources.map((s) => ({ id: s.id, name: s.name }))
+  const checked = lastCheckedLine(sources)
   const lookingFor =
     p.tab === 'jobs' && suggestions ? (
       <LookingForCard
@@ -64,7 +73,7 @@ export default async function DiscoveriesPage({
       <div className="space-y-4">
         <PageHeader
           title="Discovery"
-          description="Triage AI-scored roles: shortlist, apply or dismiss."
+          description={`Triage AI-scored roles: shortlist, apply or dismiss.${checked ? ` ${checked}.` : ''}`}
           actions={<ViewToggle sp={sp} view={view} explicit={explicit} />}
         />
         <TabBar tab={p.tab} />
@@ -94,7 +103,7 @@ export default async function DiscoveriesPage({
     <div className="space-y-4">
       <PageHeader
         title="Discovery"
-        description="AI-scored jobs and companies from your sources."
+        description={`AI-scored jobs and companies from your sources.${checked ? ` ${checked}.` : ''}`}
         actions={p.tab === 'jobs' ? <ViewToggle sp={sp} view={view} explicit={explicit} /> : undefined}
       />
       <TabBar tab={p.tab} />

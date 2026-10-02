@@ -10,6 +10,7 @@ import type { DiscoveryItem, NormalizedCompany, NormalizedJob } from './adapters
 import { applyCaps, benefitsScore } from './scoring'
 import { gateColumns, type RelevanceContext } from './relevance/service'
 import type { ScoreJobContext } from '@/lib/ai/prompts/score-job'
+import type { SourcePollStats } from './poll-stats'
 
 /**
  * v18 — batched ingestion for one polled source.
@@ -49,6 +50,15 @@ export interface IngestArgs {
   relevance: RelevanceContext
   /** Master-CV digest and preferences for the scoring prompt. */
   scoreContext?: ScoreJobContext
+  /** Optional tally for the poll's run summary. */
+  stats?: SourcePollStats
+}
+
+function tallyIngest(stats: SourcePollStats | undefined, unique: number, inserted: number): void {
+  if (!stats) return
+  stats.fetched += unique
+  stats.new += inserted
+  stats.skipped += unique - inserted
 }
 
 function takeScoringSlot(b: ScoringBudget): boolean {
@@ -72,7 +82,7 @@ interface ToScore<N> {
 }
 
 export async function ingestJobItems(args: IngestArgs, items: readonly DiscoveryItem[]): Promise<number> {
-  const { userId, source, ai, profile, scam, scoring, relevance, scoreContext } = args
+  const { userId, source, ai, profile, scam, scoring, relevance, scoreContext, stats } = args
   const unique = uniqueById(items)
   const seen = await discQ.seenBySourceJobIds(
     source.id,
@@ -101,6 +111,7 @@ export async function ingestJobItems(args: IngestArgs, items: readonly Discovery
   })
   const relevant = new Set(gated.filter((g) => g.gate.status === 'new').map((g) => g.sourceJobId))
   const inserted = await discQ.insertManyForSource(userId, source.id, gated)
+  tallyIngest(stats, unique.length, inserted.length)
   const bySourceId = new Map(unique.map((i) => [i.sourceItemId, i.normalized as NormalizedJob]))
   const newRows: ToScore<NormalizedJob>[] = inserted.map((r) => ({
     id: r.id,
@@ -114,7 +125,7 @@ export async function ingestJobItems(args: IngestArgs, items: readonly Discovery
     assessNewDiscoveries(
       userId,
       newRows.map((r) => ({ id: r.id, normalized: r.normalized, sourceName: source.name })),
-      { net: scam.net, budget: scam.budget, allowList: scam.allowList },
+      { net: scam.net, budget: scam.budget, allowList: scam.allowList, counts: stats },
     ),
   )
 
@@ -126,7 +137,7 @@ export async function ingestJobItems(args: IngestArgs, items: readonly Discovery
       .map((s) => ({ id: s.id, normalized: bySourceId.get(s.sourceJobId)! }))
     for (const row of [...newRelevant, ...retry]) {
       if (!takeScoringSlot(scoring)) break
-      await scoreJobRow(userId, ai, profile, row, scoreContext)
+      if ((await scoreJobRow(userId, ai, profile, row, scoreContext)) && stats) stats.scored += 1
     }
   }
   return inserted.length
@@ -138,7 +149,7 @@ async function scoreJobRow(
   profile: UserProfile,
   row: ToScore<NormalizedJob>,
   context?: ScoreJobContext,
-): Promise<void> {
+): Promise<boolean> {
   try {
     // v10.1 — capture the ai_call_logs row id via the `onLogged` callback so
     // we can persist it onto the discovery row for later implicit-signal
@@ -161,9 +172,11 @@ async function scoreJobRow(
     const bScore = benefitsScore(benefitsRaw, readBenefitWeights(profile))
     await discQ.updateScore(userId, row.id, finalScore, bScore, scored)
     if (capturedCallId) await discQ.updateScoredByCallId(userId, row.id, capturedCallId)
+    return true
   } catch {
     // Non-fatal: the row keeps match_score NULL, and the next cycle picks it
     // up again through the unscored-rows retry above (within the cap).
+    return false
   }
 }
 
@@ -171,7 +184,7 @@ export async function ingestCompanyItems(
   args: IngestArgs,
   items: readonly DiscoveryItem[],
 ): Promise<number> {
-  const { userId, source, ai, profile, scoring } = args
+  const { userId, source, ai, profile, scoring, stats } = args
   const unique = uniqueById(items)
   const seen = await compDiscQ.seenBySourceCompanyIds(
     source.id,
@@ -183,6 +196,7 @@ export async function ingestCompanyItems(
     source.id,
     fresh.map((i) => ({ sourceCompanyId: i.sourceItemId, raw: i.raw, normalized: i.normalized })),
   )
+  tallyIngest(stats, unique.length, inserted.length)
   if (profile) {
     const bySourceId = new Map(unique.map((i) => [i.sourceItemId, i.normalized as NormalizedCompany]))
     const rows: ToScore<NormalizedCompany>[] = [
@@ -193,7 +207,7 @@ export async function ingestCompanyItems(
     ]
     for (const row of rows) {
       if (!takeScoringSlot(scoring)) break
-      await scoreCompanyRow(userId, ai, profile, row)
+      if ((await scoreCompanyRow(userId, ai, profile, row)) && stats) stats.scored += 1
     }
   }
   return inserted.length
@@ -204,7 +218,7 @@ async function scoreCompanyRow(
   ai: AIProvider,
   profile: UserProfile,
   row: ToScore<NormalizedCompany>,
-): Promise<void> {
+): Promise<boolean> {
   try {
     // v10.1 — see scoreJobRow: capture the log row id so implicit signals
     // can flow back on dismiss/save.
@@ -217,8 +231,10 @@ async function scoreCompanyRow(
     })
     await compDiscQ.updateScore(userId, row.id, Math.round(scored.match_score), scored)
     if (capturedCallId) await compDiscQ.updateScoredByCallId(userId, row.id, capturedCallId)
+    return true
   } catch {
     // Non-fatal — retried on the next cycle while match_score stays NULL.
+    return false
   }
 }
 
