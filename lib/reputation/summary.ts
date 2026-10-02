@@ -4,6 +4,7 @@ import * as companiesQ from '@/lib/db/queries/companies'
 import * as repQ from '@/lib/db/queries/companyReputation'
 import type { ReputationRecord } from '@/lib/db/queries/companyReputation'
 import { reassessCompanyPostings, safely } from '@/lib/scam/service'
+import { logger } from '@/lib/logger'
 import { ReputationError } from './errors'
 import {
   ratingCiteId,
@@ -113,6 +114,7 @@ export async function confirmSummary(
   if (uncited) throw new ReputationError(`Every claim needs a source. Check: “${uncited.text.slice(0, 60)}”`)
   const summary: ConfirmedSummary = { ...parsed.data, confirmedAt: now.toISOString() }
   await repQ.saveSummary(userId, companyId, summary)
+  logger.info('reputation_summary_confirmed', { redFlags: summary.redFlags.length })
   await safely('reputation_confirm', () => reassessCompanyPostings(userId, { id: company.id, name: company.name }))
   return summary
 }
