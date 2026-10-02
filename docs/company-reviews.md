@@ -137,7 +137,14 @@ Storage).
   - `reputation_settings` is one row per user, holding the Places toggle,
     the cap and the month's counter.
 
-  Deleting a company deletes its row (cascade).
+  Deleting a company deletes its row (cascade). The nightly retention run
+  (`reputationCache` step in `lib/db/retention/`) clears fetched signals of
+  unwatched companies not refreshed for 90 days. It keeps the user's
+  ratings, the place ID and any confirmed summary, and it deletes a row
+  only when nothing of the user's is left in it.
+- **Logs.** `reputation_refreshed` and `reputation_summary_confirmed` are
+  persisted as info events, and `reputation_source_failed` as a warning
+  (`lib/logs/catalog.ts`).
 
 ## Sources
 
