@@ -91,10 +91,53 @@ there.
 | Lever | `GET api.lever.co/v0/postings/{slug}?mode=json` | `lever` |
 | Ashby | `GET api.ashbyhq.com/posting-api/job-board/{slug}` | `ashby` |
 | Workable | `GET www.workable.com/api/accounts/{slug}` (widget; v3 fallback) | `workable` |
-| SmartRecruiters | `GET api.smartrecruiters.com/v1/companies/{id}/postings` (+ `custom_field.{id}` brand filter) | `smartrecruiters` |
 | Recruitee | `GET {slug}.recruitee.com/api/offers/` | `recruitee` |
 | Pinpoint | `GET {slug}.pinpointhq.com/postings.json` | `pinpoint` |
-| Workday | `POST {tenant}.wd{N}.myworkdayjobs.com/wday/cxs/{tenant}/{site}/jobs` (country facet) | `workday` |
+| Workday | `POST {tenant}.wd{N}.myworkdayjobs.com/wday/cxs/{tenant}/{site}/jobs` (country facet; robots allow the site paths) | `workday` |
+| Oracle Recruiting Cloud | `GET {host}/hcmRestApi/resources/latest/recruitingCEJobRequisitions` (no robots.txt on the hosts) | `oracle_orc` |
+| SAP SuccessFactors | `GET {host}/sitemal.xml` (robots disallow `/services/` RSS, not this feed) | `successfactors` |
+| Phenom | `POST {host}/widgets` refineSearch (robots disallow `/px-widgets`, not `/widgets`) | `phenom` |
+| SmartRecruiters | `api.smartrecruiters.com` robots.txt: `User-agent: * Disallow: /` (LinkedInBot only) | **not used** → watch links |
+
+## Kerala IT parks
+
+All public, no login, robots allow the listing paths, no terms against
+automated access (checked 2026-09-27). Read once a day, ≤ 5 pages.
+
+| Park | Endpoint | Live jobs | Source kind |
+|---|---|---|---|
+| Technopark, Trivandrum | `GET technopark.in/api/paginated-jobs?page=N` (the page's own JSON) | 362 | `technopark` (on) |
+| Infopark, Kochi | `GET infopark.in/companies-job?page=N` (HTML table) | ~466 | `infopark` (on) |
+| Kerala Cyberpark, Kozhikode | `GET cyberparks.in/jm-ajax/get_listings/` (WP Job Manager) | 29 | `cyberpark` |
+| UL Cyberpark, Kozhikode | `GET ulcyberpark.com/jobs[/index/{offset}]` (HTML table) | 26 | `ul_cyberpark` |
+| Kerala Startup Mission | `GET startupmission.kerala.gov.in/api/public/career?page=N` (KSUM's own openings) | 15 | `ksum` |
+| SmartCity Kochi | news-style posts, last one Jul 2026 | 0 recent | watch |
+| KINFRA | own notices only | 0 | watch |
+
+## Employers (GCC and MNCs with India / Kerala offices)
+
+Verified live 2026-09-27 through lee's own adapters; counts are jobs in
+the GCC + India after the country filter.
+
+| Employer | Backend | Jobs | Route |
+|---|---|---|---|
+| IBS Software | Oracle ORC | 69 (35 Kochi/Trivandrum) | source, on |
+| Emirates NBD · FAB · Mashreq · e& · du · DP World · Dubai Holding | Oracle ORC | 22 · 124 · 245 · 17 · 10 · 129 · 33 | sources, off |
+| KPMG India · Oracle | Oracle ORC | 499 · 29 | sources, off |
+| ADCB · Al-Futtaim · stc · Deloitte South Asia | SuccessFactors feed | 38 · 204 · 5 · 1928 | sources, off |
+| G42 | Phenom | 46 | source, on |
+| Majid Al Futtaim · ADNOC · Quest Global | Phenom | 139 · 72 · 200 | sources, off |
+| Salesforce · Visa · Adobe · Cisco · Mastercard · PayPal · PwC | Workday | 100 · 100 · 93 · 100 · 8 · 5 · 24 (per poll, newest first) | sources, off |
+| Thoughtworks | Greenhouse | 35 | source, off |
+| Chalhoub Group | Teamtailor RSS (newest 100) | 100 | `rss` source, off |
+| talabat, HungerStation, Etihad, Swiggy, Freshworks | SmartRecruiters | — | watch (robots.txt disallows the API) |
+| noon | own site | — | watch (robots.txt `Disallow: /`) |
+| Saudi Aramco, TCS, Infosys | — | — | watch (bot wall) |
+| Google, Microsoft, Amazon, Atlassian | own sites | — | watch (terms forbid or unconfirmed) |
+| EY, Wipro | SuccessFactors | — | watch (feed times out; RSS disallowed) |
+| Emirates Group, flydubai | custom sites | — | watch (no generic reader yet) |
+| Mubadala, QNB, Ooredoo, UST, Tata Elxsi, Experion | — | — | watch (no feed / login / robots) |
+| SAP | moving to SmartRecruiters | — | not added (unresolved) |
 
 ## Job-alert emails
 
