@@ -34,7 +34,7 @@ export function LastRunsTable({ rows, selected }: { rows: LastRunRow[]; selected
           <TableHead>Job</TableHead>
           <TableHead>Last run</TableHead>
           <TableHead>Status</TableHead>
-          <TableHead className="text-right">Duration</TableHead>
+          <TableHead className="hidden text-right lg:table-cell">Duration</TableHead>
           <TableHead>Result</TableHead>
           <TableHead>Next</TableHead>
         </TableRow>
@@ -70,7 +70,7 @@ export function LastRunsTable({ rows, selected }: { rows: LastRunRow[]; selected
                   <Badge variant="neutral">Not run</Badge>
                 )}
               </TableCell>
-              <TableCell className="whitespace-nowrap text-right tabular-nums">
+              <TableCell className="hidden whitespace-nowrap text-right tabular-nums lg:table-cell">
                 {formatDuration(last?.durationMs)}
               </TableCell>
               <TableCell className="max-w-[18rem] text-sm">

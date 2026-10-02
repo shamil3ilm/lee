@@ -1,6 +1,7 @@
 'use client'
 import { Upload } from 'lucide-react'
 import { Label } from '@/components/ui/label'
+import { NativeSelect } from '@/components/ui/native-select'
 import { cn } from '@/lib/utils'
 
 export interface CvDocOption {
@@ -23,9 +24,6 @@ const KIND_LABEL: Record<CvDocOption['kind'], string> = {
   latex_cv: 'LaTeX',
 }
 
-const selectClass =
-  'h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50'
-
 export function DocumentSelect({
   id,
   label,
@@ -42,14 +40,14 @@ export function DocumentSelect({
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
-      <select id={id} className={selectClass} value={value} onChange={(e) => onChange(e.target.value)}>
+      <NativeSelect id={id} value={value} onChange={(e) => onChange(e.target.value)}>
         <option value="">Select a CV…</option>
         {documents.map((d) => (
           <option key={d.id} value={d.id}>
             [{KIND_LABEL[d.kind]}] {d.title}
           </option>
         ))}
-      </select>
+      </NativeSelect>
     </div>
   )
 }
@@ -70,7 +68,7 @@ export function ApplicationSelect({
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>Target job</Label>
-      <select id={id} className={selectClass} value={value} onChange={(e) => onChange(e.target.value)}>
+      <NativeSelect id={id} value={value} onChange={(e) => onChange(e.target.value)}>
         {allowNone ? <option value="">No job — general CV quality</option> : <option value="">Select a job…</option>}
         {applications.map((a) => (
           <option key={a.id} value={a.id}>
@@ -78,7 +76,7 @@ export function ApplicationSelect({
             {a.company ? ` · ${a.company}` : ''} ({a.status})
           </option>
         ))}
-      </select>
+      </NativeSelect>
     </div>
   )
 }
