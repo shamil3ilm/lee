@@ -1,0 +1,15 @@
+{
+  "name": "Unmarked title asking for 5+ years",
+  "inputs": {
+    "job": {
+      "title": "Software Developer",
+      "location": "Bengaluru, Karnataka",
+      "descriptionMd": "We need 5+ years of experience with PHP."
+    }
+  },
+  "expect": {
+    "pass": false,
+    "reasons": ["seniority: 5+ years required"],
+    "regions": ["in"]
+  }
+}

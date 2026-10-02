@@ -1,0 +1,13 @@
+{
+  "name": "Senior title in Riyadh: filtered, capped if shown anyway",
+  "inputs": {
+    "job": { "title": "Senior Backend Engineer", "location": "Riyadh, KSA" },
+    "aiScore": 88
+  },
+  "expect": {
+    "pass": false,
+    "reasons": ["seniority: Senior"],
+    "regions": ["gcc"],
+    "score": 40
+  }
+}

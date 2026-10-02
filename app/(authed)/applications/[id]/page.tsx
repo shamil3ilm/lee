@@ -34,6 +34,9 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { STATUS_BADGE, STATUS_LABELS, type ApplicationStatus } from '@/lib/ui/status'
 import { APPLICATION_STATUSES } from '@/lib/ui/status'
+import { ShareLinksCard, ShareLinksProvider } from '@/components/profile/share-links'
+import { readProfileLinks, suggestLinksForJob } from '@/lib/profile/links'
+import { getProfile } from '@/lib/profile/service'
 
 export const dynamic = 'force-dynamic'
 
@@ -121,6 +124,11 @@ export default async function ApplicationDetail({
       restP,
     ])
   const risk = riskRow ? toRiskView(riskRow, hostLabel(app.job.sourceUrl)) : null
+  // Profile links suggested for this job's drafts (the user confirms them).
+  const linkSuggestions = suggestLinksForJob(readProfileLinks((await getProfile(userId))?.links), {
+    title: app.job.title,
+    description: app.job.descriptionMd,
+  })
 
   // Split the app's documents so each card only sees the shapes it renders.
   const cvDocs = allDocs.filter((d) =>
@@ -272,6 +280,7 @@ export default async function ApplicationDetail({
         </CardContent>
       </Card>
 
+      <ShareLinksProvider suggestions={linkSuggestions}>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="min-w-0 space-y-6 lg:col-span-2">
           {stages.length > 0 ? (
@@ -393,6 +402,8 @@ export default async function ApplicationDetail({
             scoringDocument={scoringDoc ? { id: scoringDoc.id, title: scoringDoc.title } : null}
           />
 
+          <ShareLinksCard />
+
           <DocumentsCard
             applicationId={app.id}
             documents={cvDocs.map(withoutContent)}
@@ -407,12 +418,12 @@ export default async function ApplicationDetail({
           />
         </div>
       </div>
+      </ShareLinksProvider>
 
     </div>
   )
 }
 
-/** Strip the content payload before a document crosses to a client card. */
 /** Document kinds produced by an AI generation call (they carry a usage badge). */
 function isAiGeneratedKind(kind: string): boolean {
   return (
@@ -423,6 +434,7 @@ function isAiGeneratedKind(kind: string): boolean {
   )
 }
 
+/** Strip the content payload before a document crosses to a client card. */
 function withoutContent<T extends { content: unknown }>(doc: T): Omit<T, 'content'> {
   const { content: _content, ...rest } = doc
   void _content

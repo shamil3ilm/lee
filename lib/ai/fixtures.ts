@@ -13,6 +13,8 @@ import { contentStems } from '@/lib/cv-score/text'
 import { replacementVerb, weakOpenerOf } from '@/lib/cv-score/dimensions/impact'
 import type { CallMeta } from './log'
 import type { ReputationSummaryInput, ReputationSummaryResult } from './prompts/reputation-summary'
+import type { ScoreJobContext } from './prompts/score-job'
+import type { SuggestRolesInput, SuggestRolesResult } from './prompts/suggest-roles'
 import type { NormalizedCompany, NormalizedJob } from '@/lib/discovery/adapters/types'
 import type { UserProfile } from '@/lib/db/queries/profile'
 import type { ApplicationWithJob } from '@/lib/db/queries/applications'
@@ -35,7 +37,7 @@ export class FixtureAIProvider implements AIProvider {
     private readonly fixtures: {
       parseJob?: (text: string) => ParsedJob
       parseProfile?: (input: { cvText?: string; profileMd?: string }) => ParsedProfile
-      scoreJob?: (job: NormalizedJob, profile: UserProfile) => JobMatchResult
+      scoreJob?: (job: NormalizedJob, profile: UserProfile, context?: ScoreJobContext) => JobMatchResult
       scoreCompany?: (
         company: NormalizedCompany,
         profile: UserProfile,
@@ -72,6 +74,7 @@ export class FixtureAIProvider implements AIProvider {
       assessRequirementFit?: (input: RequirementFitInput) => RequirementFitResult
       rewriteCvBullets?: (input: BulletRewriteInput) => BulletRewriteResult
       summarizeReputation?: (input: ReputationSummaryInput) => ReputationSummaryResult
+      suggestRoles?: (input: SuggestRolesInput) => SuggestRolesResult
     } = {},
   ) {}
 
@@ -143,9 +146,10 @@ export class FixtureAIProvider implements AIProvider {
     job: NormalizedJob,
     profile: UserProfile,
     meta?: CallMeta,
+    context?: ScoreJobContext,
   ): Promise<JobMatchResult> {
     await this.emitLoggedCallId('score_job', meta)
-    if (this.fixtures.scoreJob) return this.fixtures.scoreJob(job, profile)
+    if (this.fixtures.scoreJob) return this.fixtures.scoreJob(job, profile, context)
     return pseudoScoreJob(job, profile)
   }
 
@@ -241,6 +245,12 @@ export class FixtureAIProvider implements AIProvider {
     return pseudoRewriteBullets(input)
   }
 
+  /** Deterministic default: no extra suggestions beyond the rules. */
+  async suggestRoles(input: SuggestRolesInput, meta?: CallMeta): Promise<SuggestRolesResult> {
+    await this.emitLoggedCallId('suggest_roles', meta)
+    if (this.fixtures.suggestRoles) return this.fixtures.suggestRoles(input)
+    return { suggestions: [] }
+  }
   async summarizeReputation(
     input: ReputationSummaryInput,
     meta?: CallMeta,

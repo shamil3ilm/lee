@@ -17,6 +17,9 @@ import type {
 import type { InterviewStage } from '@/lib/db/queries/stages'
 import type { CallMeta } from './log'
 import type { ReputationSummaryInput, ReputationSummaryResult } from './prompts/reputation-summary'
+import type { ScoreJobContext } from './prompts/score-job'
+import type { SharedLink } from './prompts/shared-links'
+import type { SuggestRolesInput, SuggestRolesResult } from './prompts/suggest-roles'
 
 export const parsedJobSchema = z.object({
   title: z.string(),
@@ -123,7 +126,14 @@ export interface AIProvider {
   // v10.1 — `meta` lets the discovery service capture the ai_call_logs row
   // id via `onLogged`, so the score can be persisted onto the discovery row
   // for later implicit-signal writeback (dismiss/save).
-  scoreJob(job: NormalizedJob, profile: UserProfile, meta?: CallMeta): Promise<JobMatchResult>
+  // Discovery relevance — `context` carries the master-CV digest (never a
+  // tailored CV) for the v1.1 scoring prompt.
+  scoreJob(
+    job: NormalizedJob,
+    profile: UserProfile,
+    meta?: CallMeta,
+    context?: ScoreJobContext,
+  ): Promise<JobMatchResult>
   scoreCompany(
     company: NormalizedCompany,
     profile: UserProfile,
@@ -131,9 +141,11 @@ export interface AIProvider {
   ): Promise<CompanyMatchResult>
   // v2 additions — CV & document generation.
   tailorCV(input: { master: MasterCV; application: ApplicationWithJob }): Promise<TailoredCV>
+  // `links` — profile links the user confirmed for this draft.
   draftCoverLetter(input: {
     master: MasterCV
     application: ApplicationWithJob
+    links?: SharedLink[]
   }): Promise<CoverLetter>
   distillGithubProjects(input: { repos: GitHubRepo[] }): Promise<CvProjects>
   // v4 additions — outreach + interview prep.
@@ -145,6 +157,7 @@ export interface AIProvider {
     kind: OutreachKind
     tone: OutreachTone
     daysSince?: number
+    links?: SharedLink[]
   }): Promise<OutreachDraft>
   generateInterviewPrepPack(input: {
     master: MasterCV
@@ -175,6 +188,9 @@ export interface AIProvider {
   // Company reputation — on-demand draft; the caller drops claims whose
   // cites are not real signal ids and the user confirms before saving.
   summarizeReputation(input: ReputationSummaryInput, meta?: CallMeta): Promise<ReputationSummaryResult>
+  // Discovery relevance — optional refinement of the deterministic role
+  // suggestions, from the profile + master-CV digest only.
+  suggestRoles(input: SuggestRolesInput, meta?: CallMeta): Promise<SuggestRolesResult>
 }
 
 export const latexCVResultSchema = z.object({ source: z.string().min(1) })

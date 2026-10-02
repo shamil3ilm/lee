@@ -82,6 +82,17 @@ describe('expireStaleDiscoveries', () => {
     expect(company!.status).toBe('dismissed')
   })
 
+  it('also expires stale postings the relevance gate filtered out', async () => {
+    const u = await makeUser()
+    const src = await makeSource(u.id)
+    const old = await makeDiscovery(u.id, src.id, { status: 'filtered', createdAt: daysAgo(STALE_DISCOVERY_DAYS + 1) })
+    const recent = await makeDiscovery(u.id, src.id, { status: 'filtered', createdAt: daysAgo(1) })
+    expect(await expireStaleDiscoveries(NOW)).toBe(1)
+    const byId = new Map((await db.select().from(s.discoveries)).map((d) => [d.id, d.status]))
+    expect(byId.get(old.id)).toBe('dismissed')
+    expect(byId.get(recent.id)).toBe('filtered')
+  })
+
   it('only touches the given user when scoped', async () => {
     const a = await makeUser()
     const b = await makeUser()

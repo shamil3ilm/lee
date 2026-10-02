@@ -1,32 +1,33 @@
 import Link from 'next/link'
+import { cookies } from 'next/headers'
 import { requireUserId } from '@/lib/auth/require-session'
-import * as discoveriesQ from '@/lib/db/queries/discoveries'
 import * as companyDiscoveriesQ from '@/lib/db/queries/companyDiscoveries'
 import * as sourcesQ from '@/lib/db/queries/sources'
-import * as riskQ from '@/lib/db/queries/riskAssessments'
-import { reassessStaleDiscoveries, safely } from '@/lib/scam/service'
 import { toRiskView } from '@/lib/scam/view'
+import { getProfile } from '@/lib/profile/service'
 import { PageHeader } from '@/components/page-header'
 import { DiscoveryInbox } from '@/components/discovery-inbox'
-import {
-  DiscoveryFilters,
-  type DiscoverySort,
-  type DiscoveryStatusFilter,
-} from '@/components/discovery-filters'
+import { DiscoveryFilters } from '@/components/discovery-filters'
 import type {
   DiscoveryCompanySummary,
   DiscoveryRowJob,
   DiscoveryRowCompany,
   DiscoveryReasoning,
 } from '@/components/discovery-row'
+import { DiscoveryPager } from '@/components/discovery/pager'
+import { LookingForCard } from '@/components/discovery/looking-for-card'
 import type { NormalizedCompany } from '@/lib/discovery/adapters/types'
+import { PAGE_SIZE_COOKIE } from '@/lib/discovery/pager'
+import { loadRoleSuggestions } from '@/lib/discovery/relevance/service'
+import { lookingForView } from '@/lib/discovery/relevance/view'
+import { repairMojibake } from '@/lib/discovery/relevance/text'
 import { cn } from '@/lib/utils'
 import { BoardViewToggle } from '@/components/board/view-toggle'
-import type { DiscoveryBoardColumn, DiscoveryBoardItem } from '@/components/discoveries-board'
 import { LazyDiscoveriesBoard } from '@/components/board/lazy'
 import { parseBoardView, viewHref, type BoardView } from '@/lib/board/view'
 import { lastCheck } from '@/lib/discovery/poll-stats'
 import { relativeFromNow } from '@/lib/ui/date'
+import { catchUp, loadBoard, loadJobs, parseDiscoveryParams, type DiscoveryParams, type JobsData } from './data'
 
 /** "Last checked 2h ago · 12 new" from the sources' last poll results. */
 function lastCheckedLine(sources: Parameters<typeof lastCheck>[0]): string | null {
@@ -37,46 +38,7 @@ function lastCheckedLine(sources: Parameters<typeof lastCheck>[0]): string | nul
 export const dynamic = 'force-dynamic'
 
 interface DiscoveriesPageProps {
-  searchParams: Promise<{
-    tab?: string
-    status?: string
-    minScore?: string
-    sort?: string
-    page?: string
-    view?: string
-  }>
-}
-
-function parseTab(raw: string | undefined): 'jobs' | 'companies' {
-  return raw === 'companies' ? 'companies' : 'jobs'
-}
-
-function parseStatus(raw: string | undefined): DiscoveryStatusFilter {
-  if (raw === 'shortlisted' || raw === 'saved' || raw === 'dismissed' || raw === 'quarantined') return raw
-  return 'new'
-}
-
-/** Bound on-view Scam Shield catch-up (rules only, cached net facts). */
-const REASSESS_ON_VIEW = 100
-
-/** Inbox rows per page (jobs and companies, every status tab). */
-const PAGE_SIZE = 50
-
-function parsePage(raw: string | undefined): number {
-  const n = Number.parseInt(raw ?? '', 10)
-  return Number.isFinite(n) && n > 1 ? Math.min(n, 10_000) : 1
-}
-
-function parseSort(raw: string | undefined): DiscoverySort {
-  if (raw === 'match' || raw === 'benefits' || raw === 'posted') return raw
-  return 'combined'
-}
-
-function parseMinScore(raw: string | undefined): number {
-  if (!raw) return 0
-  const n = Number.parseInt(raw, 10)
-  if (Number.isNaN(n)) return 0
-  return Math.max(0, Math.min(100, n))
+  searchParams: Promise<Record<string, string | undefined>>
 }
 
 export default async function DiscoveriesPage({
@@ -84,23 +46,29 @@ export default async function DiscoveriesPage({
 }: DiscoveriesPageProps): Promise<React.ReactElement> {
   const userId = await requireUserId()
   const sp = await searchParams
-  const tab = parseTab(sp.tab)
-  const parsedStatus = parseStatus(sp.status)
-  // Quarantine and the shortlist are job-discovery concepts; companies fall
-  // back to the inbox.
-  const status =
-    tab === 'companies' && (parsedStatus === 'quarantined' || parsedStatus === 'shortlisted')
-      ? 'new'
-      : parsedStatus
-  const minScore = parseMinScore(sp.minScore)
-  const sort = parseSort(sp.sort)
-  const page = parsePage(sp.page)
-  const offset = (page - 1) * PAGE_SIZE
+  const cookieStore = await cookies()
+  const p = parseDiscoveryParams(sp, cookieStore.get(PAGE_SIZE_COOKIE)?.value)
   const { view, explicit } = parseBoardView(sp.view, 'list')
+  const profile = await getProfile(userId)
 
-  if (tab === 'jobs' && view === 'board') {
-    const [board, boardSources] = await Promise.all([loadBoard(userId), sourcesQ.list(userId)])
-    const checked = lastCheckedLine(boardSources)
+  if (p.tab === 'jobs') await catchUp(userId, profile)
+  const [sources, suggestions] = await Promise.all([
+    sourcesQ.list(userId),
+    p.tab === 'jobs' ? loadRoleSuggestions(userId, profile) : Promise.resolve(null),
+  ])
+  const sourceOptions = sources.map((s) => ({ id: s.id, name: s.name }))
+  const checked = lastCheckedLine(sources)
+  const lookingFor =
+    p.tab === 'jobs' && suggestions ? (
+      <LookingForCard
+        view={lookingForView(profile)}
+        suggestionCount={suggestions.suggestions.length}
+        sparse={suggestions.sparse}
+      />
+    ) : null
+
+  if (p.tab === 'jobs' && view === 'board') {
+    const board = await loadBoard(userId, p)
     return (
       <div className="space-y-4">
         <PageHeader
@@ -108,35 +76,73 @@ export default async function DiscoveriesPage({
           description={`Triage AI-scored roles: shortlist, apply or dismiss.${checked ? ` ${checked}.` : ''}`}
           actions={<ViewToggle sp={sp} view={view} explicit={explicit} />}
         />
-        <TabBar tab={tab} />
+        <TabBar tab={p.tab} />
+        {lookingFor}
+        <DiscoveryFilters
+          tab="jobs"
+          status="new"
+          hideStatus
+          minScore={p.minScore}
+          sort={p.sort}
+          region={p.region}
+          sourceId={p.sourceId}
+          sources={sourceOptions}
+          scoredOnly={p.scoredOnly}
+        />
         <LazyDiscoveriesBoard items={board.items} totals={board.totals} />
       </div>
     )
   }
 
-  // Sources and the tab's rows are independent — fetch them together.
-  const [sources, jobs, companies] = await Promise.all([
-    sourcesQ.list(userId),
-    tab === 'jobs'
-      ? loadJobs(userId, { status, minScore, sort, offset })
-      : Promise.resolve(null),
-    tab === 'companies'
-      ? companyDiscoveriesQ.list(userId, {
-          status: status === 'quarantined' || status === 'shortlisted' ? 'new' : status,
-          minScore: minScore > 0 ? minScore : undefined,
-          // One extra row tells us whether a next page exists.
-          limit: PAGE_SIZE + 1,
-          offset,
-        })
-      : Promise.resolve([]),
-  ])
   const sourceNameById = new Map(sources.map((s) => [s.id, s.name] as const))
-  const checked = lastCheckedLine(sources)
+  const jobs = p.tab === 'jobs' ? await loadJobs(userId, p) : null
+  const companies = p.tab === 'companies' ? await loadCompanies(userId, p, sourceNameById) : null
+  const total = jobs?.total ?? companies?.total ?? 0
 
-  const jobRows = jobs?.rows.slice(0, PAGE_SIZE) ?? []
-  const jobItems: DiscoveryRowJob[] = jobRows.map((d) => {
+  return (
+    <div className="space-y-4">
+      <PageHeader
+        title="Discovery"
+        description={`AI-scored jobs and companies from your sources.${checked ? ` ${checked}.` : ''}`}
+        actions={p.tab === 'jobs' ? <ViewToggle sp={sp} view={view} explicit={explicit} /> : undefined}
+      />
+      <TabBar tab={p.tab} />
+      {lookingFor}
+      <DiscoveryFilters
+        tab={p.tab}
+        status={p.status}
+        minScore={p.minScore}
+        sort={p.sort}
+        quarantinedCount={jobs?.quarantinedCount ?? 0}
+        filteredCount={jobs?.filteredCount ?? 0}
+        region={p.region}
+        sourceId={p.sourceId}
+        sources={sourceOptions}
+        scoredOnly={p.scoredOnly}
+        showFiltered={p.showFiltered}
+      />
+      <DiscoveryPager searchParams={sp} page={p.page} size={p.size} total={total} position="top" />
+      {jobs ? (
+        <DiscoveryInbox
+          kind="jobs"
+          items={toJobRows(jobs, sourceNameById)}
+          quarantineView={p.status === 'quarantined'}
+          filteredView={p.status === 'filtered'}
+        />
+      ) : (
+        <DiscoveryInbox kind="companies" items={companies?.rows ?? []} />
+      )}
+      {total > p.size ? (
+        <DiscoveryPager searchParams={sp} page={p.page} size={p.size} total={total} position="bottom" />
+      ) : null}
+    </div>
+  )
+}
+
+function toJobRows(jobs: JobsData, sourceNameById: Map<string, string>): DiscoveryRowJob[] {
+  return jobs.rows.map((d) => {
     const sourceName = sourceNameById.get(d.sourceId) ?? 'unknown'
-    const risk = jobs?.risks.get(d.id)
+    const risk = jobs.risks.get(d.id)
     return {
       id: d.id,
       status: d.status,
@@ -145,9 +151,10 @@ export default async function DiscoveriesPage({
       createdAt: d.createdAt.toISOString(),
       sourceName,
       normalized: {
-        title: d.title ?? 'Untitled',
-        companyName: d.companyName ?? 'Unknown',
-        location: d.location,
+        // Some boards (RemoteOK) serve double-encoded UTF-8; show it repaired.
+        title: repairMojibake(d.title ?? 'Untitled'),
+        companyName: repairMojibake(d.companyName ?? 'Unknown'),
+        location: d.location ? repairMojibake(d.location) : d.location,
         remoteType: d.remoteType,
         techStack: d.techStack,
         applyUrl: d.applyUrl,
@@ -155,127 +162,39 @@ export default async function DiscoveriesPage({
       reasoning: (d.matchReasoning as DiscoveryReasoning | null) ?? null,
       scoredByCallId: d.scoredByCallId,
       risk: risk ? toRiskView(risk, sourceName) : null,
+      filterReason: d.filterReason,
+      notes: d.relevanceNotes,
     }
   })
-
-  const companyItems: DiscoveryRowCompany[] = companies.slice(0, PAGE_SIZE).map((d) => ({
-    id: d.id,
-    status: d.status,
-    matchScore: d.matchScore,
-    createdAt: d.createdAt.toISOString(),
-    sourceName: sourceNameById.get(d.sourceId) ?? 'unknown',
-    normalized: toCompanySummary(d.normalized),
-    reasoning: (d.matchReasoning as DiscoveryReasoning | null) ?? null,
-    scoredByCallId: d.scoredByCallId,
-  }))
-
-  const hasNext =
-    tab === 'jobs' ? (jobs?.rows.length ?? 0) > PAGE_SIZE : companies.length > PAGE_SIZE
-
-  return (
-    <div className="space-y-4">
-      <PageHeader
-        title="Discovery"
-        description={`AI-scored jobs and companies from your sources.${checked ? ` ${checked}.` : ''}`}
-        actions={tab === 'jobs' ? <ViewToggle sp={sp} view={view} explicit={explicit} /> : undefined}
-      />
-      <TabBar tab={tab} />
-      <DiscoveryFilters
-        tab={tab}
-        status={status}
-        minScore={minScore}
-        sort={sort}
-        quarantinedCount={jobs?.quarantinedCount ?? 0}
-      />
-      {tab === 'jobs' ? (
-        <DiscoveryInbox kind="jobs" items={jobItems} quarantineView={status === 'quarantined'} />
-      ) : (
-        <DiscoveryInbox kind="companies" items={companyItems} />
-      )}
-      <Pager searchParams={sp} page={page} hasNext={hasNext} />
-    </div>
-  )
 }
 
-async function loadJobs(
+/** Company discoveries: one page plus one count query for the pager. */
+async function loadCompanies(
   userId: string,
-  opts: { status: DiscoveryStatusFilter; minScore: number; sort: DiscoverySort; offset: number },
-): Promise<{
-  rows: discoveriesQ.DiscoveryListItem[]
-  risks: Map<string, riskQ.RiskAssessmentRow>
-  quarantinedCount: number
-}> {
-  // v17 §1 — make sure every row has a current Scam Shield assessment
-  // (new rules version, rows ingested before Scam Shield) before filtering.
-  await safely('discoveries_view', () => reassessStaleDiscoveries(userId, { limit: REASSESS_ON_VIEW }))
-  const [rows, quarantinedCount] = await Promise.all([
-    discoveriesQ.list(userId, {
-      status: opts.status === 'quarantined' ? 'all' : opts.status,
-      quarantine: opts.status === 'quarantined' ? 'only' : 'exclude',
-      minScore: opts.minScore > 0 ? opts.minScore : undefined,
-      sort: opts.sort,
-      // One extra row tells us whether a next page exists.
-      limit: PAGE_SIZE + 1,
-      offset: opts.offset,
-    }),
-    discoveriesQ.countQuarantined(userId),
+  p: DiscoveryParams,
+  names: Map<string, string>,
+): Promise<{ rows: DiscoveryRowCompany[]; total: number }> {
+  const opts = {
+    status: p.status === 'saved' || p.status === 'dismissed' ? p.status : ('new' as const),
+    minScore: p.minScore > 0 ? p.minScore : undefined,
+  }
+  const [rows, total] = await Promise.all([
+    companyDiscoveriesQ.list(userId, { ...opts, limit: p.size, offset: (p.page - 1) * p.size }),
+    companyDiscoveriesQ.countList(userId, opts),
   ])
-  const risks = await riskQ.mapForTargets(
-    userId,
-    'discovery',
-    rows.slice(0, PAGE_SIZE).map((d) => d.id),
-  )
-  return { rows, risks, quarantinedCount }
-}
-
-/** Cards per board column; the footer links to the full list. */
-const BOARD_COLUMN_LIMIT = 25
-
-/**
- * Triage board data: each column capped (four lean, indexed queries in
- * parallel) plus one grouped count. Quarantined rows are excluded, as in
- * the inbox; the same bounded Scam Shield catch-up runs first.
- */
-async function loadBoard(userId: string): Promise<{
-  items: Record<DiscoveryBoardColumn, DiscoveryBoardItem[]>
-  totals: Record<DiscoveryBoardColumn, number>
-}> {
-  await safely('discoveries_view', () => reassessStaleDiscoveries(userId, { limit: REASSESS_ON_VIEW }))
-  const columns: DiscoveryBoardColumn[] = ['new', 'shortlisted', 'saved', 'dismissed']
-  const [lists, totals] = await Promise.all([
-    Promise.all(
-      columns.map((status) =>
-        discoveriesQ.list(userId, {
-          status,
-          quarantine: 'exclude',
-          // Triage columns by fit; outcome columns by recency.
-          sort: status === 'new' || status === 'shortlisted' ? 'combined' : 'posted',
-          limit: BOARD_COLUMN_LIMIT,
-        }),
-      ),
-    ),
-    discoveriesQ.countByStatus(userId),
-  ])
-  const items = Object.fromEntries(
-    columns.map((status, i) => [
-      status,
-      lists[i]!.map(
-        (d): DiscoveryBoardItem => ({
-          id: d.id,
-          version: d.updatedAt.toISOString(),
-          status,
-          title: d.title ?? 'Untitled',
-          companyName: d.companyName ?? 'Unknown',
-          location: d.location,
-          remoteType: d.remoteType,
-          matchScore: d.matchScore,
-          applyUrl: d.applyUrl,
-          savedApplicationId: d.savedApplicationId,
-        }),
-      ),
-    ]),
-  ) as Record<DiscoveryBoardColumn, DiscoveryBoardItem[]>
-  return { items, totals }
+  return {
+    total,
+    rows: rows.map((d) => ({
+      id: d.id,
+      status: d.status,
+      matchScore: d.matchScore,
+      createdAt: d.createdAt.toISOString(),
+      sourceName: names.get(d.sourceId) ?? 'unknown',
+      normalized: toCompanySummary(d.normalized),
+      reasoning: (d.matchReasoning as DiscoveryReasoning | null) ?? null,
+      scoredByCallId: d.scoredByCallId,
+    })),
+  }
 }
 
 function ViewToggle({
@@ -293,7 +212,7 @@ function ViewToggle({
       current={view}
       defaultView="list"
       explicit={explicit}
-      boardHref={viewHref('/discoveries', { tab: 'jobs' }, 'board')}
+      boardHref={viewHref('/discoveries', { ...sp, tab: 'jobs', status: undefined }, 'board')}
       listHref={viewHref('/discoveries', sp, 'list')}
     />
   )
@@ -309,43 +228,6 @@ function toCompanySummary(value: unknown): DiscoveryCompanySummary {
     stage: n.stage ?? null,
     techStack: Array.isArray(n.techStack) ? n.techStack : [],
   }
-}
-
-interface PagerProps {
-  searchParams: Record<string, string | undefined>
-  page: number
-  hasNext: boolean
-}
-
-function Pager({ searchParams, page, hasNext }: PagerProps): React.ReactElement | null {
-  if (page === 1 && !hasNext) return null
-  const href = (p: number): string => {
-    const next = new URLSearchParams()
-    for (const [k, v] of Object.entries(searchParams)) if (v && k !== 'page') next.set(k, v)
-    if (p > 1) next.set('page', String(p))
-    const qs = next.toString()
-    return qs ? `/discoveries?${qs}` : '/discoveries'
-  }
-  const linkCls = 'rounded-md border px-3 py-1.5 text-sm hover:bg-muted'
-  return (
-    <nav aria-label="Discovery pages" className="flex items-center justify-between pt-2">
-      {page > 1 ? (
-        <Link href={href(page - 1)} className={linkCls}>
-          Previous
-        </Link>
-      ) : (
-        <span />
-      )}
-      <span className="text-xs text-muted-foreground">Page {page}</span>
-      {hasNext ? (
-        <Link href={href(page + 1)} className={linkCls}>
-          Next
-        </Link>
-      ) : (
-        <span />
-      )}
-    </nav>
-  )
 }
 
 function TabBar({ tab }: { tab: 'jobs' | 'companies' }): React.ReactElement {

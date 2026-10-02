@@ -10,6 +10,7 @@ import {
 } from '@/lib/discovery/service'
 import * as discQ from '@/lib/db/queries/discoveries'
 import * as compDiscQ from '@/lib/db/queries/companyDiscoveries'
+import * as relevanceQ from '@/lib/db/queries/discoveryRelevance'
 import * as aiCallLogsQ from '@/lib/db/queries/aiCallLogs'
 import { logger } from '@/lib/logger'
 
@@ -142,7 +143,7 @@ export async function dismissMultiple(ids: string[]): Promise<BulkResult> {
     // Defensive: strip anything that isn't a plausible uuid so a hostile
     // caller can't smuggle SQL through the array driver's escaping. Length
     // check keeps the where-clause bounded.
-    const clean = ids.filter((v) => typeof v === 'string' && v.length <= 64)
+    const clean = ids.filter((v) => typeof v === 'string' && UUID_RE.test(v)).slice(0, 500)
     if (clean.length === 0) return { success: true, count: 0 }
     const count = await discQ.dismissByIds(userId, clean)
     revalidatePath('/discoveries')
@@ -201,6 +202,43 @@ export async function restoreDiscoveries(ids: string[]): Promise<BulkResult> {
       err: err instanceof Error ? err.message : String(err),
     })
     return { error: 'Could not restore discoveries.' }
+  }
+}
+
+/**
+ * "Show anyway": move filtered-out postings back to the inbox. They are
+ * marked as overridden, so re-evaluation never filters them again.
+ */
+export async function showFilteredAnyway(ids: string[]): Promise<BulkResult> {
+  try {
+    const userId = await requireUserId()
+    if (!Array.isArray(ids)) return { error: 'Invalid selection.' }
+    const clean = ids.filter((v) => typeof v === 'string' && UUID_RE.test(v)).slice(0, 500)
+    if (clean.length === 0) return { success: true, count: 0 }
+    const count = await relevanceQ.showAnyway(userId, clean)
+    revalidatePath('/discoveries')
+    revalidatePath('/')
+    return { success: true, count }
+  } catch (err) {
+    logger.error('showFilteredAnyway failed', {
+      err: err instanceof Error ? err.message : String(err),
+    })
+    return { error: 'Could not restore the filtered postings.' }
+  }
+}
+
+/** "Dismiss all filtered" — every filtered-out posting, in one UPDATE. */
+export async function dismissAllFiltered(): Promise<BulkResult> {
+  try {
+    const userId = await requireUserId()
+    const count = await relevanceQ.dismissAllFiltered(userId)
+    revalidatePath('/discoveries')
+    return { success: true, count }
+  } catch (err) {
+    logger.error('dismissAllFiltered failed', {
+      err: err instanceof Error ? err.message : String(err),
+    })
+    return { error: 'Could not dismiss the filtered postings.' }
   }
 }
 

@@ -1,4 +1,5 @@
 'use client'
+import { useSharedLinkIds } from '@/components/profile/share-links'
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
@@ -144,6 +145,7 @@ export function DocumentsCard({
   usage = {},
 }: DocumentsCardProps) {
   const router = useRouter()
+  const linkIds = useSharedLinkIds()
   const [busy, setBusy] = useState<null | 'tailored' | 'cover_letter'>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<Document | null>(null)
@@ -162,7 +164,11 @@ export function DocumentsCard({
         kind === 'tailored'
           ? `/api/applications/${applicationId}/documents/generate-tailored`
           : `/api/applications/${applicationId}/documents/generate-cover-letter`
-      const res = await fetch(endpoint, { method: 'POST' })
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ linkIds }),
+      })
       const json = (await res.json()) as {
         documentId?: string
         error?: string

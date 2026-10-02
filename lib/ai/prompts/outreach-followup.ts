@@ -10,7 +10,7 @@ import type { ApplicationWithJob } from '@/lib/db/queries/applications'
  * schema round-trips regardless of daysSince.
  */
 // v10.1 — bump on intentional edits; see lib/ai/prompts/hash.ts for rationale.
-export const OUTREACH_FOLLOWUP_PROMPT_VERSION = '1.0.0'
+export const OUTREACH_FOLLOWUP_PROMPT_VERSION = '1.1.0'
 
 export const OUTREACH_FOLLOWUP_SYSTEM = `You draft a follow-up EMAIL from a candidate to a recruiter/hiring manager AFTER they have already applied.
 

@@ -1,0 +1,18 @@
+{
+  "name": "Must be in UAE: kept at normal rank with an info note",
+  "inputs": {
+    "profile": {
+      "discoveryPrefs": { "basedIn": "IN", "sponsorshipFor": ["AE"] }
+    },
+    "job": {
+      "title": "Full Stack Developer (Laravel/React)",
+      "location": "Abu Dhabi",
+      "descriptionMd": "Candidates must be based in the UAE. Own visa preferred."
+    }
+  },
+  "expect": {
+    "pass": true,
+    "penalties": [],
+    "infos": ["Needs presence in UAE — visit visa possible"]
+  }
+}

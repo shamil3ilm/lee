@@ -18,7 +18,8 @@ export const DISCOVERY_COMPACT_AFTER_HOURS = 24
 type Opts = BatchOpts & { days?: number }
 
 /**
- * Auto-dismiss discoveries still unreviewed (`new`) more than `days` after
+ * Auto-dismiss discoveries still unreviewed (`new`, or `filtered` by the
+ * relevance gate) more than `days` after
  * they were ingested. The user never looked at them, so nothing they acted
  * on changes: shortlisted and saved rows are untouched. `updated_at` becomes
  * `now`, so the row sits in the Dismissed tab (restorable, full payload) for
@@ -34,7 +35,7 @@ export async function expireStaleDiscoveries(now: Date = new Date(), opts: Opts 
         update ${table} set status = 'dismissed', updated_at = ${now}
         where id in (
           select id from ${table}
-          where status = 'new' and created_at < ${before}${userScope(sql`user_id`, opts.userId)}
+          where status in ('new', 'filtered') and created_at < ${before}${userScope(sql`user_id`, opts.userId)}
           limit ${limit}
         )
       `)

@@ -58,6 +58,11 @@ import {
   summarizeScamShield,
 } from './scam-shield'
 import type { NetContext, ScamInput } from '@/lib/scam/types'
+import {
+  checkDiscoveryMatch,
+  loadDiscoveryMatchFixtures,
+  runDiscoveryMatchFixture,
+} from './discovery-match'
 
 // ---------------------------------------------------------------------------
 // Config
@@ -363,6 +368,29 @@ async function runScamShieldExpectationGate(): Promise<number> {
   return failed
 }
 
+/**
+ * Discovery relevance gate + match-score caps + scoring prompt (v1.1).
+ * Deterministic labelled fixtures; gates CI like the Scam Shield set.
+ */
+async function runDiscoveryMatchExpectationGate(): Promise<number> {
+  const fixtures = loadDiscoveryMatchFixtures()
+  if (fixtures.length === 0) return 0
+  let failed = 0
+  console.log(`## discovery-match expectations (${fixtures.length} fixtures, deterministic)`)
+  for (const f of fixtures) {
+    const violations = checkDiscoveryMatch(f, runDiscoveryMatchFixture(f))
+    if (violations.length === 0) {
+      console.log(`  [OK ] ${f.file}`)
+    } else {
+      failed += 1
+      console.log(`  [FAIL] ${f.file}`)
+      for (const v of violations) console.log(`    - ${v}`)
+    }
+  }
+  console.log('')
+  return failed
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -387,6 +415,11 @@ async function main(): Promise<void> {
   const scamFailures = await runScamShieldExpectationGate()
   if (scamFailures > 0) {
     console.error(`scam-shield expectations failed for ${scamFailures} fixture(s).`)
+    process.exit(1)
+  }
+  const matchFailures = await runDiscoveryMatchExpectationGate()
+  if (matchFailures > 0) {
+    console.error(`discovery-match expectations failed for ${matchFailures} fixture(s).`)
     process.exit(1)
   }
 

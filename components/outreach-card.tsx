@@ -1,4 +1,5 @@
 'use client'
+import { useSharedLinkIds } from '@/components/profile/share-links'
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -128,6 +129,7 @@ export function OutreachCard({
   usage = {},
 }: OutreachCardProps) {
   const router = useRouter()
+  const linkIds = useSharedLinkIds()
   const [activeTab, setActiveTab] = useState<TabValue>('connection')
   const [tone, setTone] = useState<OutreachTone>('friendly')
   const [busyTab, setBusyTab] = useState<TabValue | null>(null)
@@ -169,7 +171,7 @@ export function OutreachCard({
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ kind: TAB_TO_KIND[tab], tone }),
+          body: JSON.stringify({ kind: TAB_TO_KIND[tab], tone, linkIds }),
         },
       )
       const json = (await res.json().catch(() => ({}))) as {
@@ -216,7 +218,7 @@ export function OutreachCard({
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tone, daysSince: days }),
+          body: JSON.stringify({ tone, daysSince: days, linkIds }),
         },
       )
       const json = (await res.json().catch(() => ({}))) as {
