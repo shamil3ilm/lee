@@ -17,6 +17,18 @@ interface RemoteOkJob {
 }
 
 /**
+ * Tags for the relevance gate (it decides; this adapter never filters).
+ * RemoteOK is a global remote board with many US/EU-only roles:
+ * `board:remoteok` marks the origin, `geo:worldwide` when the location is
+ * empty or says anywhere/worldwide, `geo:restricted` otherwise.
+ */
+export function remoteOkTags(location: string | undefined): string[] {
+  const where = (location ?? '').trim()
+  const worldwide = where === '' || /\b(worldwide|anywhere|global)\b/i.test(where)
+  return ['board:remoteok', worldwide ? 'geo:worldwide' : 'geo:restricted']
+}
+
+/**
  * RemoteOK free JSON API. Returns an array whose first element is a legal
  * notice / metadata object and the rest are job postings.
  */
@@ -25,7 +37,7 @@ export class RemoteOkAdapter implements DiscoveryAdapter {
 
   async fetch(_config: unknown): Promise<DiscoveryItem[]> {
     const res = await discoveryFetch('remoteok', 'https://remoteok.com/api', {
-      headers: { accept: 'application/json', 'user-agent': 'lee/1.5' },
+      headers: { accept: 'application/json' },
     })
     if (!res.ok) throw new Error(`remoteok ${res.status}`)
     const body = (await res.json()) as unknown[]
@@ -48,6 +60,7 @@ export class RemoteOkAdapter implements DiscoveryAdapter {
         applyUrl,
         descriptionMd: job.description ?? '',
         techStack: Array.isArray(job.tags) ? job.tags : [],
+        tags: remoteOkTags(job.location),
         postedAt: job.date
           ? new Date(job.date)
           : job.epoch

@@ -3,7 +3,7 @@ import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { companies, sources, userDefaults } from '@/lib/db/schema'
 import { applyDefaults } from '@/lib/defaults/apply'
-import { DEFAULT_SOURCES, DEFAULTS_VERSION, type DefaultSource } from '@/lib/defaults/catalog'
+import { DEFAULT_SOURCES, DEFAULTS_VERSION, sourceIdentity, type DefaultSource } from '@/lib/defaults/catalog'
 import { makeFreshUser as makeUser, makeSource } from '@/tests/factories'
 
 async function sourcesOf(userId: string) {
@@ -78,5 +78,34 @@ describe('applyDefaults', () => {
     const kinds = (await sourcesOf(u.id)).map((s) => s.kind)
     expect(kinds).not.toContain('hn_whoishiring')
     expect((await sourcesOf(u.id)).some((s) => s.name === 'NewCo (Lever)')).toBe(true)
+  })
+
+  it('v2: a user on v1 receives only the v2 defaults (GCC boards, email alerts, APIs)', async () => {
+    const u = await makeUser()
+    await applyDefaults(u.id, { version: 1 })
+    const v1Count = DEFAULT_SOURCES.filter((d) => d.since === 1).length
+    expect(await sourcesOf(u.id)).toHaveLength(v1Count)
+    // A v1 default the user removed stays removed after the upgrade.
+    await db.delete(sources).where(and(eq(sources.userId, u.id), eq(sources.kind, 'remoteok')))
+
+    const r = await applyDefaults(u.id)
+    const v2 = DEFAULT_SOURCES.filter((d) => d.since === 2)
+    expect(r.version).toBe(2)
+    expect(r.addedSources).toBe(v2.length)
+    const rows = await sourcesOf(u.id)
+    expect(rows.map((s) => s.kind)).not.toContain('remoteok')
+    expect(rows.find((s) => s.kind === 'email_alert')?.enabled).toBe(true)
+    // Sites lee may not fetch arrive as watch links, switched off.
+    expect(rows.filter((s) => s.kind === 'watch').every((s) => !s.enabled)).toBe(true)
+  })
+
+  it('v2 catalog: unique keys and identities, few enabled, GCC companies recorded', () => {
+    const keys = DEFAULT_SOURCES.map((d) => d.key)
+    expect(new Set(keys).size).toBe(keys.length)
+    const ids = DEFAULT_SOURCES.map((d) => sourceIdentity(d.kind, d.config))
+    expect(new Set(ids).size).toBe(ids.length)
+    const enabledV2 = DEFAULT_SOURCES.filter((d) => d.since === 2 && d.enabled)
+    expect(enabledV2.length).toBeLessThanOrEqual(10)
+    expect(DEFAULT_SOURCES.filter((d) => d.company?.headquartersCountry === 'Saudi Arabia').length).toBeGreaterThan(3)
   })
 })

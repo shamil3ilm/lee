@@ -12,93 +12,105 @@ interface WorkableLocation {
 }
 
 interface WorkableJob {
-  id: string
+  id?: string
   title: string
   url?: string
   shortcode?: string
+  /** v3: an object; widget: absent (flat city / state / country below). */
   location?: WorkableLocation
+  city?: string
+  state?: string
+  country?: string
+  locations?: WorkableLocation[]
   published_on?: string
+  published?: string
   created_at?: string
-  department?: string
+  department?: string | string[]
   employment_type?: string
   workplace?: string
+  telecommuting?: boolean
   description?: string
   full_title?: string
 }
 
 interface WorkableResponse {
+  name?: string
   jobs?: WorkableJob[]
   results?: WorkableJob[]
 }
 
+function remoteTypeOf(job: WorkableJob): NormalizedJob['remoteType'] {
+  const workplace = (job.workplace ?? '').toLowerCase()
+  if (workplace === 'remote' || job.telecommuting === true) return 'remote'
+  if (workplace === 'hybrid') return 'hybrid'
+  if (workplace === 'on_site' || workplace === 'onsite') return 'onsite'
+  return 'unknown'
+}
+
+function employmentTypeOf(value: string | undefined): NormalizedJob['employmentType'] {
+  const et = (value ?? '').toLowerCase()
+  if (et.includes('full')) return 'fulltime'
+  if (et.includes('contract')) return 'contract'
+  if (et.includes('part')) return 'parttime'
+  if (et.includes('intern')) return 'internship'
+  return 'unknown'
+}
+
+function normalize(job: WorkableJob, company: string, companyName: string): DiscoveryItem {
+  const loc = job.location ?? { city: job.city, region: job.state, country: job.country }
+  const locBits = [loc.city, loc.region, loc.country].filter(Boolean)
+  const applyUrl =
+    job.url ??
+    (job.shortcode
+      ? `https://apply.workable.com/${company}/j/${job.shortcode}/`
+      : `https://apply.workable.com/${company}/`)
+  const posted = job.published_on ?? job.published ?? job.created_at
+  const countryCode = loc.countryCode ?? job.locations?.[0]?.countryCode
+  const normalized: NormalizedJob = {
+    kind: 'job',
+    title: job.title,
+    companyName,
+    location: locBits.length > 0 ? locBits.join(', ') : undefined,
+    remoteType: remoteTypeOf(job),
+    employmentType: employmentTypeOf(job.employment_type),
+    applyUrl,
+    descriptionMd: job.description ?? '',
+    techStack: [],
+    postedAt: posted ? new Date(posted) : undefined,
+    tags: countryCode ? [`country:${countryCode.toLowerCase()}`] : [],
+    raw: job,
+  }
+  return { sourceItemId: job.id ?? job.shortcode ?? applyUrl, raw: job, normalized }
+}
+
 /**
- * Workable public jobs API. The apply.workable.com host serves company job
- * boards; the /jobs endpoint returns a paginated list. We fetch page 1 only
- * per poll (fresh jobs appear first).
+ * Workable public job boards. Primary: the widget API
+ * (GET www.workable.com/api/accounts/{company}, redirects to
+ * apply.workable.com/api/v1/widget/…) — every published job in one
+ * response, and far less rate-limited than v3. Fallback when the widget
+ * errors (other than 404, an unknown account): the v3 list endpoint
+ * (POST apply.workable.com/api/v3/accounts/{company}/jobs, page 1).
  */
 export class WorkableAdapter implements DiscoveryAdapter {
   readonly kind = 'workable'
 
   async fetch(config: unknown): Promise<DiscoveryItem[]> {
     const { company } = configSchema.parse(config)
-    const url = `https://apply.workable.com/api/v3/accounts/${encodeURIComponent(company)}/jobs`
-    // Workable's public endpoint uses POST for filters; empty body returns all.
-    const res = await discoveryFetch('workable', url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({}),
+    const slug = encodeURIComponent(company)
+    let res = await discoveryFetch('workable', `https://www.workable.com/api/accounts/${slug}?details=false`, {
+      headers: { accept: 'application/json' },
     })
+    if (!res.ok && res.status !== 404) {
+      res = await discoveryFetch('workable', `https://apply.workable.com/api/v3/accounts/${slug}/jobs`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+    }
     if (!res.ok) throw new Error(`workable ${res.status}`)
     const body = (await res.json()) as WorkableResponse
-    const jobs = body.results ?? body.jobs ?? []
-    return jobs.map((job) => {
-      const workplace = (job.workplace ?? '').toLowerCase()
-      const remoteType: NormalizedJob['remoteType'] =
-        workplace === 'remote'
-          ? 'remote'
-          : workplace === 'hybrid'
-            ? 'hybrid'
-            : workplace === 'on_site' || workplace === 'onsite'
-              ? 'onsite'
-              : 'unknown'
-      const et = (job.employment_type ?? '').toLowerCase()
-      const employmentType: NormalizedJob['employmentType'] =
-        et.includes('full')
-          ? 'fulltime'
-          : et.includes('contract')
-            ? 'contract'
-            : et.includes('part')
-              ? 'parttime'
-              : et.includes('intern')
-                ? 'internship'
-                : 'unknown'
-      const locBits = [job.location?.city, job.location?.region, job.location?.country].filter(
-        Boolean,
-      )
-      const applyUrl =
-        job.url ??
-        (job.shortcode
-          ? `https://apply.workable.com/${company}/j/${job.shortcode}/`
-          : `https://apply.workable.com/${company}/`)
-      const posted = job.published_on ?? job.created_at
-      const normalized: NormalizedJob = {
-        kind: 'job',
-        title: job.title,
-        companyName: company,
-        location: locBits.length > 0 ? locBits.join(', ') : undefined,
-        remoteType,
-        employmentType,
-        applyUrl,
-        descriptionMd: job.description ?? '',
-        techStack: [],
-        postedAt: posted ? new Date(posted) : undefined,
-        raw: job,
-      }
-      return {
-        sourceItemId: job.id ?? job.shortcode ?? applyUrl,
-        raw: job,
-        normalized,
-      }
-    })
+    const jobs = body.jobs ?? body.results ?? []
+    const companyName = body.name?.trim() || company
+    return jobs.map((job) => normalize(job, company, companyName))
   }
 }

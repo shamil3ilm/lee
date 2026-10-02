@@ -16,12 +16,16 @@ interface Starter {
   name?: string
 }
 
-const STARTERS: Starter[] = DEFAULT_SOURCES.map((d) => ({
+// The add dialog sets only the slug / URL, so defaults that need more
+// config (e.g. a brand slice of a group board) are left out here.
+const STARTERS: Starter[] = DEFAULT_SOURCES.filter((d) =>
+  Object.keys(d.config).every((k) => k === 'company' || k === 'url'),
+).map((d) => ({
   id: d.key,
   label: d.name,
   kind: d.kind,
-  company: d.config.company,
-  url: d.config.url,
+  company: typeof d.config.company === 'string' ? d.config.company : undefined,
+  url: typeof d.config.url === 'string' ? d.config.url : undefined,
   name: d.name,
 }))
 

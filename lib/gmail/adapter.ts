@@ -1,7 +1,8 @@
 /**
  * Thin wrapper around Gmail's REST API v1. Only the read paths the sync loop
- * needs are covered here — we do NOT expose message body fetch (spec keeps
- * v3 read-only against headers + snippet).
+ * needs are covered here. The application-matching sync reads headers +
+ * snippet only; message bodies are fetched solely for job-alert emails
+ * (see the section at the end), parsed in memory and never stored.
  *
  * All calls take the caller's access token (already refreshed by
  * `lib/google/tokens.ts`) so this module is stateless and easy to test.
@@ -153,4 +154,106 @@ export function extractDomain(email: string | undefined): string | undefined {
   const at = email.lastIndexOf('@')
   if (at < 0 || at === email.length - 1) return undefined
   return email.slice(at + 1).toLowerCase()
+}
+
+// ---------------------------------------------------------------------------
+// Job-alert reading (lib/email-alerts). The one place a message body is
+// fetched: only for messages from job-alert senders, decoded in memory for
+// the parser and never stored.
+// ---------------------------------------------------------------------------
+
+export interface GmailMessageRef {
+  id: string
+  threadId: string
+}
+
+/** Message ids matching a Gmail search query (one page, newest first). */
+export async function listMessageIds({
+  tokens,
+  q,
+  maxResults = 50,
+}: {
+  tokens: GmailTokens
+  q: string
+  maxResults?: number
+}): Promise<GmailMessageRef[]> {
+  const params = new URLSearchParams({ q, maxResults: String(maxResults) })
+  const res = await fetchWithTimeout(
+    `https://gmail.googleapis.com/gmail/v1/users/me/messages?${params.toString()}`,
+    { headers: { authorization: `Bearer ${tokens.accessToken}` } },
+    { timeoutMs: GMAIL_TIMEOUT_MS, label: 'gmail listMessages' },
+  )
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    throw new Error(`gmail listMessages ${res.status}: ${detail.slice(0, 200)}`)
+  }
+  const json = (await res.json()) as { messages?: GmailMessageRef[] }
+  return json.messages ?? []
+}
+
+export interface GmailPart {
+  mimeType?: string
+  headers?: GmailHeader[]
+  body?: { data?: string; size?: number }
+  parts?: GmailPart[]
+}
+
+export interface GmailMessageContent {
+  id: string
+  internalDate: string
+  headers: GmailHeader[]
+  html: string | null
+  text: string | null
+}
+
+/** Bodies larger than this are cut (alert emails are well under it). */
+export const MAX_BODY_BYTES = 1_000_000
+
+function decodeBase64Url(data: string): string {
+  const buf = Buffer.from(data.replace(/-/g, '+').replace(/_/g, '/'), 'base64')
+  return buf.subarray(0, MAX_BODY_BYTES).toString('utf8')
+}
+
+/** First text/html and text/plain bodies in a MIME tree (depth-first). */
+export function extractBodies(payload: GmailPart): { html: string | null; text: string | null } {
+  let html: string | null = null
+  let text: string | null = null
+  const walk = (part: GmailPart, depth: number): void => {
+    if (depth > 8 || (html !== null && text !== null)) return
+    const type = (part.mimeType ?? '').toLowerCase()
+    if (part.body?.data) {
+      if (type === 'text/html' && html === null) html = decodeBase64Url(part.body.data)
+      else if (type === 'text/plain' && text === null) text = decodeBase64Url(part.body.data)
+    }
+    for (const child of part.parts ?? []) walk(child, depth + 1)
+  }
+  walk(payload, 0)
+  return { html, text }
+}
+
+/** One message with its decoded HTML / text parts (format=full). */
+export async function getMessageContent({
+  tokens,
+  id,
+}: {
+  tokens: GmailTokens
+  id: string
+}): Promise<GmailMessageContent> {
+  const res = await fetchWithTimeout(
+    `https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(id)}?format=full`,
+    { headers: { authorization: `Bearer ${tokens.accessToken}` } },
+    { timeoutMs: GMAIL_TIMEOUT_MS, label: 'gmail getMessage' },
+  )
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    throw new Error(`gmail getMessage ${res.status}: ${detail.slice(0, 200)}`)
+  }
+  const json = (await res.json()) as { id: string; internalDate?: string; payload?: GmailPart }
+  const payload = json.payload ?? {}
+  return {
+    id: json.id,
+    internalDate: json.internalDate ?? '0',
+    headers: payload.headers ?? [],
+    ...extractBodies(payload),
+  }
 }
