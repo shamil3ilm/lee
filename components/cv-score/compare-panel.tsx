@@ -44,7 +44,7 @@ export function ComparePanel({ documents, applications }: ComparePanelProps) {
     <div className="space-y-4">
       <Card>
         <CardContent className="space-y-4 p-4">
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 @3xl/main:grid-cols-3">
             <DocumentSelect id="cmp-a" label="CV A (e.g. master)" documents={documents} value={a} onChange={setA} />
             <DocumentSelect id="cmp-b" label="CV B (e.g. tailored)" documents={documents} value={b} onChange={pickB} />
             <ApplicationSelect id="cmp-app" applications={applications} value={applicationId} onChange={setApplicationId} />

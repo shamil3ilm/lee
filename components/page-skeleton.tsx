@@ -50,7 +50,7 @@ function ListBody() {
 
 function CardsBody() {
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 @2xl/main:grid-cols-2 @5xl/main:grid-cols-3">
       {Array.from({ length: 6 }).map((_, i) => (
         <Skeleton key={i} className="h-72 w-full" />
       ))}

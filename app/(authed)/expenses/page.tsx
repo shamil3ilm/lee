@@ -101,7 +101,7 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             Top categories this month
           </h2>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 @lg/main:grid-cols-2 @4xl/main:grid-cols-3">
             {topCategories.map((c) => {
               const budget = budgetByCategory.get(c.category)
               return (

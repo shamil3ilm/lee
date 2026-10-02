@@ -97,15 +97,15 @@ export function ServiceSecretsPanel({ statuses }: ServiceSecretsPanelProps) {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid gap-4 @2xl/main:grid-cols-2">
       {statuses.map((s) => {
         const id = s.info.id
         const isBusy = (a: NonNullable<Busy>['action']) => busy?.id === id && busy.action === a
         return (
           <Card key={id} className="flex flex-col">
             <CardHeader className="space-y-2 pb-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <CardTitle>{s.info.label}</CardTitle>
+              <div className="flex items-start justify-between gap-2">
+                <CardTitle className="min-w-0 pt-0.5">{s.info.label}</CardTitle>
                 <SourceBadge status={s} />
               </div>
               <CardDescription className="text-xs">{s.info.description}</CardDescription>

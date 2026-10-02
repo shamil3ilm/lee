@@ -290,7 +290,7 @@ export function DecisionPlayground({ defaultLayaEndpoint }: DecisionPlaygroundPr
   const disagreement = useMemo(() => detectDisagreement(results, type), [results, type])
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid gap-4 @4xl/main:grid-cols-2">
       {/* LEFT — Form */}
       <Card>
         <CardHeader className="pb-3">
