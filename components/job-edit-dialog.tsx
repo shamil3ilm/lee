@@ -49,7 +49,7 @@ const NONE = '__none__'
 const REMOTE = [
   { value: 'remote', label: 'Remote' },
   { value: 'hybrid', label: 'Hybrid' },
-  { value: 'onsite', label: 'Onsite' },
+  { value: 'onsite', label: 'On-site' },
   { value: 'unknown', label: 'Unknown' },
 ]
 const EMPLOYMENT = [

@@ -24,6 +24,9 @@ import {
   removeSource,
 } from '@/app/(authed)/settings/sources/actions'
 import { relativeFromNow } from '@/lib/ui/date'
+import { humanizeLabel } from '@/lib/ui/labels'
+import { getSourceKind } from '@/lib/discovery/source-kinds'
+import { joinMeta } from '@/lib/ui/meta'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 const SourceEditDialog = dynamic(
@@ -82,23 +85,24 @@ export function SourceRow({ source }: { source: SourceRowItem }) {
       <CardContent className="flex items-center gap-3 p-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="slate">{source.kind}</Badge>
+            <Badge variant="slate">{getSourceKind(source.kind)?.label ?? humanizeLabel(source.kind)}</Badge>
             <span className="truncate text-sm font-semibold">{source.name}</span>
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span>{source.configSummary}</span>
-            <span>·</span>
+            {/* Present parts only (no leading "·" or "— ·"), as one inline
+                run of text so a "·" never starts a wrapped line. */}
             <span suppressHydrationWarning>
-              {source.lastPolledAt
-                ? `checked ${relativeFromNow(source.lastPolledAt)}`
-                : 'never checked'}
+              {joinMeta([
+                source.configSummary,
+                source.lastPolledAt ? `checked ${relativeFromNow(source.lastPolledAt)}` : 'never checked',
+              ])}
+              {source.lastResult && source.errorCount === 0 ? (
+                <>
+                  {' · '}
+                  <span data-testid="source-last-result">{source.lastResult}</span>
+                </>
+              ) : null}
             </span>
-            {source.lastResult && source.errorCount === 0 ? (
-              <>
-                <span>·</span>
-                <span data-testid="source-last-result">{source.lastResult}</span>
-              </>
-            ) : null}
             {source.errorCount > 0 && source.lastError ? (
               <TooltipProvider delayDuration={100}>
                 <Tooltip>

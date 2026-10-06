@@ -40,6 +40,24 @@ const LABELS: Readonly<Record<string, string>> = {
   heuristic: 'Heuristic',
 }
 
+const WORK_MODE_LABELS: Readonly<Record<string, string>> = {
+  remote: 'Remote',
+  hybrid: 'Hybrid',
+  onsite: 'On-site',
+  'on-site': 'On-site',
+  on_site: 'On-site',
+  office: 'On-site',
+}
+
+/**
+ * Work-mode chip text: "Remote", "Hybrid", "On-site". Returns null for
+ * unknown or empty values so callers can skip the chip entirely.
+ */
+export function workModeLabel(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  return WORK_MODE_LABELS[raw.trim().toLowerCase()] ?? null
+}
+
 /** Acronyms kept upper-case by the sentence-case fallback. */
 const ACRONYMS = new Set(['ai', 'cv', 'jd', 'url', 'pdf', 'api', 'hn', 'yc', 'ats'])
 

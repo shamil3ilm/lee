@@ -16,6 +16,8 @@ import { Badge, type BadgeProps } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { relativeFromNow } from '@/lib/ui/date'
+import { workModeLabel } from '@/lib/ui/labels'
+import { joinMeta } from '@/lib/ui/meta'
 import {
   saveDiscovery,
   dismissDiscovery,
@@ -222,17 +224,13 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
             />
           ) : null}
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="truncate text-sm font-semibold">{n.title}</span>
-              <span className="text-xs text-muted-foreground">·</span>
-              <span className="truncate text-sm text-muted-foreground">{n.companyName}</span>
-              {n.location ? (
-                <>
-                  <span className="text-xs text-muted-foreground">·</span>
-                  <span className="truncate text-xs text-muted-foreground">{n.location}</span>
-                </>
-              ) : null}
-            </div>
+            <p className="text-sm font-semibold leading-snug">{n.title}</p>
+            {/* Meta line from present parts only: no stray leading "·". */}
+            {joinMeta([n.companyName, n.location]) ? (
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                {joinMeta([n.companyName, n.location])}
+              </p>
+            ) : null}
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               {item.risk ? <RiskBadge risk={item.risk} /> : null}
               <MatchBadge score={item.matchScore} filtered={isFiltered} />
@@ -240,8 +238,8 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
                 {scoreLabel(item.benefitsScore, 'Benefits')}
               </Badge>
               <Badge variant="neutral">{item.sourceName}</Badge>
-              {n.remoteType && n.remoteType !== 'unknown' ? (
-                <Badge variant="slate">{n.remoteType}</Badge>
+              {workModeLabel(n.remoteType) ? (
+                <Badge variant="slate">{workModeLabel(n.remoteType)}</Badge>
               ) : null}
               <span className="text-xs text-muted-foreground">
                 {relativeFromNow(item.createdAt)}
