@@ -1,3 +1,5 @@
+import type { ResumeVariantInput, ResumeVariantResult } from './prompts/resume-variant'
+import type { TailorCVInput } from './prompts/tailor-cv'
 import { z } from 'zod'
 import type { NormalizedCompany, NormalizedJob } from '@/lib/discovery/adapters/types'
 import type { UserProfile } from '@/lib/db/queries/profile'
@@ -140,7 +142,8 @@ export interface AIProvider {
     meta?: CallMeta,
   ): Promise<CompanyMatchResult>
   // v2 additions — CV & document generation.
-  tailorCV(input: { master: MasterCV; application: ApplicationWithJob }): Promise<TailoredCV>
+  // `variant` — the résumé variant the CV starts from (lib/variants).
+  tailorCV(input: TailorCVInput): Promise<TailoredCV>
   // `links` — profile links the user confirmed for this draft.
   draftCoverLetter(input: {
     master: MasterCV
@@ -191,6 +194,9 @@ export interface AIProvider {
   // Discovery relevance — optional refinement of the deterministic role
   // suggestions, from the profile + master-CV digest only.
   suggestRoles(input: SuggestRolesInput, meta?: CallMeta): Promise<SuggestRolesResult>
+  // Résumé variants — proposals only; lib/variants/proposals.ts filters them
+  // (readiness + fact lock) and the user confirms before anything is saved.
+  proposeResumeVariant(input: ResumeVariantInput, meta?: CallMeta): Promise<ResumeVariantResult>
 }
 
 export const latexCVResultSchema = z.object({ source: z.string().min(1) })

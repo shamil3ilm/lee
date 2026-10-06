@@ -38,7 +38,7 @@ function pickResponseByPrompt(prompt: string): string {
         '\\documentclass{article}\n\\begin{document}\nHello from LaTeX.\n\\end{document}\n',
     })
   }
-  if (prompt.includes('You tailor a master CV JSON')) {
+  if (prompt.includes('You tailor a starting CV JSON')) {
     return JSON.stringify({
       basics: { name: 'Ada', headline: 'Engineer' },
       summary: 'A rewritten summary.',

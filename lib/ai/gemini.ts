@@ -1,3 +1,11 @@
+import {
+  buildResumeVariantPrompt,
+  RESUME_VARIANT_PROMPT_VERSION,
+  resumeVariantResultSchema,
+  type ResumeVariantInput,
+  type ResumeVariantResult,
+} from './prompts/resume-variant'
+import type { TailorCVInput } from './prompts/tailor-cv'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { GEMINI_ATTEMPT_TIMEOUT_MS, timeoutError, timeoutSignal } from '@/lib/net/timeout'
 import { buildParseJobPrompt, PARSE_JOB_PROMPT_VERSION } from './prompts/parse-job'
@@ -257,10 +265,7 @@ export class GeminiProvider implements AIProvider {
     return companyMatchResultSchema.parse(JSON.parse(raw))
   }
 
-  async tailorCV(input: {
-    master: MasterCV
-    application: ApplicationWithJob
-  }): Promise<TailoredCV> {
+  async tailorCV(input: TailorCVInput): Promise<TailoredCV> {
     const raw = await this.generate(buildTailorCVPrompt(input), {
       kind: 'tailored_cv',
       promptVersion: TAILOR_CV_PROMPT_VERSION,
@@ -398,6 +403,15 @@ export class GeminiProvider implements AIProvider {
       promptVersion: REPUTATION_SUMMARY_PROMPT_VERSION,
     })
     return reputationSummaryResultSchema.parse(JSON.parse(raw))
+  }
+
+  async proposeResumeVariant(input: ResumeVariantInput, meta: CallMeta = {}): Promise<ResumeVariantResult> {
+    const raw = await this.generate(buildResumeVariantPrompt(input), {
+      ...meta,
+      kind: 'resume_variant',
+      promptVersion: RESUME_VARIANT_PROMPT_VERSION,
+    })
+    return resumeVariantResultSchema.parse(JSON.parse(raw))
   }
 
   async suggestRoles(input: SuggestRolesInput, meta: CallMeta = {}): Promise<SuggestRolesResult> {
