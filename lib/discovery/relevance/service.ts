@@ -2,8 +2,8 @@ import * as profileQ from '@/lib/db/queries/profile'
 import type { UserProfile } from '@/lib/db/queries/profile'
 import * as relQ from '@/lib/db/queries/discoveryRelevance'
 import type { GateColumns } from '@/lib/db/queries/discoveries'
-import * as docsQ from '@/lib/db/queries/documents'
-import { masterCvSchema, type MasterCV } from '@/lib/documents/types'
+import { getMasterCV } from '@/lib/documents/master'
+import type { MasterCV } from '@/lib/documents/types'
 import { evaluateRelevance, formatReasons, type GateInput } from './gate'
 import { relevanceKey, searchPrefsFromProfile, type SearchPrefs } from './prefs'
 import { suggestRoles, type SuggestionResult } from './suggest'
@@ -107,12 +107,13 @@ export function relevanceStale(profile: UserProfile | null): boolean {
   return profile.relevanceAppliedKey !== relevanceContext(profile).key
 }
 
-/** The master CV content, validated; null when missing or malformed. */
+/**
+ * The master CV (derived from the master profile: only interview-ready or
+ * domain-worded items, so suggestions ignore evidence that only not-ready
+ * items carry); null when missing.
+ */
 export async function loadMasterCv(userId: string): Promise<MasterCV | null> {
-  const doc = await docsQ.getLatestMaster(userId)
-  if (!doc) return null
-  const parsed = masterCvSchema.safeParse(doc.content)
-  return parsed.success ? parsed.data : null
+  return getMasterCV(userId)
 }
 
 /**
