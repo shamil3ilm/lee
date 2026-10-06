@@ -71,6 +71,13 @@ export interface RenderedResume {
   /** Rough page estimate for the length target. */
   estimatedPages: number
   template: Recipe['template']
+  /** Place the profile photo: the Photo field is on, the region allows it and a photo exists. */
+  photo: boolean
+}
+
+export interface RenderOptions {
+  /** Whether a profile photo is uploaded; undefined = unknown (no photo warning). */
+  hasPhoto?: boolean
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -221,7 +228,7 @@ function contactLines(ctx: Ctx): ContactLine[] {
   return out
 }
 
-function regionWarnings(ctx: Ctx): void {
+function regionWarnings(ctx: Ctx, hasPhoto: boolean | undefined): void {
   const { profile, recipe } = ctx
   if (recipe.region === 'gcc') {
     if (fieldOn(recipe, 'phone') && profile.basics.phone && !profile.basics.phone.trim().startsWith('+')) {
@@ -231,8 +238,8 @@ function regionWarnings(ctx: Ctx): void {
       ctx.warnings.push({ kind: 'region', message: 'Add your Arabic level under Languages (even "basic" helps in the GCC).' })
     }
   }
-  if (fieldOn(recipe, 'photo')) {
-    ctx.warnings.push({ kind: 'region', message: 'Photo is on, but the PDF templates do not place a photo yet.' })
+  if (fieldOn(recipe, 'photo') && hasPhoto === false) {
+    ctx.warnings.push({ kind: 'region', message: 'Photo is on, but no profile photo is uploaded (Settings › Profile › Résumé).' })
   }
 }
 
@@ -268,7 +275,7 @@ function estimatePages(sections: readonly RenderedSection[], contact: number): n
   return Math.round((lines / 46) * 10) / 10
 }
 
-export function renderVariant(profile: ResumeProfile, recipe: Recipe): RenderedResume {
+export function renderVariant(profile: ResumeProfile, recipe: Recipe, opts: RenderOptions = {}): RenderedResume {
   const ctx: Ctx = { profile, recipe, warnings: [], overrides: new Set(recipe.overrides) }
   const sections = recipe.sections.flatMap((key): RenderedSection[] => {
     const section = (entries: RenderedEntry[], lines: string[] = []): RenderedSection[] =>
@@ -301,7 +308,7 @@ export function renderVariant(profile: ResumeProfile, recipe: Recipe): RenderedR
     }
   })
   const contact = contactLines(ctx)
-  regionWarnings(ctx)
+  regionWarnings(ctx, opts.hasPhoto)
   numberWarnings(ctx)
   const estimatedPages = estimatePages(sections, contact.length)
   if (estimatedPages > recipe.lengthTarget + 0.15) {
@@ -315,5 +322,6 @@ export function renderVariant(profile: ResumeProfile, recipe: Recipe): RenderedR
     warnings: ctx.warnings,
     estimatedPages,
     template: recipe.template,
+    photo: fieldOn(recipe, 'photo') && opts.hasPhoto === true,
   }
 }

@@ -6,7 +6,7 @@ import { canonicalJson } from '@/lib/portfolio/canonical'
 import { getResumeProfile } from '@/lib/resume/service'
 import type { ResumeProfile } from '@/lib/resume/types'
 import { buildRecipe, defaultVariantName } from './presets'
-import { renderVariant, type RenderedResume } from './render'
+import { renderVariant, type RenderedResume, type RenderOptions } from './render'
 import type { VariantSummary } from './suggest'
 import { parseRecipe, recipeSchema, type Recipe, type Region } from './types'
 
@@ -79,10 +79,11 @@ export async function renderStored(
   variantId: string,
   version?: number,
   profile?: ResumeProfile,
+  opts: RenderOptions = {},
 ): Promise<LoadedVariant & { rendered: RenderedResume }> {
   const loaded = await loadVariant(userId, variantId, version)
   const master = profile ?? (await getResumeProfile(userId)).profile
-  return { ...loaded, rendered: renderVariant(master, loaded.recipe) }
+  return { ...loaded, rendered: renderVariant(master, loaded.recipe, opts) }
 }
 
 export async function variantSummaries(userId: string): Promise<VariantSummary[]> {

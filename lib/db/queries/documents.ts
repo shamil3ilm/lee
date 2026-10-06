@@ -1,4 +1,4 @@
-import { and, desc, eq, getTableColumns, isNull, sql } from 'drizzle-orm'
+import { and, desc, eq, getTableColumns, isNull, notInArray, sql } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import { documents } from '@/lib/db/schema'
 
@@ -20,6 +20,12 @@ export type DocumentKind =
   // the sources; the actual PDF bytes are re-generated on download (no
   // caching layer). See lib/documents/merge.ts.
   | 'merged_pdf'
+  // Holder of the profile photo asset (lib/resume/photo-store.ts): one per
+  // user, never listed in the documents library.
+  | 'profile_photo'
+
+/** Kinds that are storage plumbing, not documents: left out of unfiltered lists. */
+export const HIDDEN_KINDS: readonly DocumentKind[] = ['profile_photo']
 
 export interface ListOptions {
   applicationId?: string
@@ -53,6 +59,7 @@ function listFilters(userId: string, opts: ListOptions) {
     filters.push(eq(documents.applicationId, opts.applicationId))
   }
   if (opts.kind) filters.push(eq(documents.kind, opts.kind))
+  else filters.push(notInArray(documents.kind, [...HIDDEN_KINDS]))
   return and(...filters)
 }
 
