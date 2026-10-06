@@ -193,6 +193,10 @@ export const applications = pgTable(
     appliedAt: timestamp('applied_at', { withTimezone: true }),
     nextActionAt: timestamp('next_action_at', { withTimezone: true }),
     priority: smallint('priority').notNull().default(0),
+    // Résumé variant (and the exact version) chosen for this application;
+    // tailoring starts from it. Null → the master profile.
+    resumeVariantId: uuid('resume_variant_id').references(() => resumeVariants.id, { onDelete: 'set null' }),
+    resumeVariantVersion: integer('resume_variant_version'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -412,6 +416,10 @@ export const userProfile = pgTable('user_profile', {
   // A2 — store new files in the user's Google Drive once Drive is connected.
   // Toggled in Settings › Integrations; off → Postgres (capped).
   driveStorageEnabled: boolean('drive_storage_enabled').notNull().default(true),
+  // The master profile — the ONE source of résumé facts, validated by
+  // lib/resume/types.ts. Null until first saved (or migrated from the
+  // legacy master_cv document on first read, lib/resume/service.ts).
+  resume: jsonb('resume'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
@@ -1357,6 +1365,82 @@ export const usageSettings = pgTable('usage_settings', {
   lastRefreshAt: timestamp('last_refresh_at', { withTimezone: true }),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+// ---------------------------------------------------------------------------
+// Publish to portfolio (lib/portfolio). One row per user: where profile.json
+// lives and what lee last wrote there. `last_sha` is the blob sha GitHub
+// returned for lee's last commit: a different sha on the next GET means the
+// file was edited by hand. The token lives in the encrypted key store
+// (`github_portfolio`), never here.
+// ---------------------------------------------------------------------------
+
+export const portfolioPublish = pgTable('portfolio_publish', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  repo: text('repo').notNull().default(''),
+  branch: text('branch').notNull().default('main'),
+  path: text('path').notNull().default('profile.json'),
+  lastSha: text('last_sha'),
+  lastHash: text('last_hash'),
+  lastVersion: text('last_version'),
+  lastCommitSha: text('last_commit_sha'),
+  lastCommitUrl: text('last_commit_url'),
+  publishedAt: timestamp('published_at', { withTimezone: true }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+// ---------------------------------------------------------------------------
+// Résumé variants (lib/variants). A variant is a versioned RECIPE over the
+// master profile — selection, order, wording choice, headline, summary,
+// sections, length, template, region fields — never facts. Each save that
+// changes the recipe adds a version; applications record the version used.
+// ---------------------------------------------------------------------------
+
+export const resumeVariants = pgTable(
+  'resume_variants',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    // 'gcc' | 'india' | 'remote' — lib/variants/types.ts
+    region: text('region').notNull(),
+    // A role family id (lib/discovery/relevance/roles.ts) or null.
+    roleFamily: text('role_family'),
+    currentVersion: integer('current_version').notNull().default(1),
+    // Publish this variant to the portfolio too (OFF by default). Data only:
+    // the portfolio-side rendering is not built yet.
+    publishToPortfolio: boolean('publish_to_portfolio').notNull().default(false),
+    portfolioSlug: text('portfolio_slug'),
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    userIdx: index('resume_variants_user_idx').on(t.userId, t.archivedAt),
+  }),
+)
+
+export const resumeVariantVersions = pgTable(
+  'resume_variant_versions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    variantId: uuid('variant_id')
+      .notNull()
+      .references(() => resumeVariants.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    version: integer('version').notNull(),
+    recipe: jsonb('recipe').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    variantVersionUq: uniqueIndex('resume_variant_versions_variant_version_uq').on(t.variantId, t.version),
+  }),
+)
 
 // Which version of the starter defaults (lib/defaults/catalog.ts) a user has
 // received. Defaults are applied once per version, so a default the user
