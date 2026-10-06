@@ -7,6 +7,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart'
+import { CHART_MARGIN, VALUE_AXIS } from '@/components/ui/chart-defaults'
 import type { CalibrationOutcome } from '@/lib/analytics/service'
 
 const OUTCOME_LABEL: Record<number, string> = {
@@ -31,7 +32,7 @@ export interface CalibrationDatum {
 export function DiscoveryCalibrationChart({ points }: { points: CalibrationDatum[] }) {
   return (
     <ChartContainer config={CONFIG} className="h-full w-full">
-      <ScatterChart margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+      <ScatterChart margin={CHART_MARGIN}>
         <CartesianGrid />
         <XAxis
           type="number"
@@ -40,6 +41,7 @@ export function DiscoveryCalibrationChart({ points }: { points: CalibrationDatum
           domain={[0, 100]}
           tickLine={false}
           axisLine={false}
+          fontSize={VALUE_AXIS.fontSize}
           tickMargin={6}
         />
         <YAxis
@@ -49,9 +51,7 @@ export function DiscoveryCalibrationChart({ points }: { points: CalibrationDatum
           domain={[-0.5, 4.5]}
           ticks={[0, 1, 2, 3, 4]}
           tickFormatter={(v: number) => OUTCOME_LABEL[v] ?? ''}
-          width={110}
-          tickLine={false}
-          axisLine={false}
+          {...VALUE_AXIS}
         />
         <ZAxis type="number" dataKey="z" range={[40, 320]} name="count" />
         <ChartTooltip

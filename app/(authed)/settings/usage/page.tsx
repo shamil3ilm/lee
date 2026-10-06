@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { requireUserId } from '@/lib/auth/require-session'
-import { relativeFromNow, shortDateTime } from '@/lib/ui/date'
 import { TONE_BORDER, TONE_SOFT } from '@/lib/ui/tones'
 import { cn } from '@/lib/utils'
 import { formatBytes } from '@/lib/usage/format'
@@ -12,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { AiQuotaMeters } from '@/components/analytics/ai-quota-meters'
 import { UsageMeterRow } from '@/components/settings/usage-meters'
 import { NeonProjectForm, RefreshUsageButton, ResumeThrottleButton } from '@/components/settings/usage-actions'
+import { LocalTime } from '@/components/local-time'
 
 export const dynamic = 'force-dynamic'
 // "Refresh now" runs the snapshot (Neon API calls, early retention) in this function.
@@ -53,9 +53,7 @@ export default async function UsagePage() {
         {data.snapshotAt ? (
           <>
             Last snapshot{' '}
-            <time dateTime={data.snapshotAt.toISOString()} title={shortDateTime(data.snapshotAt)}>
-              {relativeFromNow(data.snapshotAt)}
-            </time>
+            <LocalTime date={data.snapshotAt} format="relative" titleFormat="datetime" />
             . Database size and your files are live; the rest updates daily or when you refresh.
           </>
         ) : (

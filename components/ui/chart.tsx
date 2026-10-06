@@ -2,6 +2,7 @@
 import * as React from 'react'
 import { Legend, ResponsiveContainer, Tooltip } from 'recharts'
 import { cn } from '@/lib/utils'
+import { humanizeLabel } from '@/lib/ui/labels'
 
 /**
  * Chart primitives — a hand-rolled port of shadcn/ui's chart primitive.
@@ -36,6 +37,13 @@ interface ChartContainerProps {
   config: ChartConfig
   className?: string
   children: React.ReactElement
+  /**
+   * Optional legend drawn as HTML below the plot (e.g. a `ChartLegendContent`
+   * with an explicit payload). The plot shrinks to make room, so the legend
+   * never overlaps it — use this for pies/donuts, where Recharts' own legend
+   * can collide with the ring.
+   */
+  legend?: React.ReactNode
 }
 
 /**
@@ -44,7 +52,7 @@ interface ChartContainerProps {
  * fixed `height` on the wrapping card body — recharts needs the parent to
  * have a real height for ResponsiveContainer to size itself.
  */
-export function ChartContainer({ config, className, children }: ChartContainerProps) {
+export function ChartContainer({ config, className, children, legend }: ChartContainerProps) {
   const cssVars = React.useMemo(() => {
     const out: Record<string, string> = {}
     for (const [key, cfg] of Object.entries(config)) {
@@ -57,12 +65,17 @@ export function ChartContainer({ config, className, children }: ChartContainerPr
     <ChartContext.Provider value={{ config }}>
       <div
         className={cn(
-          'flex aspect-video justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line]:stroke-border/50 [&_.recharts-polar-grid_line]:stroke-border/50 [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_line]:stroke-border',
+          'flex aspect-video min-w-0 flex-col justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line]:stroke-border/50 [&_.recharts-polar-grid_line]:stroke-border/50 [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_line]:stroke-border',
           className,
         )}
         style={cssVars as React.CSSProperties}
       >
-        <ResponsiveContainer>{children}</ResponsiveContainer>
+        <div className="min-h-0 w-full flex-1">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+            {children}
+          </ResponsiveContainer>
+        </div>
+        {legend ?? null}
       </div>
     </ChartContext.Provider>
   )
@@ -116,7 +129,7 @@ export const ChartTooltipContent = React.forwardRef<HTMLDivElement, TooltipConte
       >
         {!hideLabel && label !== undefined ? (
           <div className="font-medium text-foreground">
-            {labelFormatter ? labelFormatter(label, payload) : String(label)}
+            {labelFormatter ? labelFormatter(label, payload) : humanizeLabel(label)}
           </div>
         ) : null}
         <div className="grid gap-1.5">
@@ -124,7 +137,7 @@ export const ChartTooltipContent = React.forwardRef<HTMLDivElement, TooltipConte
             const key = String(entry.dataKey ?? entry.name ?? i)
             // Pie slices share one dataKey; fall back to the slice name.
             const cfg = config[key] ?? config[String(entry.name)]
-            const displayName = cfg?.label ?? String(entry.name ?? key)
+            const displayName = cfg?.label ?? humanizeLabel(entry.name ?? key)
             const value = entry.value ?? ''
             return (
               <div key={`${key}:${i}`} className="flex items-center justify-between gap-4">
@@ -172,13 +185,13 @@ export function ChartLegendContent({ payload, className, hideIcon }: ChartLegend
   const { config } = useChart()
   if (!payload || payload.length === 0) return null
   return (
-    <div className={cn('flex flex-wrap items-center justify-center gap-4 pt-3 text-xs', className)}>
+    <div className={cn('flex flex-wrap items-center justify-center gap-x-4 gap-y-1 pt-3 text-xs', className)}>
       {payload.map((entry, i) => {
         const key = String(entry.dataKey ?? entry.value ?? i)
         // Pie legends repeat one dataKey per slice: key by index and
         // resolve the label from the slice value.
         const cfg = config[key] ?? config[String(entry.value)]
-        const label = cfg?.label ?? String(entry.value ?? key)
+        const label = cfg?.label ?? humanizeLabel(entry.value ?? key)
         return (
           <div key={`${key}:${i}`} className="flex items-center gap-1.5 text-muted-foreground">
             {hideIcon ? null : (

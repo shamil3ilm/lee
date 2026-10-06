@@ -192,7 +192,7 @@ System UI stack (`--font-sans`), antialiased.
 |---|---|
 | Page title (h1) | `text-2xl font-semibold tracking-tight` (via `PageHeader`) |
 | Section title | `text-sm font-semibold`, or `text-sm font-semibold uppercase tracking-wider text-muted-foreground` |
-| Card title | `CardTitle` (`font-semibold leading-none tracking-tight`), usually `text-sm` |
+| Card title | `CardTitle` (`text-sm font-semibold leading-snug tracking-tight`); do not restyle per card |
 | Body | `text-sm` |
 | Meta / helper | `text-xs text-muted-foreground` |
 | Micro labels (badges, counts) | `text-[11px]` / `text-[10px] font-medium`, never below 10px |
@@ -213,6 +213,56 @@ System UI stack (`--font-sans`), antialiased.
 - Pass colours through `ChartContainer`'s `config` and reference them as
   `var(--color-<key>)`; never hard-code `hsl(...)` in a chart.
 
+### Chart defaults
+
+Every Recharts chart spreads the shared defaults from
+`components/ui/chart-defaults.tsx` instead of hand-tuning margins and axis
+widths (hand-tuned negative margins are what clipped y-axis labels):
+
+| Export | What it does |
+|---|---|
+| `CHART_MARGIN` | Plot margin, never negative. `CHART_MARGIN_LABELLED` adds top room for `LabelList position="top"`. |
+| `VALUE_AXIS` | Numeric axis; `width: 'auto'` sizes it to its widest tick ("$0.002", "80K"). |
+| `TIME_AXIS` | Dates and weeks; thins ticks (`preserveStartEnd`, `minTickGap`) so they never collide. |
+| `CATEGORY_AXIS` | Category x-axis: every category labelled (`interval: 0`), humanised, and truncated to the width of its band by `CategoryTick` (full text in the tick's title). |
+| `CATEGORY_Y_AXIS` | Category y-axis for horizontal bars (vendors): every row labelled, auto width. |
+| `LEGEND_PROPS` | Legend below the plot, centred. |
+| `formatCompactNumber` | `1200` → `1.2k` for count axes. |
+
+`ChartContainer` wraps the chart in a responsive container that fills its
+parent (give the parent a fixed height, e.g. the analytics card's `h-56`).
+For pies and donuts pass the legend as HTML through `legend`, so the ring is
+sized to the space left and the legend can wrap without covering it.
+Tooltips and legends humanise keys that have no `config` label.
+
+```tsx
+<ChartContainer config={CONFIG} className="h-full w-full">
+  <BarChart data={data} margin={CHART_MARGIN}>
+    <CartesianGrid vertical={false} />
+    <XAxis dataKey="kind" {...CATEGORY_AXIS} />
+    <YAxis {...VALUE_AXIS} allowDecimals={false} />
+    <ChartTooltip content={<ChartTooltipContent />} />
+    <ChartLegend {...LEGEND_PROPS} content={<ChartLegendContent />} />
+    <Bar dataKey="count" fill="var(--color-count)" radius={[2, 2, 0, 0]} />
+  </BarChart>
+</ChartContainer>
+
+// Donut: HTML legend below the plot.
+<ChartContainer
+  config={config}
+  className="h-full w-full"
+  legend={<ChartLegendContent payload={data.map((d) => ({ value: d.status, color: d.fill }))} />}
+>
+  <PieChart>
+    <Pie data={data} dataKey="count" nameKey="status" innerRadius="55%" outerRadius="90%" />
+  </PieChart>
+</ChartContainer>
+```
+
+Non-chart analytics cards (lists, heatmaps) pass `body="content"` to
+`AnalyticsCardShell` so they grow to their natural height instead of being
+cut off at the card edge.
+
 ## Components
 
 | Primitive | Rules |
@@ -229,6 +279,130 @@ System UI stack (`--font-sans`), antialiased.
 | `EmptyState` | Every empty list, table, card and board column uses it (or the board's column empty slot): brand illustration (logo arc + circle), one-line title, optional hint and one action. `size="sm"` inside cards. |
 | `PageHeader` | Every page starts with it: title, one-line description, actions on the right (the Board/List toggle goes here). |
 | `Board` | See "Boards" below. |
+
+### Shared primitives
+
+Use these instead of hand-built equivalents; each one fixes a layout bug
+that recurred when pages rolled their own.
+
+**`PageHeader` and `Toolbar`** (`components/page-header.tsx`). The h1, a
+one-line description and the page's primary actions. Actions sit on the
+title row from `lg` up and drop under the description below that, so a
+button row never squeezes the title. Filters and view controls go in a
+`Toolbar` under the header, never in `actions`.
+
+```tsx
+<PageHeader
+  title="Applications"
+  description="Every role you're tracking, newest first."
+  actions={<Button size="sm">New application</Button>}
+/>
+<Toolbar label="Filter applications">
+  <NativeSelect className="h-8 w-40" aria-label="Status">…</NativeSelect>
+  <Button size="sm" variant="outline">Export CSV</Button>
+</Toolbar>
+```
+
+**`FormField` and `FormActions`** (`components/ui/form-field.tsx`). The one
+label / control / help / error layout. The label row has a fixed height, so
+controls in a grid row line up whatever the label text; `FormActions` puts a
+trailing submit button level with the controls, not the labels.
+
+```tsx
+<div className="grid gap-4 sm:grid-cols-[1fr_1fr_auto]">
+  <FormField htmlFor="vendor" label="Vendor" hint="(optional)" help="As on the receipt.">
+    <Input id="vendor" name="vendor" aria-describedby="vendor-help" />
+  </FormField>
+  <FormField htmlFor="amount" label="Amount" error={errors.amount}>
+    <Input id="amount" name="amount" aria-describedby="amount-error" />
+  </FormField>
+  <FormActions>
+    <SubmitButton size="sm">Add</SubmitButton>
+  </FormActions>
+</div>
+```
+
+**`NativeSelect`** (`components/ui/native-select.tsx`). A native `<select>`
+styled like `Input` and the Radix `SelectTrigger`. Use it for URL-driven
+filters, sort orders, long option lists and GET forms in server components:
+long option text truncates instead of being clipped. Keep the Radix
+`Select` for short, rich option lists inside client forms.
+
+```tsx
+<NativeSelect id="disc-sort" value={sort} onChange={(e) => update({ sort: e.target.value })} className="h-8">
+  <option value="combined">Combined (match + benefits)</option>
+  <option value="posted">Recently posted</option>
+</NativeSelect>
+```
+
+**`Card` and `CardTitle`** (`components/ui/card.tsx`). `CardTitle` is
+`text-sm font-semibold leading-snug`; don't restyle it per card. Put an icon
+before it in a `flex items-center gap-2` row and a count `Badge` or ghost
+action on the right of the `CardHeader`.
+
+```tsx
+<Card>
+  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+    <CardTitle className="flex items-center gap-2"><Mail className="size-4" />Weekly digest</CardTitle>
+    <Badge variant="secondary">3</Badge>
+  </CardHeader>
+  <CardContent>…</CardContent>
+</Card>
+```
+
+**`Badge` rules.** Status and outcome use a tone or stage variant
+(`<Badge variant={STATUS_BADGE[status]}>`); counts use `secondary`; free
+tags use `outline` or `neutral`. Badge text is human: map machine values
+through a label (`STATUS_LABELS`, `workModeLabel`, `humanizeLabel`), never
+render `snake_case` or lowercase enum values. The legacy colour variants
+(`slate`, `blue`, `emerald`, `rose` …) are aliases kept for old code.
+
+**`RouteTabs`** (`components/route-tabs.tsx`). Link-based tabs for sibling
+routes (Settings, Analytics, Playground). The active tab is the longest
+matching href; on phones the bar scrolls sideways with an edge fade instead
+of wrapping. Use `Tabs` only for in-page panels that don't change the URL.
+
+```tsx
+<RouteTabs
+  label="Settings sections"
+  tabs={[
+    { href: '/settings/profile', label: 'Profile' },
+    { href: '/settings/integrations', label: 'Integrations' },
+  ]}
+/>
+```
+
+**`MarkdownText`** (`components/markdown-text.tsx`). Renders job
+descriptions, notes and AI summaries written in light Markdown (headings as
+small section labels, lists, bold, inline code). No HTML injection and no
+dependency; use it instead of `whitespace-pre-wrap` on raw Markdown.
+
+```tsx
+<MarkdownText source={job.descriptionMd} className="text-sm" />
+```
+
+### Labels, meta lines and times
+
+- **Machine keys → words:** `humanizeLabel` (`lib/ui/labels.ts`) is the one
+  label map ("score_job" → "Job scoring", "company_site" → "Company site");
+  unknown keys are sentence-cased. Work modes use `workModeLabel`:
+  "Remote", "Hybrid", "On-site".
+- **Meta lines** ("Juspay · Bengaluru, IN"): build them with `joinMeta` /
+  `metaParts` (`lib/ui/meta.ts`) from the parts that are present, so a
+  missing value never leaves a stray leading "·" or "— ·". Render the line
+  as one run of text so a wrapped line never starts with "·".
+- **Times:** always in the user's timezone (Settings › Profile) and US style.
+  Use `<LocalTime date={d} />` (`components/local-time.tsx`) from server or
+  client components; `format` is `datetime` ("Sep 27, 2:30 PM"),
+  `datetime-year`, `date`, `date-year`, `time` or `relative` ("2h ago", full
+  time on hover). Server code that builds strings uses
+  `formatDateTime(d, format, await getUserTimeZone(userId))`. Calendar days
+  stored as `YYYY-MM-DD` use `shortDay`.
+- **Errors:** show a friendly message and keep the raw provider text one click
+  away under a "Details" disclosure (`components/lab/error-details.tsx`);
+  log the raw error server-side.
+- **Empty previews:** never a blank white panel; use `EmptyState` on a token
+  surface with the next step ("Compile to see the PDF").
 
 ### Focus
 
@@ -267,7 +441,9 @@ declares its columns (`id`, `title`, `tone`, optional `wipLimit`, `hint`,
 - Pair soft surfaces with strong tone text, and solids with `-foreground`.
 - Use the same tone for the same meaning on every page (a rejected
   application is `stage-rejected` in its badge, board column and chart).
-- Use `EmptyState` and `PageHeader` rather than hand-built equivalents.
+- Use `EmptyState`, `PageHeader`, `Toolbar`, `FormField`, `NativeSelect`,
+  `RouteTabs`, `MarkdownText`, `LocalTime` and the chart defaults rather than
+  hand-built equivalents.
 - Run `pnpm test` after changing a token: the contrast test is the gate.
 
 **Don't**

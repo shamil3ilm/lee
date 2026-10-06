@@ -1,11 +1,11 @@
 import { requireUserId } from '@/lib/auth/require-session'
 import { GLOBAL_STEP_IDS, STEP_LABELS, USER_STEP_IDS, totalChanged } from '@/lib/db/retention/steps'
-import { relativeFromNow, shortDateTime } from '@/lib/ui/date'
 import { formatBytes } from '@/lib/usage/format'
 import { getStoragePageData } from '@/lib/usage/storage'
 import { PageHeader } from '@/components/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CleanUpNowButton, RetentionWindowsForm } from '@/components/settings/storage-actions'
+import { LocalTime } from '@/components/local-time'
 
 export const dynamic = 'force-dynamic'
 // "Clean up now" runs the cleanup in this function (bounded to 45 s).
@@ -40,9 +40,7 @@ export default async function StoragePage() {
           <CardDescription>
             {lastRun ? (
               <>
-                <time dateTime={lastRun.at.toISOString()} title={shortDateTime(lastRun.at)}>
-                  {relativeFromNow(lastRun.at)}
-                </time>{' '}
+                <LocalTime date={lastRun.at} format="relative" titleFormat="datetime" />{' '}
                 by the {TRIGGER_LABEL[lastRun.trigger]}: {totalChanged(lastRun.counts).toLocaleString('en-US')} rows
                 removed or slimmed.
               </>

@@ -5,7 +5,8 @@ import { AlertTriangle, Loader2, Mail, Send } from 'lucide-react'
 import { toggleDigestAction } from '@/app/(authed)/settings/notifications/actions'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { DISPLAY_LOCALE, relativeFromNow } from '@/lib/ui/date'
+import { LocalTime } from '@/components/local-time'
+import { digestSendInstant } from '@/lib/digest/send-time'
 
 interface NotificationsPanelProps {
   weeklyDigestEnabled: boolean
@@ -95,7 +96,8 @@ export function NotificationsPanel({
           <div className="min-w-0">
             <div className="text-sm font-medium">Send the weekly digest</div>
             <div className="text-xs text-muted-foreground">
-              Delivered Mondays at 08:00 UTC from your own Gmail account.
+              Delivered Mondays around <LocalTime date={digestSendInstant()} format="time" /> your time,
+              from your own Gmail account.
             </div>
           </div>
           {/* Native checkbox styled as a toggle — avoids adding a shadcn Switch
@@ -123,9 +125,7 @@ export function NotificationsPanel({
         <div className="text-xs text-muted-foreground">
           Last sent:{' '}
           {lastSent ? (
-            <span title={new Date(lastSent).toLocaleString(DISPLAY_LOCALE)} suppressHydrationWarning>
-              {relativeFromNow(lastSent)}
-            </span>
+            <LocalTime date={lastSent} format="relative" />
           ) : (
             'Never'
           )}

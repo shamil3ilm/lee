@@ -13,7 +13,7 @@ import {
   stageBoardColumn,
   type StageBoardColumn,
 } from '@/lib/stages/status'
-import { DISPLAY_LOCALE } from '@/lib/ui/date'
+import { LocalTime } from '@/components/local-time'
 
 export interface StageBoardItem {
   id: string
@@ -47,12 +47,9 @@ function renderCard(s: StageBoardItem): React.ReactNode {
       ) : null}
       <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
         {s.scheduledAt ? (
-          <span className="inline-flex items-center gap-1" suppressHydrationWarning>
+          <span className="inline-flex items-center gap-1">
             <CalendarClock className="size-3" aria-hidden="true" />
-            {new Date(s.scheduledAt).toLocaleString(DISPLAY_LOCALE, {
-              dateStyle: 'medium',
-              timeStyle: 'short',
-            })}
+            <LocalTime date={s.scheduledAt} format="datetime-year" />
           </span>
         ) : (
           <span>Not scheduled</span>

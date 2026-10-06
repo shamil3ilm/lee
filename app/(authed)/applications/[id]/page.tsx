@@ -34,6 +34,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { STATUS_BADGE, STATUS_LABELS, type ApplicationStatus } from '@/lib/ui/status'
 import { APPLICATION_STATUSES } from '@/lib/ui/status'
+import { workModeLabel } from '@/lib/ui/labels'
 import { ShareLinksCard, ShareLinksProvider } from '@/components/profile/share-links'
 import { readProfileLinks, suggestLinksForJob } from '@/lib/profile/links'
 import { getProfile } from '@/lib/profile/service'
@@ -256,10 +257,8 @@ export default async function ApplicationDetail({
               {app.job.location}
             </span>
           ) : null}
-          {app.job.remoteType ? (
-            <Badge variant="outline" className="capitalize">
-              {app.job.remoteType}
-            </Badge>
+          {workModeLabel(app.job.remoteType) ? (
+            <Badge variant="outline">{workModeLabel(app.job.remoteType)}</Badge>
           ) : null}
           {app.job.employmentType ? (
             <Badge variant="outline">

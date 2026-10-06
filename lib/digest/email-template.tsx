@@ -56,16 +56,21 @@ const styles: Record<string, CSSProperties> = {
   link: { color: '#1a1a1a', textDecoration: 'underline' },
 }
 
-function formatDateTime(d: Date): string {
-  return d.toLocaleString('en-US', {
+/** "Mon, Sep 29, 2:30 PM GMT+5:30" in the user's timezone (UTC if unknown). */
+function formatDateTime(d: Date, timeZone: string): string {
+  const opts: Intl.DateTimeFormatOptions = {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
-    timeZone: 'UTC',
     timeZoneName: 'short',
-  })
+  }
+  try {
+    return d.toLocaleString('en-US', { ...opts, timeZone })
+  } catch {
+    return d.toLocaleString('en-US', { ...opts, timeZone: 'UTC' })
+  }
 }
 
 function daysSince(d: Date): number {
@@ -75,11 +80,14 @@ function daysSince(d: Date): number {
 interface WeeklyDigestEmailProps {
   snapshot: PipelineSnapshot
   appBaseUrl?: string
+  /** The user's IANA timezone; times render in it. Defaults to UTC. */
+  timeZone?: string
 }
 
 export function WeeklyDigestEmail({
   snapshot,
   appBaseUrl = 'https://employ4me.vercel.app',
+  timeZone = 'UTC',
 }: WeeklyDigestEmailProps): ReactElement {
   const {
     applicationsByStatus,
@@ -137,7 +145,7 @@ export function WeeklyDigestEmail({
                 <strong>{s.stageKind}</strong> · {s.jobTitle}
                 {s.companyName ? ` @ ${s.companyName}` : ''}
                 <br />
-                <span style={styles.meta}>{formatDateTime(s.scheduledAt)}</span>
+                <span style={styles.meta}>{formatDateTime(s.scheduledAt, timeZone)}</span>
               </li>
             ))}
           </ul>
@@ -156,7 +164,7 @@ export function WeeklyDigestEmail({
                 {s.companyName ? ` @ ${s.companyName}` : ''}
                 <br />
                 <span style={styles.meta}>
-                  finished {formatDateTime(s.updatedAt)} ·{' '}
+                  finished {formatDateTime(s.updatedAt, timeZone)} ·{' '}
                   {s.hasDebrief ? (
                     s.hasAIDebrief ? (
                       <span>debrief + AI summary</span>
@@ -213,7 +221,7 @@ export function WeeklyDigestEmail({
                 ) : null}
                 <br />
                 <span style={styles.meta}>
-                  {t.dueAt ? `due ${formatDateTime(t.dueAt)}` : 'no due date'}
+                  {t.dueAt ? `due ${formatDateTime(t.dueAt, timeZone)}` : 'no due date'}
                 </span>
               </li>
             ))}
@@ -285,13 +293,14 @@ export function WeeklyDigestEmail({
 export function renderWeeklyDigestHtml(
   snapshot: PipelineSnapshot,
   appBaseUrl?: string,
+  timeZone?: string,
 ): string {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { renderToStaticMarkup } = require('react-dom/server') as {
     renderToStaticMarkup: (el: ReactElement) => string
   }
   const body = renderToStaticMarkup(
-    <WeeklyDigestEmail snapshot={snapshot} appBaseUrl={appBaseUrl} />,
+    <WeeklyDigestEmail snapshot={snapshot} appBaseUrl={appBaseUrl} timeZone={timeZone} />,
   )
   return `<!doctype html><html><head><meta charset="utf-8"><title>${APP_NAME} · Weekly Digest</title></head><body style="margin:0;padding:0;background:#f7f7f7;">${body}</body></html>`
 }

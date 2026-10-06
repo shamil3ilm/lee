@@ -14,6 +14,7 @@ import {
 import * as profileQ from '@/lib/db/queries/profile'
 import { sendEmail as defaultSendEmail } from '@/lib/gmail/send'
 import { renderWeeklyDigestHtml } from './email-template'
+import { getUserTimeZone } from '@/lib/settings/timezone'
 import { logger } from '@/lib/logger'
 import { APP_NAME } from '@/lib/brand'
 import {
@@ -434,15 +435,19 @@ export async function sendWeeklyDigest(args: SendWeeklyDigestArgs): Promise<{
   snapshot: PipelineSnapshot
 }> {
   const send = args.sendEmail ?? defaultSendEmail
-  let snapshot = await gatherPipelineSnapshot(args.userId)
-  let htmlBody = renderWeeklyDigestHtml(snapshot)
+  const [first, timeZone] = await Promise.all([
+    gatherPipelineSnapshot(args.userId),
+    getUserTimeZone(args.userId),
+  ])
+  let snapshot = first
+  let htmlBody = renderWeeklyDigestHtml(snapshot, undefined, timeZone)
 
   // Re-snapshot right before send. On drift, re-render — cheaper than
   // shipping stale numbers to the user's inbox.
   const compared = await gatherAndCompareSnapshot(args.userId, snapshot)
   if (compared.changed) {
     snapshot = compared.snapshot
-    htmlBody = renderWeeklyDigestHtml(snapshot)
+    htmlBody = renderWeeklyDigestHtml(snapshot, undefined, timeZone)
     logger.info('weekly_digest_re_rendered_on_drift', { userId: args.userId })
   }
 

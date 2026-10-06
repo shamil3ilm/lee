@@ -13,7 +13,7 @@ export const maxDuration = 30
  * verify the email arrives correctly from /settings/notifications. Still
  * updates digestLastSentAt so a real send later in the week is suppressed
  * (users who click test-send on a Monday should not get a duplicate cron
- * send at 08:00).
+ * send at 09:00 UTC, see lib/digest/send-time.ts).
  */
 export async function POST(): Promise<NextResponse> {
   try {

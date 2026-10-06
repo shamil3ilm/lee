@@ -20,7 +20,11 @@ const VIEWPORT_FILTER = process.env.E2E_SCREENS_VIEWPORTS?.split(',')
 
 const THEMES = (process.env.E2E_SCREENS_THEMES ?? 'light,dark').split(',') as Array<'light' | 'dark'>
 
-type Target = { name: string; path: string } | { name: string; from: string; link: RegExp | string }
+// `noPdf` stubs the saved-PDF route with a 422 to capture the LaTeX editor's
+// uncompiled preview (a themed empty state, never a blank white panel).
+type Target = ({ name: string; path: string } | { name: string; from: string; link: RegExp | string }) & {
+  noPdf?: boolean
+}
 
 const TARGETS: Target[] = [
   { name: 'dashboard', path: '/' },
@@ -32,6 +36,7 @@ const TARGETS: Target[] = [
   { name: 'application-new', path: '/applications/new' },
   { name: 'documents', path: '/documents' },
   { name: 'document-editor', from: '/documents', link: /^\/documents\/[0-9a-f-]{36}\/edit$/ },
+  { name: 'document-editor-uncompiled', from: '/documents', link: /^\/documents\/[0-9a-f-]{36}\/edit$/, noPdf: true },
   { name: 'document-latex-new', path: '/documents/new/latex' },
   { name: 'contacts', path: '/contacts' },
   { name: 'todos', path: '/todos' },
@@ -151,6 +156,11 @@ for (const theme of THEMES) {
               if (m.type() === 'error') errors.push(m.text().slice(0, 300))
             })
             page.on('pageerror', (e) => errors.push(`pageerror: ${e.message.slice(0, 300)}`))
+            if (t.noPdf) {
+              await page.route('**/api/documents/*/pdf**', (route) =>
+                route.fulfill({ status: 422, contentType: 'application/json', body: '{"error":"Not compiled yet."}' }),
+              )
+            }
             const target = await resolvePath(page, t)
             errors.length = 0
             await page.goto(target)

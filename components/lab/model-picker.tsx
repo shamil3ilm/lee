@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { fmtContext } from '@/lib/lab/format'
 import type { KeySource, ModelInfo, ModelRef, ProviderId } from '@/lib/lab/providers/types'
 import { cn } from '@/lib/utils'
+import { ErrorDetails } from '@/components/lab/error-details'
 
 export interface PickerProvider {
   id: ProviderId
@@ -21,6 +22,8 @@ interface ProviderModels {
   status: 'idle' | 'loading' | 'ready' | 'error'
   models: ModelInfo[]
   error?: string
+  /** The provider's own (redacted) message, shown under Details. */
+  detail?: string
 }
 
 interface ModelPickerProps {
@@ -33,12 +36,12 @@ interface ModelPickerProps {
 async function fetchModelList(provider: ProviderId, refresh: boolean): Promise<ProviderModels> {
   try {
     const res = await fetch(`/api/lab/models?provider=${provider}${refresh ? '&refresh=1' : ''}`)
-    const json = (await res.json().catch(() => ({}))) as { models?: ModelInfo[]; error?: string }
-    if (!res.ok) return { status: 'error', models: [], error: json.error ?? 'Could not load models.' }
-    if (json.error) return { status: 'error', models: [], error: json.error }
+    const json = (await res.json().catch(() => ({}))) as { models?: ModelInfo[]; error?: string; detail?: string }
+    if (!res.ok) return { status: 'error', models: [], error: json.error ?? 'Could not load models.', detail: json.detail }
+    if (json.error) return { status: 'error', models: [], error: json.error, detail: json.detail }
     return { status: 'ready', models: json.models ?? [] }
   } catch {
-    return { status: 'error', models: [], error: 'Network error.' }
+    return { status: 'error', models: [], error: 'Could not load models. Check your connection and try again.' }
   }
 }
 
@@ -193,7 +196,10 @@ export function ModelPicker({ providers, selected, onChange, max = 6 }: ModelPic
               {isOpen && isKeyed(p) ? (
                 <div className="pb-2">
                   {state?.status === 'error' ? (
-                    <p className="px-3 py-1 text-xs text-danger">{state.error}</p>
+                    <div className="px-3 py-1 text-xs text-danger">
+                      <p>{state.error}</p>
+                      <ErrorDetails detail={state.detail} />
+                    </div>
                   ) : null}
                   {state?.status === 'ready' && models.length === 0 ? (
                     <p className="px-3 py-1 text-xs text-muted-foreground">No models match.</p>

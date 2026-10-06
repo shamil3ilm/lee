@@ -360,4 +360,17 @@ describe('renderWeeklyDigestHtml', () => {
     expect(html).toContain('Interviews this week')
     expect(html).toContain('/settings/notifications')
   })
+
+  it("renders times in the user's timezone", async () => {
+    const u = await makeUser('digest-tz@x.com')
+    const snap = await gatherPipelineSnapshot(u.id)
+    const dueAt = new Date('2026-09-28T09:00:00Z')
+    const withTodo = {
+      ...snap,
+      upcomingTodos: [{ id: 't1', title: 'Call Priya', dueAt, priority: 0, applicationId: null }],
+    }
+    const html = renderWeeklyDigestHtml(withTodo, undefined, 'Asia/Kolkata')
+    expect(html).toMatch(/due Mon, Sep 28, 2:30\sPM GMT\+5:30/)
+    expect(renderWeeklyDigestHtml(withTodo)).toMatch(/due Mon, Sep 28, 9:00\sAM UTC/)
+  })
 })

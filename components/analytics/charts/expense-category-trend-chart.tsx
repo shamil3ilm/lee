@@ -6,6 +6,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart'
+import { CHART_MARGIN, TIME_AXIS, VALUE_AXIS } from '@/components/ui/chart-defaults'
 import { formatMoney, formatMoneyAxis } from '@/lib/ui/money'
 
 interface ExpenseCategoryTrendChartProps {
@@ -17,21 +18,10 @@ interface ExpenseCategoryTrendChartProps {
 export function ExpenseCategoryTrendChart({ config, categories, data }: ExpenseCategoryTrendChartProps) {
   return (
     <ChartContainer config={config} className="h-full w-full">
-      <LineChart data={data} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
+      <LineChart data={data} margin={CHART_MARGIN}>
         <CartesianGrid vertical={false} />
-        <XAxis
-          dataKey="month"
-          tickLine={false}
-          axisLine={false}
-          tickMargin={6}
-          interval="preserveStartEnd"
-        />
-        <YAxis
-          tickLine={false}
-          axisLine={false}
-          width={40}
-          tickFormatter={(v: number) => formatMoneyAxis(v)}
-        />
+        <XAxis dataKey="month" {...TIME_AXIS} />
+        <YAxis {...VALUE_AXIS} tickFormatter={(v: number) => formatMoneyAxis(v)} />
         <ChartTooltip
           content={<ChartTooltipContent valueFormatter={(v) => formatMoney(Number(v))} />}
         />

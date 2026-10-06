@@ -8,9 +8,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { humanizeLabel } from '@/lib/ui/labels'
 import type { QuotaDimension, QuotaLevel, QuotaStatus } from '@/lib/ai/quota-compute'
 import { QUOTA_CRITICAL, QUOTA_WARN } from '@/lib/ai/quota-limits'
 import { formatNumber } from './ai-usage-format'
+import { LocalTime } from '@/components/local-time'
 
 const DIMENSION_LABEL: Record<QuotaDimension['key'], string> = {
   requests_day: 'Requests / day',
@@ -100,7 +102,7 @@ export function AiQuotaMeters({ meters }: AiQuotaMetersProps) {
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
                   <div className="truncate text-xs font-medium">{m.model}</div>
-                  <div className="text-[10px] text-muted-foreground">{m.provider}</div>
+                  <div className="text-[10px] text-muted-foreground">{humanizeLabel(m.provider)}</div>
                 </div>
                 <div className="flex items-center gap-1.5">
                   {m.level === 'warn' || m.level === 'critical' || m.level === 'exhausted' ? (
@@ -122,10 +124,10 @@ export function AiQuotaMeters({ meters }: AiQuotaMetersProps) {
               ))}
               <div className="flex flex-wrap gap-x-3 text-[10px] text-muted-foreground">
                 {m.retryAfterAt ? (
-                  <span>Rate limited until {new Date(m.retryAfterAt).toLocaleTimeString()}</span>
+                  <span>Rate limited until <LocalTime date={m.retryAfterAt} format="time" /></span>
                 ) : null}
                 {m.observedAt ? (
-                  <span>Provider snapshot {new Date(m.observedAt).toLocaleTimeString()}</span>
+                  <span>Provider snapshot <LocalTime date={m.observedAt} format="datetime" /></span>
                 ) : null}
                 {m.limitSource ? (
                   <Tooltip>

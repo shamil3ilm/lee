@@ -6,6 +6,7 @@ import { AnalyticsCardShell } from './card-shell'
 import { ChartSkeleton } from './charts/chart-skeleton'
 import type { CategoryTrendRow } from '@/lib/analytics/service'
 import { colourFor } from '@/lib/ui/money'
+import { humanizeLabel } from '@/lib/ui/labels'
 
 interface ExpenseCategoryTrendCardProps {
   data: CategoryTrendRow[]
@@ -63,7 +64,7 @@ export function ExpenseCategoryTrendCard({ data }: ExpenseCategoryTrendCardProps
 
   const config: ChartConfig = {}
   for (const c of topCategories) {
-    config[c] = { label: c, color: colourFor(c) }
+    config[c] = { label: humanizeLabel(c), color: colourFor(c) }
   }
 
   return (

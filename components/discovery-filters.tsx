@@ -2,6 +2,7 @@
 import { useTransition } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Label } from '@/components/ui/label'
+import { NativeSelect } from '@/components/ui/native-select'
 import {
   Select,
   SelectContent,
@@ -170,20 +171,20 @@ export function DiscoveryFilters({
               </SelectContent>
             </Select>
           </div>
-          <div className="w-full space-y-1.5 sm:w-auto">
+          <div className="w-full space-y-1.5 sm:w-[240px]">
             <Label htmlFor="disc-sort" className="text-xs">Sort</Label>
-            <Select value={sort} onValueChange={(v) => update({ sort: v })}>
-              <SelectTrigger id="disc-sort" className="h-8 w-full sm:w-[220px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(SORT_LABELS) as DiscoverySort[]).map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {SORT_LABELS[s]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <NativeSelect
+              id="disc-sort"
+              value={sort}
+              onChange={(e) => update({ sort: e.target.value })}
+              className="h-8"
+            >
+              {(Object.keys(SORT_LABELS) as DiscoverySort[]).map((s) => (
+                <option key={s} value={s}>
+                  {SORT_LABELS[s]}
+                </option>
+              ))}
+            </NativeSelect>
           </div>
         </>
       ) : null}

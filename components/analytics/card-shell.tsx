@@ -26,6 +26,12 @@ interface CardShellProps {
   emptyIcon: LucideIcon
   children: React.ReactNode
   className?: string
+  /**
+   * `chart` (default) gives children a fixed-height box for Recharts'
+   * ResponsiveContainer. `content` lets lists and tables grow to their
+   * natural height so nothing is cut off at the card edge.
+   */
+  body?: 'chart' | 'content'
 }
 
 /**
@@ -43,6 +49,7 @@ export function AnalyticsCardShell({
   emptyIcon: EmptyIcon,
   children,
   className,
+  body = 'chart',
 }: CardShellProps) {
   return (
     <Card className={cn('flex min-w-0 flex-col', className)}>
@@ -79,7 +86,7 @@ export function AnalyticsCardShell({
         {isEmpty ? (
           <EmptyState size="sm" className="h-56" icon={EmptyIcon} title="Nothing to chart yet" description={emptyMessage} />
         ) : (
-          <div className="h-56 w-full">{children}</div>
+          <div className={body === 'chart' ? 'h-56 w-full' : 'min-h-56 w-full'}>{children}</div>
         )}
       </CardContent>
     </Card>

@@ -130,4 +130,22 @@ describe('GET /api/lab/models', () => {
     const res = await GET(new Request('http://l/api/lab/models?provider=huggingface&refresh=1'))
     expect(res.status).toBe(429)
   })
+
+  it('turns a raw provider 400 into a friendly message with the raw text as detail', async () => {
+    const u = await signIn()
+    await keysQ.upsert(u.id, 'huggingface', 'hf_modelslisttoken222222222')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ error: { message: 'model is not supported' } }), { status: 400 })),
+    )
+    const { GET } = await import('@/app/api/lab/models/route')
+    const res = await GET(new Request('http://l/api/lab/models?provider=huggingface&refresh=1'))
+    const body = (await res.json()) as { error: string; title: string; detail: string; code: string }
+    expect(res.status).toBe(502)
+    expect(body.code).toBe('bad_request')
+    expect(body.title).toBe('Request rejected')
+    expect(body.error).toMatch(/^Hugging Face could not run this request/)
+    expect(body.error).not.toMatch(/returned 400/)
+    expect(body.detail).toMatch(/returned 400: model is not supported/)
+  })
 })

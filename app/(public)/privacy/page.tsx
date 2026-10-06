@@ -1,11 +1,13 @@
 import type { Metadata } from 'next'
 import { env } from '@/lib/env'
 import { APP_NAME } from '@/lib/brand'
+import { formatDateTime } from '@/lib/ui/date'
 
 export const metadata: Metadata = { title: 'Privacy policy' }
 
 // Update this date whenever the policy text changes.
-const LAST_UPDATED = '26 September 2026'
+// US style, like every other date in the app ("Sep 26, 2026").
+const LAST_UPDATED = formatDateTime('2026-09-26T12:00:00Z', 'date-year', 'UTC')
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (

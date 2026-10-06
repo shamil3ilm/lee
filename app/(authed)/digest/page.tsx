@@ -5,13 +5,16 @@ import { getUpcomingActions, getRecentActivity } from '@/lib/digest/service'
 import { PageHeader } from '@/components/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { relativeFromNow, shortDateTime } from '@/lib/ui/date'
+import { relativeFromNow } from '@/lib/ui/date'
 import {
   APPLICATION_STATUSES,
   STATUS_BADGE,
   STATUS_LABELS,
   type ApplicationStatus,
 } from '@/lib/ui/status'
+import { LocalTime } from '@/components/local-time'
+import { describeActivity, type ActivityDescription } from '@/lib/digest/activity-label'
+import { joinMeta } from '@/lib/ui/meta'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,6 +22,30 @@ function narrow(s: string): ApplicationStatus {
   return (APPLICATION_STATUSES as readonly string[]).includes(s)
     ? (s as ApplicationStatus)
     : 'saved'
+}
+
+/** "Applied → Interview" with status badges, or a short phrase for other kinds. */
+function ActivityChange({ description }: { description: ActivityDescription }) {
+  if (description.type === 'text') {
+    return <span className="text-xs text-muted-foreground">{description.text}</span>
+  }
+  return (
+    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      {description.from ? (
+        <>
+          <Badge variant={STATUS_BADGE[description.from]} className="text-[10px]">
+            {STATUS_LABELS[description.from]}
+          </Badge>
+          <span aria-label="to">→</span>
+        </>
+      ) : (
+        <span>Added as</span>
+      )}
+      <Badge variant={STATUS_BADGE[description.to]} className="text-[10px]">
+        {STATUS_LABELS[description.to]}
+      </Badge>
+    </span>
+  )
 }
 
 export default async function DigestPage() {
@@ -70,7 +97,7 @@ export default async function DigestPage() {
                             <div className="font-medium text-foreground">
                               {relativeFromNow(a.nextActionAt)}
                             </div>
-                            <div>{shortDateTime(a.nextActionAt)}</div>
+                            <div><LocalTime date={a.nextActionAt} /></div>
                           </>
                         ) : null}
                       </div>
@@ -98,16 +125,19 @@ export default async function DigestPage() {
           ) : (
             <ul className="space-y-1 text-sm">
               {recent.map((a) => (
-                <li key={a.id} className="flex items-center gap-2 py-1">
-                  <span className="w-32 shrink-0 text-xs text-muted-foreground">
-                    {shortDateTime(a.createdAt)}
+                <li key={a.id} className="flex flex-col gap-0.5 py-1.5 sm:flex-row sm:items-center sm:gap-3">
+                  <span className="shrink-0 text-xs text-muted-foreground sm:w-32">
+                    <LocalTime date={a.createdAt} />
                   </span>
-                  <Link
-                    href={`/applications/${a.applicationId}`}
-                    className="text-xs capitalize hover:underline"
-                  >
-                    {a.kind.replace(/_/g, ' ')}
-                  </Link>
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                    <Link
+                      href={`/applications/${a.applicationId}`}
+                      className="min-w-0 truncate font-medium hover:underline"
+                    >
+                      {joinMeta([a.companyName, a.jobTitle]) || 'Application'}
+                    </Link>
+                    <ActivityChange description={describeActivity(a.kind, a.payload)} />
+                  </div>
                 </li>
               ))}
             </ul>

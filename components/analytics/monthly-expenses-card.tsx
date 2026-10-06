@@ -6,6 +6,7 @@ import { AnalyticsCardShell } from './card-shell'
 import { ChartSkeleton } from './charts/chart-skeleton'
 import type { MonthlyExpenseBar } from '@/lib/analytics/service'
 import { colourFor } from '@/lib/ui/money'
+import { humanizeLabel } from '@/lib/ui/labels'
 
 interface MonthlyExpensesCardProps {
   data: MonthlyExpenseBar[]
@@ -47,7 +48,7 @@ export function MonthlyExpensesCard({ data }: MonthlyExpensesCardProps) {
 
   const config: ChartConfig = {}
   for (const c of categories) {
-    config[c] = { label: c, color: colourFor(c) }
+    config[c] = { label: humanizeLabel(c), color: colourFor(c) }
   }
 
   const enriched = data.map((bar) => {

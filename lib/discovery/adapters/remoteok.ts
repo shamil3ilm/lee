@@ -1,5 +1,6 @@
 import type { DiscoveryAdapter, DiscoveryItem, NormalizedJob } from './types'
 import { discoveryFetch } from './http'
+import { cleanOptional, readJson } from './decode'
 
 interface RemoteOkJob {
   id?: string | number
@@ -40,27 +41,36 @@ export class RemoteOkAdapter implements DiscoveryAdapter {
       headers: { accept: 'application/json' },
     })
     if (!res.ok) throw new Error(`remoteok ${res.status}`)
-    const body = (await res.json()) as unknown[]
+    // Decode the bytes ourselves (declared charset, UTF-8, CP1252 fallback)
+    // and repair RemoteOK's double-encoded strings field by field, so the
+    // stored row reads "دبي" / "Zürich" rather than "Ø¯Ø¨ÙŠ" / "ZÃ¼rich".
+    const body = (await readJson(res)) as unknown[]
     if (!Array.isArray(body)) throw new Error('remoteok: unexpected shape')
     // First element is metadata / legal notice — skip.
     const jobs = body.slice(1) as RemoteOkJob[]
     const items: DiscoveryItem[] = []
     for (const job of jobs) {
-      if (!job || !job.position || !job.company) continue
+      if (!job) continue
+      const title = cleanOptional(job.position)
+      const companyName = cleanOptional(job.company)
+      if (!title || !companyName) continue
       const id = String(job.id ?? job.slug ?? job.url ?? '')
       if (!id) continue
       const applyUrl = job.apply_url ?? job.url ?? `https://remoteok.com/l/${id}`
+      const location = cleanOptional(job.location)
       const normalized: NormalizedJob = {
         kind: 'job',
-        title: job.position,
-        companyName: job.company,
-        location: job.location ?? 'Remote',
+        title,
+        companyName,
+        location: location ?? 'Remote',
         remoteType: 'remote',
         employmentType: 'fulltime',
         applyUrl,
-        descriptionMd: job.description ?? '',
-        techStack: Array.isArray(job.tags) ? job.tags : [],
-        tags: remoteOkTags(job.location),
+        descriptionMd: cleanOptional(job.description) ?? '',
+        techStack: Array.isArray(job.tags)
+          ? job.tags.flatMap((t) => cleanOptional(t) ?? [])
+          : [],
+        tags: remoteOkTags(location),
         postedAt: job.date
           ? new Date(job.date)
           : job.epoch

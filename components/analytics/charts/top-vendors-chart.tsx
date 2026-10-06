@@ -7,6 +7,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart'
+import { CATEGORY_Y_AXIS, CHART_MARGIN, VALUE_AXIS } from '@/components/ui/chart-defaults'
 import { formatMoney, formatMoneyAxis } from '@/lib/ui/money'
 
 const CONFIG: ChartConfig = {
@@ -21,22 +22,16 @@ export interface TopVendorDatum {
 export function TopVendorsChart({ data }: { data: TopVendorDatum[] }) {
   return (
     <ChartContainer config={CONFIG} className="h-full w-full">
-      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 12, left: 4, bottom: 0 }}>
+      <BarChart data={data} layout="vertical" margin={CHART_MARGIN}>
         <CartesianGrid horizontal={false} />
         <XAxis
           type="number"
           tickLine={false}
           axisLine={false}
+          fontSize={VALUE_AXIS.fontSize}
           tickFormatter={(v: number) => formatMoneyAxis(v)}
         />
-        <YAxis
-          type="category"
-          dataKey="vendor"
-          tickLine={false}
-          axisLine={false}
-          width={90}
-          fontSize={11}
-        />
+        <YAxis dataKey="vendor" {...CATEGORY_Y_AXIS} />
         <ChartTooltip
           content={<ChartTooltipContent valueFormatter={(v) => formatMoney(Number(v))} />}
         />

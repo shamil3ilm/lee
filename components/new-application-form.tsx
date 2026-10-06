@@ -144,7 +144,7 @@ export function NewApplicationForm({ prefillUrl, autoSubmit }: NewApplicationFor
                 <SelectContent>
                   <SelectItem value="remote">Remote</SelectItem>
                   <SelectItem value="hybrid">Hybrid</SelectItem>
-                  <SelectItem value="onsite">Onsite</SelectItem>
+                  <SelectItem value="onsite">On-site</SelectItem>
                 </SelectContent>
               </Select>
             </div>

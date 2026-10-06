@@ -1,0 +1,45 @@
+[
+  {
+    "legal": "See our terms of service at https://remoteok.com/terms"
+  },
+  {
+    "id": "2000001",
+    "position": "IngÃ©nieur Backend Senior",
+    "company": "SociÃ©tÃ© GÃ©nÃ©rale Tech",
+    "location": "Ø¯Ø¨ÙŠØŒ Ø§Ù„Ø¥Ù…Ø§Ø±Ø§Øª",
+    "description": "Ã‰quipe Ã  DubaÃ¯ â€” cafÃ© offert. Nous cherchons unÂ·e ingÃ©nieurÂ·e.",
+    "tags": [
+      "go",
+      "Ã©lixir"
+    ],
+    "slug": "2000001",
+    "url": "https://remoteok.com/l/2000001",
+    "date": "2026-09-20T10:00:00Z"
+  },
+  {
+    "id": "2000002",
+    "position": "Senior Software Engineer",
+    "company": "ZÃ¼rich Fintech AG",
+    "location": "ZÃ¼rich, Schweiz",
+    "description": "Ãœber uns: we ship â€œpaymentsâ€ in SÃ£o Paulo too.",
+    "tags": [
+      "typescript"
+    ],
+    "slug": "2000002",
+    "url": "https://remoteok.com/l/2000002",
+    "date": "2026-09-20T10:00:00Z"
+  },
+  {
+    "id": "2000003",
+    "position": "Ù…Ù‡Ù†Ø¯Ø³ Ø¨Ø±Ù…Ø¬ÙŠØ§Øª",
+    "company": "Ø´Ø±ÙƒØ© Ø§Ù„Ø±ÙŠØ§Ø¶",
+    "location": "Ø§Ù„Ø±ÙŠØ§Ø¶",
+    "description": "Ù†Ø¨Ø­Ø« Ø¹Ù† Ù…Ù‡Ù†Ø¯Ø³ Ø®Ù„ÙÙŠØ©.",
+    "tags": [
+      "php"
+    ],
+    "slug": "2000003",
+    "url": "https://remoteok.com/l/2000003",
+    "date": "2026-09-20T10:00:00Z"
+  }
+]

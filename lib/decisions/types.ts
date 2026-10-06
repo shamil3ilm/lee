@@ -62,7 +62,7 @@ export interface DecisionProvider {
  * Groq → heuristic. Kept exported so tests can assert the failure mode.
  */
 export class LayaUnavailableError extends Error {
-  constructor(message = 'Laya provider is not yet enabled (v8.1)') {
+  constructor(message = 'The Laya provider is not enabled yet.') {
     super(message)
     this.name = 'LayaUnavailableError'
   }

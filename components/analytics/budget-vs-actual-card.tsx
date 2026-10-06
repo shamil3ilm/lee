@@ -4,6 +4,7 @@ import { AnalyticsCardShell } from './card-shell'
 import type { BudgetVsActualRow } from '@/lib/analytics/service'
 import { colourFor, formatMoney } from '@/lib/ui/money'
 import { toneColor } from '@/lib/ui/tones'
+import { humanizeLabel } from '@/lib/ui/labels'
 
 interface BudgetVsActualCardProps {
   data: BudgetVsActualRow[]
@@ -31,8 +32,9 @@ export function BudgetVsActualCard({ data }: BudgetVsActualCardProps) {
       isEmpty={isEmpty}
       emptyMessage="Set a budget under Expenses → Budgets to compare it against actual spend."
       emptyIcon={Target}
+      body="content"
     >
-      <div className="h-full w-full space-y-3 overflow-y-auto pr-1">
+      <div className="w-full space-y-3">
         {data.slice(0, 8).map((r) => {
           const denom = Math.max(r.budgetCents, r.actualCents, 1)
           const pctFill = Math.min(100, (r.actualCents / denom) * 100)
@@ -52,8 +54,8 @@ export function BudgetVsActualCard({ data }: BudgetVsActualCardProps) {
           return (
             <div key={r.category} className="space-y-1">
               <div className="flex items-baseline justify-between gap-2 text-xs">
-                <span className="font-medium capitalize">{r.category}</span>
-                <span className="tabular-nums text-muted-foreground">
+                <span className="min-w-0 truncate font-medium">{humanizeLabel(r.category)}</span>
+                <span className="shrink-0 text-right tabular-nums text-muted-foreground">
                   {formatMoney(r.actualCents, r.currency)}
                   {r.budgetCents > 0 ? (
                     <>

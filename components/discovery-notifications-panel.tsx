@@ -9,7 +9,7 @@ import {
 } from '@/app/(authed)/settings/notifications/actions'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { DISPLAY_LOCALE, relativeFromNow } from '@/lib/ui/date'
+import { LocalTime } from '@/components/local-time'
 
 interface DiscoveryNotificationsPanelProps {
   emailEnabled: boolean
@@ -247,9 +247,7 @@ export function DiscoveryNotificationsPanel({
         <div className="text-xs text-muted-foreground">
           Last email sent:{' '}
           {lastSent ? (
-            <span title={new Date(lastSent).toLocaleString(DISPLAY_LOCALE)} suppressHydrationWarning>
-              {relativeFromNow(lastSent)}
-            </span>
+            <LocalTime date={lastSent} format="relative" />
           ) : (
             'Never'
           )}

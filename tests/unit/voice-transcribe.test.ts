@@ -1,6 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { POST } from '@/app/api/voice/transcribe/route'
-import { auth } from '@/lib/auth'
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest'
 import { db } from '@/lib/db/client'
 import { aiCallLogs, aiQuotaSnapshots } from '@/lib/db/schema'
 import { makeUser } from '@/tests/factories'
@@ -24,16 +22,23 @@ function makeFormData(): FormData {
   return form
 }
 
+// isolate:false shares the module cache across files: a route module loaded
+// by another file stays bound to that file's auth mock (seen with shuffle
+// seed 21). Re-import the route and auth against this file's mocks.
+let POST: typeof import('@/app/api/voice/transcribe/route').POST
+let auth: typeof import('@/lib/auth').auth
+beforeAll(async () => {
+  vi.resetModules()
+  ;({ POST } = await import('@/app/api/voice/transcribe/route'))
+  ;({ auth } = await import('@/lib/auth'))
+})
+
 describe('POST /api/voice/transcribe', () => {
   const originalFetch = globalThis.fetch
 
   beforeEach(() => {
-    // Re-arm the module mocks for every test: restoreAllMocks() in afterEach
-    // (and shuffled order) must not leave a later test with a stale
-    // implementation or call history.
-    vi.mocked(auth).mockImplementation((async () => ({ user: { id: 'u-1' } })) as never)
-    resolveAiKeyMock.mockReset()
-    resolveAiKeyMock.mockResolvedValue('test-groq-key')
+    // Another file's auth mock may be the one in effect; pin the session.
+    vi.mocked(auth).mockResolvedValue({ user: { id: 'u-1' } } as never)
     vi.spyOn(globalThis, 'fetch')
   })
   afterEach(() => {

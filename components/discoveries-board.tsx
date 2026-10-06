@@ -6,6 +6,7 @@ import { moveDiscovery } from '@/app/(authed)/discoveries/actions'
 import { Board, type BoardColumnDef, type BoardQuickAction } from '@/components/board/board'
 import { Badge } from '@/components/ui/badge'
 import type { BadgeVariant } from '@/lib/ui/status'
+import { workModeLabel } from '@/lib/ui/labels'
 
 export type DiscoveryBoardColumn = 'new' | 'shortlisted' | 'saved' | 'dismissed'
 
@@ -67,7 +68,7 @@ function renderCard(d: DiscoveryBoardItem): React.ReactNode {
           </Badge>
         ) : null}
       </div>
-      {d.location || d.remoteType ? (
+      {d.location || workModeLabel(d.remoteType) ? (
         <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
           {d.location ? (
             <span className="inline-flex items-center gap-1">
@@ -75,9 +76,9 @@ function renderCard(d: DiscoveryBoardItem): React.ReactNode {
               {d.location}
             </span>
           ) : null}
-          {d.remoteType ? (
-            <Badge variant="outline" className="text-[10px] capitalize">
-              {d.remoteType}
+          {workModeLabel(d.remoteType) ? (
+            <Badge variant="outline" className="text-[10px]">
+              {workModeLabel(d.remoteType)}
             </Badge>
           ) : null}
         </div>

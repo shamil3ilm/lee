@@ -73,6 +73,21 @@ describe('getRecentActivity', () => {
     expect((rows[1]!.payload as { text: string }).text).toBe('mid')
   })
 
+  it('includes the company and job title for each row', async () => {
+    const u = await makeUser()
+    const c = await makeCompany(u.id, { name: 'Razorpay' })
+    const j = await makeJob(u.id, c.id, { title: 'Senior Software Engineer' })
+    const a = await makeApplication(u.id, j.id)
+    await db.insert(activities).values({
+      userId: u.id,
+      applicationId: a.id,
+      kind: 'status_change',
+      payload: { from: 'applied', to: 'interview' },
+    })
+    const [row] = await getRecentActivity(u.id, 7)
+    expect(row).toMatchObject({ companyName: 'Razorpay', jobTitle: 'Senior Software Engineer', kind: 'status_change' })
+  })
+
   it('scopes strictly by userId', async () => {
     const u1 = await makeUser()
     const u2 = await makeUser()

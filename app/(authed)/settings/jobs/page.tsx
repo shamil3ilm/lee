@@ -4,13 +4,14 @@ import { jobLabel } from '@/lib/queue/job-types'
 import { getQueueOverview } from '@/lib/queue/overview'
 import { getLastRuns, getRunHistory } from '@/lib/queue/runs'
 import { JOB_STATUSES } from '@/lib/queue/types'
-import { relativeFromNow, shortDateTime } from '@/lib/ui/date'
+import { relativeFromNow } from '@/lib/ui/date'
 import { JOB_STATUS_LABEL as STATUS_LABEL } from '@/lib/ui/run-status'
 import { PageHeader } from '@/components/page-header'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { RetryJobButton, RunJobsNowButton } from '@/components/settings/background-jobs-actions'
 import { LastRunsTable, RunHistory } from '@/components/settings/last-runs'
+import { LocalTime } from '@/components/local-time'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,9 +53,7 @@ export default async function BackgroundJobsPage({ searchParams }: BackgroundJob
           <p className="text-sm text-muted-foreground">
             Last run for your jobs:{' '}
             {overview.lastDrainAt ? (
-              <time dateTime={overview.lastDrainAt.toISOString()} title={shortDateTime(overview.lastDrainAt)}>
-                {relativeFromNow(overview.lastDrainAt)}
-              </time>
+              <LocalTime date={overview.lastDrainAt} format="relative" titleFormat="datetime" />
             ) : (
               'not yet'
             )}
@@ -108,7 +107,7 @@ export default async function BackgroundJobsPage({ searchParams }: BackgroundJob
                       <span className="font-medium">{f.label}</span>
                       <Badge variant={f.status === 'dead' ? 'rose' : 'slate'}>{STATUS_LABEL[f.status]}</Badge>
                       <span className="text-xs text-muted-foreground">
-                        attempt {f.attempts} of {f.maxAttempts} · {shortDateTime(f.updatedAt)}
+                        attempt {f.attempts} of {f.maxAttempts} · <LocalTime date={f.updatedAt} />
                       </span>
                     </div>
                     {f.error ? <p className="break-words text-sm text-muted-foreground">{f.error}</p> : null}

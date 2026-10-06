@@ -14,6 +14,9 @@ import { NotificationScheduler } from '@/components/notification-scheduler'
 import { UserMenu } from '@/components/user-menu'
 import type { NavBadges } from '@/components/nav/nav-config'
 import { NavBadgesProvider } from '@/components/nav/nav-badges'
+import { TimeZoneProvider } from '@/components/local-time'
+import { getUserTimeZone } from '@/lib/settings/timezone'
+import { DEFAULT_TIMEZONE } from '@/lib/ui/timezone'
 import { WebVitalsReporter } from '@/components/web-vitals-reporter'
 import { APP_SHELL_ID, RAIL_BOOT_SCRIPT } from '@/lib/ui/sidebar-store'
 import Link from 'next/link'
@@ -52,7 +55,8 @@ function imageOrigin(image: string | null): string | null {
  * database), so the sidebar, header and the page's loading skeleton flush in
  * the first bytes. The nav badge counts are started here but not awaited: the
  * promise streams to the client and each badge fills in when it resolves
- * (components/nav/nav-badges.tsx). Pages fetch their own data behind their
+ * (components/nav/nav-badges.tsx). The user's timezone lookup works the same
+ * way (components/local-time.tsx). Pages fetch their own data behind their
  * loading.tsx / Suspense boundaries.
  */
 export default async function AuthedLayout({ children }: { children: React.ReactNode }) {
@@ -68,6 +72,10 @@ export default async function AuthedLayout({ children }: { children: React.React
   const badges: Promise<NavBadges> = session.user.id
     ? loadNavBadges(session.user.id, new Date())
     : Promise.resolve({})
+  // Started, not awaited: every <LocalTime> resolves it on its own.
+  const timeZone: Promise<string> = session.user.id
+    ? getUserTimeZone(session.user.id)
+    : Promise.resolve(DEFAULT_TIMEZONE)
   // Opportunistic queue drain for this user, registered with after(): no
   // query on the render path; one indexed check once the response is sent.
   if (session.user.id) void scheduleVisitDrain(session.user.id)
@@ -76,6 +84,7 @@ export default async function AuthedLayout({ children }: { children: React.React
     // variant. The boot script sets the attribute pre-paint from storage, so
     // there is no layout shift on hydration.
     <NavBadgesProvider badges={badges}>
+      <TimeZoneProvider timeZone={timeZone}>
       <div id={APP_SHELL_ID} className="group/shell flex min-h-screen" suppressHydrationWarning>
         <InlineScript html={RAIL_BOOT_SCRIPT} />
         <aside className="hidden w-[240px] shrink-0 group-data-[sidebar=rail]/shell:w-14 md:block">
@@ -104,6 +113,7 @@ export default async function AuthedLayout({ children }: { children: React.React
         <NotificationScheduler />
         <WebVitalsReporter />
       </div>
+      </TimeZoneProvider>
     </NavBadgesProvider>
   )
 }

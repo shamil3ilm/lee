@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import type { EventLevel } from '@/lib/logs/types'
-import { DISPLAY_LOCALE, relativeFromNow } from '@/lib/ui/date'
 import { TONE_TEXT } from '@/lib/ui/tones'
 import { EVENT_LEVEL_TONE } from '@/lib/ui/run-status'
+import { LocalTime } from '@/components/local-time'
 
 /** Serializable: passed from the Integrations page to client cards. */
 export interface LastActivityItem {
@@ -26,9 +26,7 @@ export function LastActivity({
   return (
     <div className="text-xs text-muted-foreground" data-testid={testId}>
       Last activity{' '}
-      <span title={new Date(item.at).toLocaleString(DISPLAY_LOCALE)} suppressHydrationWarning>
-        {relativeFromNow(item.at)}
-      </span>
+      <LocalTime date={item.at} format="relative" />
       :{' '}
       <span className={item.level === 'info' ? 'text-foreground' : TONE_TEXT[EVENT_LEVEL_TONE[item.level]]}>
         {item.message}

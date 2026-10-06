@@ -10,6 +10,8 @@ interface DriveConnectButtonProps {
   reconnect?: boolean
   size?: 'sm' | 'default'
   variant?: 'default' | 'outline' | 'secondary'
+  /** Button text; defaults to Connect / Reconnect Google Drive. */
+  label?: string
 }
 
 /** Starts Google's consent for drive.file (incremental authorization). */
@@ -18,6 +20,7 @@ export function DriveConnectButton({
   reconnect = false,
   size = 'sm',
   variant = 'outline',
+  label,
 }: DriveConnectButtonProps) {
   const [pending, start] = useTransition()
   return (
@@ -30,7 +33,7 @@ export function DriveConnectButton({
       onClick={() => start(() => connectDriveAction(returnTo))}
     >
       {pending ? <Loader2 className="size-3.5 animate-spin" /> : <HardDrive className="size-3.5" />}
-      {reconnect ? 'Reconnect Google Drive' : 'Connect Google Drive'}
+      {label ?? (reconnect ? 'Reconnect Google Drive' : 'Connect Google Drive')}
     </Button>
   )
 }

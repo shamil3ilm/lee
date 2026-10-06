@@ -9,6 +9,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart'
+import { CATEGORY_AXIS, CHART_MARGIN, LEGEND_PROPS, VALUE_AXIS } from '@/components/ui/chart-defaults'
 import type { SourceFunnelRow } from '@/lib/analytics/service'
 
 const CONFIG: ChartConfig = {
@@ -21,12 +22,12 @@ const CONFIG: ChartConfig = {
 export function SourceFunnelChart({ data }: { data: SourceFunnelRow[] }) {
   return (
     <ChartContainer config={CONFIG} className="h-full w-full">
-      <BarChart data={data} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+      <BarChart data={data} margin={CHART_MARGIN}>
         <CartesianGrid vertical={false} />
-        <XAxis dataKey="source" tickLine={false} axisLine={false} tickMargin={6} />
-        <YAxis tickLine={false} axisLine={false} width={28} allowDecimals={false} />
+        <XAxis dataKey="source" {...CATEGORY_AXIS} />
+        <YAxis {...VALUE_AXIS} allowDecimals={false} />
         <ChartTooltip content={<ChartTooltipContent />} />
-        <ChartLegend content={<ChartLegendContent />} />
+        <ChartLegend {...LEGEND_PROPS} content={<ChartLegendContent />} />
         <Bar dataKey="applied" fill="var(--color-applied)" radius={[2, 2, 0, 0]} />
         <Bar dataKey="screened" fill="var(--color-screened)" radius={[2, 2, 0, 0]} />
         <Bar dataKey="interviewed" fill="var(--color-interviewed)" radius={[2, 2, 0, 0]} />

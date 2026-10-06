@@ -1,9 +1,10 @@
 import type { EventView } from '@/lib/logs/queries'
 import { CATEGORY_LABELS } from '@/lib/logs/types'
-import { relativeFromNow, shortDateTime } from '@/lib/ui/date'
+import { relativeFromNow } from '@/lib/ui/date'
 import { EVENT_LEVEL_LABEL, EVENT_LEVEL_TONE } from '@/lib/ui/run-status'
 import { Badge } from '@/components/ui/badge'
 import { CopyJsonButton } from './copy-json-button'
+import { LocalTime } from '@/components/local-time'
 
 function toJson(e: EventView): string {
   return JSON.stringify(
@@ -35,9 +36,9 @@ export function EventList({ events }: { events: EventView[] }) {
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <Badge variant={EVENT_LEVEL_TONE[e.level]}>{EVENT_LEVEL_LABEL[e.level]}</Badge>
               <Badge variant="outline">{CATEGORY_LABELS[e.category]}</Badge>
-              <time dateTime={e.createdAt.toISOString()} title={shortDateTime(e.createdAt)}>
-                {relativeFromNow(e.createdAt)} · {shortDateTime(e.createdAt)}
-              </time>
+              <span>
+                {relativeFromNow(e.createdAt)} · <LocalTime date={e.createdAt} />
+              </span>
               <code className="font-mono">{e.event}</code>
               {e.global ? <span>· global</span> : null}
             </div>
