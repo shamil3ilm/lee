@@ -43,12 +43,30 @@ A variant is a versioned **recipe**. It holds no facts, only:
 
 **Versions.** Each save that changes the recipe adds a version. An application records the variant and version it used (`applications.resume_variant_id` and `resume_variant_version`), and tailoring starts from that version (`tailor-cv` prompt 1.1.0).
 
+**Cleanup.** The nightly retention run prunes old versions (`variantVersions` step, `lib/db/retention/variants.ts`). The window is per user in Settings › Storage ("Old résumé variant versions", default 180 days, 30–1825). It never deletes:
+
+- the latest version of a variant;
+- any version an application records;
+- any version that was published to the portfolio (`resume_variant_versions.published_at`, set on publish and never cleared).
+
+It runs in bounded batches inside the run's time budget and is idempotent. The per-version `latex_cv` documents are documents, so they are not touched.
+
 **Outputs.** All outputs reuse existing pipelines:
 
 - A `latex_cv` document per variant version gives the PDF, the LaTeX editor and the PDF cache.
 - The PDF can be saved to Drive in lee/CVs.
 - "Score this variant" goes through CV Score's public `scoreCv`.
 - A plain-text export is available for portal forms.
+
+### Photo (`lib/resume/photo.ts`, `photo-store.ts`)
+
+The profile photo is uploaded in Settings › Profile › Résumé and is **private**: it is never published (the portfolio mapper never writes it, whatever `basics.image` says).
+
+- **Validate.** The browser accepts JPEG, PNG or WebP up to 2 MB, then square-crops the centre and downscales it to 512 px on a canvas and uploads a JPEG. lee has no server-side image library (sharp isn't a dependency), and pdflatex can't read WebP. `POST /api/profile/photo` re-checks the bytes themselves: the type sniffed from the header (JPEG or PNG only), at most 2 MB, square, 64 to 1024 px.
+- **Store.** The photo is a document asset (`lee-photo.jpg` or `.png`) on a hidden holder document of kind `profile_photo`, one per user. It goes through the existing asset store, so it lands in Drive when Drive is connected and in Postgres otherwise. `documents.list` leaves the holder out of the library.
+- **Place.** A variant places the photo when its Photo field is on, its region allows it, and a photo exists. Remote / US / EU and India never allow it (`LOCKED_OFF`), and GCC has it off by default. `ensureVariantDocument` then copies the photo into the variant's `latex_cv` document as an asset (same sha256, so the copy is refreshed only when the photo changes). It is removed again when the variant stops placing it.
+- **Compile.** Both templates add `graphicx` and set the name block beside a 2.6 cm photo: plain in `ats`, framed in the brand colour in `brand`. The existing pipeline packs the image into the latexonline.cc tarball, and its sha is part of the PDF cache key. Only lee's own file names are ever embedded in the source.
+- **Warn.** The variant preview warns when Photo is on but no photo is uploaded.
 
 ## Publish to portfolio (`lib/portfolio`)
 
@@ -67,7 +85,22 @@ The token is the `github_portfolio` entry in the encrypted key store. Its Test d
 - the file is readable;
 - write access works, checked with a PUT that carries a deliberately wrong sha, so nothing is ever committed.
 
-## Not built yet
+## Variant pages on the portfolio (`lib/portfolio/variant-*.ts`)
 
-- **Variant pages on the portfolio.** The per-variant "publish to portfolio" toggle and `portfolio_slug` are stored, but nothing renders them on the portfolio yet.
-- **Photo in PDFs.** The photo toggle exists, but the LaTeX templates don't place a photo.
+Each variant has a "Publish this variant to the portfolio too" toggle, **off by default**. Turning it on gives the variant a page address (`portfolio_slug`). The address is derived from the name, unique per user, and editable until the variant is published.
+
+1. **Map.** `variant-map.ts` applies the recipe to the master profile: only the included items, highlights and skills, in the variant's order and chosen wordings, under the same readiness rules as the PDF. The result goes through the same `toJsonResume` as profile.json, so only public fields are written. On top of that:
+   - phone and location appear only when the variant shows them;
+   - the photo never appears;
+   - a domain-only project is left out, because the page lists its stack;
+   - an item left with no presentable highlight is left out.
+
+   `basics.label` and `basics.summary` are the variant's headline and summary. `meta.canonical` is `<portfolio origin>/variants/<slug>.json`.
+2. **Validate and write.** Validation, sha and conflict handling, and the 409/422 re-fetch work as for profile.json. The file is `variants/<slug>.json` next to profile.json, and the commit is "chore(profile): sync variant <slug> from lee" with a summary.
+   - A variant holds no facts, so a hand edit can't be taken back into lee. The conflict shows which sections differ, and the user can only overwrite the file with lee's version (against the sha they saw).
+3. **Record.** The sha, hash, version, commit URL and time are stored on `resume_variants.portfolio_*`. The published recipe version gets `published_at`. The events `variant_published` and `variant_publish_conflict` are logged without the token or the content.
+4. **Unpublish.** Unpublish asks for confirmation, then deletes the file through the contents API ("chore(profile): remove variant <slug> (lee)") and turns the toggle off. Turning the toggle off on a published variant goes through the same confirmation, and a published variant's address can't change until it is unpublished.
+
+Settings › Profile › Publish lists the enabled variants (and any still on the portfolio, archived ones included) with Publish, Unpublish, the last commit and the **public URL**, `<portfolio origin>/resume/<slug>.html`. The variant editor shows the same URL.
+
+The portfolio repo's build (`scripts/build-resume.mjs`) validates every `variants/*.json` with the same schema, checks the canonical against the file name, and renders `resume/<slug>.html` from the résumé template. The page has a "Tailored résumé" label, a canonical link and `noindex`. The build also deletes the page of a removed variant. Its Regenerate pages workflow watches `variants/**`.
