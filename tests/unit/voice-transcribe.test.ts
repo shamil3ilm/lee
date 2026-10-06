@@ -28,6 +28,12 @@ describe('POST /api/voice/transcribe', () => {
   const originalFetch = globalThis.fetch
 
   beforeEach(() => {
+    // Re-arm the module mocks for every test: restoreAllMocks() in afterEach
+    // (and shuffled order) must not leave a later test with a stale
+    // implementation or call history.
+    vi.mocked(auth).mockImplementation((async () => ({ user: { id: 'u-1' } })) as never)
+    resolveAiKeyMock.mockReset()
+    resolveAiKeyMock.mockResolvedValue('test-groq-key')
     vi.spyOn(globalThis, 'fetch')
   })
   afterEach(() => {
