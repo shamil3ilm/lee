@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { ComponentHeadlineKey, CvFinding, Severity } from '@/lib/cv-score/types'
 import { HEADLINE_ORDER, HEADLINE_SHORT, SEVERITY_BADGE, SEVERITY_ORDER } from './client'
+import { FindingEvidence } from './finding-evidence'
 
 interface FindingsListProps {
   findings: CvFinding[]
@@ -89,7 +90,9 @@ export function FindingsList({ findings, severity, headline, onSeverity, onHeadl
                         ))}
                       </div>
                     </div>
-                    {f.location ? (
+                    {f.evidence?.length ? (
+                      <FindingEvidence evidence={f.evidence} />
+                    ) : f.location ? (
                       <p className="mt-1.5 border-l-2 pl-2 text-xs italic text-muted-foreground">
                         {f.location.section}: “{f.location.excerpt}”
                       </p>

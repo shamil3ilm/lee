@@ -2,15 +2,20 @@
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
 import { Info } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import type { ImpactDetails } from '@/lib/cv-score/dimensions/impact'
 import type { KeywordDetails } from '@/lib/cv-score/dimensions/keywords'
+import type { StructureDetails } from '@/lib/cv-score/dimensions/structure'
 import type { RequirementFitDetails } from '@/lib/cv-score/requirement-fit'
 import { isSkipped, type ComponentHeadlineKey, type Severity } from '@/lib/cv-score/types'
+import { isOutdatedScore } from '@/lib/cv-score/version'
 import { HEADLINE_ORDER, type CvScoreRecord, type HistoryPoint } from './client'
 import { FindingsList } from './findings-list'
 import { HeadlineCard } from './headline-card'
 import { KeywordPanel } from './keyword-panel'
+import { ParsedPanel } from './parsed-panel'
 import { RequirementFitTable } from './requirement-fit-table'
 import { ScoreRing } from './score-ring'
 
@@ -44,7 +49,14 @@ export function ScoreResults({ result, history, onPreviewFix }: ScoreResultsProp
   const fit = result.dimensions.requirementFit && !isSkipped(result.dimensions.requirementFit)
     ? (result.dimensions.requirementFit.details as RequirementFitDetails)
     : null
+  const structure = result.dimensions.structure && !isSkipped(result.dimensions.structure)
+    ? (result.dimensions.structure.details as StructureDetails)
+    : null
+  const impact = result.dimensions.impact && !isSkipped(result.dimensions.impact)
+    ? (result.dimensions.impact.details as ImpactDetails)
+    : null
   const skippedNotes = result.skipped.filter((s) => s.code !== 'no_jd')
+  const outdated = isOutdatedScore(result.scorerVersion)
 
   function focusHeadline(k: ComponentHeadlineKey): void {
     setHeadline(k)
@@ -77,6 +89,12 @@ export function ScoreResults({ result, history, onPreviewFix }: ScoreResultsProp
               </ul>
               <p className="mt-1">Scorer v{result.scorerVersion}. Grades: A ≥ 85, B ≥ 75, C ≥ 65, D ≥ 50, F below.</p>
             </details>
+            {outdated ? (
+              <p className="flex flex-wrap items-center justify-center gap-1.5 text-xs text-muted-foreground sm:justify-start" data-testid="cv-score-outdated">
+                <Badge variant="outline" className="font-normal">Older scorer v{result.scorerVersion}</Badge>
+                The scoring rules changed since. Score again to see current results.
+              </p>
+            ) : null}
             {skippedNotes.length ? (
               <div className="flex items-start gap-1.5 rounded-md bg-warning-soft p-2 text-left text-xs text-warning">
                 <Info className="mt-0.5 size-3.5 shrink-0" />
@@ -115,6 +133,7 @@ export function ScoreResults({ result, history, onPreviewFix }: ScoreResultsProp
               <TabsTrigger value="findings">Findings ({result.findings.length})</TabsTrigger>
               {kw ? <TabsTrigger value="keywords">Keywords</TabsTrigger> : null}
               {fit ? <TabsTrigger value="fit">Requirement fit</TabsTrigger> : null}
+              {structure?.roles ? <TabsTrigger value="parsed">How we read it</TabsTrigger> : null}
               <TabsTrigger value="history">History</TabsTrigger>
             </TabsList>
             <TabsContent value="findings" className="pt-2">
@@ -135,6 +154,11 @@ export function ScoreResults({ result, history, onPreviewFix }: ScoreResultsProp
             {fit ? (
               <TabsContent value="fit" className="pt-2">
                 <RequirementFitTable details={fit} aiCallId={result.aiCallId} usage={result.usage} />
+              </TabsContent>
+            ) : null}
+            {structure?.roles ? (
+              <TabsContent value="parsed" className="pt-2">
+                <ParsedPanel structure={structure} impact={impact} />
               </TabsContent>
             ) : null}
             <TabsContent value="history" className="pt-2">
