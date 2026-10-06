@@ -1,6 +1,8 @@
 import * as keysQ from '@/lib/db/queries/labProviderKeys'
 import { PROVIDERS } from './providers/catalog'
 import { safeErrorMessage } from './providers/errors'
+import { classifyLabError, friendlyLabError } from './friendly-error'
+import { logger } from '@/lib/logger'
 import { buildEndpoint, resolveKey } from './providers/registry'
 import { fetchModels } from './providers/openai-compatible'
 import type { KeySource, ProviderId, ProviderInfo } from './providers/types'
@@ -31,7 +33,9 @@ export async function checkReachable(
     await fetchModels(buildEndpoint(provider, key), { fetchImpl: opts.fetchImpl, timeoutMs: 8_000 })
     return { ok: true, error: null }
   } catch (e) {
-    return { ok: false, error: safeErrorMessage(e) }
+    // Friendly text for the Providers page; the raw message goes to the log.
+    logger.warn('lab_provider_unreachable', { provider, err: safeErrorMessage(e) })
+    return { ok: false, error: friendlyLabError(classifyLabError(e), provider).message }
   }
 }
 

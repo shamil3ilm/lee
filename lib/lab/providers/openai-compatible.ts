@@ -113,7 +113,9 @@ export async function errorFromResponse(res: Response, ep: Endpoint): Promise<Pr
       Number.isFinite(ra) && ra > 0 ? ra : undefined,
     )
   }
-  if (res.status === 401 || res.status === 403) {
+  // Google AI Studio answers a bad key with 400 "API key not valid", not 401.
+  const keyProblem = res.status === 400 && /api[ _-]?key/i.test(providerMsg)
+  if (res.status === 401 || res.status === 403 || keyProblem) {
     return new ProviderError(`${ep.provider} rejected the API key (${res.status}).`, {
       status: res.status,
       code: 'auth',

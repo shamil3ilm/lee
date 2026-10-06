@@ -5,7 +5,15 @@ import type { ChatMetrics, ProviderId } from './providers/types'
  * helpers; safe to import from client components.
  */
 
-export type ErrorKind = 'rate_limited' | 'missing_key' | 'auth' | 'timeout' | 'error'
+export type ErrorKind =
+  | 'rate_limited'
+  | 'missing_key'
+  | 'auth'
+  | 'timeout'
+  | 'network'
+  | 'unavailable'
+  | 'bad_request'
+  | 'error'
 
 export interface StoredMetrics extends ChatMetrics {
   errorKind?: ErrorKind

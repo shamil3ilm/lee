@@ -4,6 +4,7 @@ import { logger } from '@/lib/logger'
 import { badRequest, serverError, sessionUserId, unauthorized } from '@/lib/lab/http'
 import { MissingKeyError, ProviderError, RateLimitedError } from '@/lib/lab/providers/errors'
 import { listModels } from '@/lib/lab/providers/registry'
+import { classifyLabError, friendlyLabError } from '@/lib/lab/friendly-error'
 import { PROVIDER_IDS } from '@/lib/lab/providers/types'
 
 export const runtime = 'nodejs'
@@ -26,21 +27,17 @@ export async function GET(req: Request): Promise<Response> {
       })
       return NextResponse.json({ provider: provider.data, models })
     } catch (e) {
+      if (!(e instanceof ProviderError)) throw e
+      // Friendly text for the picker; the provider's own (redacted)
+      // message rides along as `detail` and is logged here.
+      const kind = classifyLabError(e)
+      const friendly = friendlyLabError(kind, provider.data)
+      const body = { error: friendly.message, title: friendly.title, detail: e.message, code: kind }
       if (e instanceof MissingKeyError) {
-        return NextResponse.json({
-          provider: provider.data,
-          models: [],
-          error: e.message,
-          code: 'missing_key',
-        })
+        return NextResponse.json({ provider: provider.data, models: [], ...body })
       }
-      if (e instanceof RateLimitedError) {
-        return NextResponse.json({ error: e.message, code: 'rate_limited' }, { status: 429 })
-      }
-      if (e instanceof ProviderError) {
-        return NextResponse.json({ error: e.message, code: e.code }, { status: 502 })
-      }
-      throw e
+      logger.warn('lab_models_failed', { provider: provider.data, errorKind: kind, status: e.status, err: e.message })
+      return NextResponse.json(body, { status: e instanceof RateLimitedError ? 429 : 502 })
     }
   } catch (err) {
     logger.error('lab models GET failed', { err: err instanceof Error ? err.message : String(err) })

@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { fmtMs, fmtNum } from '@/lib/lab/format'
 import type { ResultView } from '@/lib/lab/views'
+import { friendlyLabError } from '@/lib/lab/friendly-error'
+import { ErrorDetails } from '@/components/lab/error-details'
 import { cn } from '@/lib/utils'
 
 interface ResultCardProps {
@@ -19,13 +21,6 @@ interface ResultCardProps {
   voting?: boolean
 }
 
-const ERROR_LABELS: Record<string, string> = {
-  rate_limited: 'Rate limited',
-  missing_key: 'No API key',
-  auth: 'Key rejected',
-  timeout: 'Timed out',
-  error: 'Error',
-}
 
 function Chip({ label, value }: { label: string; value: string }) {
   return (
@@ -47,6 +42,8 @@ export function ResultCard({
 }: ResultCardProps) {
   const m = result.metrics
   const errorKind = m?.errorKind
+  // Blind runs hide the provider until the vote, so the advice stays generic.
+  const friendly = friendlyLabError(errorKind, blindUnrevealed ? null : result.provider)
   const text = result.output ?? streamingText ?? ''
   const pretty =
     result.outputJson !== null && result.outputJson !== undefined
@@ -135,8 +132,10 @@ export function ResultCard({
                 : 'border-danger/30 bg-danger-soft text-danger',
             )}
           >
-            <p className="font-semibold">{ERROR_LABELS[errorKind ?? 'error'] ?? 'Error'}</p>
-            <p className="mt-1">{result.error}</p>
+            <p className="font-semibold">{friendly.title}</p>
+            <p className="mt-1">{friendly.message}</p>
+            {/* The raw message names the provider, so blind runs keep it hidden. */}
+            <ErrorDetails detail={blindUnrevealed ? null : result.error} />
           </div>
         ) : pending && !text ? (
           <div className="flex items-center gap-2 text-xs text-muted-foreground">

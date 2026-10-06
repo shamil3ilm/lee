@@ -3,7 +3,9 @@ import { z } from 'zod'
 import * as runsQ from '@/lib/db/queries/labRuns'
 import { hashPrompt } from '@/lib/ai/prompts/hash'
 import { ARENA_PROVIDER_IDS } from './providers/catalog'
-import { MissingKeyError, ProviderError, RateLimitedError, safeErrorMessage } from './providers/errors'
+import { ProviderError, safeErrorMessage } from './providers/errors'
+import { classifyLabError } from './friendly-error'
+import { logger } from '@/lib/logger'
 import { callModel } from './providers/registry'
 import type { ChatRequest, ProviderId } from './providers/types'
 import { PROVIDER_IDS } from './providers/types'
@@ -88,13 +90,7 @@ function shuffle<T>(arr: readonly T[]): T[] {
 }
 
 export function classifyError(e: unknown): ErrorKind {
-  if (e instanceof RateLimitedError) return 'rate_limited'
-  if (e instanceof MissingKeyError) return 'missing_key'
-  if (e instanceof ProviderError) {
-    if (e.code === 'auth') return 'auth'
-    if (e.code === 'timeout') return 'timeout'
-  }
-  return 'error'
+  return classifyLabError(e)
 }
 
 export async function runArena(
@@ -171,6 +167,15 @@ export async function runArena(
         const kind = classifyError(e)
         const message = safeErrorMessage(e)
         const totalMs = Math.round(performance.now() - started)
+        // The UI shows a friendly message (from the kind) with this one in a
+        // Details disclosure; the raw error goes to the server log.
+        logger.warn('lab_arena_call_failed', {
+          provider,
+          model: row.modelId,
+          errorKind: kind,
+          status: e instanceof ProviderError ? e.status : undefined,
+          err: e instanceof Error ? e.message : String(e),
+        })
         patch = { output: null, metrics: { totalMs, errorKind: kind }, error: message }
         await logLabCall({
           userId,
