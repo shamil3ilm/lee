@@ -108,7 +108,7 @@ describe('cvToScorable — LaTeX', () => {
     (id) => {
       const cv = cvToScorable({ kind: 'latex_cv', source: fillTemplate(id, makeMasterCV()) })
       expect(cv.meta.fileType).toBe('tex')
-      expect(cv.roles.map((r) => r.company)).toEqual(['OnlineCheckWriter', 'Careem'])
+      expect(cv.roles.map((r) => r.company)).toEqual(['Northwind Payments', 'Careem'])
       expect(cv.roles[0]!.bullets.length).toBe(2)
       expect(cv.contact.email).toBe('shamil@example.com')
     },

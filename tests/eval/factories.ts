@@ -34,7 +34,7 @@ export function makeMasterCV(overrides: Partial<MasterCV> = {}): MasterCV {
       'Senior backend engineer with 8+ years shipping high-throughput fintech systems in PHP and TypeScript.',
     experience: [
       {
-        company: 'OnlineCheckWriter',
+        company: 'Northwind Payments',
         role: 'Senior Backend Engineer',
         start: '2022-06',
         end: 'present',
