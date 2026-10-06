@@ -1,0 +1,1314 @@
+{
+  "version": "2026.10.06",
+  "items": [
+    {
+      "id": "complexity-nested-loop",
+      "skillId": "complexity",
+      "format": "concept_check",
+      "difficulty": 1250,
+      "parSec": 45,
+      "prompt": "A function loops over an array of n items and, inside that loop, loops over the same array again. What is its time complexity?",
+      "choices": ["O(n)", "O(n log n)", "O(n^2)", "O(2^n)"],
+      "answer": 2,
+      "explanation": "n iterations, each doing n work: n × n = O(n^2)."
+    },
+    {
+      "id": "complexity-amortised-push",
+      "skillId": "complexity",
+      "format": "concept_check",
+      "difficulty": 1600,
+      "parSec": 60,
+      "prompt": "A dynamic array doubles its capacity when full. What is the amortised cost of one append over many appends?",
+      "choices": ["O(1)", "O(log n)", "O(n)", "O(n log n)"],
+      "answer": 0,
+      "explanation": "Copies happen at sizes 1, 2, 4 … n, totalling under 2n work for n appends, so each append is O(1) amortised."
+    },
+    {
+      "id": "arrays-two-sum",
+      "skillId": "arrays-hashing",
+      "format": "concept_check",
+      "difficulty": 1250,
+      "parSec": 45,
+      "prompt": "You need to find two numbers in an unsorted array that add up to a target, in one pass. Which structure makes this O(n)?",
+      "choices": ["A sorted copy of the array", "A hash map from value to index", "A stack", "A binary heap"],
+      "answer": 1,
+      "explanation": "For each value, check whether target − value is already in the map, then insert the value: O(1) per step on average."
+    },
+    {
+      "id": "arrays-sliding-window",
+      "skillId": "arrays-hashing",
+      "format": "concept_check",
+      "difficulty": 1550,
+      "parSec": 75,
+      "prompt": "Longest substring without repeating characters: what is the usual optimal approach?",
+      "choices": [
+        "Check every substring with a set: O(n^3)",
+        "Sort the characters first",
+        "A sliding window with a map of last-seen positions: O(n)",
+        "Recursion with memoisation over all start indexes"
+      ],
+      "answer": 2,
+      "explanation": "Move the right edge forward; when a repeat appears, jump the left edge past its last-seen index. Each index is visited a constant number of times."
+    },
+    {
+      "id": "trees-bfs-shortest",
+      "skillId": "trees-graphs",
+      "format": "concept_check",
+      "difficulty": 1300,
+      "parSec": 45,
+      "prompt": "In an unweighted graph, which traversal finds the shortest path (fewest edges) from a start node?",
+      "choices": ["Depth-first search", "Breadth-first search", "In-order traversal", "Dijkstra with negative weights"],
+      "answer": 1,
+      "explanation": "BFS visits nodes in order of distance, so the first time it reaches a node is along a shortest path."
+    },
+    {
+      "id": "trees-topological",
+      "skillId": "trees-graphs",
+      "format": "concept_check",
+      "difficulty": 1600,
+      "parSec": 60,
+      "prompt": "You must order build tasks so every task runs after its dependencies. Kahn's algorithm finishes with fewer nodes in the output than in the graph. What does that mean?",
+      "choices": ["The graph is disconnected", "The graph has a cycle", "The graph is a tree", "The ordering is not unique"],
+      "answer": 1,
+      "explanation": "Nodes on a cycle never reach in-degree 0, so they are never emitted. A disconnected acyclic graph still sorts completely."
+    },
+    {
+      "id": "dp-fib-memo",
+      "skillId": "recursion-dp",
+      "format": "concept_check",
+      "difficulty": 1300,
+      "parSec": 45,
+      "prompt": "Naive recursive fib(n) is exponential. What does memoising each fib(k) result change it to?",
+      "choices": ["O(log n)", "O(n)", "O(n^2)", "Still exponential"],
+      "answer": 1,
+      "explanation": "Each fib(k) for k ≤ n is computed once, with O(1) work per call after that: O(n)."
+    },
+    {
+      "id": "dp-coin-change",
+      "skillId": "recursion-dp",
+      "format": "concept_check",
+      "difficulty": 1650,
+      "parSec": 90,
+      "prompt": "Minimum coins to make amount A from coin set C (unlimited coins). Why can a greedy 'largest coin first' fail?",
+      "choices": [
+        "Greedy is always optimal for coins",
+        "Some coin systems (e.g. {1, 3, 4} for 6) need a non-greedy mix: 3+3 beats 4+1+1",
+        "Greedy cannot handle amount 0",
+        "Greedy is too slow"
+      ],
+      "answer": 1,
+      "explanation": "Greedy only works for canonical coin systems. DP over amounts (dp[a] = 1 + min dp[a − c]) is correct in general."
+    },
+    {
+      "id": "search-binary-precondition",
+      "skillId": "sorting-searching",
+      "format": "concept_check",
+      "difficulty": 1200,
+      "parSec": 30,
+      "prompt": "What must be true of an array before you can binary search it for a value?",
+      "choices": ["It has no duplicates", "It is sorted", "Its length is a power of two", "It fits in memory twice"],
+      "answer": 1,
+      "explanation": "Binary search discards half the range by comparing with the middle element, which only works on sorted data."
+    },
+    {
+      "id": "search-stable-sort",
+      "skillId": "sorting-searching",
+      "format": "concept_check",
+      "difficulty": 1500,
+      "parSec": 60,
+      "prompt": "You sort orders by date, then sort the result by customer. You want orders for each customer to stay in date order. What property must the second sort have?",
+      "choices": ["In-place", "Stable", "O(n) time", "Comparison-free"],
+      "answer": 1,
+      "explanation": "A stable sort keeps equal keys in their existing relative order, so the earlier date order survives inside each customer."
+    },
+    {
+      "id": "js-closure-var",
+      "skillId": "js-runtime",
+      "format": "predict_output",
+      "difficulty": 1400,
+      "parSec": 60,
+      "prompt": "What does this print?",
+      "language": "javascript",
+      "code": "const fns = []\nfor (var i = 0; i < 3; i++) fns.push(() => i)\nconsole.log(fns.map((f) => f()).join(','))",
+      "choices": ["0,1,2", "3,3,3", "undefined,undefined,undefined", "2,2,2"],
+      "answer": 1,
+      "explanation": "`var` is function-scoped: all three closures share one `i`, which is 3 after the loop. With `let`, each iteration gets its own binding and it prints 0,1,2."
+    },
+    {
+      "id": "js-equality",
+      "skillId": "js-runtime",
+      "format": "predict_output",
+      "difficulty": 1250,
+      "parSec": 45,
+      "prompt": "What does this print?",
+      "language": "javascript",
+      "code": "console.log([0 == '', 0 === '', null == undefined].join(' '))",
+      "choices": ["true false true", "false false true", "true false false", "false false false"],
+      "answer": 0,
+      "explanation": "`==` coerces '' to 0, so 0 == '' is true; `===` compares types, so false; null and undefined are loosely equal to each other only."
+    },
+    {
+      "id": "async-microtask-order",
+      "skillId": "async-event-loop",
+      "format": "predict_output",
+      "difficulty": 1500,
+      "parSec": 60,
+      "prompt": "What does this print?",
+      "language": "javascript",
+      "code": "console.log('A')\nsetTimeout(() => console.log('B'), 0)\nPromise.resolve().then(() => console.log('C'))\nconsole.log('D')",
+      "choices": ["A B C D", "A D B C", "A D C B", "A C D B"],
+      "answer": 2,
+      "explanation": "Synchronous code runs first (A, D). Then the microtask queue (promise callback C) drains before the next macrotask (timer B)."
+    },
+    {
+      "id": "async-promise-all",
+      "skillId": "async-event-loop",
+      "format": "concept_check",
+      "difficulty": 1350,
+      "parSec": 45,
+      "prompt": "Promise.all([a, b, c]) where b rejects first. What happens?",
+      "choices": [
+        "It resolves with the two successful values",
+        "It rejects with b's error as soon as b rejects; a and c keep running",
+        "It cancels a and c, then rejects",
+        "It waits for all three, then rejects"
+      ],
+      "answer": 1,
+      "explanation": "Promise.all rejects on the first rejection. Promises are not cancellable, so a and c still run. Use Promise.allSettled to collect every outcome."
+    },
+    {
+      "id": "types-narrowing",
+      "skillId": "type-systems",
+      "format": "concept_check",
+      "difficulty": 1300,
+      "parSec": 45,
+      "prompt": "type Shape = { kind: 'circle'; r: number } | { kind: 'square'; side: number }. What lets TypeScript know `s.r` exists inside `if (s.kind === 'circle')`?",
+      "choices": ["Type assertion", "Discriminated union narrowing", "Declaration merging", "Structural widening"],
+      "answer": 1,
+      "explanation": "The literal `kind` field discriminates the union; checking it narrows `s` to the circle member."
+    },
+    {
+      "id": "types-never-exhaustive",
+      "skillId": "type-systems",
+      "format": "concept_check",
+      "difficulty": 1600,
+      "parSec": 60,
+      "prompt": "In a switch over a union, the default branch does `const x: never = value`. What does this buy you?",
+      "choices": [
+        "Faster runtime dispatch",
+        "A compile error when a new union member is added but not handled",
+        "It makes the switch return never",
+        "It removes the need for a default branch"
+      ],
+      "answer": 1,
+      "explanation": "If every member is handled, `value` is `never` there. A new member makes the assignment fail to compile: an exhaustiveness check."
+    },
+    {
+      "id": "python-mutable-default",
+      "skillId": "python",
+      "format": "predict_output",
+      "difficulty": 1450,
+      "parSec": 60,
+      "prompt": "What does this print?",
+      "language": "python",
+      "code": "def add(item, bucket=[]):\n    bucket.append(item)\n    return bucket\n\nadd(1)\nprint(add(2))",
+      "choices": ["[2]", "[1, 2]", "[1]", "TypeError"],
+      "answer": 1,
+      "explanation": "Default values are evaluated once, at definition time. Both calls share the same list. Use `bucket=None` and create a list inside."
+    },
+    {
+      "id": "python-generator",
+      "skillId": "python",
+      "format": "concept_check",
+      "difficulty": 1300,
+      "parSec": 45,
+      "prompt": "Why use a generator expression `(x * 2 for x in rows)` instead of a list comprehension over a huge file?",
+      "choices": [
+        "It runs in parallel",
+        "It yields items lazily, so memory stays constant",
+        "It sorts the output",
+        "It is always faster per item"
+      ],
+      "answer": 1,
+      "explanation": "Generators produce one item at a time on demand instead of materialising the whole list in memory."
+    },
+    {
+      "id": "laravel-n-plus-one",
+      "skillId": "php-laravel",
+      "format": "concept_check",
+      "difficulty": 1300,
+      "parSec": 45,
+      "prompt": "A Blade view loops over 50 posts and shows `$post->author->name`. How do you avoid 51 queries?",
+      "choices": ["Post::all()", "Post::with('author')->get()", "Cache::remember on each post", "DB::raw in the view"],
+      "answer": 1,
+      "explanation": "Eager loading with `with('author')` fetches all authors in one extra query: 2 queries instead of 51."
+    },
+    {
+      "id": "laravel-mass-assignment",
+      "skillId": "php-laravel",
+      "format": "concept_check",
+      "difficulty": 1500,
+      "parSec": 60,
+      "prompt": "`User::create($request->all())` on a model without `$fillable`/`$guarded` set correctly is dangerous because…",
+      "choices": [
+        "It skips validation errors",
+        "A user can submit extra fields like is_admin and have them saved",
+        "It runs two queries",
+        "It disables timestamps"
+      ],
+      "answer": 1,
+      "explanation": "Mass assignment writes every submitted attribute. Allow-list with `$fillable` and pass `$request->validated()`."
+    },
+    {
+      "id": "go-nil-map",
+      "skillId": "go",
+      "format": "predict_output",
+      "difficulty": 1350,
+      "parSec": 60,
+      "prompt": "What happens when this runs?",
+      "language": "go",
+      "code": "var counts map[string]int\nfmt.Println(counts[\"a\"])\ncounts[\"a\"]++",
+      "choices": [
+        "Prints 0, then the increment works",
+        "Prints 0, then panics: assignment to entry in nil map",
+        "Compile error",
+        "Panics on the read"
+      ],
+      "answer": 1,
+      "explanation": "Reading a nil map returns the zero value, but writing to it panics. Initialise with make(map[string]int)."
+    },
+    {
+      "id": "go-goroutine-loop",
+      "skillId": "go",
+      "format": "concept_check",
+      "difficulty": 1600,
+      "parSec": 75,
+      "prompt": "A handler starts goroutines that write to a shared map without locking. What is the right fix in idiomatic Go?",
+      "choices": [
+        "Add time.Sleep between writes",
+        "Protect the map with a sync.Mutex (or use channels to own it in one goroutine)",
+        "Use a buffered channel of size 1 as the map",
+        "Set GOMAXPROCS=1"
+      ],
+      "answer": 1,
+      "explanation": "Concurrent map writes are a data race (and Go may fatally error). Guard it with a mutex or give one goroutine ownership. Run tests with -race to catch it."
+    },
+    {
+      "id": "rust-borrow",
+      "skillId": "rust",
+      "format": "concept_check",
+      "difficulty": 1350,
+      "parSec": 60,
+      "prompt": "Which is allowed at the same time for one value in safe Rust?",
+      "choices": [
+        "Two mutable references",
+        "One mutable reference and one shared reference",
+        "Any number of shared references",
+        "A mutable reference across threads without Sync"
+      ],
+      "answer": 2,
+      "explanation": "The borrow rules allow either many shared (&T) references or exactly one mutable (&mut T) reference, never both."
+    },
+    {
+      "id": "rust-result",
+      "skillId": "rust",
+      "format": "concept_check",
+      "difficulty": 1550,
+      "parSec": 60,
+      "prompt": "What does the `?` operator do on a Result inside a function that returns Result?",
+      "choices": [
+        "Panics on Err",
+        "Returns early with the Err (converted via From), otherwise unwraps the Ok value",
+        "Ignores the error",
+        "Retries the operation"
+      ],
+      "answer": 1,
+      "explanation": "`?` propagates errors: Err(e) returns from the function (after From::from), Ok(v) evaluates to v."
+    },
+    {
+      "id": "sql-null-count",
+      "skillId": "sql-querying",
+      "format": "predict_output",
+      "difficulty": 1400,
+      "parSec": 60,
+      "prompt": "Table t has column x with values 1, NULL, 3. What does this return?",
+      "language": "sql",
+      "code": "SELECT COUNT(*), COUNT(x), AVG(x) FROM t;",
+      "choices": ["3, 3, 1.33", "3, 2, 2", "2, 2, 2", "3, 2, 1.33"],
+      "answer": 1,
+      "explanation": "COUNT(*) counts rows (3). COUNT(x) and AVG(x) skip NULLs: 2 values averaging (1 + 3) / 2 = 2."
+    },
+    {
+      "id": "sql-left-join-filter",
+      "skillId": "sql-querying",
+      "format": "concept_check",
+      "difficulty": 1550,
+      "parSec": 75,
+      "prompt": "`SELECT … FROM users u LEFT JOIN orders o ON o.user_id = u.id WHERE o.status = 'paid'` drops users without orders. Why?",
+      "choices": [
+        "LEFT JOIN never keeps unmatched rows",
+        "The WHERE filter rejects the NULL o.status of unmatched rows, turning it into an inner join; move the condition into ON",
+        "Because of a missing GROUP BY",
+        "Because status needs an index"
+      ],
+      "answer": 1,
+      "explanation": "Unmatched users get NULL order columns, and NULL = 'paid' is not true. Put the predicate in the ON clause to keep them."
+    },
+    {
+      "id": "schema-normalise",
+      "skillId": "schema-design",
+      "format": "concept_check",
+      "difficulty": 1300,
+      "parSec": 45,
+      "prompt": "An orders table repeats the customer's email on every row. What risk does this create?",
+      "choices": ["Slower inserts only", "Update anomalies: changing the email in one row leaves others stale", "Nothing, it's normalised", "Primary key collisions"],
+      "answer": 1,
+      "explanation": "Duplicated facts drift apart. Store the customer once and reference it by key (unless you deliberately snapshot it)."
+    },
+    {
+      "id": "schema-ledger-invariant",
+      "skillId": "schema-design",
+      "format": "concept_check",
+      "difficulty": 1650,
+      "parSec": 90,
+      "prompt": "In a double-entry ledger, how do you best guarantee money is never created or lost?",
+      "choices": [
+        "Recompute balances nightly",
+        "Append-only entries where each transaction's debits and credits sum to zero, enforced in the write path (and checked by constraints)",
+        "Store only the current balance per account",
+        "Allow updates to past entries for corrections"
+      ],
+      "answer": 1,
+      "explanation": "Immutable entries that always balance make the invariant structural; corrections are new reversing entries, never edits."
+    },
+    {
+      "id": "index-composite-order",
+      "skillId": "indexing",
+      "format": "concept_check",
+      "difficulty": 1450,
+      "parSec": 60,
+      "prompt": "You have an index on (user_id, created_at). Which query can use it best?",
+      "choices": [
+        "WHERE created_at > now() - interval '1 day'",
+        "WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20",
+        "WHERE lower(email) = $1",
+        "WHERE status = 'open'"
+      ],
+      "answer": 1,
+      "explanation": "B-tree composite indexes serve the leftmost prefix. Equality on user_id then ordered created_at matches it exactly."
+    },
+    {
+      "id": "index-function",
+      "skillId": "indexing",
+      "format": "concept_check",
+      "difficulty": 1600,
+      "parSec": 60,
+      "prompt": "Queries filter `WHERE lower(email) = $1` but the index is on email. The plan shows a sequential scan. Fix?",
+      "choices": ["Increase work_mem", "Create an expression index on lower(email)", "Add LIMIT 1", "VACUUM FULL"],
+      "answer": 1,
+      "explanation": "An index on email does not match lower(email). An expression index (or a citext column) lets the planner use it."
+    },
+    {
+      "id": "tx-lost-update",
+      "skillId": "transactions",
+      "format": "concept_check",
+      "difficulty": 1450,
+      "parSec": 60,
+      "prompt": "Two requests read balance = 100, both add 10 and write 110. Which fix prevents the lost update?",
+      "choices": [
+        "Run both in READ COMMITTED transactions",
+        "UPDATE accounts SET balance = balance + 10 WHERE id = $1 (atomic), or SELECT … FOR UPDATE",
+        "Add an index on balance",
+        "Retry the read"
+      ],
+      "answer": 1,
+      "explanation": "Read-modify-write in the app races. An atomic update or a row lock serialises the writers."
+    },
+    {
+      "id": "tx-acid",
+      "skillId": "transactions",
+      "format": "concept_check",
+      "difficulty": 1250,
+      "parSec": 45,
+      "prompt": "Which ACID property guarantees that a transaction's writes either all happen or none do?",
+      "choices": ["Atomicity", "Consistency", "Isolation", "Durability"],
+      "answer": 0,
+      "explanation": "Atomicity is all-or-nothing. Durability is about surviving crashes after commit."
+    },
+    {
+      "id": "cache-aside",
+      "skillId": "caching",
+      "format": "concept_check",
+      "difficulty": 1300,
+      "parSec": 45,
+      "prompt": "In cache-aside, what does the application do on a cache miss?",
+      "choices": [
+        "Return an error",
+        "Read from the database, then write the value into the cache with a TTL",
+        "Ask the cache to load from the database itself",
+        "Write to the database"
+      ],
+      "answer": 1,
+      "explanation": "The application owns loading: read the source of truth, populate the cache, return the value."
+    },
+    {
+      "id": "cache-stampede",
+      "skillId": "caching",
+      "format": "concept_check",
+      "difficulty": 1650,
+      "parSec": 75,
+      "prompt": "A hot key expires and 5,000 requests hit the database at once. Which technique prevents this stampede?",
+      "choices": [
+        "Lower the TTL",
+        "Single-flight recomputation (a lock per key) plus early or jittered refresh",
+        "Add more database replicas only",
+        "Disable the cache"
+      ],
+      "answer": 1,
+      "explanation": "Let one request rebuild while others wait or get the stale value; refresh before expiry with jitter so keys don't expire together."
+    },
+    {
+      "id": "api-put-idempotent",
+      "skillId": "api-design",
+      "format": "concept_check",
+      "difficulty": 1250,
+      "parSec": 45,
+      "prompt": "Which HTTP method is defined as idempotent?",
+      "choices": ["POST", "PUT", "PATCH (always)", "CONNECT"],
+      "answer": 1,
+      "explanation": "PUT replaces a resource; repeating it leaves the same state. POST is not idempotent; PATCH may or may not be."
+    },
+    {
+      "id": "api-pagination",
+      "skillId": "api-design",
+      "format": "concept_check",
+      "difficulty": 1550,
+      "parSec": 60,
+      "prompt": "A feed paginates with OFFSET and users see duplicates when new items arrive. Better approach?",
+      "choices": [
+        "Larger page sizes",
+        "Cursor (keyset) pagination: WHERE (created_at, id) < (last_seen) ORDER BY created_at DESC, id DESC",
+        "Random sampling",
+        "Return everything"
+      ],
+      "answer": 1,
+      "explanation": "Keyset pagination anchors on the last row seen, so inserts don't shift pages, and it stays fast at depth."
+    },
+    {
+      "id": "auth-401-403",
+      "skillId": "auth",
+      "format": "concept_check",
+      "difficulty": 1250,
+      "parSec": 30,
+      "prompt": "A signed-in user requests another tenant's invoice. Which status fits best?",
+      "choices": ["401 Unauthorized", "403 Forbidden (or 404 to avoid revealing it exists)", "400 Bad Request", "500"],
+      "answer": 1,
+      "explanation": "401 means not authenticated. The user is authenticated but not allowed: 403, or 404 to hide the resource."
+    },
+    {
+      "id": "auth-pkce",
+      "skillId": "auth",
+      "format": "concept_check",
+      "difficulty": 1650,
+      "parSec": 75,
+      "prompt": "Why does a public client (SPA, mobile app) use PKCE in the OAuth authorization-code flow?",
+      "choices": [
+        "To avoid HTTPS",
+        "It cannot keep a client secret; PKCE binds the code to the client that started the flow, so an intercepted code is useless",
+        "To get longer-lived tokens",
+        "To skip the consent screen"
+      ],
+      "answer": 1,
+      "explanation": "The code verifier is known only to the original client; the token endpoint checks it against the challenge sent earlier."
+    },
+    {
+      "id": "jobs-retry-idempotent",
+      "skillId": "background-jobs",
+      "format": "concept_check",
+      "difficulty": 1350,
+      "parSec": 45,
+      "prompt": "A job sends a receipt email and then marks the order 'receipt_sent'. It crashes between the two and is retried. What happens and how do you fix it?",
+      "choices": [
+        "Nothing; retries are exactly-once",
+        "The email is sent twice; record intent with an idempotency key (or check a sent marker in the same transaction) before side effects",
+        "The job is lost",
+        "The order is deleted"
+      ],
+      "answer": 1,
+      "explanation": "Queues deliver at least once. Make side effects idempotent: dedupe on a key the provider or your table enforces."
+    },
+    {
+      "id": "jobs-poison",
+      "skillId": "background-jobs",
+      "format": "concept_check",
+      "difficulty": 1550,
+      "parSec": 60,
+      "prompt": "One malformed job fails forever and blocks the queue's progress. What is the standard remedy?",
+      "choices": [
+        "Retry it forever with no delay",
+        "Cap attempts with backoff, then move it to a dead-letter queue for inspection",
+        "Delete the queue",
+        "Run it synchronously"
+      ],
+      "answer": 1,
+      "explanation": "Max attempts plus exponential backoff, then a DLQ, keeps healthy jobs flowing and preserves the bad one for debugging."
+    },
+    {
+      "id": "react-key",
+      "skillId": "rendering",
+      "format": "concept_check",
+      "difficulty": 1300,
+      "parSec": 45,
+      "prompt": "Why should list items use a stable id as `key` rather than the array index?",
+      "choices": [
+        "Indexes are slower to compare",
+        "When items are inserted or reordered, index keys make React reuse the wrong component state",
+        "Keys are sent to the server",
+        "It's only a lint rule"
+      ],
+      "answer": 1,
+      "explanation": "React matches children by key. Index keys shift on insert/reorder, so state and DOM attach to the wrong item."
+    },
+    {
+      "id": "react-hydration",
+      "skillId": "rendering",
+      "format": "concept_check",
+      "difficulty": 1600,
+      "parSec": 75,
+      "prompt": "A server-rendered page shows a hydration mismatch because it renders `new Date().toLocaleString()`. Best fix?",
+      "choices": [
+        "Disable server rendering for the whole app",
+        "Render the same deterministic value on server and client (fixed locale and time zone, or render the time only after mount)",
+        "Wrap it in try/catch",
+        "Increase the hydration timeout"
+      ],
+      "answer": 1,
+      "explanation": "Hydration expects identical markup. Locale and time zone differ between server and browser, so pin them or defer the value."
+    },
+    {
+      "id": "a11y-label",
+      "skillId": "accessibility",
+      "format": "concept_check",
+      "difficulty": 1200,
+      "parSec": 30,
+      "prompt": "An icon-only button shows a trash can. What makes it accessible to screen readers?",
+      "choices": ["A title on the svg only", "aria-label=\"Delete\" on the button", "A red colour", "tabindex=\"-1\""],
+      "answer": 1,
+      "explanation": "The button needs an accessible name. aria-label (or visually hidden text) provides it; colour alone carries no meaning."
+    },
+    {
+      "id": "a11y-focus-dialog",
+      "skillId": "accessibility",
+      "format": "concept_check",
+      "difficulty": 1500,
+      "parSec": 60,
+      "prompt": "What should happen to keyboard focus when a modal dialog opens and closes?",
+      "choices": [
+        "Nothing; users can tab to it",
+        "Move focus into the dialog, keep it trapped there, and return it to the trigger on close",
+        "Focus the page body",
+        "Remove focus outlines"
+      ],
+      "answer": 1,
+      "explanation": "Focus management keeps keyboard and screen-reader users oriented: in, contained, then back to where they were."
+    },
+    {
+      "id": "race-check-then-act",
+      "skillId": "race-conditions",
+      "format": "concept_check",
+      "difficulty": 1350,
+      "parSec": 60,
+      "prompt": "Signup does `if (!exists(email)) insert(email)`. Two requests arrive together. What prevents duplicate accounts?",
+      "choices": [
+        "A longer request timeout",
+        "A unique constraint on email (and handle the conflict), not the app-level check",
+        "Checking twice",
+        "A sleep before insert"
+      ],
+      "answer": 1,
+      "explanation": "Check-then-act races. Let the database enforce uniqueness atomically and map the conflict to a friendly error."
+    },
+    {
+      "id": "race-optimistic",
+      "skillId": "race-conditions",
+      "format": "concept_check",
+      "difficulty": 1600,
+      "parSec": 75,
+      "prompt": "Optimistic concurrency with a `version` column: what does the update look like?",
+      "choices": [
+        "UPDATE … SET data = $1 WHERE id = $2",
+        "UPDATE … SET data = $1, version = version + 1 WHERE id = $2 AND version = $3; if 0 rows changed, reload and retry or report a conflict",
+        "LOCK TABLE then update",
+        "SELECT … FOR UPDATE SKIP LOCKED"
+      ],
+      "answer": 1,
+      "explanation": "The version check detects an intervening write without holding locks; zero affected rows means someone else won."
+    },
+    {
+      "id": "idem-key",
+      "skillId": "idempotency",
+      "format": "concept_check",
+      "difficulty": 1350,
+      "parSec": 45,
+      "prompt": "A client retries POST /payments after a timeout. How does the server avoid charging twice?",
+      "choices": [
+        "Reject all retries",
+        "Require an Idempotency-Key; store the key with the first result and return that result for repeats",
+        "Use PUT instead and hope",
+        "Rate-limit the client"
+      ],
+      "answer": 1,
+      "explanation": "The key identifies the operation, so a retry returns the original outcome instead of performing it again."
+    },
+    {
+      "id": "idem-jitter",
+      "skillId": "idempotency",
+      "format": "concept_check",
+      "difficulty": 1550,
+      "parSec": 60,
+      "prompt": "Why add jitter to exponential backoff?",
+      "choices": [
+        "To make retries faster",
+        "To spread retries out so many clients failing together don't retry in synchronized waves",
+        "To make retries deterministic",
+        "Jitter is only for logging"
+      ],
+      "answer": 1,
+      "explanation": "Without jitter, clients that failed at the same moment retry at the same moments, hammering the recovering service."
+    },
+    {
+      "id": "mq-at-least-once",
+      "skillId": "queues-messaging",
+      "format": "concept_check",
+      "difficulty": 1350,
+      "parSec": 45,
+      "prompt": "Most brokers (SQS, RabbitMQ with acks, Kafka consumers) give at-least-once delivery. What must consumers be?",
+      "choices": ["Stateless", "Idempotent", "Single-threaded", "Synchronous"],
+      "answer": 1,
+      "explanation": "A message can be redelivered after a crash or timeout, so processing it twice must have the same effect as once."
+    },
+    {
+      "id": "mq-outbox",
+      "skillId": "queues-messaging",
+      "format": "concept_check",
+      "difficulty": 1650,
+      "parSec": 90,
+      "prompt": "A service writes an order to its database and publishes OrderCreated. A crash between the two loses the event. Which pattern fixes this?",
+      "choices": [
+        "Publish first, then write",
+        "Transactional outbox: write the event to an outbox table in the same transaction; a relay publishes it",
+        "Two-phase commit with the broker always",
+        "Retry the publish in memory"
+      ],
+      "answer": 1,
+      "explanation": "The outbox makes the write and the intent to publish atomic; the relay retries until the broker has it (consumers dedupe)."
+    },
+    {
+      "id": "solid-srp",
+      "skillId": "design-principles",
+      "format": "concept_check",
+      "difficulty": 1250,
+      "parSec": 45,
+      "prompt": "A class validates input, writes to the database and sends emails. Which principle does it most clearly break?",
+      "choices": ["Liskov substitution", "Single responsibility", "Interface segregation", "Open/closed"],
+      "answer": 1,
+      "explanation": "It has several reasons to change. Split validation, persistence and notification behind clear seams."
+    },
+    {
+      "id": "solid-dip",
+      "skillId": "design-principles",
+      "format": "concept_check",
+      "difficulty": 1550,
+      "parSec": 60,
+      "prompt": "Billing code calls `new StripeClient()` directly, which makes testing hard. What does dependency inversion suggest?",
+      "choices": [
+        "Make StripeClient a global",
+        "Depend on a PaymentGateway interface the billing module owns; inject the Stripe adapter",
+        "Copy Stripe's code in",
+        "Mock the network card"
+      ],
+      "answer": 1,
+      "explanation": "High-level policy depends on an abstraction it defines; details (Stripe) implement it and are injected."
+    },
+    {
+      "id": "monolith-boundaries",
+      "skillId": "modular-monolith",
+      "format": "concept_check",
+      "difficulty": 1400,
+      "parSec": 60,
+      "prompt": "In a modular monolith, the orders module reads the billing module's tables directly. What's the problem?",
+      "choices": [
+        "It's slower",
+        "It couples modules through private data; go through billing's public interface so it owns its data",
+        "Nothing, it's one database",
+        "It breaks transactions"
+      ],
+      "answer": 1,
+      "explanation": "Data ownership is the boundary. Shared tables make later extraction and independent change painful."
+    },
+    {
+      "id": "monolith-strangler",
+      "skillId": "modular-monolith",
+      "format": "concept_check",
+      "difficulty": 1600,
+      "parSec": 75,
+      "prompt": "What is the strangler-fig approach to replacing a legacy system?",
+      "choices": [
+        "Rewrite everything, then switch over in one release",
+        "Route slices of traffic to new components behind a facade, growing them until the old system can be retired",
+        "Freeze the old system forever",
+        "Copy the database nightly"
+      ],
+      "answer": 1,
+      "explanation": "Incremental replacement behind a routing layer reduces risk and delivers value as you go."
+    },
+    {
+      "id": "capacity-qps",
+      "skillId": "capacity-estimation",
+      "format": "concept_check",
+      "difficulty": 1300,
+      "parSec": 60,
+      "prompt": "A service handles 8.64 million requests per day, evenly spread. Roughly what is the average QPS?",
+      "choices": ["10", "100", "1,000", "10,000"],
+      "answer": 1,
+      "explanation": "A day has 86,400 seconds: 8,640,000 / 86,400 = 100 requests per second (plan for peaks above the average)."
+    },
+    {
+      "id": "capacity-storage",
+      "skillId": "capacity-estimation",
+      "format": "concept_check",
+      "difficulty": 1550,
+      "parSec": 90,
+      "prompt": "1 million new rows per day at about 1 KB each, kept for 1 year. Roughly how much raw storage?",
+      "choices": ["~3.6 GB", "~36 GB", "~365 GB", "~3.6 TB"],
+      "answer": 2,
+      "explanation": "1M × 1 KB = 1 GB per day; × 365 ≈ 365 GB before indexes and replication."
+    },
+    {
+      "id": "scaling-stateless",
+      "skillId": "scaling",
+      "format": "concept_check",
+      "difficulty": 1300,
+      "parSec": 45,
+      "prompt": "You add servers behind a load balancer and users get logged out randomly. Most likely cause?",
+      "choices": [
+        "DNS TTL",
+        "Sessions are stored in each server's memory; move them to a shared store or use stateless tokens",
+        "The load balancer is too slow",
+        "Database replication lag on writes"
+      ],
+      "answer": 1,
+      "explanation": "Horizontal scaling needs stateless app servers; otherwise each request may land on a server that doesn't know the session."
+    },
+    {
+      "id": "scaling-read-replica",
+      "skillId": "scaling",
+      "format": "concept_check",
+      "difficulty": 1600,
+      "parSec": 75,
+      "prompt": "After moving reads to an async replica, users sometimes don't see the comment they just posted. What's happening and a common fix?",
+      "choices": [
+        "Cache poisoning; flush Redis",
+        "Replication lag; read your own writes from the primary for a short window (or route by session)",
+        "A deadlock; add retries",
+        "A wrong index; rebuild it"
+      ],
+      "answer": 1,
+      "explanation": "Async replicas trail the primary. Read-your-writes consistency routes a user's reads to the primary right after they write."
+    },
+    {
+      "id": "ratelimit-token-bucket",
+      "skillId": "rate-limiting",
+      "format": "concept_check",
+      "difficulty": 1450,
+      "parSec": 60,
+      "prompt": "Why is a token bucket often preferred over a fixed-window counter?",
+      "choices": [
+        "It needs no state",
+        "It allows controlled bursts and avoids the double-burst at window edges",
+        "It blocks all bursts",
+        "It's exact across data centres for free"
+      ],
+      "answer": 1,
+      "explanation": "Fixed windows let a client send a full quota at the end of one window and again at the start of the next."
+    },
+    {
+      "id": "ratelimit-429",
+      "skillId": "rate-limiting",
+      "format": "concept_check",
+      "difficulty": 1250,
+      "parSec": 30,
+      "prompt": "What should a well-behaved API client do on HTTP 429?",
+      "choices": [
+        "Retry immediately in a tight loop",
+        "Back off, honouring the Retry-After header when present",
+        "Switch to a new API key",
+        "Treat it as a permanent failure"
+      ],
+      "answer": 1,
+      "explanation": "429 means too many requests. Wait as instructed (Retry-After) with backoff before retrying."
+    },
+    {
+      "id": "latency-p99",
+      "skillId": "latency-percentiles",
+      "format": "concept_check",
+      "difficulty": 1300,
+      "parSec": 45,
+      "prompt": "Average latency is 80 ms but p99 is 2 s. What does that tell you?",
+      "choices": [
+        "The service is fast for everyone",
+        "1% of requests take 2 s or more; the average hides a slow tail that real users hit",
+        "The measurement is broken",
+        "p99 is always 25× the mean"
+      ],
+      "answer": 1,
+      "explanation": "Averages hide tails. A page making many calls hits the tail often, so p95/p99 are the numbers to budget."
+    },
+    {
+      "id": "latency-fanout",
+      "skillId": "latency-percentiles",
+      "format": "concept_check",
+      "difficulty": 1650,
+      "parSec": 90,
+      "prompt": "A request fans out to 100 backends in parallel and waits for all of them. Each backend is slow 1% of the time. Roughly how often is the request slow?",
+      "choices": ["1%", "10%", "about 63%", "100%"],
+      "answer": 2,
+      "explanation": "P(all fast) = 0.99^100 ≈ 0.37, so about 63% of requests wait on at least one slow backend. Tail latency amplifies with fan-out."
+    },
+    {
+      "id": "n1-detect",
+      "skillId": "n-plus-one",
+      "format": "concept_check",
+      "difficulty": 1300,
+      "parSec": 45,
+      "prompt": "A page's query log shows 1 query for 20 orders, then 20 identical queries for each order's customer. Name and fix?",
+      "choices": [
+        "A deadlock; add a lock timeout",
+        "An N+1; batch-load customers (WHERE id IN (…) or eager loading)",
+        "A cache miss; add Redis",
+        "A missing index; add one"
+      ],
+      "answer": 1,
+      "explanation": "One query per parent row is the N+1 pattern; load the related rows in one query."
+    },
+    {
+      "id": "n1-dataloader",
+      "skillId": "n-plus-one",
+      "format": "concept_check",
+      "difficulty": 1600,
+      "parSec": 75,
+      "prompt": "GraphQL resolvers fetch each post's author separately. What does a DataLoader do?",
+      "choices": [
+        "Caches responses in the browser",
+        "Collects the keys requested within one tick and fetches them in a single batched query, de-duplicated per request",
+        "Adds pagination",
+        "Moves resolvers to a worker"
+      ],
+      "answer": 1,
+      "explanation": "Batching plus per-request memoisation turns N lookups into one."
+    },
+    {
+      "id": "owasp-sqli",
+      "skillId": "owasp",
+      "format": "concept_check",
+      "difficulty": 1250,
+      "parSec": 45,
+      "prompt": "What is the primary defence against SQL injection?",
+      "choices": [
+        "Escaping quotes by hand",
+        "Parameterised queries (bound parameters)",
+        "Hiding error messages",
+        "A web application firewall alone"
+      ],
+      "answer": 1,
+      "explanation": "Parameters keep data separate from SQL, so input can never change the query structure."
+    },
+    {
+      "id": "owasp-idor",
+      "skillId": "owasp",
+      "format": "concept_check",
+      "difficulty": 1550,
+      "parSec": 60,
+      "prompt": "GET /api/invoices/1043 returns any invoice if you change the number. What is this and the fix?",
+      "choices": [
+        "XSS; escape output",
+        "IDOR (broken object-level authorization); scope every lookup to the caller (WHERE id = $1 AND owner_id = $2)",
+        "CSRF; add a token",
+        "SSRF; block internal IPs"
+      ],
+      "answer": 1,
+      "explanation": "Unguessable ids are not authorization. Check ownership on every object access."
+    },
+    {
+      "id": "crypto-password",
+      "skillId": "crypto-basics",
+      "format": "concept_check",
+      "difficulty": 1300,
+      "parSec": 45,
+      "prompt": "How should passwords be stored?",
+      "choices": [
+        "Encrypted with AES so they can be recovered",
+        "SHA-256 of the password",
+        "A slow, salted password hash such as Argon2id or bcrypt",
+        "Base64-encoded"
+      ],
+      "answer": 2,
+      "explanation": "Password hashes must be one-way, salted and deliberately slow to resist offline guessing. Fast hashes like SHA-256 are not enough."
+    },
+    {
+      "id": "crypto-hmac-webhook",
+      "skillId": "crypto-basics",
+      "format": "concept_check",
+      "difficulty": 1600,
+      "parSec": 75,
+      "prompt": "Verifying a webhook's HMAC signature: which detail matters most besides recomputing the HMAC over the raw body?",
+      "choices": [
+        "Lower-casing the body first",
+        "Comparing in constant time and rejecting old timestamps to stop replays",
+        "Using MD5 for speed",
+        "Logging the shared secret"
+      ],
+      "answer": 1,
+      "explanation": "A timing-safe comparison avoids leaking the signature byte by byte; a timestamp window blocks replayed requests."
+    },
+    {
+      "id": "testing-pyramid",
+      "skillId": "testing",
+      "format": "concept_check",
+      "difficulty": 1250,
+      "parSec": 45,
+      "prompt": "Why have more unit tests than end-to-end tests?",
+      "choices": [
+        "E2E tests are not useful",
+        "Unit tests are fast and pinpoint failures; e2e tests are slower and flakier, so keep them for critical journeys",
+        "Unit tests cover the UI",
+        "Coverage tools only count unit tests"
+      ],
+      "answer": 1,
+      "explanation": "The pyramid balances speed and confidence: many fast checks, fewer slow end-to-end journeys."
+    },
+    {
+      "id": "testing-order-leak",
+      "skillId": "testing",
+      "format": "concept_check",
+      "difficulty": 1600,
+      "parSec": 75,
+      "prompt": "A test passes alone but fails when the whole suite runs in a shuffled order. Most likely cause?",
+      "choices": [
+        "The CPU is too slow",
+        "Shared state leaks between tests (a mock, a global or database rows not reset)",
+        "The assertion library is broken",
+        "Tests must always run alphabetically"
+      ],
+      "answer": 1,
+      "explanation": "Order-dependent failures mean isolation is broken. Reset mocks, globals and data per test; shuffled seeds expose it."
+    },
+    {
+      "id": "review-priorities",
+      "skillId": "code-review",
+      "format": "concept_check",
+      "difficulty": 1300,
+      "parSec": 45,
+      "prompt": "Reviewing a PR, which comment should come first?",
+      "choices": [
+        "A naming preference",
+        "A missing authorization check on a new endpoint",
+        "A whitespace nit",
+        "A suggestion to reorder imports"
+      ],
+      "answer": 1,
+      "explanation": "Correctness and security issues block; style nits are optional and best left to tooling."
+    },
+    {
+      "id": "refactor-safety",
+      "skillId": "code-review",
+      "format": "concept_check",
+      "difficulty": 1550,
+      "parSec": 60,
+      "prompt": "You want to refactor a tangled function with no tests. Safest first step?",
+      "choices": [
+        "Rewrite it from scratch",
+        "Add characterisation tests that pin current behaviour, then refactor in small steps",
+        "Refactor and test manually afterwards",
+        "Add comments only"
+      ],
+      "answer": 1,
+      "explanation": "Characterisation tests capture what the code does today, so each small refactor can be verified."
+    },
+    {
+      "id": "ci-cache",
+      "skillId": "ci-cd",
+      "format": "concept_check",
+      "difficulty": 1350,
+      "parSec": 45,
+      "prompt": "What should a CI dependency cache key be based on?",
+      "choices": ["The date", "The lockfile hash (plus OS and tool version)", "The branch name only", "A random value"],
+      "answer": 1,
+      "explanation": "Keying on the lockfile reuses the cache exactly when dependencies are unchanged and invalidates it when they change."
+    },
+    {
+      "id": "ci-canary",
+      "skillId": "ci-cd",
+      "format": "concept_check",
+      "difficulty": 1600,
+      "parSec": 60,
+      "prompt": "What does a canary release do?",
+      "choices": [
+        "Deploys to every server at once",
+        "Sends a small share of traffic to the new version, watches error and latency, then ramps up or rolls back",
+        "Runs tests in production only",
+        "Deploys at night"
+      ],
+      "answer": 1,
+      "explanation": "Canaries limit the blast radius of a bad release and give real-traffic signals before a full rollout."
+    },
+    {
+      "id": "obs-structured-logs",
+      "skillId": "observability",
+      "format": "concept_check",
+      "difficulty": 1250,
+      "parSec": 45,
+      "prompt": "Why prefer structured (JSON) logs with a request id over free-text lines?",
+      "choices": [
+        "They are shorter",
+        "They can be filtered and joined by fields, and the request id ties every line of one request together",
+        "They hide errors",
+        "They need no storage"
+      ],
+      "answer": 1,
+      "explanation": "Fields make logs queryable; a correlation id lets you follow one request across services."
+    },
+    {
+      "id": "obs-slo-alert",
+      "skillId": "observability",
+      "format": "concept_check",
+      "difficulty": 1600,
+      "parSec": 75,
+      "prompt": "Which alert is most useful for on-call?",
+      "choices": [
+        "CPU above 80% on any host",
+        "The error budget burning fast against the SLO (symptom-based, user-facing)",
+        "Every warning log line",
+        "Disk at 50%"
+      ],
+      "answer": 1,
+      "explanation": "Alert on user-visible symptoms tied to SLOs; causes like CPU belong on dashboards, not pages."
+    },
+    {
+      "id": "incident-mitigate",
+      "skillId": "incident-response",
+      "format": "concept_check",
+      "difficulty": 1350,
+      "parSec": 45,
+      "prompt": "Errors spike right after a deploy. What's the first move?",
+      "choices": [
+        "Find the root cause in the code",
+        "Mitigate: roll back (or disable the flag), then investigate",
+        "Wait for it to recover",
+        "Scale up the database"
+      ],
+      "answer": 1,
+      "explanation": "Stop the bleeding first. A rollback is the fastest mitigation when a deploy correlates with the spike."
+    },
+    {
+      "id": "incident-postmortem",
+      "skillId": "incident-response",
+      "format": "concept_check",
+      "difficulty": 1550,
+      "parSec": 60,
+      "prompt": "What makes a postmortem effective?",
+      "choices": [
+        "Naming who caused it",
+        "Blameless: timeline, contributing factors, and owned action items that make the failure less likely or less harmful",
+        "Keeping it private",
+        "Only listing the fix"
+      ],
+      "answer": 1,
+      "explanation": "Blameless postmortems surface systemic causes and turn them into tracked improvements."
+    },
+    {
+      "id": "git-bisect",
+      "skillId": "git",
+      "format": "concept_check",
+      "difficulty": 1400,
+      "parSec": 45,
+      "prompt": "A bug appeared somewhere in the last 200 commits. Which command finds the introducing commit fastest?",
+      "choices": ["git blame", "git bisect", "git log --stat", "git revert"],
+      "answer": 1,
+      "explanation": "Bisect binary-searches the history: about log2(200) ≈ 8 test steps."
+    },
+    {
+      "id": "git-reflog",
+      "skillId": "git",
+      "format": "concept_check",
+      "difficulty": 1600,
+      "parSec": 60,
+      "prompt": "You ran `git reset --hard` and lost a commit that was never pushed. How do you get it back?",
+      "choices": [
+        "It's gone",
+        "Find it in `git reflog` and reset or branch to it",
+        "git pull",
+        "git stash pop"
+      ],
+      "answer": 1,
+      "explanation": "The reflog records where HEAD has been; the commit object still exists until garbage collection."
+    },
+    {
+      "id": "tradeoff-structure",
+      "skillId": "tradeoffs",
+      "format": "concept_check",
+      "difficulty": 1300,
+      "parSec": 45,
+      "prompt": "An interviewer asks 'SQL or NoSQL for this?'. What makes the strongest answer?",
+      "choices": [
+        "Name your favourite database",
+        "State the access patterns and constraints, compare the options against them, pick one and say what you give up",
+        "Say it depends and stop",
+        "Choose whatever is newest"
+      ],
+      "answer": 1,
+      "explanation": "Good trade-off answers are tied to requirements and name the cost of the choice."
+    },
+    {
+      "id": "tradeoff-disagree",
+      "skillId": "tradeoffs",
+      "format": "concept_check",
+      "difficulty": 1550,
+      "parSec": 60,
+      "prompt": "A reviewer insists on an approach you think is wrong. What's the most professional next step?",
+      "choices": [
+        "Merge anyway",
+        "Ask what risk they're optimising for, share evidence for yours, and agree on a decision rule (or escalate to a design review)",
+        "Rewrite to their approach silently",
+        "Ignore the comment"
+      ],
+      "answer": 1,
+      "explanation": "Surface the underlying concern, compare with evidence, and use an agreed tie-breaker."
+    },
+    {
+      "id": "linux-exit-code",
+      "skillId": "linux-shell",
+      "format": "predict_output",
+      "difficulty": 1350,
+      "parSec": 45,
+      "prompt": "What does this print?",
+      "language": "bash",
+      "code": "false | true\necho $?",
+      "choices": ["0", "1", "127", "nothing"],
+      "answer": 0,
+      "explanation": "A pipeline's exit status is the last command's (true → 0) unless `set -o pipefail` is on."
+    },
+    {
+      "id": "linux-quote",
+      "skillId": "linux-shell",
+      "format": "concept_check",
+      "difficulty": 1550,
+      "parSec": 60,
+      "prompt": "Why is `rm -rf $DIR/` dangerous in a script?",
+      "choices": [
+        "rm is slow",
+        "If DIR is unset or empty it becomes `rm -rf /`; quote it and guard: \"${DIR:?}\"/",
+        "It needs sudo",
+        "The trailing slash is invalid"
+      ],
+      "answer": 1,
+      "explanation": "Unquoted, empty variables vanish. `${DIR:?}` aborts when DIR is unset or empty, and `set -u` catches unset variables."
+    },
+    {
+      "id": "http-cors",
+      "skillId": "http-tls",
+      "format": "concept_check",
+      "difficulty": 1450,
+      "parSec": 60,
+      "prompt": "A browser blocks a fetch from app.example to api.example with a CORS error. Where is it fixed?",
+      "choices": [
+        "In the browser settings",
+        "On the API: return Access-Control-Allow-Origin for app.example (and handle the preflight)",
+        "By adding mode: 'no-cors' and reading the body",
+        "With a longer timeout"
+      ],
+      "answer": 1,
+      "explanation": "CORS is the server opting in. no-cors gives an opaque response you cannot read."
+    },
+    {
+      "id": "http-cache-control",
+      "skillId": "http-tls",
+      "format": "concept_check",
+      "difficulty": 1300,
+      "parSec": 45,
+      "prompt": "A hashed asset file (app.3f9a2.js) never changes. Which header fits?",
+      "choices": [
+        "Cache-Control: no-store",
+        "Cache-Control: public, max-age=31536000, immutable",
+        "Pragma: no-cache",
+        "Expires: 0"
+      ],
+      "answer": 1,
+      "explanation": "Content-hashed URLs change when content changes, so the file can be cached for a year without revalidation."
+    },
+    {
+      "id": "dns-ttl",
+      "skillId": "dns",
+      "format": "concept_check",
+      "difficulty": 1300,
+      "parSec": 45,
+      "prompt": "You change an A record but some users still reach the old IP for hours. Why?",
+      "choices": [
+        "DNS is broken",
+        "Resolvers cache the old record until its TTL expires; lower the TTL before planned changes",
+        "The web server is caching",
+        "MX records override A records"
+      ],
+      "answer": 1,
+      "explanation": "Recursive resolvers serve cached answers for the TTL. Drop the TTL ahead of a migration, then raise it again."
+    },
+    {
+      "id": "dns-cname-apex",
+      "skillId": "dns",
+      "format": "concept_check",
+      "difficulty": 1600,
+      "parSec": 60,
+      "prompt": "Why can't you put a standard CNAME at the zone apex (example.com)?",
+      "choices": [
+        "CNAMEs are deprecated",
+        "A CNAME cannot coexist with other records, and the apex must hold SOA and NS records",
+        "The apex has no IP",
+        "Only MX is allowed at the apex"
+      ],
+      "answer": 1,
+      "explanation": "That's why providers offer ALIAS/ANAME or CNAME flattening at the apex."
+    },
+    {
+      "id": "email-spf-dkim",
+      "skillId": "email-delivery",
+      "format": "concept_check",
+      "difficulty": 1350,
+      "parSec": 60,
+      "prompt": "What does DKIM prove about a message?",
+      "choices": [
+        "That it was encrypted in transit",
+        "That a domain signed it and the signed headers and body were not altered",
+        "That the sender's IP is allowed",
+        "That the recipient exists"
+      ],
+      "answer": 1,
+      "explanation": "DKIM is a signature checked against a public key in DNS. SPF authorises sending IPs; DMARC ties them to the From domain."
+    },
+    {
+      "id": "email-dmarc-alignment",
+      "skillId": "email-delivery",
+      "format": "concept_check",
+      "difficulty": 1650,
+      "parSec": 90,
+      "prompt": "SPF and DKIM both pass, yet DMARC fails. What's the likely reason?",
+      "choices": [
+        "The message is too large",
+        "Neither passing domain aligns with the visible From domain",
+        "The MX record is missing",
+        "TLS was not used"
+      ],
+      "answer": 1,
+      "explanation": "DMARC requires alignment: the SPF (envelope) or DKIM (d=) domain must match the From domain."
+    }
+  ]
+}

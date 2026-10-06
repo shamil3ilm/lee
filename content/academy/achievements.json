@@ -1,0 +1,17 @@
+{
+  "version": "2026.10.06",
+  "achievements": [
+    { "id": "first-steps", "name": "First steps", "description": "Finish your first Playground item.", "rule": { "type": "attempts", "count": 1 } },
+    { "id": "ten-down", "name": "Ten down", "description": "Finish 10 items.", "rule": { "type": "attempts", "count": 10 } },
+    { "id": "half-century", "name": "Half century", "description": "Finish 50 items.", "rule": { "type": "attempts", "count": 50 } },
+    { "id": "sharp", "name": "Sharp", "description": "Score 90 or more on 5 items.", "rule": { "type": "high_scores", "count": 5, "minComposite": 90 } },
+    { "id": "placed", "name": "Placed", "description": "Complete the placement check.", "rule": { "type": "placement_done" } },
+    { "id": "streak-3", "name": "On a roll", "description": "Practise 3 days in a row.", "rule": { "type": "streak", "days": 3 } },
+    { "id": "streak-7", "name": "Week strong", "description": "Practise 7 days in a row.", "rule": { "type": "streak", "days": 7 } },
+    { "id": "competent", "name": "Competent", "description": "Reach Competent in any skill.", "rule": { "type": "skill_level", "level": 3, "count": 1 } },
+    { "id": "broad-base", "name": "Broad base", "description": "Practise skills in 5 domains.", "rule": { "type": "domains", "count": 5 } },
+    { "id": "recall-10", "name": "Total recall", "description": "Complete 10 concept-card reviews.", "rule": { "type": "reviews", "count": 10 } },
+    { "id": "rank-junior", "name": "Junior engineer", "description": "Reach the Junior rank.", "rule": { "type": "rank", "rank": "junior" } },
+    { "id": "rank-mid", "name": "Mid-level engineer", "description": "Reach the Mid rank.", "rule": { "type": "rank", "rank": "mid" } }
+  ]
+}

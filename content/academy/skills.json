@@ -1,0 +1,696 @@
+{
+  "version": "2026.10.06",
+  "domains": [
+    { "id": "foundations", "name": "Foundations" },
+    { "id": "languages", "name": "Languages" },
+    { "id": "data", "name": "Data" },
+    { "id": "backend", "name": "Backend" },
+    { "id": "frontend", "name": "Frontend" },
+    { "id": "concurrency", "name": "Concurrency & distributed" },
+    { "id": "architecture", "name": "Architecture" },
+    { "id": "system_design", "name": "System design" },
+    { "id": "performance", "name": "Performance" },
+    { "id": "security", "name": "Security" },
+    { "id": "quality", "name": "Quality" },
+    { "id": "operations", "name": "Operations" },
+    { "id": "collaboration", "name": "Collaboration" },
+    { "id": "servers", "name": "Servers & networking" }
+  ],
+  "skills": [
+    {
+      "id": "complexity",
+      "name": "Complexity analysis",
+      "domain": "foundations",
+      "prerequisites": [],
+      "aliases": ["big o", "complexity analysis", "algorithms"],
+      "textAliases": ["big-o", "time complexity"],
+      "levels": [
+        "Knows Big-O exists",
+        "Classifies simple loops",
+        "Analyses time and space of typical code",
+        "Reasons about amortised and recursive costs",
+        "Chooses trade-offs from first principles"
+      ]
+    },
+    {
+      "id": "arrays-hashing",
+      "name": "Arrays & hashing",
+      "domain": "foundations",
+      "prerequisites": ["complexity"],
+      "aliases": ["data structures", "hash maps", "arrays"],
+      "textAliases": ["hash map", "hash table"],
+      "levels": [
+        "Uses arrays and maps",
+        "Picks a map for lookups",
+        "Solves two-pointer and counting problems",
+        "Designs custom keys and sliding windows",
+        "Knows hashing internals and collisions"
+      ]
+    },
+    {
+      "id": "trees-graphs",
+      "name": "Trees & graphs",
+      "domain": "foundations",
+      "prerequisites": ["arrays-hashing"],
+      "aliases": ["trees", "graphs", "graph algorithms"],
+      "textAliases": ["breadth-first", "depth-first", "topological sort"],
+      "levels": [
+        "Recognises trees and graphs",
+        "Writes BFS and DFS",
+        "Applies traversal, topological order, shortest paths",
+        "Models problems as graphs",
+        "Picks advanced algorithms with confidence"
+      ]
+    },
+    {
+      "id": "recursion-dp",
+      "name": "Recursion & dynamic programming",
+      "domain": "foundations",
+      "prerequisites": ["trees-graphs"],
+      "aliases": ["dynamic programming", "recursion"],
+      "textAliases": ["memoization", "memoisation"],
+      "levels": [
+        "Reads recursive code",
+        "Writes recursion with base cases",
+        "Memoises overlapping subproblems",
+        "Builds bottom-up tables and optimises space",
+        "Spots DP structure in unfamiliar problems"
+      ]
+    },
+    {
+      "id": "sorting-searching",
+      "name": "Sorting & searching",
+      "domain": "foundations",
+      "prerequisites": ["complexity"],
+      "aliases": ["sorting", "binary search"],
+      "textAliases": ["binary search"],
+      "levels": [
+        "Calls the built-in sort",
+        "Knows common sort costs",
+        "Writes binary search without off-by-one errors",
+        "Searches on the answer space",
+        "Tunes sorts for data shape and stability"
+      ]
+    },
+    {
+      "id": "js-runtime",
+      "name": "JavaScript & TypeScript runtime",
+      "domain": "languages",
+      "prerequisites": [],
+      "aliases": ["javascript", "typescript", "node.js", "node", "nodejs", "js", "ts"],
+      "textAliases": ["javascript", "typescript", "node.js"],
+      "levels": [
+        "Writes basic scripts",
+        "Understands scope, closures and this",
+        "Explains coercion, prototypes and modules",
+        "Debugs runtime and memory issues",
+        "Knows engine internals and edge cases"
+      ]
+    },
+    {
+      "id": "async-event-loop",
+      "name": "Async & the event loop",
+      "domain": "languages",
+      "prerequisites": ["js-runtime"],
+      "aliases": ["async", "event loop", "promises"],
+      "textAliases": ["event loop", "async/await"],
+      "levels": [
+        "Uses async/await",
+        "Handles promise errors",
+        "Orders tasks, microtasks and timers",
+        "Controls concurrency and cancellation",
+        "Diagnoses starvation and backpressure"
+      ]
+    },
+    {
+      "id": "type-systems",
+      "name": "Type systems",
+      "domain": "languages",
+      "prerequisites": ["js-runtime"],
+      "aliases": ["type systems", "typescript types", "generics"],
+      "textAliases": ["type-safe", "generics"],
+      "levels": [
+        "Annotates basic types",
+        "Uses unions and narrowing",
+        "Writes generics and discriminated unions",
+        "Models domains with types",
+        "Designs type-level APIs"
+      ]
+    },
+    {
+      "id": "python",
+      "name": "Python",
+      "domain": "languages",
+      "prerequisites": [],
+      "aliases": ["python", "django", "fastapi", "flask"],
+      "textAliases": ["python", "django", "fastapi"],
+      "levels": [
+        "Writes scripts",
+        "Uses idiomatic collections and comprehensions",
+        "Knows mutability, generators and packaging",
+        "Writes typed, tested services",
+        "Knows the interpreter and performance trade-offs"
+      ]
+    },
+    {
+      "id": "php-laravel",
+      "name": "PHP & Laravel",
+      "domain": "languages",
+      "prerequisites": [],
+      "aliases": ["php", "laravel", "symfony"],
+      "textAliases": ["php", "laravel"],
+      "levels": [
+        "Writes basic PHP",
+        "Builds CRUD with Laravel",
+        "Uses Eloquent, queues and validation well",
+        "Avoids N+1, designs services and policies",
+        "Knows the framework internals"
+      ]
+    },
+    {
+      "id": "go",
+      "name": "Go",
+      "domain": "languages",
+      "prerequisites": [],
+      "aliases": ["go", "golang"],
+      "textAliases": ["golang", "goroutine", "goroutines"],
+      "levels": [
+        "Reads Go code",
+        "Writes structs, interfaces and errors",
+        "Uses goroutines, channels and context",
+        "Writes idiomatic, race-free services",
+        "Knows the scheduler and memory model"
+      ]
+    },
+    {
+      "id": "rust",
+      "name": "Rust",
+      "domain": "languages",
+      "prerequisites": [],
+      "aliases": ["rust"],
+      "textAliases": ["rust", "borrow checker"],
+      "levels": [
+        "Reads Rust code",
+        "Works with ownership and borrowing",
+        "Uses traits, enums and Result well",
+        "Writes lifetimes and async Rust",
+        "Writes unsafe and performance-critical code"
+      ]
+    },
+    {
+      "id": "sql-querying",
+      "name": "SQL querying",
+      "domain": "data",
+      "prerequisites": [],
+      "aliases": ["sql", "postgresql", "postgres", "mysql", "sqlite"],
+      "textAliases": ["postgresql", "mysql", "sql"],
+      "levels": [
+        "Writes SELECT with WHERE",
+        "Joins and aggregates",
+        "Uses window functions and CTEs",
+        "Reasons about NULLs and correctness edge cases",
+        "Writes complex analytical queries fluently"
+      ]
+    },
+    {
+      "id": "schema-design",
+      "name": "Schema design",
+      "domain": "data",
+      "prerequisites": ["sql-querying"],
+      "aliases": ["schema design", "data modeling", "data modelling", "normalization"],
+      "textAliases": ["data model", "schema design", "double-entry"],
+      "levels": [
+        "Creates tables",
+        "Normalises and adds keys",
+        "Designs constraints that protect invariants",
+        "Plans migrations and evolution",
+        "Balances normalisation with access patterns at scale"
+      ]
+    },
+    {
+      "id": "indexing",
+      "name": "Indexing & query plans",
+      "domain": "data",
+      "prerequisites": ["sql-querying"],
+      "aliases": ["indexing", "query optimization", "query optimisation"],
+      "textAliases": ["query plan", "explain analyze"],
+      "levels": [
+        "Knows indexes speed reads",
+        "Adds an index for a WHERE clause",
+        "Reads EXPLAIN and composite index order",
+        "Uses partial, covering and expression indexes",
+        "Tunes the planner and write amplification"
+      ]
+    },
+    {
+      "id": "transactions",
+      "name": "Transactions & isolation",
+      "domain": "data",
+      "prerequisites": ["sql-querying"],
+      "aliases": ["transactions", "acid", "isolation levels"],
+      "textAliases": ["isolation level", "transaction"],
+      "levels": [
+        "Wraps work in a transaction",
+        "Knows ACID",
+        "Explains isolation anomalies",
+        "Chooses locking vs optimistic strategies",
+        "Debugs deadlocks and serialization failures"
+      ]
+    },
+    {
+      "id": "caching",
+      "name": "Caching & Redis",
+      "domain": "data",
+      "prerequisites": [],
+      "aliases": ["redis", "memcached", "caching"],
+      "textAliases": ["redis", "cache"],
+      "levels": [
+        "Knows what a cache is",
+        "Uses cache-aside with TTLs",
+        "Handles invalidation and stampedes",
+        "Chooses eviction and consistency strategies",
+        "Designs multi-tier caches"
+      ]
+    },
+    {
+      "id": "api-design",
+      "name": "API design",
+      "domain": "backend",
+      "prerequisites": [],
+      "aliases": ["rest", "rest api", "api design", "graphql", "grpc", "openapi"],
+      "textAliases": ["rest api", "api", "grpc", "graphql"],
+      "levels": [
+        "Calls APIs",
+        "Builds CRUD endpoints",
+        "Designs resources, status codes and pagination",
+        "Versions APIs and designs idempotent writes",
+        "Designs public platform APIs"
+      ]
+    },
+    {
+      "id": "auth",
+      "name": "Authentication & authorization",
+      "domain": "backend",
+      "prerequisites": ["api-design"],
+      "aliases": ["oauth", "oidc", "jwt", "authentication", "authorization"],
+      "textAliases": ["oauth", "jwt", "authentication"],
+      "levels": [
+        "Uses a login library",
+        "Knows sessions vs tokens",
+        "Implements OAuth flows and RBAC correctly",
+        "Designs multi-tenant authorization",
+        "Audits auth systems for logic flaws"
+      ]
+    },
+    {
+      "id": "background-jobs",
+      "name": "Background jobs",
+      "domain": "backend",
+      "prerequisites": ["api-design"],
+      "aliases": ["background jobs", "workers", "cron", "sidekiq", "laravel queues"],
+      "textAliases": ["background job", "worker", "cron"],
+      "levels": [
+        "Schedules a cron job",
+        "Moves slow work off the request path",
+        "Makes jobs retryable and idempotent",
+        "Handles poison jobs, priorities and backpressure",
+        "Designs durable workflow engines"
+      ]
+    },
+    {
+      "id": "rendering",
+      "name": "Rendering & React",
+      "domain": "frontend",
+      "prerequisites": ["js-runtime"],
+      "aliases": ["react", "next.js", "nextjs", "vue", "angular"],
+      "textAliases": ["react", "next.js"],
+      "levels": [
+        "Builds static pages",
+        "Builds components with state",
+        "Explains rendering, effects and hydration",
+        "Chooses server vs client rendering deliberately",
+        "Optimises rendering at scale"
+      ]
+    },
+    {
+      "id": "accessibility",
+      "name": "Accessibility",
+      "domain": "frontend",
+      "prerequisites": [],
+      "aliases": ["accessibility", "a11y", "wcag"],
+      "textAliases": ["accessibility", "wcag"],
+      "levels": [
+        "Adds alt text",
+        "Uses semantic HTML and labels",
+        "Supports keyboard and focus management",
+        "Audits with assistive technology",
+        "Designs inclusive systems"
+      ]
+    },
+    {
+      "id": "race-conditions",
+      "name": "Race conditions & locking",
+      "domain": "concurrency",
+      "prerequisites": [],
+      "aliases": ["concurrency", "locking", "race conditions"],
+      "textAliases": ["race condition", "optimistic locking", "concurrency"],
+      "levels": [
+        "Knows races exist",
+        "Spots a read-modify-write race",
+        "Fixes races with locks or atomic updates",
+        "Chooses optimistic vs pessimistic concurrency",
+        "Reasons about memory models"
+      ]
+    },
+    {
+      "id": "idempotency",
+      "name": "Idempotency & retries",
+      "domain": "concurrency",
+      "prerequisites": ["api-design"],
+      "aliases": ["idempotency", "retries"],
+      "textAliases": ["idempotent", "idempotency", "retry", "backoff"],
+      "levels": [
+        "Knows retries can duplicate work",
+        "Uses idempotency keys",
+        "Adds backoff with jitter",
+        "Designs exactly-once effects end to end",
+        "Designs payment-grade retry semantics"
+      ]
+    },
+    {
+      "id": "queues-messaging",
+      "name": "Queues & messaging",
+      "domain": "concurrency",
+      "prerequisites": ["idempotency"],
+      "aliases": ["kafka", "rabbitmq", "sqs", "message queues", "messaging"],
+      "textAliases": ["kafka", "rabbitmq", "message queue", "event-driven"],
+      "levels": [
+        "Publishes a message",
+        "Knows at-least-once delivery",
+        "Uses DLQs and idempotent consumers",
+        "Designs ordering, partitions and the outbox",
+        "Operates messaging at scale"
+      ]
+    },
+    {
+      "id": "design-principles",
+      "name": "Design principles",
+      "domain": "architecture",
+      "prerequisites": [],
+      "aliases": ["solid", "design patterns", "clean code", "clean architecture"],
+      "textAliases": ["solid principles", "design pattern"],
+      "levels": [
+        "Has heard of SOLID",
+        "Applies DRY and naming well",
+        "Applies SOLID and KISS with judgement",
+        "Refactors toward clear boundaries",
+        "Teaches and balances principles"
+      ]
+    },
+    {
+      "id": "modular-monolith",
+      "name": "Modular monolith & services",
+      "domain": "architecture",
+      "prerequisites": ["design-principles"],
+      "aliases": ["microservices", "modular monolith", "service-oriented architecture"],
+      "textAliases": ["microservice", "modular monolith"],
+      "levels": [
+        "Knows the terms",
+        "Separates modules in a codebase",
+        "Enforces boundaries and data ownership",
+        "Plans strangler-fig migrations",
+        "Decides service boundaries for an org"
+      ]
+    },
+    {
+      "id": "capacity-estimation",
+      "name": "Capacity estimation",
+      "domain": "system_design",
+      "prerequisites": ["complexity"],
+      "aliases": ["capacity planning", "back-of-the-envelope"],
+      "textAliases": ["capacity planning", "requests per second", "requests per day"],
+      "levels": [
+        "Knows orders of magnitude",
+        "Converts daily volume to QPS",
+        "Estimates storage, bandwidth and servers",
+        "Plans headroom and growth",
+        "Drives capacity reviews"
+      ]
+    },
+    {
+      "id": "scaling",
+      "name": "Scaling & load balancing",
+      "domain": "system_design",
+      "prerequisites": ["caching", "capacity-estimation"],
+      "aliases": ["scalability", "load balancing", "distributed systems", "system design"],
+      "textAliases": ["load balancer", "horizontal scaling", "replication", "sharding"],
+      "levels": [
+        "Knows vertical vs horizontal scaling",
+        "Uses a load balancer and stateless services",
+        "Adds replicas, caches and partitioning",
+        "Designs for failure across regions",
+        "Leads large-scale architecture"
+      ]
+    },
+    {
+      "id": "rate-limiting",
+      "name": "Rate limiting",
+      "domain": "system_design",
+      "prerequisites": ["scaling"],
+      "aliases": ["rate limiting", "throttling"],
+      "textAliases": ["rate limit", "rate limiting", "rate-limit", "throttling"],
+      "levels": [
+        "Knows what 429 means",
+        "Implements a fixed window",
+        "Compares token bucket and sliding windows",
+        "Designs distributed limits",
+        "Designs fair multi-tenant quotas"
+      ]
+    },
+    {
+      "id": "latency-percentiles",
+      "name": "Latency & percentiles",
+      "domain": "performance",
+      "prerequisites": [],
+      "aliases": ["performance", "latency", "profiling"],
+      "textAliases": ["p95", "p99", "latency"],
+      "levels": [
+        "Measures average response time",
+        "Reads p50, p95 and p99",
+        "Sets latency budgets and finds tail causes",
+        "Profiles CPU and memory",
+        "Leads performance programs"
+      ]
+    },
+    {
+      "id": "n-plus-one",
+      "name": "N+1 & data access performance",
+      "domain": "performance",
+      "prerequisites": ["sql-querying"],
+      "aliases": ["n+1", "orm performance"],
+      "textAliases": ["n+1", "eager loading"],
+      "levels": [
+        "Knows ORMs issue queries",
+        "Spots an N+1 in logs",
+        "Fixes with eager loading or batching",
+        "Designs data loaders and pagination",
+        "Audits data access at scale"
+      ]
+    },
+    {
+      "id": "owasp",
+      "name": "Web security (OWASP)",
+      "domain": "security",
+      "prerequisites": ["api-design"],
+      "aliases": ["owasp", "web security", "application security", "security"],
+      "textAliases": ["owasp", "sql injection", "xss", "csrf"],
+      "levels": [
+        "Knows common attacks by name",
+        "Prevents SQL injection and XSS",
+        "Prevents IDOR, CSRF and SSRF",
+        "Threat-models features",
+        "Leads security reviews"
+      ]
+    },
+    {
+      "id": "crypto-basics",
+      "name": "Cryptography in practice",
+      "domain": "security",
+      "prerequisites": [],
+      "aliases": ["cryptography", "encryption", "hashing"],
+      "textAliases": ["encryption", "bcrypt", "argon2", "hmac"],
+      "levels": [
+        "Knows hashing differs from encryption",
+        "Stores passwords with a slow hash",
+        "Uses HMAC, signatures and TLS correctly",
+        "Manages keys and rotation",
+        "Reviews cryptographic designs"
+      ]
+    },
+    {
+      "id": "testing",
+      "name": "Testing",
+      "domain": "quality",
+      "prerequisites": [],
+      "aliases": ["testing", "unit testing", "tdd", "jest", "vitest", "phpunit", "pytest", "playwright"],
+      "textAliases": ["unit test", "integration test", "end-to-end", "tdd", "property-tested"],
+      "levels": [
+        "Runs existing tests",
+        "Writes unit tests",
+        "Writes integration and e2e tests with isolation",
+        "Practises TDD and tests behaviour, not mocks",
+        "Designs a test strategy for a system"
+      ]
+    },
+    {
+      "id": "code-review",
+      "name": "Code review & refactoring",
+      "domain": "quality",
+      "prerequisites": ["testing"],
+      "aliases": ["code review", "refactoring"],
+      "textAliases": ["code review", "refactor"],
+      "levels": [
+        "Reads diffs",
+        "Leaves useful review comments",
+        "Refactors safely under tests",
+        "Finds design and security issues in review",
+        "Raises the team's quality bar"
+      ]
+    },
+    {
+      "id": "ci-cd",
+      "name": "CI/CD",
+      "domain": "operations",
+      "prerequisites": ["testing"],
+      "aliases": ["ci/cd", "github actions", "gitlab ci", "jenkins", "continuous integration"],
+      "textAliases": ["ci/cd", "github actions", "pipeline"],
+      "levels": [
+        "Knows CI runs tests",
+        "Edits a pipeline",
+        "Designs caching, matrices and secrets",
+        "Ships with canaries and rollbacks",
+        "Owns the delivery platform"
+      ]
+    },
+    {
+      "id": "observability",
+      "name": "Observability",
+      "domain": "operations",
+      "prerequisites": [],
+      "aliases": ["observability", "monitoring", "logging", "prometheus", "grafana", "opentelemetry"],
+      "textAliases": ["monitoring", "observability", "tracing", "logging"],
+      "levels": [
+        "Reads logs",
+        "Adds structured logs and metrics",
+        "Uses traces and builds dashboards",
+        "Defines SLOs and alerts on symptoms",
+        "Designs observability for a platform"
+      ]
+    },
+    {
+      "id": "incident-response",
+      "name": "Incident response",
+      "domain": "operations",
+      "prerequisites": ["observability"],
+      "aliases": ["incident response", "on-call", "sre"],
+      "textAliases": ["incident", "on-call", "postmortem"],
+      "levels": [
+        "Knows who to call",
+        "Follows a runbook",
+        "Mitigates before root-causing",
+        "Leads incidents and writes postmortems",
+        "Builds incident culture"
+      ]
+    },
+    {
+      "id": "git",
+      "name": "Version control",
+      "domain": "collaboration",
+      "prerequisites": [],
+      "aliases": ["git", "github", "gitlab", "version control"],
+      "textAliases": ["git"],
+      "levels": [
+        "Commits and pushes",
+        "Branches and resolves conflicts",
+        "Rebases, bisects and recovers work",
+        "Shapes clean history for review",
+        "Designs branching strategy"
+      ]
+    },
+    {
+      "id": "tradeoffs",
+      "name": "Trade-off communication",
+      "domain": "collaboration",
+      "prerequisites": [],
+      "aliases": ["communication", "technical writing", "design docs", "mentoring", "leadership"],
+      "textAliases": ["design doc", "mentored"],
+      "levels": [
+        "Explains what was built",
+        "Explains why",
+        "States options and trade-offs clearly",
+        "Writes design docs that drive decisions",
+        "Aligns teams on hard trade-offs"
+      ]
+    },
+    {
+      "id": "linux-shell",
+      "name": "Linux & the shell",
+      "domain": "servers",
+      "prerequisites": [],
+      "aliases": ["linux", "bash", "shell", "unix", "powershell"],
+      "textAliases": ["linux", "bash", "shell script"],
+      "levels": [
+        "Navigates files",
+        "Pipes, greps and edits files",
+        "Writes safe scripts and reads system logs",
+        "Debugs processes, permissions and disks",
+        "Administers servers fluently"
+      ]
+    },
+    {
+      "id": "http-tls",
+      "name": "HTTP & TLS",
+      "domain": "servers",
+      "prerequisites": [],
+      "aliases": ["http", "https", "tls", "ssl", "nginx"],
+      "textAliases": ["http", "tls", "nginx", "reverse proxy"],
+      "levels": [
+        "Knows request and response",
+        "Reads headers and status codes",
+        "Explains caching headers, CORS and the TLS handshake",
+        "Configures proxies and certificates",
+        "Debugs protocol-level issues"
+      ]
+    },
+    {
+      "id": "dns",
+      "name": "DNS",
+      "domain": "servers",
+      "prerequisites": [],
+      "aliases": ["dns", "bind", "coredns"],
+      "textAliases": ["dns", "nameserver", "dns server"],
+      "levels": [
+        "Knows names map to IPs",
+        "Reads A, CNAME and MX records",
+        "Explains resolution, TTLs and caching",
+        "Runs authoritative and recursive servers",
+        "Debugs delegation and DNSSEC"
+      ]
+    },
+    {
+      "id": "email-delivery",
+      "name": "Email delivery (SMTP, SPF, DKIM)",
+      "domain": "servers",
+      "prerequisites": ["dns"],
+      "aliases": ["smtp", "dkim", "spf", "dmarc", "email", "mail server"],
+      "textAliases": ["smtp", "dkim", "spf", "dmarc", "mail server"],
+      "levels": [
+        "Sends mail through a provider",
+        "Knows SMTP and MX",
+        "Configures SPF, DKIM and DMARC",
+        "Debugs deliverability and bounces",
+        "Runs mail infrastructure"
+      ]
+    }
+  ]
+}
