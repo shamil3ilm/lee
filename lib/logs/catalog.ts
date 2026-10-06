@@ -144,6 +144,21 @@ export const EVENT_CATALOG: Readonly<Record<string, EventSpec>> = {
   // Usage
   usage_snapshot: { category: 'usage', persist: true, message: () => 'Usage snapshot taken' },
   usage_early_retention: { category: 'usage', persist: true, message: () => 'Early retention ran (storage high)' },
+  // Publish to portfolio (lib/portfolio/publish.ts). Context is numbers and
+  // a version string only: never the token, never the file content.
+  profile_published: {
+    category: 'app',
+    persist: true,
+    strings: ['version'],
+    message: (c) =>
+      `Profile published to the portfolio (${s(c, 'version') || 'new version'}, ${n(c, 'sections')} section(s) changed)`,
+  },
+  profile_publish_conflict: {
+    category: 'app',
+    persist: true,
+    message: (c) =>
+      `Portfolio profile.json changed outside lee (${s(c, 'reason') || 'edited'}): ${n(c, 'sections')} section(s) differ — waiting for your choice`,
+  },
   // LaTeX
   latex_compile: {
     category: 'latex',

@@ -105,7 +105,7 @@ function pickResponseByPrompt(prompt: string): string {
   }
   // v2-era prompts — kept for cross-file compatibility (isolate:false shares
   // this mocked module across ai-gemini-v2.test.ts and this file).
-  if (prompt.includes('You tailor a master CV JSON')) {
+  if (prompt.includes('You tailor a starting CV JSON')) {
     return JSON.stringify({
       basics: { name: 'Ada', headline: 'Engineer' },
       summary: 'A rewritten summary.',
@@ -196,6 +196,8 @@ function makeApp(): ApplicationWithJob {
     appliedAt: null,
     nextActionAt: null,
     priority: 0,
+    resumeVariantId: null,
+    resumeVariantVersion: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     job: {

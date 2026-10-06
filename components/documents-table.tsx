@@ -180,7 +180,7 @@ export function DocumentsTable({ documents, currentFilter, scores = {} }: Docume
           description="Tailored CVs and cover letters start from your master CV in Settings › CV."
           action={
             <Button asChild size="sm">
-              <Link href="/settings/cv">Set up your CV</Link>
+              <Link href="/settings/profile/resume">Set up your CV</Link>
             </Button>
           }
         />

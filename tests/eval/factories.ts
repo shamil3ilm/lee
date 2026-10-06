@@ -99,6 +99,8 @@ export function makeApplication(
     appliedAt: overrides.appliedAt ?? null,
     nextActionAt: null,
     priority: 0,
+    resumeVariantId: null,
+    resumeVariantVersion: null,
     createdAt: new Date('2026-09-01T00:00:00Z'),
     updatedAt: new Date('2026-09-01T00:00:00Z'),
     job: {

@@ -122,7 +122,7 @@ export function CvFitCard({ applicationId, fit, scoringDocument }: CvFitCardProp
           </Button>
         ) : (
           <Button asChild size="sm" variant="outline">
-            <Link href="/settings/cv">Add your CV to score it</Link>
+            <Link href="/settings/profile/resume">Add your CV to score it</Link>
           </Button>
         )}
       </CardContent>

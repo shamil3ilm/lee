@@ -8,6 +8,9 @@ import { clearThrottleCache } from '@/lib/usage/throttle'
 // App-level tables to truncate between tests. Ordered from child to parent
 // (though CASCADE handles the rest). Keep in sync with lib/db/schema.ts.
 const TABLES = [
+  'portfolio_publish',
+  'resume_variant_versions',
+  'resume_variants',
   'company_reputation',
   'reputation_settings',
   'email_alert_messages',

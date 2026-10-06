@@ -8,28 +8,39 @@ import {
   type MasterCV,
 } from './types'
 import type { Document } from '@/lib/db/queries/documents'
+import { toMasterCv } from '@/lib/resume/derive'
+import { fromMasterCv } from '@/lib/resume/legacy'
+import { applyMasterCvEdit } from '@/lib/resume/merge-cv'
+import { readStoredProfile, saveResumeProfile } from '@/lib/resume/service'
 
 /**
- * Returns the latest master CV for a user, or null if none has been saved.
- * "Latest" = highest version among documents with kind='master_cv' and
- * applicationId=null.
+ * The user's master CV. Since the master profile exists (lib/resume) the
+ * MasterCV is DERIVED from it — only presentable (interview-ready, or
+ * domain-ready in design wording) items. Users who never saved a profile
+ * fall back to their legacy `master_cv` document.
  */
 export async function getMasterCV(userId: string): Promise<MasterCV | null> {
+  const profile = await readStoredProfile(userId)
+  if (profile) return toMasterCv(profile)
   const master = await documentsQ.getLatestMaster(userId)
   if (!master) return null
-  return masterCvSchema.parse(master.content)
+  const parsed = masterCvSchema.safeParse(master.content)
+  return parsed.success ? parsed.data : null
 }
 
+/**
+ * Save a MasterCV-level edit (CV Score autofix). It is applied to the
+ * master profile — the one source of facts — and the derived snapshot is
+ * returned. A user without a profile gets one built from this CV.
+ */
 export async function saveMasterCV(userId: string, cv: MasterCV): Promise<Document> {
   const parsed = masterCvSchema.parse(cv)
-  const version = await documentsQ.nextVersion(userId, null, 'master_cv')
-  return documentsQ.create(userId, {
-    applicationId: null,
-    kind: 'master_cv',
-    version,
-    title: `Master CV v${version}`,
-    content: parsed,
-  })
+  const stored = await readStoredProfile(userId)
+  const next = stored ? applyMasterCvEdit(stored, parsed) : fromMasterCv(parsed)
+  const { masterDocument } = await saveResumeProfile(userId, next)
+  const doc = masterDocument ?? (await documentsQ.getLatestMaster(userId))
+  if (!doc) throw new Error('master CV snapshot missing after save')
+  return doc
 }
 
 /**

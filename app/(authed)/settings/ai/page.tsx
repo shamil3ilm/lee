@@ -69,7 +69,7 @@ export default async function AiSettingsPage() {
             a saved key wins over the server default.
           </p>
         </div>
-        <ServiceSecretsPanel statuses={secretStatuses} />
+        <ServiceSecretsPanel statuses={secretStatuses.filter((s) => !s.info.managedIn)} />
       </section>
       <footer className="rounded-md border border-dashed p-4 text-xs text-muted-foreground">
         <p className="font-medium text-foreground">Set on the server only</p>

@@ -8,6 +8,31 @@ import { AISkippedError, checkTailorCVSignal } from '@/lib/ai/signal'
 import { linkLatestCallToDocument, writeSkipLog } from '@/lib/ai/log'
 import type { AIProvider } from '@/lib/ai/types'
 import type { Document } from '@/lib/db/queries/documents'
+import type { ApplicationWithJob } from '@/lib/db/queries/applications'
+import type { MasterCV } from './types'
+import type { TailorVariantContext } from '@/lib/ai/prompts/tailor-cv'
+import { renderStored, VariantError } from '@/lib/variants/service'
+import { domainOnlyBullets, variantToMasterCv } from '@/lib/variants/export'
+import { lockTailoredCv } from '@/lib/variants/tailor-lock'
+import { logger } from '@/lib/logger'
+
+/** The CV tailoring starts from: the application's variant version, or the master CV. */
+export async function startingCv(
+  userId: string,
+  application: Pick<ApplicationWithJob, 'resumeVariantId' | 'resumeVariantVersion'>,
+): Promise<{ cv: MasterCV; variant?: TailorVariantContext } | null> {
+  if (application.resumeVariantId && application.resumeVariantVersion) {
+    try {
+      const { variant, version, rendered } = await renderStored(userId, application.resumeVariantId, application.resumeVariantVersion)
+      return { cv: variantToMasterCv(rendered), variant: { name: variant.name, version, domainOnly: domainOnlyBullets(rendered) } }
+    } catch (err) {
+      if (!(err instanceof VariantError)) throw err
+      logger.warn('tailor_variant_missing', { err: err.message })
+    }
+  }
+  const cv = await getMasterCV(userId)
+  return cv ? { cv } : null
+}
 
 /**
  * Generates a tailored CV for a specific application:
@@ -23,11 +48,14 @@ export async function generateTailoredCV(input: {
   applicationId: string
   ai: AIProvider
 }): Promise<Document> {
-  const master = await getMasterCV(input.userId)
-  if (!master) throw new MasterCVNotFoundError()
-
   const application = await applicationsQ.getById(input.userId, input.applicationId)
   if (!application) throw new ApplicationNotFoundError(input.applicationId)
+
+  // Start from the résumé variant chosen for this application (the exact
+  // version recorded on it), else from the derived master CV.
+  const start = await startingCv(input.userId, application)
+  if (!start) throw new MasterCVNotFoundError()
+  const master = start.cv
 
   const signal = checkTailorCVSignal(application, master)
   if (!signal.ok) {
@@ -38,10 +66,10 @@ export async function generateTailoredCV(input: {
     throw new AISkippedError(signal.code, signal.message, signal.fixHint)
   }
 
-  const tailored = await input.ai.tailorCV({ master, application })
+  const tailored = await input.ai.tailorCV({ master, application, variant: start.variant })
   // Belt-and-braces: providers already validate, but a caller-supplied AI
-  // could bypass. Re-parse here.
-  const validated = tailoredCvSchema.parse(tailored)
+  // could bypass. Re-parse here, then fact-lock it to the starting CV.
+  const validated = lockTailoredCv(tailoredCvSchema.parse(tailored), master).cv
 
   const version = await documentsQ.nextVersion(input.userId, input.applicationId, 'tailored_cv')
   const company = application.job.company?.name ?? 'unknown'
@@ -77,6 +105,9 @@ export async function generateTailoredCV(input: {
     version,
     title,
     content: { ...validated, stateSnapshot },
+    aiGenerationMeta: start.variant
+      ? { resumeVariantId: application.resumeVariantId, resumeVariantVersion: start.variant.version }
+      : {},
   })
   // v10 — thread the documentId back to the most recent ai_call_logs row
   // so rating buttons on the doc can find the underlying call. Best-effort.

@@ -4,7 +4,7 @@
  */
 export class MasterCVNotFoundError extends Error {
   constructor() {
-    super('No master CV found. Populate /settings/cv before generating documents.')
+    super('No master CV found. Fill in Settings › Profile › Résumé before generating documents.')
     this.name = 'MasterCVNotFoundError'
   }
 }

@@ -5,7 +5,7 @@
  * named by `envKey` is only the fallback default when the user has not
  * saved their own.
  */
-export const SERVICE_SECRET_IDS = ['firecrawl', 'laya', 'neon', 'google_places', 'adzuna'] as const
+export const SERVICE_SECRET_IDS = ['firecrawl', 'laya', 'neon', 'google_places', 'adzuna', 'github_portfolio'] as const
 
 export type ServiceSecretId = (typeof SERVICE_SECRET_IDS)[number]
 
@@ -13,10 +13,18 @@ export interface ServiceSecretInfo {
   id: ServiceSecretId
   label: string
   description: string
-  envKey: 'FIRECRAWL_API_KEY' | 'LAYA_API_KEY' | 'NEON_API_KEY' | 'GOOGLE_PLACES_API_KEY' | 'ADZUNA_KEY'
+  envKey:
+    | 'FIRECRAWL_API_KEY'
+    | 'LAYA_API_KEY'
+    | 'NEON_API_KEY'
+    | 'GOOGLE_PLACES_API_KEY'
+    | 'ADZUNA_KEY'
+    | 'GITHUB_PORTFOLIO_TOKEN'
   keyUrl?: string
   /** True when a cheap authenticated call can verify the key. */
   testable: boolean
+  /** Managed on its own settings page instead of Settings › AI. */
+  managedIn?: string
 }
 
 export const SERVICE_SECRETS: readonly ServiceSecretInfo[] = [
@@ -63,6 +71,16 @@ export const SERVICE_SECRETS: readonly ServiceSecretInfo[] = [
     envKey: 'ADZUNA_KEY',
     keyUrl: 'https://developer.adzuna.com/signup',
     testable: true,
+  },
+  {
+    id: 'github_portfolio',
+    label: 'GitHub (portfolio)',
+    description:
+      'Fine-grained token that lets lee commit profile.json to your portfolio repository: Contents read and write on that one repository only.',
+    envKey: 'GITHUB_PORTFOLIO_TOKEN',
+    keyUrl: 'https://github.com/settings/personal-access-tokens/new',
+    testable: true,
+    managedIn: '/settings/profile/publish',
   },
 ]
 

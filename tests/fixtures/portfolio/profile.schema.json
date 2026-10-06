@@ -1,0 +1,241 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Portfolio profile (JSON Resume v1.2.1 subset + meta.x-portfolio)",
+  "description": "Stricter than JSON Resume: fields the site renders are required. Unknown JSON Resume fields are allowed (and ignored by the renderer); meta.x-portfolio is closed.",
+  "type": "object",
+  "required": ["basics", "work", "projects", "skills", "education", "meta"],
+  "properties": {
+    "$schema": { "type": "string", "format": "uri" },
+    "basics": {
+      "type": "object",
+      "required": ["name", "label", "email", "url", "summary", "profiles"],
+      "properties": {
+        "name": { "$ref": "#/definitions/shortText" },
+        "label": { "$ref": "#/definitions/shortText" },
+        "image": { "type": "string" },
+        "email": { "type": "string", "format": "email", "maxLength": 254 },
+        "phone": { "type": "string", "maxLength": 40 },
+        "url": { "$ref": "#/definitions/httpsUrl" },
+        "summary": { "$ref": "#/definitions/longText" },
+        "location": {
+          "type": "object",
+          "properties": {
+            "address": { "type": "string" },
+            "postalCode": { "type": "string" },
+            "city": { "type": "string" },
+            "countryCode": { "type": "string", "pattern": "^[A-Z]{2}$" },
+            "region": { "type": "string" }
+          }
+        },
+        "profiles": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["network", "url"],
+            "properties": {
+              "network": { "$ref": "#/definitions/shortText" },
+              "username": { "type": "string", "maxLength": 100 },
+              "url": { "$ref": "#/definitions/httpsUrl" }
+            }
+          }
+        }
+      }
+    },
+    "work": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "position", "startDate", "highlights"],
+        "properties": {
+          "name": { "$ref": "#/definitions/shortText" },
+          "location": { "$ref": "#/definitions/shortText" },
+          "description": { "type": "string" },
+          "position": { "$ref": "#/definitions/shortText" },
+          "url": { "$ref": "#/definitions/httpsUrl" },
+          "startDate": { "$ref": "#/definitions/iso8601" },
+          "endDate": { "$ref": "#/definitions/iso8601" },
+          "summary": { "type": "string" },
+          "highlights": { "$ref": "#/definitions/textList" }
+        }
+      }
+    },
+    "projects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "keywords", "highlights"],
+        "properties": {
+          "name": { "$ref": "#/definitions/shortText" },
+          "description": { "$ref": "#/definitions/shortText" },
+          "highlights": { "$ref": "#/definitions/textList" },
+          "keywords": { "$ref": "#/definitions/keywordList" },
+          "startDate": { "$ref": "#/definitions/iso8601" },
+          "endDate": { "$ref": "#/definitions/iso8601" },
+          "url": { "$ref": "#/definitions/httpsUrl" },
+          "roles": { "type": "array", "items": { "type": "string" } },
+          "entity": { "type": "string" },
+          "type": { "type": "string" }
+        }
+      }
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "keywords"],
+        "properties": {
+          "name": { "$ref": "#/definitions/shortText" },
+          "level": { "type": "string" },
+          "keywords": { "$ref": "#/definitions/keywordList" }
+        }
+      }
+    },
+    "education": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["institution", "studyType", "area", "startDate"],
+        "properties": {
+          "institution": { "$ref": "#/definitions/shortText" },
+          "url": { "$ref": "#/definitions/httpsUrl" },
+          "area": { "$ref": "#/definitions/shortText" },
+          "studyType": { "$ref": "#/definitions/shortText" },
+          "startDate": { "$ref": "#/definitions/iso8601" },
+          "endDate": { "$ref": "#/definitions/iso8601" },
+          "score": { "type": "string" },
+          "courses": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "required": ["canonical", "version", "lastModified", "x-portfolio"],
+      "properties": {
+        "canonical": { "$ref": "#/definitions/httpsUrl" },
+        "version": { "type": "string", "pattern": "^v?\\d+\\.\\d+\\.\\d+$" },
+        "lastModified": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})?$"
+        },
+        "x-portfolio": { "$ref": "#/definitions/xPortfolio" }
+      }
+    }
+  },
+  "definitions": {
+    "shortText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[^\\u0000-\\u001F]*$"
+    },
+    "longText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000,
+      "pattern": "^[^\\u0000-\\u001F]*$"
+    },
+    "textList": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/longText" }
+    },
+    "keywordList": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/definitions/shortText" }
+    },
+    "iso8601": {
+      "type": "string",
+      "description": "JSON Resume iso8601: YYYY, YYYY-MM or YYYY-MM-DD",
+      "pattern": "^([1-2][0-9]{3}-[0-1][0-9]-[0-3][0-9]|[1-2][0-9]{3}-[0-1][0-9]|[1-2][0-9]{3})$"
+    },
+    "httpsUrl": {
+      "type": "string",
+      "format": "uri",
+      "maxLength": 500,
+      "pattern": "^https://[^\\s\"'<>]+$"
+    },
+    "sitePath": {
+      "type": "string",
+      "description": "A same-site page (e.g. case-x.html or index.html#id) or an https URL. No javascript:, data: or protocol-relative links.",
+      "maxLength": 500,
+      "pattern": "^(https://[^\\s\"'<>]+|[a-z0-9][a-z0-9-]*\\.html(#[A-Za-z0-9_-]+)?|#[A-Za-z0-9_-]+)$"
+    },
+    "keyList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/definitions/shortText" }
+    },
+    "xPortfolio": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "displayName", "order", "caseStudies", "quickView"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "displayName": { "$ref": "#/definitions/shortText" },
+        "order": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "work": { "$ref": "#/definitions/keyList" },
+            "projects": { "$ref": "#/definitions/keyList" },
+            "skills": { "$ref": "#/definitions/keyList" },
+            "education": { "$ref": "#/definitions/keyList" }
+          }
+        },
+        "caseStudies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "title", "url", "work", "highlight"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,60}$" },
+              "title": { "$ref": "#/definitions/shortText" },
+              "url": { "$ref": "#/definitions/httpsUrl" },
+              "work": { "$ref": "#/definitions/shortText" },
+              "highlight": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "quickView": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["role", "line", "results", "skills"],
+          "properties": {
+            "role": { "$ref": "#/definitions/shortText" },
+            "line": { "$ref": "#/definitions/longText" },
+            "results": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 6,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["lead", "text"],
+                "properties": {
+                  "lead": { "$ref": "#/definitions/shortText" },
+                  "text": { "$ref": "#/definitions/longText" },
+                  "link": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["label", "href"],
+                    "properties": {
+                      "label": { "$ref": "#/definitions/shortText" },
+                      "href": { "$ref": "#/definitions/sitePath" },
+                      "closesDialog": { "type": "boolean" }
+                    }
+                  }
+                }
+              }
+            },
+            "skills": { "$ref": "#/definitions/keywordList" }
+          }
+        }
+      }
+    }
+  }
+}

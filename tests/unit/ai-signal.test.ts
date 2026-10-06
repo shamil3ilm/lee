@@ -52,6 +52,8 @@ function makeApp(overrides: {
     appliedAt,
     nextActionAt: null,
     priority: 0,
+    resumeVariantId: null,
+    resumeVariantVersion: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     job: {

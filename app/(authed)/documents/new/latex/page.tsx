@@ -28,8 +28,8 @@ export default async function NewLatexDocumentPage() {
           <CardContent className="text-sm text-muted-foreground">
             Templates will pre-fill your name, experience, and skills once you have a
             master CV saved. Go to{' '}
-            <Link href="/settings/cv" className="text-primary hover:underline">
-              Settings → CV
+            <Link href="/settings/profile/resume" className="text-primary hover:underline">
+              Settings › Profile › Résumé
             </Link>{' '}
             to add one. You can still pick a template with placeholder content.
           </CardContent>

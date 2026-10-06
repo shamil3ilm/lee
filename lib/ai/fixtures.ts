@@ -1,3 +1,5 @@
+import type { ResumeVariantInput, ResumeVariantResult } from './prompts/resume-variant'
+import type { TailorCVInput } from './prompts/tailor-cv'
 import type {
   AIProvider,
   BulletRewriteInput,
@@ -42,7 +44,7 @@ export class FixtureAIProvider implements AIProvider {
         company: NormalizedCompany,
         profile: UserProfile,
       ) => CompanyMatchResult
-      tailorCV?: (input: { master: MasterCV; application: ApplicationWithJob }) => TailoredCV
+      tailorCV?: (input: TailorCVInput) => TailoredCV
       draftCoverLetter?: (input: {
         master: MasterCV
         application: ApplicationWithJob
@@ -75,6 +77,7 @@ export class FixtureAIProvider implements AIProvider {
       rewriteCvBullets?: (input: BulletRewriteInput) => BulletRewriteResult
       summarizeReputation?: (input: ReputationSummaryInput) => ReputationSummaryResult
       suggestRoles?: (input: SuggestRolesInput) => SuggestRolesResult
+      proposeResumeVariant?: (input: ResumeVariantInput) => ResumeVariantResult
     } = {},
   ) {}
 
@@ -163,10 +166,7 @@ export class FixtureAIProvider implements AIProvider {
     return pseudoScoreCompany(company, profile)
   }
 
-  async tailorCV(input: {
-    master: MasterCV
-    application: ApplicationWithJob
-  }): Promise<TailoredCV> {
+  async tailorCV(input: TailorCVInput): Promise<TailoredCV> {
     if (this.fixtures.tailorCV) return this.fixtures.tailorCV(input)
     return pseudoTailor(input)
   }
@@ -243,6 +243,13 @@ export class FixtureAIProvider implements AIProvider {
     await this.emitLoggedCallId('cv_bullet_rewrite', meta)
     if (this.fixtures.rewriteCvBullets) return this.fixtures.rewriteCvBullets(input)
     return pseudoRewriteBullets(input)
+  }
+
+  /** Deterministic default: keep the current text, select every offered item, no new wordings. */
+  async proposeResumeVariant(input: ResumeVariantInput, meta?: CallMeta): Promise<ResumeVariantResult> {
+    await this.emitLoggedCallId('resume_variant', meta)
+    if (this.fixtures.proposeResumeVariant) return this.fixtures.proposeResumeVariant(input)
+    return { headline: input.headline, summary: input.summary, selectedIds: input.items.map((i) => i.id), wordings: [] }
   }
 
   /** Deterministic default: no extra suggestions beyond the rules. */
