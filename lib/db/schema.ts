@@ -1410,10 +1410,19 @@ export const resumeVariants = pgTable(
     // A role family id (lib/discovery/relevance/roles.ts) or null.
     roleFamily: text('role_family'),
     currentVersion: integer('current_version').notNull().default(1),
-    // Publish this variant to the portfolio too (OFF by default). Data only:
-    // the portfolio-side rendering is not built yet.
+    // Publish this variant to the portfolio too (OFF by default): lee writes
+    // it as variants/<portfolio_slug>.json next to profile.json and the
+    // portfolio build renders resume/<slug>.html (lib/portfolio/variants.ts).
     publishToPortfolio: boolean('publish_to_portfolio').notNull().default(false),
     portfolioSlug: text('portfolio_slug'),
+    // What lee last wrote to variants/<slug>.json — the same sha / hash /
+    // version bookkeeping as portfolio_publish, per variant. Null = not
+    // published (or unpublished since).
+    portfolioLastSha: text('portfolio_last_sha'),
+    portfolioLastHash: text('portfolio_last_hash'),
+    portfolioLastVersion: text('portfolio_last_version'),
+    portfolioCommitUrl: text('portfolio_commit_url'),
+    portfolioPublishedAt: timestamp('portfolio_published_at', { withTimezone: true }),
     archivedAt: timestamp('archived_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -1435,6 +1444,9 @@ export const resumeVariantVersions = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     version: integer('version').notNull(),
     recipe: jsonb('recipe').notNull(),
+    // Set when this version was published to the portfolio. Retention never
+    // prunes a published version (lib/db/retention/variants.ts).
+    publishedAt: timestamp('published_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
@@ -1555,6 +1567,7 @@ export const retentionSettings = pgTable('retention_settings', {
   cvScoreDays: smallint('cv_score_days'),
   labRunDays: smallint('lab_run_days'),
   webVitalsDays: smallint('web_vitals_days'),
+  variantVersionDays: smallint('variant_version_days'),
   // 'cron' | 'manual' | 'early' (storage ≥ 90% snapshot)
   lastRunTrigger: text('last_run_trigger'),
   lastRunAt: timestamp('last_run_at', { withTimezone: true }),
