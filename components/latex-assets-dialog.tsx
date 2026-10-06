@@ -160,9 +160,17 @@ export function LatexAssetsDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" variant="outline" size="sm">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          aria-label={`Assets${assets.length > 0 ? ` (${assets.length})` : ''}`}
+        >
           <Paperclip className="size-4" />
-          Assets{assets.length > 0 ? ` (${assets.length})` : ''}
+          {/* Label collapses on narrow editors (container query in LatexEditor). */}
+          <span className="hidden @lg/editor:inline">
+            Assets{assets.length > 0 ? ` (${assets.length})` : ''}
+          </span>
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">

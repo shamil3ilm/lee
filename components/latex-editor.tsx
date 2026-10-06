@@ -10,12 +10,20 @@ import {
   FileCode2,
   ListTree,
   Loader2,
+  MoreHorizontal,
   PlayCircle,
   Save,
   Zap,
   ImageOff,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { PreviewPane } from '@/components/latex/preview-pane'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { saveLatexSource } from '@/app/(authed)/documents/[id]/edit/actions'
@@ -97,7 +105,7 @@ export function LatexEditor({
   const [editorReady, setEditorReady] = useState(false)
   const [draft, setDraft] = useState(false)
   const [outlineOpen, setOutlineOpen] = useState(false)
-  // Mobile-only pane toggle; md+ always shows source and preview side by side.
+  // Narrow-editor pane toggle; wide editors always show source and preview side by side.
   const [mobilePane, setMobilePane] = useState<'source' | 'preview'>('source')
   const editorRef = useRef<CodeEditorHandle | null>(null)
 
@@ -221,9 +229,12 @@ export function LatexEditor({
   const outlinePanel = <OutlinePanel items={outline} onJump={jumpToLine} />
 
   return (
-    <div className={cn('flex h-[calc(100vh-6rem)] flex-col', className)}>
+    // Layout responds to the editor's own width (container queries), not the
+    // viewport: at tablet width the sidebar leaves ~480px, which is a phone
+    // layout even though the viewport is "md".
+    <div className={cn('@container/editor flex h-[calc(100vh-6rem)] flex-col', className)}>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-background px-3 py-2">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
+        <div className="flex min-w-[min(100%,14rem)] flex-1 items-center gap-2">
           <Button asChild variant="ghost" size="icon" aria-label="Back to documents">
             <Link href="/documents">
               <ChevronLeft className="size-4" />
@@ -232,19 +243,19 @@ export function LatexEditor({
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="min-w-0 flex-1 md:w-72 md:max-w-72 md:flex-none"
+            className="min-w-0 flex-1 @4xl/editor:max-w-80"
             placeholder="Document title"
             aria-label="Document title"
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
           {compile.compiling ? (
             <span className="flex items-center gap-1 text-xs text-muted-foreground" role="status">
               <Loader2 className="size-3 animate-spin" />
-              Compiling…
+              <span className="hidden @lg/editor:inline">Compiling…</span>
             </span>
           ) : null}
-          <div className="inline-flex items-center rounded-md border bg-muted p-0.5 md:hidden">
+          <div className="inline-flex items-center rounded-md border bg-muted p-0.5 @2xl/editor:hidden">
             {(['source', 'preview'] as const).map((pane) => (
               <button
                 key={pane}
@@ -274,18 +285,35 @@ export function LatexEditor({
             onClick={compileCurrent}
             disabled={compile.compiling}
             title="Compile (Ctrl/Cmd+Enter or Ctrl/Cmd+S)"
+            aria-label="Compile"
           >
             <PlayCircle className="size-4" />
-            <span className="hidden sm:inline">Compile</span>
+            <span className="hidden @lg/editor:inline">Compile</span>
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={handleDownload}>
-            <Download className="size-4" />
-            <span className="hidden sm:inline">Download .tex</span>
-          </Button>
-          <Button type="button" variant="default" size="sm" onClick={handleSave} disabled={saving}>
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={handleSave}
+            disabled={saving}
+            aria-label="Save"
+          >
             {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-            <span className="hidden sm:inline">Save</span>
+            <span className="hidden @lg/editor:inline">Save</span>
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="ghost" size="icon" className="size-8" aria-label="More document actions">
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={handleDownload}>
+                <Download className="size-4" />
+                Download .tex
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -310,7 +338,7 @@ export function LatexEditor({
           <ImageOff className="size-3.5" />
           Draft
         </ToggleButton>
-        <span className="ml-auto hidden text-[11px] text-muted-foreground lg:inline">
+        <span className="ml-auto hidden text-[11px] text-muted-foreground @4xl/editor:inline">
           Ctrl/⌘+Enter to compile · Ctrl/⌘+F to find · Ctrl+Space for suggestions
         </span>
       </div>
@@ -318,17 +346,17 @@ export function LatexEditor({
       <div
         className={cn(
           'grid min-h-0 flex-1 grid-cols-1 overflow-hidden',
-          outlineOpen ? 'md:grid-cols-[13rem_minmax(0,1fr)_minmax(0,1fr)]' : 'md:grid-cols-2',
+          outlineOpen ? '@2xl/editor:grid-cols-[13rem_minmax(0,1fr)_minmax(0,1fr)]' : '@2xl/editor:grid-cols-2',
         )}
       >
-        {outlineOpen ? <aside className="hidden min-h-0 border-r md:block">{outlinePanel}</aside> : null}
+        {outlineOpen ? <aside className="hidden min-h-0 border-r @2xl/editor:block">{outlinePanel}</aside> : null}
         <div
           className={cn(
-            'flex h-full min-h-[400px] flex-col border-b md:border-b-0 md:border-r',
-            mobilePane === 'preview' && 'hidden md:flex',
+            'flex h-full min-h-[400px] flex-col border-b @2xl/editor:border-b-0 @2xl/editor:border-r',
+            mobilePane === 'preview' && 'hidden @2xl/editor:flex',
           )}
         >
-          {outlineOpen ? <div className="max-h-40 border-b md:hidden">{outlinePanel}</div> : null}
+          {outlineOpen ? <div className="max-h-40 border-b @2xl/editor:hidden">{outlinePanel}</div> : null}
           <div className="relative min-h-0 flex-1">
             {!editorReady ? (
               <textarea
@@ -373,13 +401,14 @@ export function LatexEditor({
         <div
           className={cn(
             'relative h-full min-h-[400px] bg-muted/20',
-            mobilePane === 'source' && 'hidden md:block',
+            mobilePane === 'source' && 'hidden @2xl/editor:block',
           )}
         >
-          <iframe
-            src={compile.pdfUrl ?? `/api/documents/${documentId}/pdf`}
-            title="LaTeX PDF preview"
-            className="h-full w-full bg-white"
+          <PreviewPane
+            state={compile.previewState}
+            pdfUrl={compile.pdfUrl}
+            compiling={compile.compiling}
+            onCompile={compileCurrent}
           />
           {compile.error && !compile.problemsOpen ? (
             <button

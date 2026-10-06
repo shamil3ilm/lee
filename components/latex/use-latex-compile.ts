@@ -133,6 +133,44 @@ export function useLatexCompile({ documentId, initialError }: UseLatexCompileOpt
     [],
   )
 
+  const hasInitialError = initialError !== null
+  // Load the saved PDF once. Until it (or a compile) arrives the preview
+  // shows a themed empty state instead of a blank white iframe, and a
+  // document that has never compiled keeps showing that guidance.
+  const [savedPdfState, setSavedPdfState] = useState<'loading' | 'done'>(
+    hasInitialError ? 'done' : 'loading',
+  )
+  useEffect(() => {
+    if (hasInitialError) return
+    const controller = new AbortController()
+    void (async () => {
+      try {
+        const res = await fetch(`/api/documents/${documentId}/pdf`, { signal: controller.signal })
+        const isPdf = res.ok && (res.headers.get('content-type') ?? '').includes('pdf')
+        if (!isPdf || pdfUrlRef.current) return
+        const url = URL.createObjectURL(await res.blob())
+        if (pdfUrlRef.current || controller.signal.aborted) {
+          URL.revokeObjectURL(url)
+          return
+        }
+        pdfUrlRef.current = url
+        setPdfUrl(url)
+      } catch {
+        // No saved PDF (or offline): the empty state explains how to compile.
+      } finally {
+        if (!controller.signal.aborted) setSavedPdfState('done')
+      }
+    })()
+    return () => controller.abort()
+  }, [documentId, hasInitialError])
+
+  /** What the preview pane should show right now. */
+  const previewState: 'loading' | 'pdf' | 'empty' = pdfUrl
+    ? 'pdf'
+    : savedPdfState === 'loading' || compiling
+      ? 'loading'
+      : 'empty'
+
   const notifyChange = useCallback((snapshot: CompileSnapshot) => {
     schedulerRef.current?.change(snapshot)
   }, [])
@@ -148,6 +186,7 @@ export function useLatexCompile({ documentId, initialError }: UseLatexCompileOpt
     error,
     pdfUrl,
     pdfIsDraft,
+    previewState,
     problemsOpen,
     setProblemsOpen,
     autoCompile,
