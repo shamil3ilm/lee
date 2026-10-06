@@ -5,8 +5,9 @@
  *
  * Allowed fixes:
  *   rewrite_bullet — weak-opener bullet rewritten by the AI. Rejected when the
- *                    rewrite introduces a digit run the original didn't have
- *                    (no invented metrics), still opens weakly, or is empty /
+ *                    rewrite introduces a digit run or spelled-out number the
+ *                    original didn't have (no invented metrics — fact-lock),
+ *                    still opens weakly, or is empty /
  *                    wildly longer.
  *   add_skill      — append a JD keyword to skills.secondary ONLY when the
  *                    term is already evidenced elsewhere in the CV.
@@ -53,13 +54,20 @@ export interface AutofixPreview {
 // Pure guards
 // ---------------------------------------------------------------------------
 
+/** Spelled-out quantities — as much a metric as a digit (fact-lock, v1.1). */
+const NUMBER_WORDS_RE = /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundreds?|thousands?|millions?|billions?|dozens?|twice|doubled|tripled|quadrupled|halved)\b/gi
+
+function numberWords(s: string): string[] {
+  return (s.match(NUMBER_WORDS_RE) ?? []).map((w) => w.toLowerCase())
+}
+
 /** Reason a rewrite is unsafe, or null when it is acceptable. */
 export function rewriteRejection(before: string, after: string): string | null {
   const a = after.trim()
   if (!a) return 'empty rewrite'
   if (looseNormalize(a) === looseNormalize(before)) return 'rewrite is identical'
-  const allowed = new Set(digitRuns(before))
-  const invented = digitRuns(a).filter((d) => !allowed.has(d))
+  const allowed = new Set([...digitRuns(before), ...numberWords(before)])
+  const invented = [...digitRuns(a), ...numberWords(a)].filter((d) => !allowed.has(d))
   if (invented.length) return `rewrite adds numbers not in the original (${invented.join(', ')})`
   if (weakOpenerOf(a)) return 'rewrite still opens with a weak phrase'
   if (wordCount(a) > Math.max(40, wordCount(before) * 2.5)) return 'rewrite is much longer than the original'

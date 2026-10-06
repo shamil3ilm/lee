@@ -5,7 +5,8 @@
  * (years component omitted — scope only — when the JD states neither years
  * nor a recognisable level).
  */
-import { experienceYears } from '../career'
+import { breakdownSummary, experienceBreakdown, type ExperienceBreakdown } from '../career'
+import { bulletEvidence, roleEvidence } from '../evidence'
 import { makeFinding } from '../findings'
 import { SCOPE_SIGNALS, SENIORITY_LADDER, seniorityKey } from '../lexicon'
 import type { CvFinding, DimensionResult, JobTarget, ScorableCv, ScoreContext } from '../types'
@@ -20,6 +21,8 @@ export interface SeniorityDetails {
   expectedScope: number
   yearsScore: number | null
   scopeScore: number
+  /** v1.1 — how `years` was computed (weighted engineering years). */
+  experience?: ExperienceBreakdown
 }
 
 const YEARS_RE = /(\d{1,2})\s*\+?\s*(?:-|–|to)?\s*(?:\d{1,2})?\s*\+?\s*(?:years?|yrs?)\b/gi
@@ -44,7 +47,8 @@ export function scoreSeniority(
   ctx: Pick<ScoreContext, 'now' | 'profile'>,
 ): DimensionResult<SeniorityDetails> {
   const findings: CvFinding[] = []
-  let years = experienceYears(cv.roles, ctx.now)
+  const breakdown = experienceBreakdown(cv.roles, ctx.now)
+  let years = breakdown.years
   let yearsSource: SeniorityDetails['yearsSource'] = 'cv'
   if (years === 0 && ctx.profile?.yearsExperience) {
     years = ctx.profile.yearsExperience
@@ -64,7 +68,8 @@ export function scoreSeniority(
       findings.push(makeFinding('seniority', {
         severity: years < expectedYears * 0.6 ? 'major' : 'minor',
         message: `Role asks for ${expectedYears}+ years; your CV shows about ${years}`,
-        suggestion: 'Surface all relevant experience (internships, freelance, open source) with dates, or target a level that matches.',
+        evidence: cv.roles.flatMap((_, i) => roleEvidence(cv, i)),
+        suggestion: `${yearsSource === 'cv' ? `Counted as ${breakdownSummary(breakdown)}. ` : ''}Relevant experience without dates (freelance, open source) doesn't count until it is dated — or a level that matches may fit better.`,
       }))
     }
   }
@@ -73,6 +78,7 @@ export function scoreSeniority(
     findings.push(makeFinding('seniority', {
       severity: 'minor',
       message: `This looks like a ${jdLevel}-level role and you have ~${years} years — you may read as over-qualified`,
+      evidence: cv.roles.flatMap((_, i) => roleEvidence(cv, i)),
       suggestion: 'Explain the move in your summary or cover letter, or target a more senior opening.',
     }))
   }
@@ -84,6 +90,7 @@ export function scoreSeniority(
     findings.push(makeFinding('seniority', {
       severity: 'minor',
       message: `${jdLevel ? `${jdLevel[0]!.toUpperCase()}${jdLevel.slice(1)}` : 'This'} role expects ownership signals — only ${scopeSignals} bullet(s) show scope (led, owned, architected, mentored)`,
+      evidence: cv.bullets.slice(0, 4).flatMap((_, i) => bulletEvidence(cv, i).slice(0, 1)),
       suggestion: 'Where true, make ownership explicit: what you led, designed or owned, and for whom.',
     }))
   }
@@ -91,7 +98,7 @@ export function scoreSeniority(
   const score = yearsScore === null ? scopeScore : Math.round(0.65 * yearsScore + 0.35 * scopeScore)
   return {
     score,
-    details: { years, yearsSource, requiredYears, jdLevel, cvLevel, scopeSignals, expectedScope, yearsScore, scopeScore },
+    details: { years, yearsSource, requiredYears, jdLevel, cvLevel, scopeSignals, expectedScope, yearsScore, scopeScore, experience: breakdown },
     findings,
   }
 }

@@ -7,13 +7,13 @@
   },
   "expect": {
     "mode": "jd",
-    "total": 33,
+    "total": 32,
     "scores": {
       "roleMatch": 14,
       "skillsMatch": 0,
       "experienceMatch": 59,
       "ats": 61,
-      "impact": 11,
+      "impact": 6,
       "readability": 47,
       "structure": 91
     },

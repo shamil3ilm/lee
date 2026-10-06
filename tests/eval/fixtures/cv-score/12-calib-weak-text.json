@@ -1,0 +1,17 @@
+{
+  "name": "Calibration: weak text CV",
+  "notes": "v1.1 calibration set. Duty-style bullets with no numbers, thin roles, no Skills section, an unexplained gap. Should land in the D/F band.",
+  "inputs": {
+    "text": "Sam Lee\nDeveloper\nsam.lee@example.com\n\nExperience\nDeveloper at Litware | 2023 – Present\n• Responsible for website updates.\n• Worked on bug fixes.\n• Was part of the team that did testing.\nIntern at Proseware | 2021 – 2021\n• Helped with tasks.\n\nEducation\nDiploma in IT",
+    "fileType": "pdf",
+    "pageCount": 1,
+    "job": null
+  },
+  "expect": {
+    "mode": "general",
+    "totalRange": [30, 60],
+    "scoreRanges": { "impact": [0, 30] },
+    "parse": { "bulletsPerRole": [3, 1], "companies": ["Litware", "Proseware"], "bullets": 4 },
+    "findings": ["weak phrase (\"responsible for\")", "4 of 4 bullets have no number", "Employment gap of 12 months"]
+  }
+}

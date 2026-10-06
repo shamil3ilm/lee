@@ -11,11 +11,19 @@ function allLines(cv: ScorableCv): string[] {
   return cv.lines ?? cv.plainText.split('\n')
 }
 
+/** `needle` as it is written in `text` (case preserved), or undefined. */
+function matchIn(text: string, needle: string | undefined): string | undefined {
+  if (!needle) return undefined
+  const at = text.toLowerCase().indexOf(needle.toLowerCase())
+  return at === -1 ? undefined : text.slice(at, at + needle.length)
+}
+
 function ref(cv: ScorableCv, index: number, highlight?: string): CvLineRef | null {
-  const text = allLines(cv)[index]
-  if (text === undefined || !text.trim()) return null
-  const h = highlight && text.toLowerCase().includes(highlight.toLowerCase()) ? highlight : undefined
-  return { index, text: text.trim(), ...(h ? { highlight: h } : {}) }
+  const raw = allLines(cv)[index]
+  if (raw === undefined || !raw.trim()) return null
+  const text = raw.trim()
+  const h = matchIn(text, highlight)
+  return { index, text, ...(h ? { highlight: h } : {}) }
 }
 
 function refs(cv: ScorableCv, indexes: readonly number[], highlight?: string): CvLineRef[] {
@@ -45,9 +53,7 @@ export function bulletEvidence(cv: ScorableCv, bulletIndex: number, highlight?: 
   const b = cv.bullets[bulletIndex]
   if (!b) return []
   const idx = b.lines?.length ? b.lines : [findLine(cv, b.text.slice(0, 40))].filter((x): x is number => x !== undefined)
-  if (!highlight) return refs(cv, idx)
-  const lines = refs(cv, idx)
-  return lines.map((l) => (l.text.toLowerCase().includes(highlight.toLowerCase()) ? { ...l, highlight } : l))
+  return refs(cv, idx, highlight)
 }
 
 /** Header line(s) of a role. */
@@ -71,11 +77,19 @@ export function linesContaining(cv: ScorableCv, needle: RegExp, max = MAX_LINES)
   const out: CvLineRef[] = []
   allLines(cv).forEach((l, i) => {
     if (out.length >= max) return
+    if (!l.trim()) return
     const m = needle.exec(l)
     needle.lastIndex = 0
-    if (m) out.push({ index: i, text: l.trim(), highlight: m[0] })
+    if (m) out.push({ index: i, text: l.trim(), ...(m[0].trim() ? { highlight: m[0].trim() } : {}) })
   })
   return out
+}
+
+/** Body lines of the first section whose heading matches `heading` (e.g. /skill/i). */
+export function sectionEvidence(cv: ScorableCv, heading: RegExp, max = 4): CvLineRef[] {
+  const sec = cv.sections.find((s) => heading.test(s.heading))
+  if (!sec?.lineIndexes?.length) return []
+  return refs(cv, sec.lineIndexes).slice(0, max)
 }
 
 /** The section heading line for a canonical section, when present. */

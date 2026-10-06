@@ -33,6 +33,29 @@ const VERB_PAIRS: [past: string, base: string][] = [
   ['transformed', 'transform'], ['unified', 'unify'], ['upgraded', 'upgrade'],
   ['wrote', 'write'], ['authored', 'author'], ['coached', 'coach'],
   ['analyzed', 'analyze'], ['instrumented', 'instrument'], ['partnered', 'partner'],
+  // v1.1
+  ['extended', 'extend'], ['hardened', 'harden'], ['enforced', 'enforce'],
+  ['containerized', 'containerize'], ['documented', 'document'], ['configured', 'configure'],
+  ['refined', 'refine'], ['tightened', 'tighten'], ['audited', 'audit'],
+  ['added', 'add'], ['coordinated', 'coordinate'], ['investigated', 'investigate'],
+  ['analysed', 'analyse'], ['optimised', 'optimise'], ['modernised', 'modernise'],
+  ['standardised', 'standardise'], ['organised', 'organise'], ['prepared', 'prepare'],
+]
+
+/**
+ * v1.1 — duty phrases that weaken a bullet when they appear AFTER a strong
+ * lead verb ("Extended X, and contributed to Y"). Minor: the bullet still
+ * opens with an action. ("helped" is left out — "a tool that helped 20
+ * teams" is outcome language.)
+ */
+export const WEAK_PHRASES_MID: readonly string[] = [
+  'contributed to',
+  'involved in',
+  'participated in',
+  'responsible for',
+  'worked on',
+  'assisted with',
+  'was part of',
 ]
 
 export const STRONG_VERBS_PAST = new Set(VERB_PAIRS.map(([p]) => p))

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Gauge, Loader2 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CV_FIT_TARGET, type CvFitView } from '@/lib/cv-score/fit'
@@ -55,6 +56,14 @@ function FitSummary({ fit }: { fit: CvFitView }) {
         ))}
       </dl>
       <p className="truncate text-xs text-muted-foreground">Scored: {fit.sourceLabel || 'CV'}</p>
+      {fit.outdated ? (
+        <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground" data-testid="cv-fit-outdated">
+          <Badge variant="outline" className="font-normal">
+            Older scorer{fit.scorerVersion ? ` v${fit.scorerVersion}` : ''}
+          </Badge>
+          The scoring rules changed since. Score again to compare with current results.
+        </p>
+      ) : null}
       {fit.mode === 'jd' && fit.overall < CV_FIT_TARGET ? (
         <p className="text-xs text-muted-foreground">
           Below {CV_FIT_TARGET}. Tailor your CV to this job before applying.

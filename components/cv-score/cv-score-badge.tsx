@@ -21,15 +21,23 @@ export function CvScoreBadge({ documentId, score, fallback = null, className }: 
   if (!score) return fallback
   const label = overallLabel(score.mode)
   const tone = scoreTone(score.overall)
+  const older = score.outdated ? ' (older scorer version: score again for current rules)' : ''
   return (
     <Link
       href={`/cv-score?documentId=${documentId}`}
-      aria-label={`${label} ${score.overall} of 100. Open CV score`}
-      title={`${label}: ${score.overall}/100`}
+      aria-label={`${label} ${score.overall} of 100${older}. Open CV score`}
+      title={`${label}: ${score.overall}/100${older}`}
       className={cn('inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', className)}
     >
-      <Badge variant="outline" className={cn('border-transparent text-[10px] tabular-nums', tone.bg, tone.text)}>
+      <Badge
+        variant="outline"
+        className={cn(
+          'border-transparent text-[10px] tabular-nums',
+          score.outdated ? 'bg-muted text-muted-foreground' : [tone.bg, tone.text],
+        )}
+      >
         {score.overall}
+        {score.outdated ? <span aria-hidden> · old</span> : null}
       </Badge>
     </Link>
   )

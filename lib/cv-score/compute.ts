@@ -14,6 +14,7 @@ import { scoreStructure } from './dimensions/structure'
 import { sortFindings } from './findings'
 import { composeHeadlines } from './headlines'
 import { hasJdSignal } from './jd'
+import { resolveRegion } from './region'
 import { SCORER_VERSION } from './version'
 import {
   isSkipped,
@@ -40,6 +41,8 @@ export function computeCvScore(input: ComputeInput): CvScoreResult {
   const { cv, ctx } = input
   const target = hasJdSignal(input.target) ? input.target : null
   const jdMode = target !== null
+  // v1.1 — the target job's location, else the user's search preferences.
+  const region = resolveRegion(input.target, ctx)
 
   const dimensions: Partial<Record<DimensionKey, DimensionOutcome>> = {}
   if (target) {
@@ -53,10 +56,10 @@ export function computeCvScore(input: ComputeInput): CvScoreResult {
     dimensions.seniority = scoreSeniority(cv, target, ctx)
     dimensions.domain = scoreDomain(cv, target, ctx)
   }
-  dimensions.ats = scoreAts(cv)
+  dimensions.ats = scoreAts(cv, { region })
   dimensions.impact = scoreImpact(cv, ctx)
   dimensions.readability = scoreReadability(cv)
-  dimensions.structure = scoreStructure(cv, ctx)
+  dimensions.structure = scoreStructure(cv, { ...ctx, region })
 
   const composed = composeHeadlines({ dimensions, jdMode, targetTitle: target?.title })
   const weightOf = (k: ComponentHeadlineKey): number => composed.scores[k].weight

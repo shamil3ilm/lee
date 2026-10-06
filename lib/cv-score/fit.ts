@@ -5,6 +5,7 @@
  */
 import { HEADLINE_LABELS } from './headlines'
 import type { ComponentHeadlineKey } from './types'
+import { isOutdatedScore } from './version'
 
 /** Total Match below this is worth tailoring before applying. */
 export const CV_FIT_TARGET = 70
@@ -18,13 +19,20 @@ export function overallLabel(mode: string): string {
 export interface DocScore {
   overall: number
   mode: string
+  /** v1.1 — scored by an older scorer version (rules have changed since). */
+  outdated?: boolean
 }
 
 /** documentId -> latest score, from the batched latest-per-document query. */
 export function toDocScoreMap(
-  rows: readonly { documentId: string; overall: number; mode: string }[],
+  rows: readonly { documentId: string; overall: number; mode: string; scorerVersion?: string | null }[],
 ): Record<string, DocScore> {
-  return Object.fromEntries(rows.map((r) => [r.documentId, { overall: r.overall, mode: r.mode }]))
+  return Object.fromEntries(
+    rows.map((r) => [
+      r.documentId,
+      { overall: r.overall, mode: r.mode, ...(isOutdatedScore(r.scorerVersion) ? { outdated: true } : {}) },
+    ]),
+  )
 }
 
 export interface HeadlineView {
@@ -42,8 +50,12 @@ export interface CvFitView {
   sourceLabel: string
   createdAt: string
   headlines: HeadlineView[]
-  /** Change in the overall score since the previous run in the same mode. */
+  /** Change in the overall score since the previous run in the same mode (and scorer version). */
   delta: number | null
+  /** v1.1 — the scorer version that produced the latest score (absent on very old rows). */
+  scorerVersion?: string
+  /** v1.1 — true when the latest score came from an older scorer version. */
+  outdated: boolean
 }
 
 /** Minimal shape of a cv_scores row this module reads. */
@@ -55,6 +67,7 @@ export interface ScoreRowLike {
   sourceLabel: string
   scores: unknown
   createdAt: Date
+  scorerVersion?: string | null
 }
 
 const JD_HEADLINES: readonly ComponentHeadlineKey[] = ['roleMatch', 'skillsMatch', 'experienceMatch', 'ats']
@@ -75,7 +88,8 @@ function headlineScore(scores: unknown, key: ComponentHeadlineKey): number | nul
 export function toCvFitView(rows: readonly ScoreRowLike[]): CvFitView | null {
   const [latest, ...older] = rows
   if (!latest) return null
-  const previous = older.find((r) => r.mode === latest.mode)
+  // Scores from different rule sets aren't comparable: no delta across versions.
+  const previous = older.find((r) => r.mode === latest.mode && (r.scorerVersion ?? null) === (latest.scorerVersion ?? null))
   const keys = latest.mode === 'jd' ? JD_HEADLINES : GENERAL_HEADLINES
   return {
     id: latest.id,
@@ -87,6 +101,8 @@ export function toCvFitView(rows: readonly ScoreRowLike[]): CvFitView | null {
     createdAt: latest.createdAt.toISOString(),
     headlines: keys.map((key) => ({ key, label: HEADLINE_LABELS[key], score: headlineScore(latest.scores, key) })),
     delta: previous ? latest.overall - previous.overall : null,
+    ...(latest.scorerVersion ? { scorerVersion: latest.scorerVersion } : {}),
+    outdated: isOutdatedScore(latest.scorerVersion),
   }
 }
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import * as documentsQ from '@/lib/db/queries/documents'
 import * as cvScoresQ from '@/lib/db/queries/cvScores'
 import { FixtureAIProvider } from '@/lib/ai/fixtures'
-import { scoreCv } from '@/lib/cv-score/score'
+import { scoreCv, SCORER_VERSION } from '@/lib/cv-score/score'
 import { batchScoreMaster, compareCvs } from '@/lib/cv-score/compare'
 import { applyAutofix, previewAutofix } from '@/lib/cv-score/autofix'
 import { CvScoreError } from '@/lib/cv-score/errors'
@@ -59,7 +59,7 @@ describe('scoreCv (integration)', () => {
       overall: r.total.score,
       grade: r.total.grade,
       mode: 'jd',
-      scorerVersion: '1.0.0',
+      scorerVersion: SCORER_VERSION,
       aiCallId: r.aiCallId,
     })
     const scores = row!.scores as Record<string, { score: number | null }>

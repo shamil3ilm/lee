@@ -9,10 +9,10 @@
   },
   "expect": {
     "mode": "general",
-    "total": 63,
+    "total": 60,
     "scores": {
       "ats": 53,
-      "impact": 92,
+      "impact": 83,
       "readability": 60,
       "structure": 30
     },

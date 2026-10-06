@@ -106,6 +106,8 @@ export interface CvScoreSummary {
   grade: string
   mode: string
   createdAt: Date
+  /** v1.1 — lets badges mark scores from an older rule set. */
+  scorerVersion: string
 }
 
 /**
@@ -125,6 +127,7 @@ export async function latestByDocuments(
       grade: cvScores.grade,
       mode: cvScores.mode,
       createdAt: cvScores.createdAt,
+      scorerVersion: cvScores.scorerVersion,
     })
     .from(cvScores)
     .where(and(eq(cvScores.userId, userId), inArray(cvScores.documentId, [...documentIds])))

@@ -12,10 +12,11 @@
  *   missing — no trace in the CV
  */
 import { canonicalize, familyOf, findSkillsInText } from '../synonyms'
+import { headerEvidence, linesContaining, sectionEvidence } from '../evidence'
 import { makeFinding } from '../findings'
 import { niceToHaveFromDescription } from '../jd'
 import { looseNormalize } from '../text'
-import type { CvFinding, DimensionResult, JobTarget, ScorableCv, ScoreContext, SkippedDimension } from '../types'
+import type { CvFinding, CvLineRef, DimensionResult, JobTarget, ScorableCv, ScoreContext, SkippedDimension } from '../types'
 
 export type KeywordStatus = 'matched' | 'partial' | 'missing'
 
@@ -41,6 +42,19 @@ export interface KeywordDetails {
 export interface JdTerms {
   required: string[]
   niceToHave: string[]
+}
+
+function skillsOrHeader(cv: ScorableCv): CvLineRef[] {
+  const s = sectionEvidence(cv, /skill|competenc|technolog|tool|stack/i)
+  return s.length ? s : headerEvidence(cv)
+}
+
+/** Lines mentioning any of `terms` (whole word, case-insensitive). */
+function termLines(cv: ScorableCv, terms: string[]): CvLineRef[] {
+  const alt = terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')
+  if (!alt) return []
+  const found = linesContaining(cv, new RegExp(`(?<![A-Za-z0-9])(?:${alt})(?![A-Za-z0-9])`, 'i'), 4)
+  return found.length ? found : skillsOrHeader(cv)
 }
 
 /** Extract canonical JD skill terms, split required vs nice-to-have. */
@@ -177,6 +191,7 @@ export function scoreKeywords(
       makeFinding('keywords', {
         severity: frac > 0.5 ? 'critical' : frac >= 0.25 ? 'major' : 'minor',
         message: `${missingReq.length} of ${required.length} required skills are missing: ${missingReq.join(', ')}`,
+        evidence: skillsOrHeader(cv),
         suggestion:
           'Only add a skill if you genuinely have it — then show it in a bullet where you used it. Otherwise treat it as a gap to address in your cover letter or learning plan.',
       }),
@@ -188,6 +203,7 @@ export function scoreKeywords(
       makeFinding('keywords', {
         severity: 'minor',
         message: `Nice-to-have skills not found: ${missingNice.join(', ')}`,
+        evidence: skillsOrHeader(cv),
       }),
     )
   }
@@ -197,6 +213,7 @@ export function scoreKeywords(
       makeFinding('keywords', {
         severity: 'minor',
         message: `Listed in Skills but never shown in your experience: ${listedOnly.join(', ')}`,
+        evidence: termLines(cv, listedOnly),
         suggestion: 'Mention where you used these in a role bullet so recruiters see real usage.',
       }),
     )
@@ -211,6 +228,7 @@ export function scoreKeywords(
           {
             severity: 'minor',
             message: `"${h.term}" appears in your ${h.where.join(' / ')} but not in your Skills list`,
+            evidence: termLines(cv, [h.term]),
             suggestion: `Add "${h.term}" to your Skills section so ATS keyword filters pick it up.`,
             fix: { kind: 'add_skill', term: h.term },
             headlines: ['skillsMatch', 'ats'],

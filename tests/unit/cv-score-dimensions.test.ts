@@ -32,14 +32,30 @@ describe('impact', () => {
   it('scores a strong CV 100 with no findings', () => {
     const r = scoreImpact(structured(strongCv()), ctx)
     expect(r.score).toBe(100)
-    expect(r.details).toEqual({ bullets: 10, quantified: 10, quantifiedRatio: 1, strongVerbRatio: 1, weakOpeners: 0 })
+    expect(r.details).toEqual({
+      bullets: 10,
+      quantified: 10,
+      quantifiedRatio: 1,
+      strongVerbRatio: 1,
+      weakOpeners: 0,
+      quantifiedScope: 5,
+      quantifiedOutcome: 5,
+    })
     expect(r.findings).toEqual([])
   })
 
-  it('scores a weak CV 11 and flags each weak opener with a fix payload', () => {
+  it('scores a weak CV 6 and flags each weak opener with a fix payload', () => {
     const r = scoreImpact(structured(weakCv()), ctx)
-    expect(r.score).toBe(11)
-    expect(r.details).toEqual({ bullets: 6, quantified: 0, quantifiedRatio: 0, strongVerbRatio: 0.17, weakOpeners: 4 })
+    expect(r.score).toBe(6)
+    expect(r.details).toEqual({
+      bullets: 6,
+      quantified: 0,
+      quantifiedRatio: 0,
+      strongVerbRatio: 0.17,
+      weakOpeners: 4,
+      quantifiedScope: 0,
+      quantifiedOutcome: 0,
+    })
     const weak = r.findings.filter((f) => f.fix?.kind === 'rewrite_bullet')
     expect(weak.map((f) => f.fix)).toEqual([
       { kind: 'rewrite_bullet', roleIndex: 0, bulletIndex: 0 },
@@ -48,8 +64,8 @@ describe('impact', () => {
       { kind: 'rewrite_bullet', roleIndex: 1, bulletIndex: 0 },
     ])
     expect(weak.every((f) => f.autoFixable && f.severity === 'major' && f.headlines.includes('impact'))).toBe(true)
-    const quant = r.findings.find((f) => f.message.includes('lack a measurable outcome'))
-    expect(quant).toMatchObject({ severity: 'major', message: '6 of 6 bullets lack a measurable outcome' })
+    const quant = r.findings.find((f) => f.message.includes('have no number'))
+    expect(quant).toMatchObject({ severity: 'major', message: '6 of 6 bullets have no number (scope or outcome)' })
     expect(r.findings).toHaveLength(5)
   })
 

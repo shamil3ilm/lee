@@ -7,6 +7,7 @@
  *   stems (or all, when shorter) present in the CV.
  * score = mean of the available components.
  */
+import { headerEvidence, roleEvidence } from '../evidence'
 import { makeFinding } from '../findings'
 import { contentStems, excerpt } from '../text'
 import type { CvFinding, DimensionResult, JobTarget, ScorableCv } from '../types'
@@ -73,6 +74,7 @@ export function scoreRoleAlignment(cv: ScorableCv, target: JobTarget): Dimension
       message: candidates.length
         ? `Your recent titles (${candidates.slice(0, 2).join(', ')}) don't clearly align with "${target.title}"`
         : `No job titles found to compare with "${target.title}"`,
+      evidence: cv.roles.length ? [0, 1].flatMap((i) => roleEvidence(cv, i)) : headerEvidence(cv),
       suggestion: 'If accurate, echo the target role in your headline/summary and emphasise the matching parts of your recent roles.',
     }))
   }
@@ -96,6 +98,7 @@ export function scoreRoleAlignment(cv: ScorableCv, target: JobTarget): Dimension
       severity: responsibilitiesScore < 40 ? 'major' : 'minor',
       message: `${uncovered.length} of ${resp.length} key responsibilities aren't reflected in your CV`,
       location: { section: 'Job description', excerpt: excerpt(uncovered.slice(0, 3).join(' · ')) },
+      evidence: cv.roles.length ? roleEvidence(cv, 0) : headerEvidence(cv),
       suggestion: 'Where you have done similar work, describe it with the same vocabulary the job uses.',
     }))
   }

@@ -1,0 +1,21 @@
+{
+  "name": "Calibration: strong text CV",
+  "notes": "v1.1 calibration set. A senior 1-page PDF text with bullet glyphs, outcome metrics on most bullets, full contact details. Should land in the A band.",
+  "inputs": {
+    "text": "Jordan Rivera\nSenior Backend Engineer\njordan.rivera@example.com | +44 7700 900456 | London, UK | linkedin.com/in/jordan-rivera-example\n\nSummary\nBackend engineer with 8 years building payment and ledger systems in Go, TypeScript and PostgreSQL.\n\nExperience\nSenior Backend Engineer — Northwind Payments | Mar 2021 – Present\n• Led the rebuild of the settlement ledger in Go and PostgreSQL, cutting reconciliation time by 70%.\n• Architected an event-driven payout pipeline on Kafka handling 3M transactions a day with zero downtime.\n• Reduced p95 API latency from 800ms to 150ms by adding Redis caching and tuning 40 slow queries.\n• Mentored 6 engineers through promotion cycles and set up the team's design review process.\nBackend Engineer — Fabrikam Retail | Jan 2018 – Feb 2021\n• Built the order service in TypeScript serving 900k monthly customers across 4 markets.\n• Migrated 35 cron jobs to Kubernetes, saving $6k per month in infrastructure spend.\n• Automated releases with GitHub Actions, shrinking deploy time from 40 to 7 minutes.\nSoftware Engineer — Contoso Labs | Jul 2016 – Dec 2017\n• Developed 10 REST APIs in Node.js for a logistics client, handling 250 requests per second at peak.\n• Raised integration test coverage from 35% to 80% across the core services in six months.\n• Shipped an operations dashboard adopted by 25 staff within its first month of release.\n\nEducation\nBSc Computer Science — University of Westbridge | 2012 – 2016\n\nSkills\nGo, TypeScript, PostgreSQL, Kafka, Redis, Docker, Kubernetes, GitHub Actions",
+    "fileType": "pdf",
+    "pageCount": 1,
+    "job": null
+  },
+  "expect": {
+    "mode": "general",
+    "totalRange": [85, 100],
+    "scoreRanges": { "ats": [90, 100], "impact": [85, 100], "structure": [90, 100] },
+    "parse": {
+      "bulletsPerRole": [4, 3, 3],
+      "companies": ["Northwind Payments", "Fabrikam Retail", "Contoso Labs"],
+      "bullets": 10
+    },
+    "noFindings": ["reverse-chronological", "Keyword stuffing", "have no number"]
+  }
+}

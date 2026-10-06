@@ -11,9 +11,10 @@ import type { AIProvider, RequirementFitItem } from '@/lib/ai/types'
 import { checkCvScoreSignal } from '@/lib/ai/signal'
 import { CV_REQUIREMENT_FIT_PROMPT_VERSION } from '@/lib/ai/prompts/cv-requirement-fit'
 import { logger } from '@/lib/logger'
+import { findLine, headerEvidence } from './evidence'
 import { makeFinding } from './findings'
 import { excerpt, looseNormalize } from './text'
-import type { CvFinding, DimensionResult, JobTarget, ScorableCv, SkippedDimension } from './types'
+import type { CvFinding, CvLineRef, DimensionResult, JobTarget, ScorableCv, SkippedDimension } from './types'
 
 export type FitStatus = 'met' | 'partial' | 'missing'
 
@@ -104,7 +105,15 @@ export function verifyRequirementFit(
   })
 }
 
-export function requirementFitResult(items: VerifiedRequirement[]): DimensionResult<RequirementFitDetails> {
+/** The CV line holding the AI's (verified) supporting quote, else the header. */
+function quoteEvidence(cv: ScorableCv | undefined, quote: string): CvLineRef[] {
+  if (!cv) return []
+  const i = quote.trim() ? findLine(cv, quote.trim().slice(0, 40)) : undefined
+  const lines = cv.lines ?? cv.plainText.split('\n')
+  return i !== undefined ? [{ index: i, text: lines[i]!.trim() }] : headerEvidence(cv)
+}
+
+export function requirementFitResult(items: VerifiedRequirement[], cv?: ScorableCv): DimensionResult<RequirementFitDetails> {
   const count = (s: FitStatus): number => items.filter((i) => i.status === s).length
   const score = items.length
     ? Math.round((items.reduce((s, i) => s + VALUE[i.status], 0) / items.length) * 100)
@@ -118,6 +127,7 @@ export function requirementFitResult(items: VerifiedRequirement[]): DimensionRes
         severity: it.status === 'missing' ? 'major' : 'minor',
         message: `${it.status === 'missing' ? 'Requirement not evidenced' : 'Requirement only partly evidenced'}: "${excerpt(it.requirement, 90)}"${note}`,
         location: { section: 'Job requirements', index, excerpt: excerpt(it.requirement) },
+        evidence: quoteEvidence(cv, it.evidenceVerified ? it.evidence : ''),
         ...(it.suggestion ? { suggestion: it.suggestion } : {}),
       }),
     )
@@ -179,7 +189,7 @@ export async function runRequirementFit(input: RunRequirementFitInput): Promise<
       },
     )
     const verified = verifyRequirementFit(requirements, res.items, input.cv.plainText)
-    return { outcome: requirementFitResult(verified), aiCallId }
+    return { outcome: requirementFitResult(verified, input.cv), aiCallId }
   } catch (err) {
     logger.error('cv_requirement_fit_failed', { err: err instanceof Error ? err.message : String(err) })
     return {

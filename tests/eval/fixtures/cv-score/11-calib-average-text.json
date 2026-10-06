@@ -1,0 +1,20 @@
+{
+  "name": "Calibration: average text CV",
+  "notes": "v1.1 calibration set. A mid-level developer: a couple of metrics, two weak openers, no phone or LinkedIn. Should land in the C/B band — general mode weighs format (ATS, structure) heavily, so a tidy CV with weak content still reaches B-.",
+  "inputs": {
+    "text": "Priya Nair\nFull Stack Developer\npriya.nair@example.com | Bengaluru, India\n\nSummary\nFull stack developer working with React, Node.js and MongoDB on customer-facing web apps.\n\nExperience\nFull Stack Developer — Tailspin Software | Jun 2022 – Present\n• Built the customer portal in React and Node.js used by 12 client companies.\n• Worked on the billing module and fixed payment reconciliation bugs reported by support.\n• Developed REST APIs for the reporting service and documented them for the mobile team.\n• Improved dashboard page load time by 30% by code-splitting the main bundle.\nJunior Developer — Woodgrove Digital | Jan 2021 – May 2022\n• Responsible for maintaining the company website and its landing pages.\n• Created responsive email templates for the marketing team's monthly campaigns.\n• Migrated the blog from a legacy CMS to a headless setup with the senior developer.\n\nEducation\nB.E. Computer Science — Riverside Engineering College | 2017 – 2021\n\nSkills\nReact, Node.js, MongoDB, Express, JavaScript, HTML, CSS, Git",
+    "fileType": "pdf",
+    "pageCount": 1,
+    "job": null
+  },
+  "expect": {
+    "mode": "general",
+    "totalRange": [65, 84],
+    "parse": {
+      "bulletsPerRole": [4, 3],
+      "companies": ["Tailspin Software", "Woodgrove Digital"],
+      "bullets": 7
+    },
+    "findings": ["weak phrase (\"worked on\")", "weak phrase (\"responsible for\")", "Contact details missing: phone, LinkedIn URL"]
+  }
+}

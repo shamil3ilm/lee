@@ -3,6 +3,7 @@ import { categorical } from '@/lib/ui/chart-palette'
 import { DISPLAY_LOCALE } from '@/lib/ui/date'
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
+import { isOutdatedScore, SCORER_VERSION } from '@/lib/cv-score/version'
 import type { HistoryPoint } from './client'
 
 const config: ChartConfig = {
@@ -20,6 +21,7 @@ export function HistoryChart({ points }: { points: HistoryPoint[] }) {
       </p>
     )
   }
+  const olderRuns = points.map((p, i) => (isOutdatedScore(p.scorerVersion) ? i + 1 : 0)).filter((n) => n > 0)
   const data = points.map((p, i) => ({
     run: `#${i + 1}`,
     label: new Date(p.createdAt).toLocaleDateString(DISPLAY_LOCALE),
@@ -28,16 +30,24 @@ export function HistoryChart({ points }: { points: HistoryPoint[] }) {
     impact: p.scores.impact ?? null,
   }))
   return (
-    <ChartContainer config={config} className="aspect-auto h-48 w-full">
-      <LineChart data={data} margin={{ left: -20, right: 8, top: 8 }}>
-        <CartesianGrid vertical={false} />
-        <XAxis dataKey="run" tickLine={false} axisLine={false} />
-        <YAxis domain={[0, 100]} tickLine={false} axisLine={false} width={40} />
-        <ChartTooltip content={<ChartTooltipContent />} />
-        <Line type="monotone" dataKey="total" stroke="var(--color-total)" strokeWidth={2} dot />
-        <Line type="monotone" dataKey="ats" stroke="var(--color-ats)" strokeWidth={1.5} dot={false} />
-        <Line type="monotone" dataKey="impact" stroke="var(--color-impact)" strokeWidth={1.5} dot={false} />
-      </LineChart>
-    </ChartContainer>
+    <div className="space-y-1.5">
+      <ChartContainer config={config} className="aspect-auto h-48 w-full">
+        <LineChart data={data} margin={{ left: -20, right: 8, top: 8 }}>
+          <CartesianGrid vertical={false} />
+          <XAxis dataKey="run" tickLine={false} axisLine={false} />
+          <YAxis domain={[0, 100]} tickLine={false} axisLine={false} width={40} />
+          <ChartTooltip content={<ChartTooltipContent />} />
+          <Line type="monotone" dataKey="total" stroke="var(--color-total)" strokeWidth={2} dot />
+          <Line type="monotone" dataKey="ats" stroke="var(--color-ats)" strokeWidth={1.5} dot={false} />
+          <Line type="monotone" dataKey="impact" stroke="var(--color-impact)" strokeWidth={1.5} dot={false} />
+        </LineChart>
+      </ChartContainer>
+      {olderRuns.length ? (
+        <p className="text-xs text-muted-foreground" data-testid="cv-history-older">
+          {olderRuns.length === 1 ? `Run #${olderRuns[0]} was` : `Runs ${olderRuns.map((n) => `#${n}`).join(', ')} were`}{' '}
+          scored with an older scorer version. v{SCORER_VERSION} uses different rules, so compare runs of the same version.
+        </p>
+      ) : null}
+    </div>
   )
 }

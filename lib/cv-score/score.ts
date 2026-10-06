@@ -15,7 +15,9 @@ import * as profileQ from '@/lib/db/queries/profile'
 import { computeCvScore } from './compute'
 import { CvScoreError } from './errors'
 import { cvToScorable } from './extract'
+import { searchPrefsFromProfile } from '@/lib/discovery/relevance/prefs'
 import { hasJdSignal, jobTargetFromApplication } from './jd'
+import { regionFromSearchPrefs } from './region'
 import { runRequirementFit } from './requirement-fit'
 import { loadDocumentSource, type LoadedSource } from './sources'
 import { extractUpload } from './upload'
@@ -93,6 +95,8 @@ export async function scoreContextFor(userId: string, canAutofix: boolean, now?:
     profile: profile
       ? { seniority: profile.seniority, industries: profile.industries, yearsExperience: profile.yearsExperience }
       : undefined,
+    // v1.1 — target market for phone / page-length advice (a job's own location wins).
+    region: profile ? regionFromSearchPrefs(searchPrefsFromProfile(profile)) : null,
   }
 }
 

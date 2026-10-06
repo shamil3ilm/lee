@@ -5,8 +5,9 @@
  * and from the CV text + profile.industries. Overlap → 100, related industry
  * → 60, unrelated → 25. Skipped when the JD's industry can't be detected.
  */
+import { headerEvidence, sectionEvidence } from '../evidence'
 import { makeFinding } from '../findings'
-import type { DimensionResult, JobTarget, ScorableCv, ScoreContext, SkippedDimension } from '../types'
+import type { CvLineRef, DimensionResult, JobTarget, ScorableCv, ScoreContext, SkippedDimension } from '../types'
 
 export const INDUSTRY_KEYWORDS: Record<string, string[]> = {
   fintech: ['fintech', 'payments', 'payment', 'banking', 'bank', 'lending', 'credit card', 'ledger', 'remittance', 'wallet', 'neobank', 'regtech', 'kyc', 'aml', 'invoicing', 'cheque', 'checks', 'payroll', 'trading', 'brokerage'],
@@ -64,6 +65,11 @@ function canonicalIndustry(raw: string): string | undefined {
   return detectIndustries(r)[0]
 }
 
+function summaryOrHeader(cv: ScorableCv): CvLineRef[] {
+  const s = sectionEvidence(cv, /summary|profile|about|objective|overview/i, 3)
+  return s.length ? s : headerEvidence(cv)
+}
+
 export function scoreDomain(
   cv: ScorableCv,
   target: JobTarget,
@@ -95,6 +101,7 @@ export function scoreDomain(
           message: match === 'related'
             ? `The role is in ${jdIndustries.join('/')}; your background (${cvIndustries.join(', ')}) is adjacent`
             : `The role is in ${jdIndustries.join('/')}; your CV doesn't show experience in that industry`,
+          evidence: summaryOrHeader(cv),
           suggestion: 'Highlight transferable domain experience (regulation, scale, similar customers) in your summary.',
         }),
       ]

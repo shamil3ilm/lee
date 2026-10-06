@@ -1,0 +1,26 @@
+{
+  "name": "Calibration: tricky 2-page layout (no bullet glyphs, company below the dates)",
+  "notes": "v1.1 calibration set. The layout that broke v1.0: wrapped lines without glyphs, company on the line below 'Title <dates>', a non-engineering role overlapping internships, LinkedIn/GitHub only as hyperlinks, a normal amount of 'Laravel'. Target market GCC. A solid junior CV — upper B / lower A band.",
+  "inputs": {
+    "text": "@tricky",
+    "links": "@tricky",
+    "fileType": "pdf",
+    "pageCount": 2,
+    "now": "2026-10-06T00:00:00Z",
+    "region": { "market": "gcc", "source": "prefs", "label": "GCC" },
+    "job": null
+  },
+  "expect": {
+    "mode": "general",
+    "totalRange": [80, 94],
+    "parse": {
+      "bulletsPerRole": [6, 3, 2, 1],
+      "companies": ["Acme Pay", "Contoso Solutions", "Brightpath Academy", "Fabrikam Robotics"],
+      "titles": ["Software Engineer", "PHP Laravel Intern", "Executive Manager", "Web Developer Intern"],
+      "years": 1.3,
+      "bullets": 14
+    },
+    "findings": ["No phone number — GCC recruiters", "later says \"contributed to\"", "show an outcome"],
+    "noFindings": ["reverse-chronological", "Keyword stuffing", "LinkedIn URL", "is typical at", "lack a measurable outcome"]
+  }
+}

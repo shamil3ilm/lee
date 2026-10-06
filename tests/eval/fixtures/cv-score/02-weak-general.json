@@ -8,13 +8,13 @@
   "expect": {
     "mode": "general",
     "totalLabel": "CV Quality",
-    "total": 57,
+    "total": 55,
     "scores": {
       "roleMatch": null,
       "skillsMatch": null,
       "experienceMatch": null,
       "ats": 87,
-      "impact": 11,
+      "impact": 6,
       "readability": 47,
       "structure": 91
     },
@@ -30,7 +30,7 @@
     ],
     "findings": [
       "weak phrase (\"responsible for\")",
-      "6 of 6 bullets lack a measurable outcome",
+      "6 of 6 bullets have no number (scope or outcome)",
       "use passive voice",
       "first-person pronouns",
       "Employment gap of 18 months"

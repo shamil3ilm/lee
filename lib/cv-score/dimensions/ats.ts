@@ -5,10 +5,19 @@
  * single column 15 · file type 10 · no tables/images-as-text 10 ·
  * special characters 5 · no keyword stuffing 10. Keyword presence for a
  * target JD is blended in by the headline composer (headlines.ts).
+ *
+ * v1.1 — phone advice follows the target market (region.ts); keyword
+ * stuffing is judged on prose only (summary + bullets — never the Skills
+ * section or project tech-stack lines), by repetition within one passage or
+ * by a term filling most bullets at high density; findings cite lines.
  */
+import { headerEvidence, linesContaining } from '../evidence'
+import { headingKey } from '../extract'
 import { makeFinding } from '../findings'
+import { phoneAdvice, phoneOptional } from '../region'
 import { findSkillsInText } from '../synonyms'
-import type { CvFinding, DimensionResult, ScorableCv } from '../types'
+import { wordCount } from '../text'
+import type { CvFinding, CvLineRef, DimensionResult, RegionHint, ScorableCv } from '../types'
 
 export interface AtsCheck {
   key: string
@@ -22,7 +31,17 @@ export interface AtsDetails {
   stuffing: { terms: string[]; skillsListed: number; stuffed: boolean }
 }
 
-const STUFF_REPEAT = 8
+export interface AtsOptions {
+  /** v1.1 — target market (phone advice). */
+  region?: RegionHint | null
+}
+
+/** Same term this many times in ONE passage (a bullet, the summary) is stuffing. */
+const STUFF_PER_PASSAGE = 4
+/** …or in at least this many passages, covering this share of them, at this density. */
+const STUFF_MIN_PASSAGES = 6
+const STUFF_PASSAGE_SHARE = 0.6
+const STUFF_DENSITY = 0.04
 const STUFF_SKILLS_LISTED = 40
 const CRITICAL_CAP = 60
 
@@ -30,17 +49,82 @@ function hasSection(cv: ScorableCv, key: string): boolean {
   return (cv.meta.sectionOrder ?? []).includes(key)
 }
 
+/** Prose passages: the headline, the summary and each bullet. */
+function prosePassages(cv: ScorableCv): string[] {
+  const summary = cv.sections
+    .filter((s) => headingKey(s.heading) === 'summary')
+    .map((s) => s.lines.join(' '))
+  return [cv.headline ?? '', ...summary, ...cv.bullets.map((b) => b.text)].filter((t) => t.trim())
+}
+
 export function detectStuffing(cv: ScorableCv): AtsDetails['stuffing'] {
-  const counts = findSkillsInText(cv.plainText)
-  const terms = [...counts.entries()]
-    .filter(([, n]) => n >= STUFF_REPEAT)
+  const passages = prosePassages(cv)
+  const words = passages.reduce((n, p) => n + wordCount(p), 0)
+  const perTerm = new Map<string, { total: number; passages: number; max: number }>()
+  for (const p of passages) {
+    for (const [term, n] of findSkillsInText(p)) {
+      const cur = perTerm.get(term) ?? { total: 0, passages: 0, max: 0 }
+      perTerm.set(term, { total: cur.total + n, passages: cur.passages + 1, max: Math.max(cur.max, n) })
+    }
+  }
+  const terms = [...perTerm.entries()]
+    .filter(([, s]) =>
+      s.max >= STUFF_PER_PASSAGE ||
+      (s.passages >= STUFF_MIN_PASSAGES &&
+        s.passages / passages.length >= STUFF_PASSAGE_SHARE &&
+        words > 0 &&
+        s.total / words >= STUFF_DENSITY))
     .map(([t]) => t)
     .sort()
   const stuffed = terms.length > 0 || cv.skillsListed.length > STUFF_SKILLS_LISTED
   return { terms, skillsListed: cv.skillsListed.length, stuffed }
 }
 
-export function scoreAts(cv: ScorableCv): DimensionResult<AtsDetails> {
+const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+function headingLines(cv: ScorableCv): CvLineRef[] {
+  const lines = cv.lines ?? cv.plainText.split('\n')
+  return cv.sections
+    .filter((s) => s.headingIndex !== undefined)
+    .map((s) => ({ index: s.headingIndex!, text: (lines[s.headingIndex!] ?? s.heading).trim() }))
+    .slice(0, 8)
+}
+
+function contactPoints(cv: ScorableCv, region: RegionHint | null): number {
+  const c = cv.contact
+  const phoneOk = !!c.phone || phoneOptional(region)
+  return (c.email ? 10 : 0) + (phoneOk ? 5 : 0) + (c.linkedin ? 3 : 0) + (c.location ? 2 : 0)
+}
+
+function contactFindings(cv: ScorableCv, region: RegionHint | null): CvFinding[] {
+  const c = cv.contact
+  const header = headerEvidence(cv)
+  const out: CvFinding[] = []
+  if (!c.email) {
+    out.push(makeFinding('ats', {
+      severity: 'critical',
+      message: 'No email address detected',
+      evidence: header,
+      suggestion: 'Recruiters and ATS forms reply by email — put it in plain text at the top of the CV (not inside an image or header graphic).',
+    }))
+  }
+  const advice = phoneAdvice(c.phone, region)
+  if (advice) out.push(makeFinding('ats', { ...advice, evidence: header }))
+  const listPhone = !c.phone && !phoneOptional(region) && !advice
+  const missing = [listPhone && 'phone', !c.linkedin && 'LinkedIn URL', !c.location && 'location'].filter(Boolean) as string[]
+  if (missing.length) {
+    out.push(makeFinding('ats', {
+      severity: 'minor',
+      message: `Contact details missing: ${missing.join(', ')}`,
+      evidence: header,
+      suggestion: 'Recruiters often filter by location and follow up by phone or LinkedIn — having these in the header makes that easy.',
+    }))
+  }
+  return out
+}
+
+export function scoreAts(cv: ScorableCv, opts: AtsOptions = {}): DimensionResult<AtsDetails> {
+  const region = opts.region ?? null
   const findings: CvFinding[] = []
   const checks: AtsCheck[] = []
   const add = (key: string, label: string, points: number, max: number): void => {
@@ -55,14 +139,16 @@ export function scoreAts(cv: ScorableCv): DimensionResult<AtsDetails> {
     findings.push(makeFinding('ats', {
       severity: 'major',
       message: `Only ${chars} characters of text could be extracted`,
-      suggestion: 'Export the CV as a text-based PDF or DOCX (not a scan or image).',
+      evidence: headerEvidence(cv),
+      suggestion: 'An ATS reads only real text — exporting the CV as a text-based PDF or DOCX (not a scan or image) fixes this.',
     }))
   } else {
     add('text', 'Text extractable', 0, 15)
     findings.push(makeFinding('ats', {
       severity: 'critical',
       message: 'Almost no text could be extracted — an ATS will see a blank CV',
-      suggestion: 'Re-export as a text-based PDF or DOCX; avoid scanned or image-only files.',
+      evidence: headerEvidence(cv),
+      suggestion: 'Re-exporting as a text-based PDF or DOCX lets parsers read it; scanned or image-only files read as blank.',
     }))
   }
 
@@ -71,11 +157,13 @@ export function scoreAts(cv: ScorableCv): DimensionResult<AtsDetails> {
   const hasSkills = hasSection(cv, 'skills')
   const hasEdu = hasSection(cv, 'education')
   add('headings', 'Standard section headings', (hasExp ? 9 : 0) + (hasSkills ? 3 : 0) + (hasEdu ? 3 : 0), 15)
+  const headings = headingLines(cv)
   if (!hasExp) {
     findings.push(makeFinding('ats', {
       severity: 'major',
       message: 'No standard "Experience" heading found',
-      suggestion: 'Use a plain heading such as "Experience" or "Work Experience" so ATS parsers find your roles.',
+      evidence: headings.length ? headings : headerEvidence(cv),
+      suggestion: 'ATS parsers find roles by heading — a plain "Experience" or "Work Experience" heading lets them.',
     }))
   }
   const missingSecs = [!hasSkills && 'Skills', !hasEdu && 'Education'].filter(Boolean) as string[]
@@ -83,36 +171,24 @@ export function scoreAts(cv: ScorableCv): DimensionResult<AtsDetails> {
     findings.push(makeFinding('ats', {
       severity: 'minor',
       message: `Missing standard section(s): ${missingSecs.join(', ')}`,
-      suggestion: 'ATS parsers map fields by heading — include the standard sections with conventional names.',
+      evidence: headings.length ? headings : headerEvidence(cv),
+      suggestion: 'ATS parsers map fields by heading — conventional section names help them file your details.',
     }))
   }
 
   // 3. Contact
-  const c = cv.contact
-  add('contact', 'Contact details', (c.email ? 10 : 0) + (c.phone ? 5 : 0) + (c.linkedin ? 3 : 0) + (c.location ? 2 : 0), 20)
-  if (!c.email) {
-    findings.push(makeFinding('ats', {
-      severity: 'critical',
-      message: 'No email address detected',
-      suggestion: 'Put your email in plain text at the top of the CV (not inside an image or header graphic).',
-    }))
-  }
-  const missingContact = [!c.phone && 'phone', !c.linkedin && 'LinkedIn URL', !c.location && 'location'].filter(Boolean) as string[]
-  if (missingContact.length) {
-    findings.push(makeFinding('ats', {
-      severity: 'minor',
-      message: `Contact details missing: ${missingContact.join(', ')}`,
-      suggestion: 'Recruiters filter by location and reach out by phone — include them in the header.',
-    }))
-  }
+  add('contact', 'Contact details', contactPoints(cv, region), 20)
+  findings.push(...contactFindings(cv, region))
 
   // 4. Layout
   if (cv.meta.columnsSuspected) {
     add('layout', 'Single-column layout', 0, 15)
+    const gapped = linesContaining(cv, /\S(?: {3,}|\t+)\S/).map(({ highlight: _h, ...l }) => l)
     findings.push(makeFinding('ats', {
       severity: 'major',
       message: 'Multi-column layout suspected — ATS parsers often read columns out of order',
-      suggestion: 'Switch to a single-column template so sections are parsed in reading order.',
+      evidence: gapped.length ? gapped : headerEvidence(cv),
+      suggestion: 'A single-column template keeps sections in reading order for parsers.',
     }))
   } else add('layout', 'Single-column layout', 15, 15)
 
@@ -124,7 +200,8 @@ export function scoreAts(cv: ScorableCv): DimensionResult<AtsDetails> {
     findings.push(makeFinding('ats', {
       severity: 'minor',
       message: `Plain ${ft.toUpperCase()} file — most application forms expect PDF or DOCX`,
-      suggestion: 'Submit a text-based PDF or DOCX.',
+      evidence: headerEvidence(cv, 1),
+      suggestion: 'A text-based PDF or DOCX is what most application forms accept.',
     }))
   } else add('fileType', 'ATS-friendly file type', 5, 10)
 
@@ -138,7 +215,8 @@ export function scoreAts(cv: ScorableCv): DimensionResult<AtsDetails> {
       findings.push(makeFinding('ats', {
         severity: 'major',
         message: 'Table-like layout detected — cells are often scrambled by ATS parsers',
-        suggestion: 'Replace tables with plain headings and bullet lists.',
+        evidence: linesContaining(cv, /(?:\|[^|]*){3,}|(?:\t[^\t]*){2,}/).map(({ highlight: _h, ...l }) => l),
+        suggestion: 'Plain headings and bullet lists parse more reliably than tables.',
       }))
     }
     const pages = cv.meta.pageCountEstimate ?? 1
@@ -147,7 +225,8 @@ export function scoreAts(cv: ScorableCv): DimensionResult<AtsDetails> {
       findings.push(makeFinding('ats', {
         severity: 'major',
         message: 'Very little text per page — content may be embedded as images',
-        suggestion: 'Make sure all text is real text, not part of an image or graphic.',
+        evidence: headerEvidence(cv),
+        suggestion: 'Text inside images or graphics is invisible to parsers — keeping it as real text avoids that.',
       }))
     }
   }
@@ -162,7 +241,8 @@ export function scoreAts(cv: ScorableCv): DimensionResult<AtsDetails> {
     findings.push(makeFinding('ats', {
       severity: 'minor',
       message: `Unusual symbols or emoji detected (${emoji} emoji)`,
-      suggestion: 'Replace icons/emoji with plain words — many ATS parsers drop or garble them.',
+      evidence: linesContaining(cv, /[\p{Extended_Pictographic}]|[^ -~\p{L}\p{N}\s•–—’‘“”€£¥·]/u),
+      suggestion: 'Many ATS parsers drop or garble icons and emoji — plain words survive.',
     }))
   } else add('chars', 'Plain characters', 5, 5)
 
@@ -170,12 +250,15 @@ export function scoreAts(cv: ScorableCv): DimensionResult<AtsDetails> {
   const stuffing = detectStuffing(cv)
   add('stuffing', 'No keyword stuffing', stuffing.stuffed ? 0 : 10, 10)
   if (stuffing.stuffed) {
+    const term = stuffing.terms[0]
+    const ev = term ? linesContaining(cv, new RegExp(`\\b${escapeRe(term)}\\b`, 'i')) : []
     findings.push(makeFinding('ats', {
       severity: 'major',
       message: stuffing.terms.length
-        ? `Keyword stuffing suspected: ${stuffing.terms.join(', ')} repeated ${STUFF_REPEAT}+ times`
+        ? `Keyword stuffing suspected: ${stuffing.terms.join(', ')} repeated far more than the rest of the CV`
         : `Keyword stuffing suspected: ${stuffing.skillsListed} skills listed`,
-      suggestion: 'Modern ATS and recruiters penalise stuffing — keep skills you can evidence and cut the rest.',
+      evidence: ev.length ? ev : headingLines(cv),
+      suggestion: 'Modern ATS and recruiters discount repeated keywords — skills you can evidence in a bullet carry more weight.',
     }))
   }
 

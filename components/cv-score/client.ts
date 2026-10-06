@@ -75,6 +75,8 @@ export interface HistoryPoint {
   scores: Record<string, number | null>
   /** Saved copy of an uploaded CV in the user's Drive (A2), if any. */
   driveFileId?: string | null
+  /** v1.1 — scorer version of this run; older versions used different rules. */
+  scorerVersion?: string
 }
 
 export function history(params: { documentId?: string | null; applicationId?: string | null }): Promise<ApiResult<HistoryPoint[]>> {

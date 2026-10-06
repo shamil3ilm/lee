@@ -61,6 +61,8 @@ export function jobTargetFromApplication(app: ApplicationWithJob): JobTarget {
     niceToHave: [...new Set(niceToHave)],
     responsibilities: strArray(meta.responsibilities),
     descriptionMd: description,
+    location: app.job.location ?? null,
+    remoteType: app.job.remoteType ?? null,
   }
 }
 

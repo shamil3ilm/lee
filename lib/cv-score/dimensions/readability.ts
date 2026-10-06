@@ -4,11 +4,12 @@
  * Points (sum 100): bullet length in 12–28 words 40 · passive voice 20 ·
  * repetition 15 · tense consistency 15 · no first-person pronouns 10.
  */
+import { bulletEvidence } from '../evidence'
 import { makeFinding } from '../findings'
 import { BASE_TO_PAST, STRONG_VERBS_BASE } from '../lexicon'
 import { excerpt, STOPWORDS, wordCount } from '../text'
 import { firstWord } from './impact'
-import type { CvFinding, DimensionResult, ScorableCv } from '../types'
+import type { CvFinding, CvLineRef, DimensionResult, ScorableCv } from '../types'
 
 export interface ReadabilityDetails {
   bullets: number
@@ -42,6 +43,16 @@ export function isPresentTenseOpener(text: string): boolean {
   return false
 }
 
+/** First line of each listed bullet (up to 6), optionally highlighting a phrase. */
+function bulletsEvidence(cv: ScorableCv, indexes: number[], highlight?: (i: number) => string | undefined): CvLineRef[] {
+  return indexes.slice(0, 6).flatMap((i) => {
+    const h = highlight?.(i)
+    const lines = bulletEvidence(cv, i, h)
+    const hit = h ? lines.find((l) => l.highlight) : undefined
+    return [hit ?? lines[0]].filter((l): l is CvLineRef => !!l)
+  })
+}
+
 export function scoreReadability(cv: ScorableCv): DimensionResult<ReadabilityDetails> {
   const bullets = cv.bullets
   const total = bullets.length
@@ -64,7 +75,8 @@ export function scoreReadability(cv: ScorableCv): DimensionResult<ReadabilityDet
       severity: 'minor',
       message: `Bullet is ${x.n} words — long bullets get skimmed`,
       location: { section: x.b.section, index: x.i, excerpt: excerpt(x.b.text) },
-      suggestion: 'Split into two bullets or cut to one outcome (12–28 words).',
+      evidence: bulletEvidence(cv, x.i),
+      suggestion: 'Long bullets get skimmed — splitting it in two, or keeping one outcome (12–28 words), keeps it readable.',
     }))
   }
   const tooShort = lens.filter((n) => n < 6).length
@@ -72,7 +84,8 @@ export function scoreReadability(cv: ScorableCv): DimensionResult<ReadabilityDet
     findings.push(makeFinding('readability', {
       severity: 'minor',
       message: `${tooShort} bullets are under 6 words — too thin to show impact`,
-      suggestion: 'Expand with what you did, how, and the result.',
+      evidence: bulletsEvidence(cv, lens.map((n, i) => (n < 6 ? i : -1)).filter((i) => i >= 0)),
+      suggestion: 'A short bullet leaves out the how and the result — adding them shows the impact.',
     }))
   }
 
@@ -86,7 +99,8 @@ export function scoreReadability(cv: ScorableCv): DimensionResult<ReadabilityDet
       severity: passiveRatio > 0.3 ? 'major' : 'minor',
       message: `${passive.length} of ${total} bullets use passive voice`,
       location: { section: ex.b.section, index: ex.i, excerpt: excerpt(ex.b.text) },
-      suggestion: 'Rewrite actively: "Reduced latency by 40%" instead of "Latency was reduced by 40%".',
+      evidence: bulletsEvidence(cv, passive.map((x) => x.i), (i) => PASSIVE_RE.exec(bullets[i]!.text)?.[0]),
+      suggestion: 'Active voice reads stronger — "Reduced latency" rather than "Latency was reduced".',
     }))
   }
 
@@ -114,13 +128,20 @@ export function scoreReadability(cv: ScorableCv): DimensionResult<ReadabilityDet
     findings.push(makeFinding('readability', {
       severity: 'minor',
       message: `Repetitive wording: ${[...repeatedOpeners.map((w) => `"${w}…" opens 3+ bullets`), ...repeatedWords.map((w) => `"${w}"`)].join(', ')}`,
-      suggestion: 'Vary your verbs and phrasing so each bullet reads as a distinct achievement.',
+      evidence: bulletsEvidence(
+        cv,
+        bullets
+          .map((b, i) => (repeatedOpeners.includes(firstWord(b.text)) || repeatedWords.some((w) => b.text.toLowerCase().includes(w)) ? i : -1))
+          .filter((i) => i >= 0),
+      ),
+      suggestion: 'Varied verbs and phrasing help each bullet read as a distinct achievement.',
     }))
   }
 
   // Tense — past roles should read in the past tense.
   let pastRoleBullets = 0
   let tenseIssues = 0
+  const tenseIdx: number[] = []
   let firstIssue: { text: string; section: string; i: number } | null = null
   bullets.forEach((b, i) => {
     if (b.roleIndex === undefined) return
@@ -129,6 +150,7 @@ export function scoreReadability(cv: ScorableCv): DimensionResult<ReadabilityDet
     pastRoleBullets++
     if (isPresentTenseOpener(b.text)) {
       tenseIssues++
+      tenseIdx.push(i)
       firstIssue ??= { text: b.text, section: b.section, i }
     }
   })
@@ -139,7 +161,8 @@ export function scoreReadability(cv: ScorableCv): DimensionResult<ReadabilityDet
       severity: 'minor',
       message: `${tenseIssues} bullet(s) in past roles use present tense`,
       location: { section: fi.section, index: fi.i, excerpt: excerpt(fi.text) },
-      suggestion: 'Use past tense for previous roles ("Built", "Led") and present tense only for your current role.',
+      evidence: bulletsEvidence(cv, tenseIdx),
+      suggestion: 'Recruiters read past tense as finished work — past tense for previous roles ("Built", "Led") and present tense only for your current role.',
     }))
   }
 
@@ -150,7 +173,12 @@ export function scoreReadability(cv: ScorableCv): DimensionResult<ReadabilityDet
     findings.push(makeFinding('readability', {
       severity: 'minor',
       message: `${pronounBullets} bullet(s) use first-person pronouns (I, my, we)`,
-      suggestion: 'Drop pronouns — CV bullets are implied first person: "Built…" not "I built…".',
+      evidence: bulletsEvidence(
+        cv,
+        bullets.map((b, i) => (PRONOUN_RE.test(b.text) ? i : -1)).filter((i) => i >= 0),
+        (i) => PRONOUN_RE.exec(bullets[i]!.text)?.[0],
+      ),
+      suggestion: 'CV bullets are implied first person, so pronouns can go: "Built…" rather than "I built…".',
     }))
   }
 
