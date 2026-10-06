@@ -4,19 +4,33 @@
  * - Structured sources (master / tailored CV JSON) are mapped directly — best
  *   fidelity, no parsing ambiguity.
  * - Text sources (uploads, LaTeX stripped to text) go through a heuristic
- *   segmenter: known section headings, bullet markers, date-range role
- *   headers, contact regexes, and a multi-column layout heuristic.
+ *   segmenter (segment.ts): known section headings, bullet glyphs or wrapped
+ *   paragraphs, date-range role headers with the company above or below,
+ *   contact regexes + file hyperlinks, and a multi-column layout heuristic.
+ *
+ * v1.1 — every bullet, role and section records the source line indexes it
+ * came from (`ScorableCv.lines`), so findings can cite exact lines.
  */
 import type { MasterCV, TailoredCV } from '@/lib/documents/types'
 import { latexToText } from './latex-text'
 import { parseCvDate, parseDateRange } from './dates'
-import type { CvSourceKind, ScorableCv, ScorableRole } from './types'
+import { BULLET_RE, LOCATION_RE, parseBlocks, parseExperience, parseRoleHeader, type SegLine } from './segment'
+import type { CvSourceKind, LineLayout, ScorableCv, ScorableRole } from './types'
 import { wordCount } from './text'
 
 export type CvSourceInput =
   | { kind: 'master_cv' | 'tailored_cv'; cv: MasterCV | TailoredCV }
   | { kind: 'latex_cv'; source: string }
-  | { kind: 'upload'; text: string; fileType: string; pageCount?: number }
+  | {
+      kind: 'upload'
+      text: string
+      fileType: string
+      pageCount?: number
+      /** v1.1 — hyperlink targets from the file (PDF annotations / DOCX links). */
+      links?: string[]
+      /** v1.1 — per-line PDF layout, aligned to `text.split('\n')`. */
+      layout?: (LineLayout | null)[]
+    }
 
 /** Canonical section keys → heading spellings recognised in text CVs. */
 export const SECTION_HEADINGS: Record<string, string[]> = {
@@ -38,11 +52,11 @@ for (const [key, list] of Object.entries(SECTION_HEADINGS)) {
   for (const h of list) HEADING_LOOKUP.set(h, key)
 }
 
-const BULLET_RE = /^\s*(?:[•●▪◦‣∙·*⁃➢➤►▸✓✔-]|–|—|\d{1,2}[.)])\s+/
 const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/
-const LINKEDIN_RE = /(?:https?:\/\/)?(?:[a-z]{2,3}\.)?linkedin\.com\/in\/[A-Za-z0-9_-]+\/?/i
+const LINKEDIN_RE = /(?:https?:\/\/)?(?:[a-z]{2,3}\.)?linkedin\.com\/in\/[A-Za-z0-9_%-]+\/?/i
+const GITHUB_RE = /(?:https?:\/\/)?(?:www\.)?github\.com\/[A-Za-z0-9_.-]+\/?/i
+const WEBSITE_RE = /\b(?:https?:\/\/)?(?:[a-z0-9-]+\.)+(?:com|dev|io|app|me|net|org|co|ai|site|xyz|in|ae|page|sh|codes)(?:\/[^\s|,]*)?/i
 const PHONE_RE = /(?:\+?\d[\d\s().-]{7,}\d)/g
-const LOCATION_RE = /^[A-Z][A-Za-z.' -]{1,30},\s*[A-Z][A-Za-z.' -]{1,30}$/
 
 /** Canonical section key for a heading line, or null when not a heading. */
 export function headingKey(line: string): string | null {
@@ -62,46 +76,60 @@ function fromStructured(cv: MasterCV, kind: 'master_cv' | 'tailored_cv'): Scorab
     .filter(Boolean)
     .join(' | ')
   if (contactLine) lines.push(contactLine)
+  const headerIndexes = lines.map((_, i) => i).filter((i) => lines[i]?.trim())
 
-  const sections: ScorableCv['sections'] = []
+  const sections: ScorableCv['sections'] = [{ heading: 'Header', lines: headerIndexes.map((i) => lines[i]!), lineIndexes: headerIndexes }]
   const bullets: ScorableCv['bullets'] = []
   const roles: ScorableRole[] = []
   const order: string[] = []
 
-  const push = (key: string, heading: string, body: string[]): void => {
-    if (body.length === 0) return
-    sections.push({ heading, lines: body })
+  /** Appends a section; returns the line index of its first body line. */
+  const push = (key: string, heading: string, body: string[]): number => {
+    if (body.length === 0) return -1
+    const headingIndex = lines.length + 1
+    const base = headingIndex + 1
+    sections.push({ heading, lines: body, lineIndexes: body.map((_, j) => base + j), headingIndex })
     order.push(key)
     lines.push('', heading.toUpperCase(), ...body)
+    return base
   }
 
   if (cv.summary?.trim()) push('summary', 'Summary', [cv.summary.trim()])
 
   const expLines: string[] = []
+  const expBullets: { roleIndex: number; text: string; at: number }[] = []
+  const roleAt: number[] = []
   cv.experience.forEach((e, roleIndex) => {
     const start = parseCvDate(e.start, false) ?? e.start
     const end = e.end === 'present' ? 'present' : (parseCvDate(e.end, true) ?? e.end)
+    roleAt.push(expLines.length)
     expLines.push(`${e.role} — ${e.company} | ${e.start} – ${e.end}`)
     const rb = e.bullets.filter((x) => x.trim())
     for (const text of rb) {
+      expBullets.push({ roleIndex, text, at: expLines.length })
       expLines.push(`• ${text}`)
-      bullets.push({ section: 'Experience', roleIndex, text })
     }
     const tech = (e.tech ?? []).filter((t) => t.trim())
     if (tech.length) expLines.push(`Tech: ${tech.join(', ')}`)
     roles.push({ company: e.company, title: e.role, start, end, bullets: rb, ...(tech.length ? { tech } : {}) })
   })
-  push('experience', 'Experience', expLines)
+  const expBase = push('experience', 'Experience', expLines)
+  for (const eb of expBullets) bullets.push({ section: 'Experience', roleIndex: eb.roleIndex, text: eb.text, lines: [expBase + eb.at] })
+  roles.forEach((r, i) => {
+    r.lines = [expBase + roleAt[i]!]
+  })
 
   const projLines: string[] = []
+  const projBullets: { text: string; at: number }[] = []
   for (const p of cv.projects ?? []) {
     projLines.push(p.name + (p.description ? ` — ${p.description}` : ''))
     for (const h of p.highlights ?? []) {
+      projBullets.push({ text: h, at: projLines.length })
       projLines.push(`• ${h}`)
-      bullets.push({ section: 'Projects', text: h })
     }
   }
-  push('projects', 'Projects', projLines)
+  const projBase = push('projects', 'Projects', projLines)
+  for (const pb of projBullets) bullets.push({ section: 'Projects', text: pb.text, lines: [projBase + pb.at] })
 
   push(
     'education',
@@ -119,11 +147,19 @@ function fromStructured(cv: MasterCV, kind: 'master_cv' | 'tailored_cv'): Scorab
   const plainText = lines.join('\n')
   return {
     plainText,
-    sections,
+    lines,
+    sections: sections.filter((s, i) => i > 0 || s.lines.length > 0),
     bullets,
     roles,
     skillsListed,
-    contact: { email: b.email, phone: b.phone, linkedin: b.linkedin, location: b.location },
+    contact: {
+      email: b.email,
+      phone: b.phone,
+      linkedin: b.linkedin,
+      location: b.location,
+      ...(b.github ? { github: b.github } : {}),
+      ...(b.website ? { website: b.website } : {}),
+    },
     headline: b.headline,
     meta: {
       sourceKind: kind,
@@ -168,21 +204,6 @@ export function detectColumns(lines: string[]): boolean {
   return false
 }
 
-const TITLE_WORDS = /\b(engineer|developer|manager|lead|director|analyst|designer|architect|consultant|scientist|intern|head|officer|specialist|administrator|founder|co-founder|cto|ceo|vp|programmer|associate|researcher|sre|devops|tech lead|principal|staff)\b/i
-
-function parseRoleHeader(parts: string[]): { title: string; company: string } {
-  const segs = parts
-    .flatMap((p) => p.split(/\s+(?:\||—|–|@|at)\s+|\s+-\s+|,\s+|\t+| {3,}/))
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0 && !/^[|,•·–—-]+$/.test(s))
-  if (segs.length === 0) return { title: '', company: '' }
-  const titleIdx = segs.findIndex((s) => TITLE_WORDS.test(s))
-  if (titleIdx === -1) return { title: segs[0] ?? '', company: segs[1] ?? '' }
-  const title = segs[titleIdx]!
-  const company = segs.find((s, i) => i !== titleIdx && !LOCATION_RE.test(s)) ?? ''
-  return { title, company }
-}
-
 function splitSkills(lines: string[]): string[] {
   const out: string[] = []
   for (const raw of lines) {
@@ -196,9 +217,28 @@ function splitSkills(lines: string[]): string[] {
   return out
 }
 
-function detectContact(lines: string[], text: string): ScorableCv['contact'] {
-  const email = EMAIL_RE.exec(text)?.[0]
-  const linkedin = LINKEDIN_RE.exec(text)?.[0]
+function normalizeUrl(u: string): string {
+  return u.trim().replace(/[).,;]+$/, '')
+}
+
+/** Classify hyperlink targets into contact fields (mailto:, tel:, LinkedIn, GitHub, site). */
+function contactFromLinks(links: readonly string[]): Partial<ScorableCv['contact']> {
+  const out: Partial<ScorableCv['contact']> = {}
+  for (const raw of links) {
+    const u = normalizeUrl(raw)
+    if (/^mailto:/i.test(u)) out.email ??= decodeURIComponent(u.replace(/^mailto:/i, '').split('?')[0] ?? '') || undefined
+    else if (/^tel:/i.test(u)) out.phone ??= decodeURIComponent(u.replace(/^tel:/i, '')) || undefined
+    else if (LINKEDIN_RE.test(u)) out.linkedin ??= u
+    else if (GITHUB_RE.test(u)) out.github ??= u
+    else if (/^https?:\/\//i.test(u)) out.website ??= u
+  }
+  return out
+}
+
+function detectContact(lines: string[], text: string, links: readonly string[] = []): ScorableCv['contact'] {
+  const fromLinks = contactFromLinks(links)
+  const email = EMAIL_RE.exec(text)?.[0] ?? fromLinks.email
+  const linkedin = LINKEDIN_RE.exec(text)?.[0] ?? fromLinks.linkedin
   let phone: string | undefined
   for (const line of lines.slice(0, 15)) {
     for (const m of line.matchAll(PHONE_RE)) {
@@ -210,6 +250,7 @@ function detectContact(lines: string[], text: string): ScorableCv['contact'] {
     }
     if (phone) break
   }
+  phone ??= fromLinks.phone
   let location: string | undefined
   for (const line of lines.slice(0, 8)) {
     for (const seg of line.split(/\s*[|•·]\s*/)) {
@@ -221,91 +262,60 @@ function detectContact(lines: string[], text: string): ScorableCv['contact'] {
     }
     if (location) break
   }
-  return { email, phone, linkedin, location }
-}
-
-interface ExperienceParse {
-  roles: ScorableRole[]
-  bullets: { roleIndex?: number; text: string }[]
-}
-
-function parseExperience(lines: string[]): ExperienceParse {
-  const roles: ScorableRole[] = []
-  const bullets: ExperienceParse['bullets'] = []
-  let pending: string[] = []
-  let current: ScorableRole | null = null
-  let currentHasBullets = false
-
-  for (const line of lines) {
-    const t = line.trim()
-    if (!t) continue
-    if (BULLET_RE.test(t)) {
-      const text = t.replace(BULLET_RE, '').trim()
-      if (!text) continue
-      if (current) {
-        current.bullets.push(text)
-        currentHasBullets = true
+  const head = lines.slice(0, 8).join('\n')
+  const github = GITHUB_RE.exec(head)?.[0] ?? fromLinks.github
+  let website: string | undefined
+  for (const line of lines.slice(0, 8)) {
+    for (const seg of line.replace(EMAIL_RE, ' ').split(/\s*[|•·]\s*|\s{2,}/)) {
+      const m = WEBSITE_RE.exec(seg.trim())
+      if (m && !LINKEDIN_RE.test(m[0]) && !GITHUB_RE.test(m[0])) {
+        website = m[0]
+        break
       }
-      bullets.push({ roleIndex: current ? roles.length - 1 : undefined, text })
-      pending = []
-      continue
     }
-    const techLine = /^(?:tech|stack|tech stack|technologies|tools|environment)\s*:\s*(.+)$/i.exec(t)
-    if (techLine && current) {
-      current.tech = [...(current.tech ?? []), ...splitSkills([techLine[1]!])]
-      continue
-    }
-    const range = parseDateRange(t)
-    if (range) {
-      const rest = t.replace(range.matched, ' ').replace(/[()]/g, ' ')
-      const header = parseRoleHeader([...pending, rest])
-      current = { ...header, start: range.start, end: range.end, bullets: [] }
-      roles.push(current)
-      currentHasBullets = false
-      pending = []
-      continue
-    }
-    // Paragraph-style achievement line inside a role (no bullet marker).
-    if (current && wordCount(t) >= 8) {
-      current.bullets.push(t)
-      currentHasBullets = true
-      bullets.push({ roleIndex: roles.length - 1, text: t })
-      continue
-    }
-    // Header continuation (title/company on the line after the dates).
-    if (current && !currentHasBullets && (!current.title || !current.company)) {
-      const h = parseRoleHeader([t])
-      if (!current.title) current.title = h.title
-      else if (!current.company) current.company = h.title || h.company
-      continue
-    }
-    pending.push(t)
-    if (pending.length > 2) pending = pending.slice(-2)
+    if (website) break
   }
-  return { roles, bullets }
+  website ??= fromLinks.website
+  return {
+    email,
+    phone,
+    linkedin,
+    location,
+    ...(github ? { github } : {}),
+    ...(website ? { website } : {}),
+  }
 }
 
-function fromText(
-  rawText: string,
-  kind: CvSourceKind,
-  opts: { fileType?: string; pageCount?: number },
-): ScorableCv {
+interface TextOptions {
+  fileType?: string
+  pageCount?: number
+  links?: readonly string[]
+  layout?: readonly (LineLayout | null)[]
+}
+
+function fromText(rawText: string, kind: CvSourceKind, opts: TextOptions): ScorableCv {
   const text = rawText.replace(/\r\n?/g, '\n').replace(/ /g, ' ')
   const lines = text.split('\n')
-  const sections: ScorableCv['sections'] = [{ heading: 'Header', lines: [] }]
+  const sections: (ScorableCv['sections'][number] & { segLines: SegLine[] })[] = [
+    { heading: 'Header', lines: [], lineIndexes: [], segLines: [] },
+  ]
   const order: string[] = []
   const keys: (string | null)[] = [null]
 
-  for (const line of lines) {
+  lines.forEach((line, index) => {
     const key = headingKey(line)
     if (key) {
-      sections.push({ heading: line.trim().replace(/[:：]+$/, ''), lines: [] })
+      sections.push({ heading: line.trim().replace(/[:：]+$/, ''), lines: [], lineIndexes: [], headingIndex: index, segLines: [] })
       keys.push(key)
       if (!order.includes(key)) order.push(key)
-      continue
+      return
     }
-    if (line.trim()) sections[sections.length - 1]!.lines.push(line.trimEnd())
-  }
+    if (!line.trim()) return
+    const sec = sections[sections.length - 1]!
+    sec.lines.push(line.trimEnd())
+    sec.lineIndexes!.push(index)
+    sec.segLines.push({ text: line.trimEnd(), index, layout: opts.layout?.[index] ?? null })
+  })
 
   const bullets: ScorableCv['bullets'] = []
   let roles: ScorableRole[] = []
@@ -313,7 +323,7 @@ function fromText(
   sections.forEach((sec, i) => {
     const key = keys[i]
     if (key === 'experience') {
-      const parsed = parseExperience(sec.lines)
+      const parsed = parseExperience(sec.segLines)
       const offset = roles.length
       roles = [...roles, ...parsed.roles]
       for (const b of parsed.bullets) {
@@ -321,6 +331,7 @@ function fromText(
           section: sec.heading,
           roleIndex: b.roleIndex === undefined ? undefined : b.roleIndex + offset,
           text: b.text,
+          lines: b.lines,
         })
       }
       return
@@ -329,21 +340,23 @@ function fromText(
       skillsListed = [...skillsListed, ...splitSkills(sec.lines)]
       return
     }
-    for (const l of sec.lines) {
-      if (BULLET_RE.test(l.trim())) {
-        bullets.push({ section: sec.heading, text: l.trim().replace(BULLET_RE, '').trim() })
-      }
-    }
+    const parsed = parseBlocks(sec.segLines, { headers: key === 'projects' || key === 'volunteer' })
+    for (const b of parsed.bullets) bullets.push({ section: sec.heading, text: b.text, lines: b.lines })
   })
 
-  const contentSections = sections.filter((s, i) => i > 0 || s.lines.length > 0)
+  const contentSections = sections
+    .map(({ segLines: _seg, ...rest }) => rest)
+    .filter((s, i) => i > 0 || s.lines.length > 0)
+  const links = [...new Set((opts.links ?? []).map(normalizeUrl).filter(Boolean))]
   return {
     plainText: text.trim(),
+    lines,
     sections: contentSections,
     bullets,
     roles,
     skillsListed,
-    contact: detectContact(lines, text),
+    contact: detectContact(lines, text, links),
+    ...(links.length ? { links } : {}),
     meta: {
       sourceKind: kind,
       pageCountEstimate: opts.pageCount ?? estimatePages(text),
@@ -367,6 +380,8 @@ export function cvToScorable(source: CvSourceInput): ScorableCv {
       return fromText(source.text, 'upload', {
         fileType: source.fileType,
         pageCount: source.pageCount,
+        links: source.links,
+        layout: source.layout,
       })
   }
 }

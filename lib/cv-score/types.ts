@@ -27,15 +27,63 @@ export interface ScorableRole {
   bullets: string[]
   /** Tech used in the role (structured sources only). */
   tech?: string[]
+  /** Location written next to the company ("Dubai, UAE (Remote)"), text sources. */
+  location?: string
+  /** v1.1 — indexes into `ScorableCv.lines` of the role's header line(s). */
+  lines?: number[]
+}
+
+/** v1.1 — one cited source line: its index in `ScorableCv.lines` and its text. */
+export interface CvLineRef {
+  index: number
+  text: string
+  /** Substring of `text` the finding is about (for highlighting). */
+  highlight?: string
+}
+
+/** v1.1 — per-line layout from a positioned source (PDF), aligned to `ScorableCv.lines`. */
+export interface LineLayout {
+  page: number
+  /** Left edge of the first glyph on the line. */
+  x: number
+  /** Right edge of the last glyph on the line. */
+  right: number
+  /** Baseline y (PDF units, grows upwards). */
+  y: number
+  fontSize: number
+  /** Vertical distance from the previous line on the same page (0 for a page's first line). */
+  gapBefore: number
 }
 
 export interface ScorableCv {
   plainText: string
-  sections: { heading: string; lines: string[] }[]
-  bullets: { section: string; roleIndex?: number; text: string }[]
+  sections: {
+    heading: string
+    lines: string[]
+    /** v1.1 — index in `ScorableCv.lines` of each entry of `lines`. */
+    lineIndexes?: number[]
+    /** v1.1 — index of the heading line itself (absent for the implicit Header). */
+    headingIndex?: number
+  }[]
+  bullets: { section: string; roleIndex?: number; text: string; lines?: number[] }[]
   roles: ScorableRole[]
   skillsListed: string[]
-  contact: { email?: string; phone?: string; linkedin?: string; location?: string }
+  contact: {
+    email?: string
+    phone?: string
+    linkedin?: string
+    location?: string
+    /** v1.1 — from text or from PDF/DOCX hyperlinks. */
+    github?: string
+    website?: string
+  }
+  /**
+   * v1.1 — every line of the source as scored (finding evidence indexes into
+   * this). Always set by `cvToScorable`; optional for hand-built inputs.
+   */
+  lines?: string[]
+  /** v1.1 — hyperlink targets found in the file (PDF link annotations, DOCX hyperlinks). */
+  links?: string[]
   /** Headline / summary line when known (structured sources). */
   headline?: string
   meta: {
@@ -90,6 +138,8 @@ export interface CvFinding {
   severity: Severity
   message: string
   location?: { section: string; index?: number; excerpt: string }
+  /** v1.1 — the exact source line(s) this finding is about. */
+  evidence?: CvLineRef[]
   suggestion?: string
   autoFixable: boolean
   fix?: FindingFix
@@ -157,6 +207,22 @@ export interface JobTarget {
   niceToHave: string[]
   responsibilities: string[]
   descriptionMd: string
+  /** v1.1 — the job's location / remote type, for region-aware advice. */
+  location?: string | null
+  remoteType?: string | null
+}
+
+/** v1.1 — the hiring market a CV is aimed at (drives phone and length advice). */
+export type CvMarket = 'gcc' | 'india' | 'us' | 'uk' | 'europe' | 'other'
+
+export interface RegionHint {
+  market: CvMarket
+  /** Where the market came from: the target job, or the user's search preferences. */
+  source: 'job' | 'prefs'
+  /** Human label ("UAE", "US remote", "GCC and India"). */
+  label: string
+  /** True for a remote role (US remote roles prefer 1 page early in a career). */
+  remote?: boolean
 }
 
 export interface ScoreContext {
@@ -166,6 +232,11 @@ export interface ScoreContext {
   canAutofix: boolean
   /** Profile hints used when the CV itself is thin. */
   profile?: { seniority?: string | null; industries?: string[]; yearsExperience?: number | null }
+  /**
+   * v1.1 — target market from the user's search preferences. A target job's
+   * own location (JobTarget.location) takes precedence when known.
+   */
+  region?: RegionHint | null
 }
 
 export interface CvScoreResult {

@@ -60,8 +60,9 @@ describe('cvToScorable — text uploads', () => {
         start: '2021-01',
         end: 'present',
         bullets: ['Led the migration of the ledger to Postgres, cutting costs by 30%', 'Mentored 4 engineers'],
+        lines: [7, 8],
       },
-      { title: 'Engineer', company: 'Square', start: '2018-06', end: '2020-12', bullets: ['Built the payouts API in Go'] },
+      { title: 'Engineer', company: 'Square', start: '2018-06', end: '2020-12', bullets: ['Built the payouts API in Go'], lines: [11] },
     ])
     expect(cv.bullets.map((b) => b.roleIndex)).toEqual([0, 0, 1])
     expect(cv.skillsListed).toEqual(['Go', 'TypeScript', 'Postgres', 'Redis'])

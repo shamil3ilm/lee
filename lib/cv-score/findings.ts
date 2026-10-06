@@ -5,6 +5,7 @@ import { shortHash } from './text'
 import type {
   ComponentHeadlineKey,
   CvFinding,
+  CvLineRef,
   DimensionKey,
   FindingFix,
   Severity,
@@ -29,6 +30,8 @@ export interface FindingInput {
   severity: Severity
   message: string
   location?: CvFinding['location']
+  /** v1.1 — cited source lines (not part of the finding id). */
+  evidence?: CvLineRef[]
   suggestion?: string
   fix?: FindingFix
   /** Override the default headline tags for this dimension. */
@@ -55,6 +58,7 @@ export function makeFinding(
     severity: input.severity,
     message: input.message,
     ...(input.location ? { location: input.location } : {}),
+    ...(input.evidence && input.evidence.length ? { evidence: input.evidence } : {}),
     ...(input.suggestion ? { suggestion: input.suggestion } : {}),
     autoFixable,
     ...(autoFixable && input.fix ? { fix: input.fix } : {}),

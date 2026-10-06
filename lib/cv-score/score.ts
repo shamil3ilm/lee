@@ -61,7 +61,14 @@ export async function resolveSource(userId: string, source: ScoreCvInput['source
   if ('documentId' in source) return loadDocumentSource(userId, source.documentId)
   const extracted = await extractUpload(source.upload)
   return {
-    input: { kind: 'upload', text: extracted.text, fileType: extracted.fileType, pageCount: extracted.pageCount },
+    input: {
+      kind: 'upload',
+      text: extracted.text,
+      fileType: extracted.fileType,
+      pageCount: extracted.pageCount,
+      ...(extracted.links ? { links: extracted.links } : {}),
+      ...(extracted.layout ? { layout: extracted.layout } : {}),
+    },
     kind: 'upload',
     documentId: null,
     label: source.upload.name.slice(0, 200),
