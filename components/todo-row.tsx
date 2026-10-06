@@ -9,10 +9,10 @@ import type { Todo } from '@/lib/db/queries/todos'
 import { Badge } from '@/components/ui/badge'
 import { priorityBadge } from '@/lib/todos/priority'
 import { Button } from '@/components/ui/button'
-import { DISPLAY_LOCALE, relativeFromNow } from '@/lib/ui/date'
 import { cn } from '@/lib/utils'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { TODO_STATUS_LABELS, TODO_STATUS_TONE } from '@/lib/todos/status'
+import { LocalTime } from '@/components/local-time'
 
 const TodoEditDialog = dynamic(
   () => import('@/components/todo-edit-dialog').then((m) => m.TodoEditDialog),
@@ -145,10 +145,8 @@ export function TodoRow({ todo, applicationLabel, now }: TodoRowProps) {
                   ? 'border-danger/30 bg-danger-soft text-danger'
                   : 'border-border',
               )}
-              title={new Date(todo.dueAt).toLocaleString(DISPLAY_LOCALE)}
-              suppressHydrationWarning
             >
-              {overdue ? 'overdue' : 'due'} · {relativeFromNow(todo.dueAt)}
+              {overdue ? 'overdue' : 'due'} · <LocalTime date={todo.dueAt} format="relative" />
             </span>
           ) : null}
           {todo.applicationId && applicationLabel !== undefined ? (

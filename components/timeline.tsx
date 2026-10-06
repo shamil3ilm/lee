@@ -27,9 +27,10 @@ import { Button } from '@/components/ui/button'
 import { DebriefDialog } from '@/components/debrief-dialog'
 import { MarkdownText } from '@/components/markdown-text'
 import { StageActions } from '@/components/stage-actions'
-import { relativeFromNow, shortDateTime } from '@/lib/ui/date'
+import { relativeFromNow } from '@/lib/ui/date'
 import { STATUS_BADGE, STATUS_LABELS, type ApplicationStatus } from '@/lib/ui/status'
 import type { TimelineActivity, TimelineItem, TimelineStage } from '@/lib/ui/timeline'
+import { LocalTime } from '@/components/local-time'
 
 export type { TimelineActivity, TimelineItem, TimelineStage } from '@/lib/ui/timeline'
 
@@ -187,7 +188,7 @@ function StageItem({ item }: { item: TimelineStage }) {
             ) : null}
             {item.scheduledAt ? (
               <span>
-                {shortDateTime(item.scheduledAt)} · {relativeFromNow(item.scheduledAt)}
+                <LocalTime date={item.scheduledAt} /> · {relativeFromNow(item.scheduledAt)}
               </span>
             ) : (
               <span>Unscheduled</span>
@@ -370,7 +371,7 @@ function ActivityItem({ item }: { item: TimelineActivity }) {
             {activityLabel(item.activityKind, item.payload)}
           </span>
           <span className="text-xs text-muted-foreground">
-            {shortDateTime(item.createdAt)}
+            <LocalTime date={item.createdAt} />
           </span>
         </div>
       </div>
@@ -416,7 +417,7 @@ function EmailActivityItem({ item }: { item: TimelineActivity }) {
                 </Badge>
               ) : null}
               <span className="text-xs text-muted-foreground">
-                {shortDateTime(item.createdAt)}
+                <LocalTime date={item.createdAt} />
               </span>
             </div>
           </div>

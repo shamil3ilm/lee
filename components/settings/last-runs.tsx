@@ -1,19 +1,20 @@
 import Link from 'next/link'
 import { ScrollText } from 'lucide-react'
 import type { JobRunView, LastRunRow } from '@/lib/queue/runs'
-import { relativeFromNow, shortDateTime } from '@/lib/ui/date'
+import { relativeFromNow } from '@/lib/ui/date'
 import { formatDuration, JOB_STATUS_LABEL, JOB_STATUS_TONE } from '@/lib/ui/run-status'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { LocalTime } from '@/components/local-time'
 
 /** Relative time with the absolute time underneath (server-rendered). */
 function When({ at }: { at: Date }) {
   return (
-    <time dateTime={at.toISOString()} title={at.toISOString()} className="block">
+    <span className="block">
       <span className="block">{relativeFromNow(at)}</span>
-      <span className="block text-xs text-muted-foreground">{shortDateTime(at)}</span>
-    </time>
+      <LocalTime date={at} className="block text-xs text-muted-foreground" />
+    </span>
   )
 }
 
@@ -105,9 +106,7 @@ export function RunHistory({ label, runs }: { label: string; runs: JobRunView[] 
         <li key={run.id} className="space-y-1.5 py-3">
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <Badge variant={JOB_STATUS_TONE[run.status]}>{JOB_STATUS_LABEL[run.status]}</Badge>
-            <time dateTime={lastAt(run).toISOString()} className="font-medium">
-              {shortDateTime(lastAt(run))}
-            </time>
+            <LocalTime date={lastAt(run)} className="font-medium" />
             <span className="text-xs text-muted-foreground">
               attempt {run.attempts} of {run.maxAttempts} · {formatDuration(run.durationMs)}
               {run.mine ? '' : ' · all users'}

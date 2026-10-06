@@ -5,13 +5,14 @@ import { getUpcomingActions, getRecentActivity } from '@/lib/digest/service'
 import { PageHeader } from '@/components/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { relativeFromNow, shortDateTime } from '@/lib/ui/date'
+import { relativeFromNow } from '@/lib/ui/date'
 import {
   APPLICATION_STATUSES,
   STATUS_BADGE,
   STATUS_LABELS,
   type ApplicationStatus,
 } from '@/lib/ui/status'
+import { LocalTime } from '@/components/local-time'
 
 export const dynamic = 'force-dynamic'
 
@@ -70,7 +71,7 @@ export default async function DigestPage() {
                             <div className="font-medium text-foreground">
                               {relativeFromNow(a.nextActionAt)}
                             </div>
-                            <div>{shortDateTime(a.nextActionAt)}</div>
+                            <div><LocalTime date={a.nextActionAt} /></div>
                           </>
                         ) : null}
                       </div>
@@ -100,7 +101,7 @@ export default async function DigestPage() {
               {recent.map((a) => (
                 <li key={a.id} className="flex items-center gap-2 py-1">
                   <span className="w-32 shrink-0 text-xs text-muted-foreground">
-                    {shortDateTime(a.createdAt)}
+                    <LocalTime date={a.createdAt} />
                   </span>
                   <Link
                     href={`/applications/${a.applicationId}`}

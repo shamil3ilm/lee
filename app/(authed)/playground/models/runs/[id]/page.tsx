@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation'
 import { requireUserId } from '@/lib/auth/require-session'
 import * as runsQ from '@/lib/db/queries/labRuns'
 import { toRunView } from '@/lib/lab/views'
+import { formatDateTime } from '@/lib/ui/date'
+import { getUserTimeZone } from '@/lib/settings/timezone'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -20,10 +22,7 @@ export default async function LabRunPage({ params }: { params: Promise<{ id: str
   if (!found) notFound()
   const run = toRunView(found.run, found.results)
   const c = run.config
-  const created = new Date(run.createdAt).toLocaleString('en-GB', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  })
+  const created = formatDateTime(run.createdAt, 'datetime-year', await getUserTimeZone(userId))
   return (
     <div className="space-y-6">
       <PageHeader

@@ -49,14 +49,47 @@ export function shortDay(isoDay: string): string {
   return d.toLocaleDateString(DISPLAY_LOCALE, { month: 'short', day: 'numeric', timeZone: 'UTC' })
 }
 
-export function shortDateTime(date: Date | string): string {
+/** Ways an instant can be shown; every one is US style ("Sep 27, 2:30 PM"). */
+export type DateTimeFormat = 'datetime' | 'datetime-year' | 'date' | 'date-year' | 'time'
+
+const FORMAT_OPTIONS: Readonly<Record<DateTimeFormat, Intl.DateTimeFormatOptions>> = {
+  datetime: { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' },
+  'datetime-year': { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' },
+  date: { month: 'short', day: 'numeric' },
+  'date-year': { month: 'short', day: 'numeric', year: 'numeric' },
+  time: { hour: 'numeric', minute: '2-digit' },
+}
+
+/** True when `tz` is an IANA zone this runtime knows. */
+export function isValidTimeZone(tz: string | null | undefined): tz is string {
+  if (!tz) return false
+  try {
+    new Intl.DateTimeFormat(DISPLAY_LOCALE, { timeZone: tz })
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * An instant in US style, in the user's timezone when one is given (the
+ * profile's IANA zone). Without one it falls back to the runtime zone, which
+ * is UTC on the server: pass the user's zone wherever a time is shown.
+ */
+export function formatDateTime(
+  date: Date | string,
+  format: DateTimeFormat = 'datetime',
+  timeZone?: string | null,
+): string {
   const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleString(DISPLAY_LOCALE, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
+  if (Number.isNaN(d.getTime())) return ''
+  const opts = FORMAT_OPTIONS[format]
+  return d.toLocaleString(DISPLAY_LOCALE, isValidTimeZone(timeZone) ? { ...opts, timeZone } : opts)
+}
+
+/** "Sep 27, 2:30 PM" in `timeZone` (see formatDateTime). */
+export function shortDateTime(date: Date | string, timeZone?: string | null): string {
+  return formatDateTime(date, 'datetime', timeZone)
 }
 
 export function isWithinDays(date: Date | string, days: number): boolean {

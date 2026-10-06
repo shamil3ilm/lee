@@ -15,9 +15,9 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { DISPLAY_LOCALE, relativeFromNow } from '@/lib/ui/date'
 import { APP_NAME } from '@/lib/brand'
 import { LastActivity, type LastActivityItem } from '@/components/settings/last-activity'
+import { LocalTime } from '@/components/local-time'
 
 interface IntegrationsPanelProps {
   email: string | null
@@ -180,9 +180,7 @@ export function IntegrationsPanel({
               <div className="text-xs text-muted-foreground">
                 Last synced:{' '}
                 {lastGmailSync ? (
-                  <span title={new Date(lastGmailSync).toLocaleString(DISPLAY_LOCALE)} suppressHydrationWarning>
-                    {relativeFromNow(lastGmailSync)}
-                  </span>
+                  <LocalTime date={lastGmailSync} format="relative" />
                 ) : (
                   'Never'
                 )}
@@ -211,9 +209,7 @@ export function IntegrationsPanel({
               <div className="text-xs text-muted-foreground">
                 Last event pushed:{' '}
                 {syncedCalendarAt ? (
-                  <span title={new Date(syncedCalendarAt).toLocaleString(DISPLAY_LOCALE)} suppressHydrationWarning>
-                    {relativeFromNow(syncedCalendarAt)}
-                  </span>
+                  <LocalTime date={syncedCalendarAt} format="relative" />
                 ) : (
                   'Never'
                 )}
