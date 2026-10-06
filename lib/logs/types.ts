@@ -17,6 +17,7 @@ export const EVENT_CATEGORIES = [
   'cron',
   'auth',
   'usage',
+  'playground',
   'app',
 ] as const
 export type EventCategory = (typeof EVENT_CATEGORIES)[number]
@@ -32,6 +33,7 @@ export const CATEGORY_LABELS: Readonly<Record<EventCategory, string>> = {
   cron: 'Cron',
   auth: 'Sign-in',
   usage: 'Usage',
+  playground: 'Playground',
   app: 'App',
 }
 

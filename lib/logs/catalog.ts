@@ -159,6 +159,44 @@ export const EVENT_CATALOG: Readonly<Record<string, EventSpec>> = {
     message: (c) =>
       `Portfolio profile.json changed outside lee (${s(c, 'reason') || 'edited'}): ${n(c, 'sections')} section(s) differ — waiting for your choice`,
   },
+  // Playground (v13 core engine). Context: skill/item ids, formats, numbers.
+  // Never answers, profile text or study notes.
+  academy_attempt_submitted: {
+    category: 'playground',
+    persist: true,
+    strings: ['skillId', 'format', 'mode'],
+    message: (c) =>
+      `Playground attempt scored ${n(c, 'composite')} on ${s(c, 'skillId') || 'a skill'} (+${n(c, 'xp')} XP)`,
+  },
+  academy_level_up: {
+    category: 'playground',
+    persist: true,
+    strings: ['skillId'],
+    message: (c) => `Level up: ${s(c, 'skillId') || 'a skill'} reached level ${n(c, 'level')}`,
+  },
+  academy_placement_seeded: {
+    category: 'playground',
+    persist: true,
+    message: (c) =>
+      `Placement seeded ${n(c, 'seeds')} skill(s) from the profile; ${n(c, 'studyTargets')} study target(s)`,
+  },
+  academy_placement_completed: {
+    category: 'playground',
+    persist: true,
+    message: (c) => `Placement check finished (${n(c, 'items')} item(s))`,
+  },
+  academy_plan_generated: {
+    category: 'playground',
+    persist: true,
+    strings: ['reason'],
+    message: (c) => `Daily plan ${s(c, 'reason') || 'generated'}: ${n(c, 'items')} item(s), ${n(c, 'minutes')} min`,
+  },
+  academy_achievement_earned: {
+    category: 'playground',
+    persist: true,
+    strings: ['achievementId'],
+    message: (c) => `Achievement earned: ${s(c, 'achievementId')}`,
+  },
   // LaTeX
   latex_compile: {
     category: 'latex',
@@ -190,6 +228,7 @@ const CATEGORY_RULES: ReadonlyArray<readonly [RegExp, EventCategory]> = [
   [/drive/, 'drive'],
   [/latex|compile/, 'latex'],
   [/usage|throttle/, 'usage'],
+  [/^academy_|playground/, 'playground'],
   [/auth|sign_?in|test_login|session/, 'auth'],
   [
     /^ai_|_ai_|^lab_|arena|generate|cv_score|cv_requirement|voice|decision|outreach|prep_pack|cover_letter|debrief|rate_ai/,

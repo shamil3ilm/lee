@@ -1575,3 +1575,6 @@ export const retentionSettings = pgTable('retention_settings', {
   lastRunResult: jsonb('last_run_result').notNull().default({}),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+// v13 Playground core engine tables (kept in their own module).
+export * from './schema-academy'
