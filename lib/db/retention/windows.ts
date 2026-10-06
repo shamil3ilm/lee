@@ -13,6 +13,7 @@ export const RETENTION_WINDOW_IDS = [
   'cvScoreDays',
   'labRunDays',
   'webVitalsDays',
+  'variantVersionDays',
 ] as const
 
 export type RetentionWindowId = (typeof RETENTION_WINDOW_IDS)[number]
@@ -75,6 +76,15 @@ export const RETENTION_WINDOWS: readonly RetentionWindow[] = [
     defaultDays: 90,
     minDays: 28,
     maxDays: 365,
+  },
+  {
+    id: 'variantVersionDays',
+    label: 'Old résumé variant versions',
+    description:
+      'Older recipe versions of a variant are deleted. The latest version, any version an application uses and any version published to your portfolio are always kept.',
+    defaultDays: 180,
+    minDays: 30,
+    maxDays: 1825,
   },
 ]
 

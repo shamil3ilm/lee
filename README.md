@@ -121,7 +121,7 @@ table (`lib/queue/`). Vercel Hobby crons (UTC, each may fire up to 59 min late):
 |---|---|---|
 | 09:00 | `/api/cron/schedule` | enqueue the day's jobs (idempotent per UTC day), then drain for 240 s |
 | 12:00, 16:00, 21:00 | `/api/cron/drain` | drain due jobs and retries for 240 s |
-| 03:30 | `/api/cron/retention` | storage cleanup (`lib/db/retention`): stale/dismissed discoveries, raw payloads, logs, finished jobs (done 14 days, dead 30), CV score and Model Lab history, PDF cache, orphans; windows in Settings › Storage |
+| 03:30 | `/api/cron/retention` | storage cleanup (`lib/db/retention`): stale/dismissed discoveries, raw payloads, logs, finished jobs (done 14 days, dead 30), CV score and Model Lab history, old résumé variant versions, PDF cache, orphans; windows in Settings › Storage |
 
 Authed page views also drain up to 2 of the visitor's due jobs after the
 response (at most once per 10 min). Settings › Background jobs shows counts,

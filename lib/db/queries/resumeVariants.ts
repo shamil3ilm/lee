@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull } from 'drizzle-orm'
+import { and, asc, desc, eq, isNull, ne } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { applications, resumeVariants, resumeVariantVersions } from '@/lib/db/schema'
 
@@ -104,4 +104,83 @@ export async function setApplicationVariant(
     .where(and(eq(applications.userId, userId), eq(applications.id, applicationId)))
     .returning()
   return rows.length > 0
+}
+
+// ---------------------------------------------------------------------------
+// Portfolio publish bookkeeping (lib/portfolio/variants.ts)
+// ---------------------------------------------------------------------------
+
+export interface VariantPublishRecord {
+  portfolioLastSha: string
+  portfolioLastHash: string
+  portfolioLastVersion: string
+  portfolioCommitUrl: string | null
+  portfolioPublishedAt: Date | null
+}
+
+/** Record what lee wrote to variants/<slug>.json (and mark that version as published when `version` is given). */
+export async function recordPortfolioPublish(
+  userId: string,
+  variantId: string,
+  record: VariantPublishRecord,
+  version: number | null,
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx
+      .update(resumeVariants)
+      .set(record)
+      .where(and(eq(resumeVariants.userId, userId), eq(resumeVariants.id, variantId)))
+    if (version !== null && record.portfolioPublishedAt) {
+      await tx
+        .update(resumeVariantVersions)
+        .set({ publishedAt: record.portfolioPublishedAt })
+        .where(
+          and(
+            eq(resumeVariantVersions.userId, userId),
+            eq(resumeVariantVersions.variantId, variantId),
+            eq(resumeVariantVersions.version, version),
+            isNull(resumeVariantVersions.publishedAt),
+          ),
+        )
+    }
+  })
+}
+
+/** Mark one version as published (kept by retention forever). */
+export async function markVersionPublished(userId: string, variantId: string, version: number, at: Date): Promise<void> {
+  await db
+    .update(resumeVariantVersions)
+    .set({ publishedAt: at })
+    .where(
+      and(
+        eq(resumeVariantVersions.userId, userId),
+        eq(resumeVariantVersions.variantId, variantId),
+        eq(resumeVariantVersions.version, version),
+      ),
+    )
+}
+
+/** The file is gone from the repo: forget what lee wrote and turn the toggle off. Published versions stay marked. */
+export async function clearPortfolioPublish(userId: string, variantId: string): Promise<void> {
+  await db
+    .update(resumeVariants)
+    .set({
+      publishToPortfolio: false,
+      portfolioLastSha: null,
+      portfolioLastHash: null,
+      portfolioCommitUrl: null,
+      portfolioPublishedAt: null,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(resumeVariants.userId, userId), eq(resumeVariants.id, variantId)))
+}
+
+/** Another variant of this user (archived ones too) already using `slug`. */
+export async function slugTaken(userId: string, slug: string, exceptId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: resumeVariants.id })
+    .from(resumeVariants)
+    .where(and(eq(resumeVariants.userId, userId), eq(resumeVariants.portfolioSlug, slug), ne(resumeVariants.id, exceptId)))
+    .limit(1)
+  return row !== undefined
 }
