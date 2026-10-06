@@ -159,11 +159,12 @@ export function DriveStorageCard(props: DriveStorageCardProps) {
         ) : (
           <div className="flex items-center justify-between gap-3 border-t pt-3">
             <p className="text-xs text-muted-foreground">
+              {/* You are already signed in here: the step left is a Drive grant. */}
               {props.hasGoogleAccount
-                ? `Google will ask you to allow access to files ${APP_NAME} creates.`
-                : 'Sign in with Google to connect Drive.'}
+                ? `Google will ask you to allow access to the files ${APP_NAME} creates, nothing else in your Drive.`
+                : `Google will ask you to pick an account and allow access to the files ${APP_NAME} creates.`}
             </p>
-            <DriveConnectButton returnTo="/settings/integrations" />
+            <DriveConnectButton returnTo="/settings/integrations" label="Grant Drive access" />
           </div>
         )}
         <LastActivity item={props.lastActivity ?? null} logsHref="/settings/logs?category=drive" testId="drive-last-activity" />
