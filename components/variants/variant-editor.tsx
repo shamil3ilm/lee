@@ -12,6 +12,7 @@ import type { Recipe } from '@/lib/variants/types'
 import { VariantItemsCard } from './variant-items-card'
 import { VariantListsCard } from './variant-lists-card'
 import { VariantOutputs } from './variant-outputs'
+import { VariantPortfolioField, type VariantPortfolioState } from './variant-portfolio-field'
 import { VariantPreview } from './variant-preview'
 import { VariantProposal } from './variant-proposal'
 import { VariantSettingsCard } from './variant-settings-card'
@@ -21,19 +22,22 @@ interface VariantEditorProps {
   version: number
   initialName: string
   initialPublish: boolean
+  portfolio: VariantPortfolioState
+  hasPhoto: boolean
   initialRecipe: Recipe
   profile: ResumeProfile
   families: Array<{ id: string; label: string }>
 }
 
-export function VariantEditor({ variantId, version, initialName, initialPublish, initialRecipe, profile, families }: VariantEditorProps) {
+export function VariantEditor({ variantId, version, initialName, initialPublish, portfolio, hasPhoto, initialRecipe, profile, families }: VariantEditorProps) {
   const router = useRouter()
   const [recipe, setRecipe] = useState<Recipe>(initialRecipe)
   const [name, setName] = useState(initialName)
   const [publish, setPublish] = useState(initialPublish)
+  const [slug, setSlug] = useState(portfolio.slug)
   const [dirty, setDirty] = useState(false)
   const [pending, start] = useTransition()
-  const rendered = useMemo(() => renderVariant(profile, recipe), [profile, recipe])
+  const rendered = useMemo(() => renderVariant(profile, recipe, { hasPhoto }), [profile, recipe, hasPhoto])
   const plainText = useMemo(() => toPlainText(rendered), [rendered])
 
   const change = (next: Recipe): void => {
@@ -43,7 +47,7 @@ export function VariantEditor({ variantId, version, initialName, initialPublish,
 
   const save = (): void =>
     start(async () => {
-      const r = await saveVariantAction(variantId, recipe, { name, publishToPortfolio: publish })
+      const r = await saveVariantAction(variantId, recipe, { name, publishToPortfolio: publish, portfolioSlug: slug })
       if ('error' in r) {
         toast.error(r.error)
         return
@@ -78,11 +82,23 @@ export function VariantEditor({ variantId, version, initialName, initialPublish,
           setName(v)
           setDirty(true)
         }}
-        publishToPortfolio={publish}
-        onPublish={(v) => {
-          setPublish(v)
-          setDirty(true)
-        }}
+        portfolio={
+          <VariantPortfolioField
+            variantId={variantId}
+            state={portfolio}
+            publish={publish}
+            slug={slug}
+            name={name}
+            onPublish={(v) => {
+              setPublish(v)
+              setDirty(true)
+            }}
+            onSlug={(v) => {
+              setSlug(v)
+              setDirty(true)
+            }}
+          />
+        }
         recipe={recipe}
         onChange={change}
         families={families}

@@ -47,7 +47,7 @@ export interface Resolution {
   choices: Choices
 }
 
-interface Context {
+export interface PublishContext {
   userId: string
   target: RepoTarget
   token: string
@@ -55,7 +55,8 @@ interface Context {
   now: Date
 }
 
-async function loadContext(userId: string, now: Date): Promise<Context | { error: string }> {
+/** Repo target, token and publish state, or why Publish can't run yet. */
+export async function loadPublishContext(userId: string, now: Date): Promise<PublishContext | { error: string }> {
   const state = await publishQ.get(userId)
   const config = state ? publishConfigSchema.safeParse(state) : null
   if (!state || !config?.success) return { error: 'Set the repository, branch and path first.' }
@@ -64,7 +65,7 @@ async function loadContext(userId: string, now: Date): Promise<Context | { error
   return { userId, target: toTarget(config.data), token: key, state, now }
 }
 
-function parseRepo(remote: RemoteFile): JsonDoc | null {
+export function parseRepo(remote: RemoteFile): JsonDoc | null {
   if (!remote.exists) return null
   try {
     const v = JSON.parse(remote.text) as unknown
@@ -79,7 +80,7 @@ export function buildDocument(profile: ResumeProfile, previousVersion: string | 
   return toJsonResume(profile, { version: nextVersion(previousVersion), lastModified: formatLastModified(now) })
 }
 
-function repoVersion(repo: JsonDoc | null): string | null {
+export function repoVersion(repo: JsonDoc | null): string | null {
   const v = (repo?.meta as JsonDoc | undefined)?.version
   return typeof v === 'string' ? v : null
 }
@@ -110,7 +111,7 @@ export async function publishProfile(
   userId: string,
   opts: { resolution?: Resolution; now?: Date } = {},
 ): Promise<PublishOutcome> {
-  const ctx = await loadContext(userId, opts.now ?? new Date())
+  const ctx = await loadPublishContext(userId, opts.now ?? new Date())
   if ('error' in ctx) return { status: 'not_configured', error: ctx.error }
   const remote = await getFile(ctx.target, ctx.token)
   const repo = parseRepo(remote)

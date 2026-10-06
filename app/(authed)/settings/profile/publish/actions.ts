@@ -10,6 +10,8 @@ import { parseChoices } from '@/lib/portfolio/diff'
 import { GitHubError } from '@/lib/portfolio/github'
 import { publishProfile, type PublishOutcome } from '@/lib/portfolio/publish'
 import { checkPortfolioToken, type TokenCheckResult } from '@/lib/portfolio/token-check'
+import { publishVariant, unpublishVariant, type VariantPublishOutcome, type VariantUnpublishOutcome } from '@/lib/portfolio/variant-publish'
+import { VariantError } from '@/lib/variants/service'
 import { ResumeValidationError } from '@/lib/resume/service'
 import { resolveServiceSecret } from '@/lib/settings/secrets'
 
@@ -18,7 +20,7 @@ type Result<T = object> = ({ success: true } & T) | { error: string }
 const PATH = '/settings/profile/publish'
 
 function fail(what: string, err: unknown): { error: string } {
-  if (err instanceof GitHubError || err instanceof ResumeValidationError) return { error: err.message }
+  if (err instanceof GitHubError || err instanceof ResumeValidationError || err instanceof VariantError) return { error: err.message }
   // Never the token or file content: only the error class/message of lee's own code.
   logger.error(`${what} failed`, { err: err instanceof Error ? err.name : 'unknown' })
   return { error: 'Something went wrong. Please try again.' }
@@ -117,5 +119,41 @@ export async function resolveConflictAction(input: unknown): Promise<Result<{ ou
     return { success: true, outcome }
   } catch (err) {
     return fail('resolvePublishConflict', err)
+  }
+}
+
+const variantIdSchema = z.guid()
+const overwriteSchema = z.object({ overwriteSha: z.string().regex(/^[0-9a-f]{40}$/).nullable() }).optional()
+
+function revalidateVariant(variantId: string): void {
+  revalidatePath(PATH)
+  revalidatePath(`/settings/profile/variants/${variantId}`)
+}
+
+/** Publish one variant as variants/<slug>.json; `overwrite` confirms replacing a hand-edited file. */
+export async function publishVariantAction(variantId: string, overwrite?: unknown): Promise<Result<{ outcome: VariantPublishOutcome }>> {
+  try {
+    const userId = await requireUserId()
+    if (!variantIdSchema.safeParse(variantId).success) return { error: 'Variant not found.' }
+    const o = overwriteSchema.safeParse(overwrite)
+    if (!o.success) return { error: 'Invalid choice.' }
+    const outcome = await publishVariant(userId, variantId, o.data ? { overwriteSha: o.data.overwriteSha } : {})
+    revalidateVariant(variantId)
+    return { success: true, outcome }
+  } catch (err) {
+    return fail('publishVariant', err)
+  }
+}
+
+/** Delete variants/<slug>.json from the repo (the UI confirmed it) and turn the toggle off. */
+export async function unpublishVariantAction(variantId: string): Promise<Result<{ outcome: VariantUnpublishOutcome }>> {
+  try {
+    const userId = await requireUserId()
+    if (!variantIdSchema.safeParse(variantId).success) return { error: 'Variant not found.' }
+    const outcome = await unpublishVariant(userId, variantId)
+    revalidateVariant(variantId)
+    return { success: true, outcome }
+  } catch (err) {
+    return fail('unpublishVariant', err)
   }
 }

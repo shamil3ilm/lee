@@ -1,4 +1,5 @@
 'use client'
+import type { ReactNode } from 'react'
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -24,14 +25,14 @@ import {
 interface VariantSettingsCardProps {
   name: string
   onName: (name: string) => void
-  publishToPortfolio: boolean
-  onPublish: (on: boolean) => void
+  /** The "publish to portfolio" toggle, address and status. */
+  portfolio: ReactNode
   recipe: Recipe
   onChange: (next: Recipe) => void
   families: Array<{ id: string; label: string }>
 }
 
-export function VariantSettingsCard({ name, onName, publishToPortfolio, onPublish, recipe, onChange, families }: VariantSettingsCardProps) {
+export function VariantSettingsCard({ name, onName, portfolio, recipe, onChange, families }: VariantSettingsCardProps) {
   const set = (patch: Partial<Recipe>): void => onChange({ ...recipe, ...patch })
   const locked = LOCKED_OFF[recipe.region]
   return (
@@ -130,13 +131,7 @@ export function VariantSettingsCard({ name, onName, publishToPortfolio, onPublis
             })}
           </fieldset>
         </div>
-        <label className="flex items-start gap-2 text-sm">
-          <input type="checkbox" className="mt-1" checked={publishToPortfolio} onChange={(e) => onPublish(e.target.checked)} />
-          <span>
-            Publish this variant to the portfolio too
-            <span className="block text-xs text-muted-foreground">Saved for later: the portfolio does not render variants yet, so nothing is published for now.</span>
-          </span>
-        </label>
+        {portfolio}
       </CardContent>
     </Card>
   )

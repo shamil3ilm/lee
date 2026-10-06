@@ -9,9 +9,27 @@ async function expectToast(page: Page, text: string | RegExp): Promise<void> {
   await expect(page.locator('[data-sonner-toast]').filter({ hasText: text }).first()).toBeVisible()
 }
 
-async function stubFile(page: Page): Promise<{ text: string | null; commits: number }> {
-  const res = await page.request.get(`${E2E_GITHUB_STUB_URL}/__test/file`)
+async function stubFile(page: Page, path = 'profile.json'): Promise<{ text: string | null; commits: number }> {
+  const res = await page.request.get(`${E2E_GITHUB_STUB_URL}/__test/file?path=${encodeURIComponent(path)}`)
   return (await res.json()) as { text: string | null; commits: number }
+}
+
+/** A synthetic 240×180 PNG drawn in the browser (no real photo). */
+async function syntheticPng(page: Page): Promise<Buffer> {
+  const dataUrl = await page.evaluate(() => {
+    const c = document.createElement('canvas')
+    c.width = 240
+    c.height = 180
+    const ctx = c.getContext('2d')!
+    ctx.fillStyle = '#1a2b4c'
+    ctx.fillRect(0, 0, 240, 180)
+    ctx.fillStyle = '#f2c14e'
+    ctx.beginPath()
+    ctx.arc(120, 90, 60, 0, Math.PI * 2)
+    ctx.fill()
+    return c.toDataURL('image/png')
+  })
+  return Buffer.from(dataUrl.split(',')[1]!, 'base64')
 }
 
 test('edit the master profile, build a variant, preview it and publish to the portfolio', async ({ page }) => {
@@ -46,9 +64,15 @@ test('edit the master profile, build a variant, preview it and publish to the po
   await role.selectOption(offered.includes('backend') ? 'backend' : '')
   await page.getByRole('button', { name: 'Create variant' }).click()
   await page.waitForURL(/\/settings\/profile\/variants\/[0-9a-f-]{36}$/)
+  const variantUrl = page.url()
   const preview = page.getByTestId('variant-preview')
   await expect(preview.getByRole('heading', { name: 'Asha Menon' })).toBeVisible()
   await expect(preview).toContainText('Add your Arabic level')
+  // GCC: the photo is off by default; on without an uploaded photo, lee says so.
+  const photoField = page.getByLabel('Photo', { exact: true })
+  await expect(photoField).not.toBeChecked()
+  await photoField.check()
+  await expect(preview).toContainText('no profile photo is uploaded')
   await page.getByLabel(/^Wording for: Designed an idempotent payouts/).selectOption({ label: 'Idempotent payouts API in Go at 2M+ requests per day and 99.99% availability' })
   await expect(preview).toContainText('Idempotent payouts API in Go at 2M+ requests per day and 99.99% availability')
   await page.getByRole('button', { name: 'Save variant' }).click()
@@ -106,4 +130,53 @@ test('edit the master profile, build a variant, preview it and publish to the po
   file = await stubFile(page)
   expect(file.commits).toBe(2)
   expect(file.text).toContain('"label": "Payments Backend Engineer"')
+
+  // 5. Photo: uploaded on Résumé (cropped in the browser), private, used by the GCC variant.
+  await page.goto('/settings/profile/resume')
+  await page.getByTestId('photo-input').setInputFiles({ name: 'synthetic.png', mimeType: 'image/png', buffer: await syntheticPng(page) })
+  await expectToast(page, 'Photo saved')
+  await expect(page.getByTestId('profile-photo')).toBeVisible()
+  const stored = await page.request.get('/api/profile/photo')
+  expect(stored.headers()['content-type']).toBe('image/jpeg')
+  expect(stored.headers()['cache-control']).toContain('private')
+  await page.goto(variantUrl)
+  await expect(page.getByLabel('Photo', { exact: true })).toBeChecked()
+  await expect(page.getByTestId('variant-preview')).not.toContainText('no profile photo is uploaded')
+
+  // 6. Variant page on the portfolio: off by default; on → variants/<slug>.json.
+  const toggle = page.getByLabel(/Publish this variant to the portfolio too/)
+  await expect(toggle).not.toBeChecked()
+  await toggle.check()
+  await page.getByLabel('Page address').fill('gcc-backend')
+  await expect(page.getByText('https://asha.example.dev/resume/gcc-backend.html')).toBeVisible()
+  await page.getByRole('button', { name: 'Save variant' }).click()
+  await expectToast(page, /Saved/)
+
+  await page.goto('/settings/profile/publish')
+  const row = page.getByTestId('variant-publish-gcc-backend')
+  await row.getByRole('button', { name: 'Publish', exact: true }).click()
+  await expectToast(page, /Published .* \(1\.0\.0\)/)
+  await expect(row.getByTestId('variant-page-url')).toHaveAttribute('href', 'https://asha.example.dev/resume/gcc-backend.html')
+  const variantFile = await stubFile(page, 'variants/gcc-backend.json')
+  expect(variantFile.commits).toBe(3)
+  expect(variantFile.text).toContain('"canonical": "https://asha.example.dev/variants/gcc-backend.json"')
+  expect(variantFile.text).toContain('Idempotent payouts API in Go at 2M+ requests per day and 99.99% availability')
+  expect(variantFile.text).not.toContain('+91 90000 00000')
+  expect(variantFile.text).not.toContain('lee-photo')
+  // profile.json is untouched by a variant publish.
+  expect((await stubFile(page)).text).toBe(file.text)
+
+  await page.goto(variantUrl)
+  await expect(page.getByTestId('variant-public-url')).toHaveAttribute('href', 'https://asha.example.dev/resume/gcc-backend.html')
+  await expect(page.getByLabel('Page address')).toBeDisabled()
+
+  // 7. Unpublish asks first, then deletes the file through the contents API.
+  await page.goto('/settings/profile/publish')
+  await row.getByRole('button', { name: 'Unpublish' }).click()
+  await expect(page.getByRole('dialog')).toContainText('deletes variants/gcc-backend.json')
+  await page.getByRole('dialog').getByRole('button', { name: 'Unpublish' }).click()
+  await expectToast(page, 'Removed variants/gcc-backend.json')
+  expect((await stubFile(page, 'variants/gcc-backend.json')).text).toBeNull()
+  await page.goto(variantUrl)
+  await expect(page.getByLabel(/Publish this variant to the portfolio too/)).not.toBeChecked()
 })

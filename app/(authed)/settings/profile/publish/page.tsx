@@ -1,22 +1,44 @@
 import { requireUserId } from '@/lib/auth/require-session'
 import * as publishQ from '@/lib/db/queries/portfolioPublish'
+import * as variantsQ from '@/lib/db/queries/resumeVariants'
 import { isConfigured, PORTFOLIO_TOKEN_ID } from '@/lib/portfolio/config'
 import { previewPublish } from '@/lib/portfolio/publish'
+import { variantPageUrl } from '@/lib/portfolio/variant-paths'
+import { getResumeProfile } from '@/lib/resume/service'
 import { listServiceSecretStatuses } from '@/lib/settings/secrets'
 import { shortDate } from '@/lib/ui/date'
 import { PageHeader } from '@/components/page-header'
 import { PublishPanel } from '@/components/portfolio/publish-panel'
 import { PublishSettings } from '@/components/portfolio/publish-settings'
+import { VariantPublishList, type VariantPublishRow } from '@/components/portfolio/variant-publish-list'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 export const dynamic = 'force-dynamic'
 
 export default async function PublishPage() {
   const userId = await requireUserId()
-  const [state, statuses, preview] = await Promise.all([publishQ.get(userId), listServiceSecretStatuses(userId), previewPublish(userId)])
+  const [state, statuses, preview, variants, { profile }] = await Promise.all([
+    publishQ.get(userId),
+    listServiceSecretStatuses(userId),
+    previewPublish(userId),
+    variantsQ.list(userId, { archived: true }),
+    getResumeProfile(userId),
+  ])
   const token = statuses.find((s) => s.info.id === PORTFOLIO_TOKEN_ID)
   const config = { repo: state?.repo ?? '', branch: state?.branch ?? 'main', path: state?.path ?? 'profile.json' }
   const ready = isConfigured(config) && (token?.source ?? 'none') !== 'none'
+  // Enabled variants, plus any still on the portfolio (e.g. archived since) so they can be removed.
+  const variantRows: VariantPublishRow[] = variants
+    .filter((v) => v.portfolioSlug && (v.publishToPortfolio || v.portfolioLastSha))
+    .map((v) => ({
+      id: v.id,
+      name: v.name,
+      slug: v.portfolioSlug!,
+      pageUrl: variantPageUrl(profile.portfolio.canonical, v.portfolioSlug!),
+      status: v.portfolioPublishedAt ? `Published ${shortDate(v.portfolioPublishedAt)}${v.portfolioLastVersion ? ` (${v.portfolioLastVersion})` : ''}` : null,
+      commitUrl: v.portfolioCommitUrl,
+      published: v.portfolioLastSha !== null,
+    }))
   return (
     <div className="space-y-6">
       <PageHeader
@@ -28,6 +50,7 @@ export default async function PublishPage() {
         status={state?.publishedAt ? `Published ${shortDate(state.publishedAt)}${state.lastVersion ? ` (${state.lastVersion})` : ''}` : null}
         commitUrl={state?.lastCommitUrl ?? null}
       />
+      <VariantPublishList rows={variantRows} ready={ready} />
       <PublishSettings config={config} token={{ source: token?.source ?? 'none', last4: token?.last4 ?? null }} />
       <Card>
         <CardHeader>

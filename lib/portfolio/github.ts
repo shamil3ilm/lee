@@ -2,7 +2,7 @@ import { fetchWithTimeout, GITHUB_TIMEOUT_MS } from '@/lib/net/timeout'
 import type { RepoTarget } from './config'
 
 /**
- * GitHub contents API, just the three calls Publish needs. The token is
+ * GitHub contents API, just the calls Publish needs (GET, PUT, DELETE). The token is
  * only ever placed in the Authorization header — never logged, never in an
  * error message. `GITHUB_API_URL` (server config) points the client at a
  * stub in e2e runs; it defaults to api.github.com.
@@ -116,6 +116,23 @@ export async function putFile(
   const commitSha = json.commit?.sha
   if (typeof contentSha !== 'string' || typeof commitSha !== 'string') throw new GitHubError('unexpected', res.status)
   return { ok: true, contentSha, commitSha, commitUrl: typeof json.commit?.html_url === 'string' ? json.commit.html_url : null }
+}
+
+export type DeleteResult = { ok: true; commitUrl: string | null } | { ok: false; conflict: true }
+
+/**
+ * DELETE the file. `sha` is the blob sha being deleted: a 409 / 422 means
+ * it changed in between (the caller re-fetches). A 404 means it is already
+ * gone, which is what the caller wanted.
+ */
+export async function deleteFile(t: RepoTarget, token: string, input: { message: string; sha: string }): Promise<DeleteResult> {
+  const body = { message: input.message, sha: input.sha, branch: t.branch }
+  const res = await call(contentsUrl(t), { method: 'DELETE', body: JSON.stringify(body), headers: { 'content-type': 'application/json' } }, token)
+  if (res.status === 409 || res.status === 422) return { ok: false, conflict: true }
+  if (res.status === 404) return { ok: true, commitUrl: null }
+  if (!res.ok) throw failure(res)
+  const json = (await res.json().catch(() => ({}))) as { commit?: { html_url?: unknown } }
+  return { ok: true, commitUrl: typeof json.commit?.html_url === 'string' ? json.commit.html_url : null }
 }
 
 /** GET the repository (metadata read access). */

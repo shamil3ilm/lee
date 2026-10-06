@@ -6,6 +6,7 @@ import { getAIProviderForUser } from '@/lib/ai'
 import { withAiUsage } from '@/lib/ai/usage'
 import * as variantsQ from '@/lib/db/queries/resumeVariants'
 import { logger } from '@/lib/logger'
+import { resolvePortfolioSettings } from '@/lib/portfolio/variant-settings'
 import { getResumeProfile, ResumeValidationError, saveResumeProfile } from '@/lib/resume/service'
 import { addWording } from '@/lib/resume/wordings'
 import { ensureVariantDocument, saveVariantPdfToDrive, scoreVariant } from '@/lib/variants/outputs'
@@ -25,6 +26,7 @@ function fail(what: string, err: unknown): { error: string } {
 
 function revalidate(id?: string): void {
   revalidatePath('/settings/profile/variants')
+  revalidatePath('/settings/profile/publish')
   if (id) revalidatePath(`/settings/profile/variants/${id}`)
 }
 
@@ -52,6 +54,7 @@ export async function createVariantAction(input: unknown): Promise<Result<{ id: 
 const metaSchema = z.object({
   name: z.string().trim().min(1).max(120),
   publishToPortfolio: z.boolean(),
+  portfolioSlug: z.string().max(80).optional().default(''),
 })
 
 /** Save the recipe (new version only when it changed) and the name / portfolio toggle. */
@@ -64,8 +67,14 @@ export async function saveVariantAction(
     const userId = await requireUserId()
     const m = metaSchema.safeParse(meta)
     if (!m.success) return { error: 'Give the variant a name.' }
+    const before = await variantsQ.getById(userId, variantId)
+    if (!before) return { error: 'Variant not found.' }
+    const portfolio = await resolvePortfolioSettings(userId, before, m.data.name, {
+      publishToPortfolio: m.data.publishToPortfolio,
+      slug: m.data.portfolioSlug,
+    })
     const { variant, changed } = await saveRecipe(userId, variantId, recipe)
-    await variantsQ.updateMeta(userId, variantId, { name: m.data.name, publishToPortfolio: m.data.publishToPortfolio })
+    await variantsQ.updateMeta(userId, variantId, { name: m.data.name, ...portfolio })
     revalidate(variantId)
     return { success: true, version: variant.currentVersion, changed }
   } catch (err) {
