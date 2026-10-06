@@ -2,7 +2,6 @@ import { RouteTabs, type RouteTab } from '@/components/route-tabs'
 
 const SETTINGS_TABS: RouteTab[] = [
   { href: '/settings/profile', label: 'Profile' },
-  { href: '/settings/cv', label: 'CV' },
   { href: '/settings/ai', label: 'AI' },
   { href: '/settings/sources', label: 'Sources' },
   { href: '/settings/integrations', label: 'Integrations' },

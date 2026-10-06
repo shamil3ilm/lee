@@ -202,7 +202,7 @@ export async function createFromMasterCV(templateId: string): Promise<CreateLate
       return { error: 'AI generation is only available for CV templates.' }
     }
     const master = await getMasterCV(userId)
-    if (!master) return { error: 'You need to save a master CV first (Settings → CV).' }
+    if (!master) return { error: 'You need to save a master CV first (Settings › Profile › Résumé).' }
 
     const ai = await getAIProviderForUser(userId)
     // Scoped so the call logs are attributed to the user (the page

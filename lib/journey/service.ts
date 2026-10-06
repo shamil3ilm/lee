@@ -87,7 +87,7 @@ export async function getSetupChecklist(userId: string): Promise<SetupChecklist>
 
   const items: SetupItem[] = [
     { key: 'profile', label: 'Import your profile', done: profileImported, href: '/settings/profile' },
-    { key: 'master_cv', label: 'Save your master CV', done: hasMasterCv, href: '/settings/cv' },
+    { key: 'master_cv', label: 'Save your master CV', done: hasMasterCv, href: '/settings/profile/resume' },
     { key: 'cv_score', label: 'Score your CV', done: hasCvScore, href: '/cv-score' },
     { key: 'source', label: 'Add a discovery source', done: hasSource, href: '/settings/sources' },
     { key: 'google', label: 'Connect Google', done: googleConnected, href: '/settings/integrations' },

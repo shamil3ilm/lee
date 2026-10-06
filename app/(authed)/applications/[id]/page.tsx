@@ -37,6 +37,9 @@ import { APPLICATION_STATUSES } from '@/lib/ui/status'
 import { ShareLinksCard, ShareLinksProvider } from '@/components/profile/share-links'
 import { readProfileLinks, suggestLinksForJob } from '@/lib/profile/links'
 import { getProfile } from '@/lib/profile/service'
+import { ApplicationVariantCard } from '@/components/variants/application-variant-card'
+import { variantSummaries } from '@/lib/variants/service'
+import { jobSignals, suggestVariant } from '@/lib/variants/suggest'
 
 export const dynamic = 'force-dynamic'
 
@@ -124,6 +127,13 @@ export default async function ApplicationDetail({
       restP,
     ])
   const risk = riskRow ? toRiskView(riskRow, hostLabel(app.job.sourceUrl)) : null
+  // Résumé variant: the posting's region + role family pick the best fit.
+  const variants = await variantSummaries(userId)
+  const variantSuggestion = suggestVariant(
+    variants,
+    jobSignals({ title: app.job.title, location: app.job.location, remoteType: app.job.remoteType, descriptionMd: app.job.descriptionMd }),
+  )
+  const chosenVariant = variants.find((v) => v.id === app.resumeVariantId)
   // Profile links suggested for this job's drafts (the user confirms them).
   const linkSuggestions = suggestLinksForJob(readProfileLinks((await getProfile(userId))?.links), {
     title: app.job.title,
@@ -400,6 +410,13 @@ export default async function ApplicationDetail({
             applicationId={app.id}
             fit={cvFit}
             scoringDocument={scoringDoc ? { id: scoringDoc.id, title: scoringDoc.title } : null}
+          />
+
+          <ApplicationVariantCard
+            applicationId={app.id}
+            variants={variants}
+            suggestion={variantSuggestion}
+            current={chosenVariant && app.resumeVariantVersion ? { id: chosenVariant.id, name: chosenVariant.name, version: app.resumeVariantVersion } : null}
           />
 
           <ShareLinksCard />

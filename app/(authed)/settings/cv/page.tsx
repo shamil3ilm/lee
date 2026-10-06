@@ -1,24 +1,9 @@
-import { requireUserId } from '@/lib/auth/require-session'
-import { getMasterCV, bootstrapFromProfile } from '@/lib/documents/master'
-import * as documentsQ from '@/lib/db/queries/documents'
-import { PageHeader } from '@/components/page-header'
-import { CvEditor } from '@/components/cv-editor'
+import { redirect } from 'next/navigation'
 
-export const dynamic = 'force-dynamic'
-
-export default async function CvSettingsPage() {
-  const userId = await requireUserId()
-  const existing = await getMasterCV(userId)
-  const masterCv = existing ?? (await bootstrapFromProfile(userId))
-  const rows = await documentsQ.list(userId, { kind: 'master_cv' })
-  const masterDoc = rows[0] ?? null
-  return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <PageHeader
-        title="CV"
-        description="Master CV used for tailored variants and PDF export."
-      />
-      <CvEditor initialCv={masterCv} documentId={masterDoc?.id ?? null} />
-    </div>
-  )
+/**
+ * The master CV is now derived from the master profile (one source of
+ * facts); its editor lives in Settings › Profile › Résumé.
+ */
+export default function CvSettingsPage(): never {
+  redirect('/settings/profile/resume')
 }
