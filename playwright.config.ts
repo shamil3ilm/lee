@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
-import { E2E_AUTH_STATE, E2E_BASE_URL, E2E_ENV, E2E_PORT } from './tests/e2e/env'
+import { E2E_AUTH_STATE, E2E_BASE_URL, E2E_ENV, E2E_GITHUB_STUB_PORT, E2E_GITHUB_STUB_URL, E2E_PORT } from './tests/e2e/env'
 
 // v17 §9.1 — E2E runs against `next dev` (the only mode where the local test
 // sign-in exists) on a dedicated port, with a freshly seeded PGlite file DB
@@ -22,15 +22,27 @@ export default defineConfig({
   timeout: 90_000,
   expect: { timeout: 15_000 },
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
-  webServer: {
-    command: `pnpm e2e:seed && pnpm exec next dev --port ${E2E_PORT}`,
-    url: `${E2E_BASE_URL}/api/health`,
-    env: { ...E2E_ENV },
-    reuseExistingServer: process.env.E2E_REUSE_SERVER === '1',
-    timeout: 240_000,
-    stdout: 'ignore',
-    stderr: 'pipe',
-  },
+  webServer: [
+    // Publish talks to this GitHub stand-in, never to api.github.com.
+    {
+      command: 'node tests/e2e/github-stub.mjs',
+      url: `${E2E_GITHUB_STUB_URL}/health`,
+      env: { GITHUB_STUB_PORT: String(E2E_GITHUB_STUB_PORT) },
+      reuseExistingServer: process.env.E2E_REUSE_SERVER === '1',
+      timeout: 30_000,
+      stdout: 'ignore',
+      stderr: 'pipe',
+    },
+    {
+      command: `pnpm e2e:seed && pnpm exec next dev --port ${E2E_PORT}`,
+      url: `${E2E_BASE_URL}/api/health`,
+      env: { ...E2E_ENV },
+      reuseExistingServer: process.env.E2E_REUSE_SERVER === '1',
+      timeout: 240_000,
+      stdout: 'ignore',
+      stderr: 'pipe',
+    },
+  ],
   use: {
     baseURL: E2E_BASE_URL,
     storageState: E2E_AUTH_STATE,

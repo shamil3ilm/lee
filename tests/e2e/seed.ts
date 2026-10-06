@@ -47,6 +47,9 @@ async function main(): Promise<void> {
   const { scoreCv } = await import('@/lib/cv-score/score')
   const { TEST_LOGIN_EMAIL, TEST_LOGIN_NAME } = await import('@/lib/auth/test-login')
   const data = await import('./seed-data')
+  const { fromMasterCv } = await import('@/lib/resume/legacy')
+  const { buildRecipe } = await import('@/lib/variants/presets')
+  const { eq } = await import('drizzle-orm')
 
   if (!pgliteClient) throw new Error('e2e seed requires PGlite')
   const folder = path.resolve(process.cwd(), 'lib/db/migrations')
@@ -170,6 +173,22 @@ async function main(): Promise<void> {
     .insert(s.documents)
     .values({ userId, kind: 'master_cv', title: 'Master CV', content: data.MASTER_CV, createdAt: ago(40) })
     .returning()
+  // Master profile (as migrated from the master CV, with stable ids) and
+  // one résumé variant, so the profile pages and the variant editor render.
+  let seq = 0
+  const resume = fromMasterCv(data.MASTER_CV, () => `seed-${++seq}`)
+  await db.update(s.userProfile).set({ resume }).where(eq(s.userProfile.userId, userId))
+  const [variant] = await db
+    .insert(s.resumeVariants)
+    .values({ userId, name: 'India · Backend', region: 'india', roleFamily: 'backend', currentVersion: 1, createdAt: ago(5), updatedAt: ago(5) })
+    .returning()
+  await db.insert(s.resumeVariantVersions).values({
+    variantId: variant!.id,
+    userId,
+    version: 1,
+    recipe: buildRecipe(resume, { region: 'india', roleFamily: 'backend' }),
+  })
+
   const interviewApp = appIds.get('postman')!
   const [tailored] = await db
     .insert(s.documents)
