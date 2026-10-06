@@ -1,6 +1,6 @@
 import { and, eq, gte, lte, isNotNull, desc } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
-import { applications, activities } from '@/lib/db/schema'
+import { applications, activities, companies, jobs } from '@/lib/db/schema'
 import type { Application } from '@/lib/db/queries/applications'
 import type { Job } from '@/lib/db/queries/jobs'
 import type { Company } from '@/lib/db/queries/companies'
@@ -15,7 +15,11 @@ export type UpcomingAction = Application & {
 export type RecentActivity = Pick<
   Activity,
   'id' | 'createdAt' | 'kind' | 'payload' | 'applicationId'
->
+> & {
+  /** The application's job title and company, for "Razorpay · Senior SE". */
+  jobTitle: string | null
+  companyName: string | null
+}
 
 /**
  * Applications with a scheduled next_action within the coming N days,
@@ -58,8 +62,13 @@ export async function getRecentActivity(
       kind: activities.kind,
       payload: activities.payload,
       applicationId: activities.applicationId,
+      jobTitle: jobs.title,
+      companyName: companies.name,
     })
     .from(activities)
+    .leftJoin(applications, eq(applications.id, activities.applicationId))
+    .leftJoin(jobs, eq(jobs.id, applications.jobId))
+    .leftJoin(companies, eq(companies.id, jobs.companyId))
     .where(and(eq(activities.userId, userId), gte(activities.createdAt, since)))
     .orderBy(desc(activities.createdAt))
     .limit(limit)
