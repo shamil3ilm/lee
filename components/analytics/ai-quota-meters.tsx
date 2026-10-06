@@ -8,6 +8,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { humanizeLabel } from '@/lib/ui/labels'
 import type { QuotaDimension, QuotaLevel, QuotaStatus } from '@/lib/ai/quota-compute'
 import { QUOTA_CRITICAL, QUOTA_WARN } from '@/lib/ai/quota-limits'
 import { formatNumber } from './ai-usage-format'
@@ -100,7 +101,7 @@ export function AiQuotaMeters({ meters }: AiQuotaMetersProps) {
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
                   <div className="truncate text-xs font-medium">{m.model}</div>
-                  <div className="text-[10px] text-muted-foreground">{m.provider}</div>
+                  <div className="text-[10px] text-muted-foreground">{humanizeLabel(m.provider)}</div>
                 </div>
                 <div className="flex items-center gap-1.5">
                   {m.level === 'warn' || m.level === 'critical' || m.level === 'exhausted' ? (

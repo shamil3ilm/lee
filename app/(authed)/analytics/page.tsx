@@ -91,7 +91,7 @@ export default async function AnalyticsPage() {
         title="Analytics"
         description="Turn tracked pipeline data into insight — funnels, timings, calibration, and cadence."
       />
-      <div className="grid grid-cols-1 gap-4 @3xl/main:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 @3xl/main:grid-cols-2 @6xl/main:grid-cols-3">
         <SourceFunnelCard data={funnel} />
         <ResponseTimeCard data={response} />
         <TimeToOutcomeCard data={outcome} />
@@ -108,9 +108,9 @@ export default async function AnalyticsPage() {
           data={aiTokens}
           meters={aiQuota}
           estimatedCostUsd={aiUsage.totalEstimatedCostUsd}
-          className="xl:col-span-3"
+          className="@6xl/main:col-span-3"
         />
-        <AIUsageCard data={aiUsage} className="xl:col-span-3" />
+        <AIUsageCard data={aiUsage} className="@6xl/main:col-span-3" />
       </div>
     </div>
   )

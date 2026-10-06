@@ -3,10 +3,15 @@ import { CalendarCheck } from 'lucide-react'
 import { AnalyticsCardShell } from './card-shell'
 import type { AdherenceCell } from '@/lib/analytics/service'
 import { formatMoney } from '@/lib/ui/money'
+import { humanizeLabel } from '@/lib/ui/labels'
+import { cn } from '@/lib/utils'
 
 interface BudgetAdherenceHistoryCardProps {
   data: AdherenceCell[]
 }
+
+/** Months still shown when the card is too narrow for the full year. */
+const NARROW_MONTHS = 6
 
 function shortMonthLabel(month: string): string {
   const [y, m] = month.split('-')
@@ -20,20 +25,18 @@ function shortMonthLabel(month: string): string {
  * category came in under or over its budget cap. Categories with no cap
  * fall into "over" if they had any spend, so unbudgeted spend is still
  * visible.
+ *
+ * The grid grows to its natural height (no inner scroll), and on narrow
+ * cards the older months collapse so the latest NARROW_MONTHS always fit.
  */
 export function BudgetAdherenceHistoryCard({ data }: BudgetAdherenceHistoryCardProps) {
   const isEmpty = data.length === 0
 
-  const monthsSet = new Set<string>()
-  const categoriesSet = new Set<string>()
-  const byKey = new Map<string, AdherenceCell>()
-  for (const c of data) {
-    monthsSet.add(c.month)
-    categoriesSet.add(c.category)
-    byKey.set(`${c.category}:${c.month}`, c)
-  }
-  const months = Array.from(monthsSet).sort()
-  const categories = Array.from(categoriesSet).sort()
+  const byKey = new Map(data.map((c) => [`${c.category}:${c.month}`, c] as const))
+  const months = Array.from(new Set(data.map((c) => c.month))).sort()
+  const categories = Array.from(new Set(data.map((c) => c.category))).sort()
+  const olderCol = (i: number): string | undefined =>
+    i < months.length - NARROW_MONTHS ? 'hidden @[30rem]:table-cell' : undefined
 
   return (
     <AnalyticsCardShell
@@ -43,16 +46,17 @@ export function BudgetAdherenceHistoryCard({ data }: BudgetAdherenceHistoryCardP
       isEmpty={isEmpty}
       emptyMessage="Set a monthly budget for a category and log spend to see history."
       emptyIcon={CalendarCheck}
+      body="content"
     >
-      <div className="h-full w-full overflow-auto">
+      <div className="@container w-full overflow-x-auto">
         <table className="w-full border-separate border-spacing-1 text-[10px]">
           <thead>
             <tr>
-              <th className="sticky left-0 z-10 bg-background px-1 text-left font-semibold text-muted-foreground">
+              <th className="sticky left-0 z-10 bg-card px-1 text-left font-semibold text-muted-foreground">
                 Category
               </th>
-              {months.map((m) => (
-                <th key={m} className="px-1 font-semibold text-muted-foreground">
+              {months.map((m, i) => (
+                <th key={m} className={cn('px-1 font-semibold text-muted-foreground', olderCol(i))}>
                   {shortMonthLabel(m)}
                 </th>
               ))}
@@ -61,29 +65,30 @@ export function BudgetAdherenceHistoryCard({ data }: BudgetAdherenceHistoryCardP
           <tbody>
             {categories.map((c) => (
               <tr key={c}>
-                <td className="sticky left-0 z-10 bg-background px-1 py-0.5 text-left capitalize text-muted-foreground">
-                  {c}
+                <td className="sticky left-0 z-10 max-w-24 truncate bg-card px-1 py-0.5 text-left text-muted-foreground">
+                  {humanizeLabel(c)}
                 </td>
-                {months.map((m) => {
+                {months.map((m, i) => {
                   const cell = byKey.get(`${c}:${m}`)
                   if (!cell) {
                     return (
                       <td
                         key={m}
-                        className="h-6 rounded bg-neutral-soft"
-                        title={`${c} · ${m}: no data`}
+                        className={cn('h-6 rounded bg-neutral-soft', olderCol(i))}
+                        title={`${humanizeLabel(c)} · ${shortMonthLabel(m)}: no data`}
                       />
                     )
                   }
                   const isOver = cell.adherence === 'over'
-                  const className = isOver
-                    ? 'bg-danger-soft text-danger'
-                    : 'bg-success-soft text-success'
                   return (
                     <td
                       key={m}
-                      className={`h-6 rounded px-1 text-center font-medium ${className}`}
-                      title={`${c} · ${m}: ${formatMoney(cell.spentCents)} spent · budget ${
+                      className={cn(
+                        'h-6 rounded px-1 text-center font-medium',
+                        isOver ? 'bg-danger-soft text-danger' : 'bg-success-soft text-success',
+                        olderCol(i),
+                      )}
+                      title={`${humanizeLabel(c)} · ${shortMonthLabel(m)}: ${formatMoney(cell.spentCents)} spent · budget ${
                         cell.budgetCents > 0 ? formatMoney(cell.budgetCents) : 'none'
                       }`}
                     >

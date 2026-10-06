@@ -4,6 +4,7 @@ import { Cpu } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState } from '@/components/empty-state'
 import { cn } from '@/lib/utils'
+import { humanizeLabel } from '@/lib/ui/labels'
 import type { AiUsageBreakdown, AiUsageCounts } from '@/lib/analytics/ai-usage-breakdown'
 import type { QuotaStatus } from '@/lib/ai/quota-compute'
 import { AiQuotaMeters } from './ai-quota-meters'
@@ -115,7 +116,7 @@ export function AITokensCard({ data, meters, estimatedCostUsd, className }: AITo
   const isEmpty = t.calls === 0
 
   return (
-    <Card className={cn('flex flex-col md:col-span-2', className)}>
+    <Card className={cn('flex min-w-0 flex-col @3xl/main:col-span-2', className)}>
       <CardHeader className="space-y-1 pb-3">
         <CardTitle>AI tokens & quotas</CardTitle>
         <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -168,7 +169,7 @@ export function AITokensCard({ data, meters, estimatedCostUsd, className }: AITo
               label={(r) => (
                 <>
                   {r.model ?? 'default model'}{' '}
-                  <span className="text-[10px] font-normal text-muted-foreground">{r.provider}</span>
+                  <span className="text-[10px] font-normal text-muted-foreground">{humanizeLabel(r.provider)}</span>
                 </>
               )}
             />
@@ -176,7 +177,7 @@ export function AITokensCard({ data, meters, estimatedCostUsd, className }: AITo
               title="By feature"
               rows={data.byFeature}
               rowKey={(r) => r.kind}
-              label={(r) => r.kind}
+              label={(r) => humanizeLabel(r.kind)}
             />
           </>
         )}

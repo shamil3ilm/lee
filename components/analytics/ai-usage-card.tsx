@@ -12,6 +12,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { humanizeLabel } from '@/lib/ui/labels'
 import type { AIUsageStats } from '@/lib/analytics/service'
 import { formatCost, formatNumber } from './ai-usage-format'
 import { ChartSkeleton } from './charts/chart-skeleton'
@@ -59,7 +60,7 @@ export function AIUsageCard({ data, className }: AIUsageCardProps) {
   const isEmpty = data.totalCalls === 0
 
   return (
-    <Card className={cn('flex flex-col md:col-span-2', className)}>
+    <Card className={cn('flex min-w-0 flex-col @3xl/main:col-span-2', className)}>
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -170,8 +171,8 @@ export function AIUsageCard({ data, className }: AIUsageCardProps) {
                 <tbody>
                   {data.rows.map((r) => (
                     <tr key={`${r.provider}:${r.kind}`} className="border-t">
-                      <td className="px-3 py-1.5 font-medium">{r.provider}</td>
-                      <td className="px-3 py-1.5 text-muted-foreground">{r.kind}</td>
+                      <td className="px-3 py-1.5 font-medium">{humanizeLabel(r.provider)}</td>
+                      <td className="px-3 py-1.5 text-muted-foreground">{humanizeLabel(r.kind)}</td>
                       <td className="px-3 py-1.5 text-right tabular-nums">
                         {formatNumber(r.calls)}
                       </td>
@@ -241,7 +242,7 @@ export function AIUsageCard({ data, className }: AIUsageCardProps) {
                                 isPoor && 'bg-warning/10',
                               )}
                             >
-                              <td className="px-3 py-1.5 font-medium">{r.kind}</td>
+                              <td className="px-3 py-1.5 font-medium">{humanizeLabel(r.kind)}</td>
                               <td className="px-3 py-1.5 text-muted-foreground tabular-nums">
                                 {r.promptVersion}
                               </td>

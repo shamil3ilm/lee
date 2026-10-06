@@ -7,6 +7,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart'
+import { CATEGORY_AXIS, CHART_MARGIN, VALUE_AXIS } from '@/components/ui/chart-defaults'
 import type { ResponseTimeBucket } from '@/lib/analytics/service'
 
 const CONFIG: ChartConfig = {
@@ -16,10 +17,10 @@ const CONFIG: ChartConfig = {
 export function ResponseTimeChart({ data }: { data: ResponseTimeBucket[] }) {
   return (
     <ChartContainer config={CONFIG} className="h-full w-full">
-      <BarChart data={data} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+      <BarChart data={data} margin={CHART_MARGIN}>
         <CartesianGrid vertical={false} />
-        <XAxis dataKey="bucketDays" tickLine={false} axisLine={false} tickMargin={6} />
-        <YAxis tickLine={false} axisLine={false} width={28} allowDecimals={false} />
+        <XAxis dataKey="bucketDays" {...CATEGORY_AXIS} />
+        <YAxis {...VALUE_AXIS} allowDecimals={false} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Bar dataKey="count" fill="var(--color-count)" radius={[2, 2, 0, 0]} />
       </BarChart>

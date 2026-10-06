@@ -7,6 +7,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart'
+import { CATEGORY_AXIS, CHART_MARGIN_LABELLED, VALUE_AXIS } from '@/components/ui/chart-defaults'
 import { formatMoney, formatMoneyAxis } from '@/lib/ui/money'
 
 const CONFIG: ChartConfig = {
@@ -24,22 +25,10 @@ export interface MonthOverMonthDatum {
 export function MonthOverMonthChart({ data }: { data: MonthOverMonthDatum[] }) {
   return (
     <ChartContainer config={CONFIG} className="h-full w-full">
-      <BarChart data={data} margin={{ top: 16, right: 8, left: -8, bottom: 0 }}>
+      <BarChart data={data} margin={CHART_MARGIN_LABELLED}>
         <CartesianGrid vertical={false} />
-        <XAxis
-          dataKey="category"
-          tickLine={false}
-          axisLine={false}
-          tickMargin={6}
-          interval={0}
-          fontSize={11}
-        />
-        <YAxis
-          tickLine={false}
-          axisLine={false}
-          width={40}
-          tickFormatter={(v: number) => formatMoneyAxis(v)}
-        />
+        <XAxis dataKey="category" {...CATEGORY_AXIS} />
+        <YAxis {...VALUE_AXIS} tickFormatter={(v: number) => formatMoneyAxis(v)} />
         <ChartTooltip
           content={<ChartTooltipContent valueFormatter={(v) => formatMoney(Number(v))} />}
         />
