@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
-import { affected, clientOf, cutoff, inBatches, userScope, type BatchOpts } from './batch'
+import { problemsOverCap, pruneSubmissions } from '@/lib/db/queries/academyCoding'
+import { affected, clientOf, cutoff, inBatches, pastDeadline, userScope, type BatchOpts } from './batch'
 
 /**
  * Playground history (v13 §10.1) is kept forever and NEVER deleted here.
@@ -85,4 +86,21 @@ export async function compactAcademyPlans(now: Date = new Date(), opts: BatchOpt
 /** Both compactions; the count is rows compacted (never rows deleted). */
 export async function compactAcademyHistory(now: Date = new Date(), opts: BatchOpts = {}): Promise<number> {
   return (await compactAcademyAttempts(now, opts)) + (await compactAcademyPlans(now, opts))
+}
+
+/**
+ * Coding submissions (phase 13.1) keep their code only for the latest 20
+ * per problem plus the fastest and the latest accepted ones. The submit
+ * path prunes as it goes; this step catches anything over the cap (e.g.
+ * after a failed prune). Attempts, the scored history, are never touched.
+ */
+export async function pruneCodingSubmissions(opts: BatchOpts = {}): Promise<number> {
+  const client = clientOf(opts)
+  if (opts.userId === null) return 0
+  let deleted = 0
+  for (const { userId, slug } of await problemsOverCap(opts.userId ?? null, undefined, 200, client)) {
+    if (pastDeadline(opts.deadline)) break
+    deleted += await pruneSubmissions(userId, slug, undefined, client)
+  }
+  return deleted
 }

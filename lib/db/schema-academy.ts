@@ -203,3 +203,106 @@ export const academyUserState = pgTable('academy_user_state', {
   profileSignature: text('profile_signature'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+// ---------------------------------------------------------------------------
+// v13 phase 13.1 — coding workbench. Problems are versioned content
+// (content/academy/problems/); every Submit is also an academy_attempts row
+// (format 'coding'), so ratings, XP and history work as in 13.0. These
+// tables hold only what the workbench needs on top, kept compact for Neon
+// Free: per-problem progress (~150 B/row), the code of recent submissions
+// (capped at 16 KB; the last 20 per problem plus the best and latest
+// accepted are kept, lib/db/queries/academySubmissions.ts), the daily
+// problem (~80 B/day) and mock assessments (~1 KB each).
+// ---------------------------------------------------------------------------
+
+export const academyProblemProgress = pgTable(
+  'academy_problem_progress',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    problemSlug: text('problem_slug').notNull(),
+    // 'attempted' | 'solved'
+    status: text('status').notNull().default('attempted'),
+    submissions: integer('submissions').notNull().default(0),
+    accepted: integer('accepted').notNull().default(0),
+    bestRuntimeMs: integer('best_runtime_ms'),
+    bestLanguage: text('best_language'),
+    // Progressive hints revealed (each one is recorded once).
+    hintsUsed: smallint('hints_used').notNull().default(0),
+    // Set when the user gave up and opened the solution before solving.
+    gaveUpAt: timestamp('gave_up_at', { withTimezone: true }),
+    firstSolvedAt: timestamp('first_solved_at', { withTimezone: true }),
+    lastSubmittedAt: timestamp('last_submitted_at', { withTimezone: true }),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.problemSlug] }),
+    statusCk: check('academy_problem_progress_status_ck', sql`${t.status} in ('attempted', 'solved')`),
+  }),
+)
+
+export const academySubmissions = pgTable(
+  'academy_submissions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    problemSlug: text('problem_slug').notNull(),
+    attemptId: uuid('attempt_id').references(() => academyAttempts.id, { onDelete: 'set null' }),
+    mockId: uuid('mock_id'),
+    language: text('language').notNull(),
+    // lib/academy/runner/verdict.ts VERDICTS
+    verdict: text('verdict').notNull(),
+    passed: smallint('passed').notNull(),
+    total: smallint('total').notNull(),
+    runtimeMs: integer('runtime_ms'),
+    memoryKb: integer('memory_kb'),
+    code: text('code').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    userProblemIx: index('academy_submissions_user_problem_idx').on(t.userId, t.problemSlug, t.createdAt.desc()),
+    codeCk: check('academy_submissions_code_ck', sql`octet_length(${t.code}) <= 16384`),
+  }),
+)
+
+/** One adaptive daily problem per user per local day (the daily streak counts solved days). */
+export const academyDailyProblems = pgTable(
+  'academy_daily_problems',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    date: date('date', { mode: 'string' }).notNull(),
+    problemSlug: text('problem_slug').notNull(),
+    solvedAt: timestamp('solved_at', { withTimezone: true }),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.date] }),
+  }),
+)
+
+/** A timed mock assessment: 2–3 problems, 60–90 minutes, scored at the end. */
+export const academyMockAssessments = pgTable(
+  'academy_mock_assessments',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    problemSlugs: jsonb('problem_slugs').$type<string[]>().notNull(),
+    durationMin: smallint('duration_min').notNull(),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+    endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+    score: smallint('score'),
+    // Per problem: { slug, solved, submissions, bestPassRate } (≤ 1 KB).
+    results: jsonb('results'),
+  },
+  (t) => ({
+    userStartedIx: index('academy_mock_assessments_user_started_idx').on(t.userId, t.startedAt.desc()),
+    scoreCk: check('academy_mock_assessments_score_ck', sql`${t.score} is null or ${t.score} between 0 and 100`),
+  }),
+)

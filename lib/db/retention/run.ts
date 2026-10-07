@@ -12,8 +12,8 @@ import {
 } from './housekeeping'
 import { pruneReputationCache } from './reputation'
 import { pruneVariantVersions } from './variants'
-import { compactAcademyHistory } from './academy'
 import { pruneApplyHistory } from './apply'
+import { compactAcademyHistory, pruneCodingSubmissions } from './academy'
 import { pruneAiCallLogs, pruneProcessedGmailThreads, pruneQueueJobs, pruneSystemEvents, pruneWebVitals } from './logs'
 import {
   EMPTY_GLOBAL_COUNTS,
@@ -73,6 +73,7 @@ export async function runUserCleanup(
     variantVersions: await pruneVariantVersions(now, { ...o, days: policy.variantVersionDays }),
     academyHistory: await compactAcademyHistory(now, o),
     applyHistory: await pruneApplyHistory(now, o),
+    codingSubmissions: await pruneCodingSubmissions(o),
   }
 }
 
