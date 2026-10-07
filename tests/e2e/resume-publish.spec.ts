@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { E2E_GITHUB_STUB_URL } from './env'
+import { E2E_GITHUB_STUB_URL, E2E_LATEX_STUB_URL } from './env'
 
 // Master profile → variant → publish, end to end. The seeded legacy master
 // CV is migrated into the master profile on first visit; Publish talks to
@@ -7,6 +7,16 @@ import { E2E_GITHUB_STUB_URL } from './env'
 
 async function expectToast(page: Page, text: string | RegExp): Promise<void> {
   await expect(page.locator('[data-sonner-toast]').filter({ hasText: text }).first()).toBeVisible()
+}
+
+async function latexStats(page: Page): Promise<{ compiles: number }> {
+  const res = await page.request.get(`${E2E_LATEX_STUB_URL}/__test/stats`)
+  return (await res.json()) as { compiles: number }
+}
+
+async function setLatexMode(page: Page, mode: 'ok' | 'fail' | 'down'): Promise<void> {
+  const res = await page.request.post(`${E2E_LATEX_STUB_URL}/__test/mode?mode=${mode}`)
+  expect(res.ok()).toBe(true)
 }
 
 async function stubFile(page: Page, path = 'profile.json'): Promise<{ text: string | null; commits: number }> {
@@ -82,6 +92,26 @@ test('edit the master profile, build a variant, preview it and publish to the po
   await expect(page.getByLabel('Plain-text résumé')).toHaveValue(/ASHA MENON/)
   await page.reload()
   await expect(page.getByLabel('Template')).toHaveValue('classic')
+
+  // Make PDF: the Classic LaTeX is written and compiled through the PDF
+  // route against the compile-service stub (tests/e2e/latex-stub.mjs).
+  const before = await latexStats(page)
+  await page.getByRole('button', { name: 'Make PDF' }).click()
+  const pdfStatus = page.getByTestId('variant-pdf-status')
+  await expect(pdfStatus).toHaveAttribute('data-phase', 'ready', { timeout: 30_000 })
+  await expect(pdfStatus).toContainText('PDF ready')
+  expect((await latexStats(page)).compiles).toBe(before.compiles + 1)
+  const pdfHref = await pdfStatus.getByRole('link', { name: 'Download PDF' }).getAttribute('href')
+  const pdfRes = await page.request.get(pdfHref!)
+  expect(pdfRes.status()).toBe(200)
+  expect(pdfRes.headers()['content-type']).toContain('application/pdf')
+  expect((await pdfRes.body()).subarray(0, 5).toString()).toBe('%PDF-')
+  // The second view is served from the PDF cache: no new compile.
+  expect((await latexStats(page)).compiles).toBe(before.compiles + 1)
+  await pdfStatus.getByRole('link', { name: 'Open in the LaTeX editor' }).click()
+  // CodeMirror renders only the lines in view: check the top of the file.
+  await expect(page.locator('.cm-content')).toContainText('(Classic layout)')
+  await expect(page.locator('.cm-content')).toContainText('\documentclass[10pt, letterpaper]{article}')
 
   // 3. Publish: repository, token (checked against the stub), preview, publish.
   await page.goto('/settings/profile/publish')
@@ -183,4 +213,26 @@ test('edit the master profile, build a variant, preview it and publish to the po
   expect((await stubFile(page, 'variants/gcc-backend.json')).text).toBeNull()
   await page.goto(variantUrl)
   await expect(page.getByLabel(/Publish this variant to the portfolio too/)).not.toBeChecked()
+})
+
+test('Make PDF reports a compile-service outage with Try again, then makes the PDF', async ({ page }) => {
+  await page.goto('/settings/profile/variants')
+  await page.getByRole('link', { name: /India · Backend/ }).first().click()
+  await page.waitForURL(/\/settings\/profile\/variants\/[0-9a-f-]{36}$/)
+  try {
+    await setLatexMode(page, 'down')
+    await page.getByRole('button', { name: 'Make PDF' }).click()
+    const status = page.getByTestId('variant-pdf-status')
+    // Both services down: the PDF route answers 503 and the panel says so.
+    await expect(status).toHaveAttribute('data-phase', 'failed', { timeout: 30_000 })
+    await expect(status).toContainText('The compile service is not answering right now')
+    await expect(page.getByRole('button', { name: 'Make PDF' })).toBeEnabled()
+
+    await setLatexMode(page, 'ok')
+    await status.getByRole('button', { name: 'Try again' }).click()
+    await expect(status).toHaveAttribute('data-phase', 'ready', { timeout: 30_000 })
+    await expect(status.getByRole('link', { name: 'Download PDF' })).toBeVisible()
+  } finally {
+    await setLatexMode(page, 'ok')
+  }
 })

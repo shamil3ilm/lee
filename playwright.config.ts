@@ -1,5 +1,14 @@
 import { defineConfig, devices } from '@playwright/test'
-import { E2E_AUTH_STATE, E2E_BASE_URL, E2E_ENV, E2E_GITHUB_STUB_PORT, E2E_GITHUB_STUB_URL, E2E_PORT } from './tests/e2e/env'
+import {
+  E2E_AUTH_STATE,
+  E2E_BASE_URL,
+  E2E_ENV,
+  E2E_GITHUB_STUB_PORT,
+  E2E_GITHUB_STUB_URL,
+  E2E_LATEX_STUB_PORT,
+  E2E_LATEX_STUB_URL,
+  E2E_PORT,
+} from './tests/e2e/env'
 
 // v17 §9.1 — E2E runs against `next dev` (the only mode where the local test
 // sign-in exists) on a dedicated port, with a freshly seeded PGlite file DB
@@ -28,6 +37,16 @@ export default defineConfig({
       command: 'node tests/e2e/github-stub.mjs',
       url: `${E2E_GITHUB_STUB_URL}/health`,
       env: { GITHUB_STUB_PORT: String(E2E_GITHUB_STUB_PORT) },
+      reuseExistingServer: process.env.E2E_REUSE_SERVER === '1',
+      timeout: 30_000,
+      stdout: 'ignore',
+      stderr: 'pipe',
+    },
+    // Server-side LaTeX compiles talk to this stand-in, never to latexonline.cc / YtoTech.
+    {
+      command: 'node tests/e2e/latex-stub.mjs',
+      url: `${E2E_LATEX_STUB_URL}/health`,
+      env: { LATEX_STUB_PORT: String(E2E_LATEX_STUB_PORT) },
       reuseExistingServer: process.env.E2E_REUSE_SERVER === '1',
       timeout: 30_000,
       stdout: 'ignore',
