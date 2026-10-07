@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import type { CoverLetter, MasterCV } from '@/lib/documents/types'
+import { escapeLatex } from '../escape'
 
 // Templates are shipped as .tex files next to this module. Read them at module
 // init (server-only paths — this file is imported from server actions and the
@@ -65,24 +66,8 @@ export interface CoverLetterFillInput {
   closing?: string
 }
 
-/**
- * Escape a plain-text string so LaTeX renders it as literal text — no macros
- * or math triggered. We stash backslashes as a sentinel first, run the
- * per-char replacements (which use braces), then restore backslashes at the
- * end so the introduced braces aren't themselves escaped.
- */
-const BS_SENTINEL = 'BS'
-export function escapeLatex(input: string): string {
-  return input
-    .replace(/\\/g, BS_SENTINEL)
-    .replace(/([&%$#_{}])/g, '\\$1')
-    .replace(/~/g, '\\textasciitilde{}')
-    .replace(/\^/g, '\\textasciicircum{}')
-    .replace(/</g, '\\textless{}')
-    .replace(/>/g, '\\textgreater{}')
-    .split(BS_SENTINEL)
-    .join('\\textbackslash{}')
-}
+// Escaping lives in ../escape (client-safe, no template file reads).
+export { escapeLatex }
 
 /**
  * Split a full name into first/last for templates (like ModernCV) that want
