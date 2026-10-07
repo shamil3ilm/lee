@@ -2,6 +2,7 @@ import { RouteTabs, type RouteTab } from '@/components/route-tabs'
 
 const PLAYGROUND_TABS: RouteTab[] = [
   { href: '/playground', label: 'Practice' },
+  { href: '/playground/problems', label: 'Problems' },
   { href: '/playground/review', label: 'Review' },
   { href: '/playground/history', label: 'History' },
   { href: '/playground/models', label: 'Models' },

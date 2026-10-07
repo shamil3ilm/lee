@@ -30,7 +30,11 @@ function PlanRow({ item }: { item: PlanItem }) {
           <span className="inline-flex items-center gap-1 text-xs font-medium text-success">
             <CheckCircle2 className="size-3.5" aria-hidden />
             Done
-            {item.attemptId ? (
+            {item.kind === 'coding' && item.itemId ? (
+              <Link href={`/playground/problems/${item.itemId}`} className="ml-1 text-primary underline-offset-4 hover:underline">
+                See problem
+              </Link>
+            ) : item.attemptId ? (
               <Link href={`/playground/play/${item.attemptId}`} className="ml-1 text-primary underline-offset-4 hover:underline">
                 See result
               </Link>

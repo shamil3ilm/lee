@@ -7,6 +7,7 @@ export const PLAN_KIND_LABELS: Readonly<Record<PlanItemKind, string>> = {
   placement: 'Placement',
   review: 'Review',
   interview: 'Interview prep',
+  coding: 'Coding problem',
   study: 'Study list',
   weakness: 'Weak spot',
   uncertain: 'Calibrate',
@@ -17,6 +18,7 @@ export const PLAN_KIND_BADGE: Readonly<Record<PlanItemKind, NonNullable<BadgePro
   placement: 'info',
   review: 'neutral',
   interview: 'interview',
+  coding: 'info',
   study: 'warning',
   weakness: 'danger',
   uncertain: 'neutral',
@@ -26,12 +28,15 @@ export const PLAN_KIND_BADGE: Readonly<Record<PlanItemKind, NonNullable<BadgePro
 export const FORMAT_LABELS: Readonly<Record<string, string>> = {
   concept_check: 'Concept check',
   predict_output: 'Predict the output',
+  coding: 'Coding problem',
 }
 
 export const MODE_LABELS: Readonly<Record<string, string>> = {
   practice: 'Practice',
   plan: 'Daily plan',
   diagnostic: 'Placement',
+  daily: 'Daily problem',
+  mock: 'Mock assessment',
 }
 
 export function levelBadge(level: number): NonNullable<BadgeProps['variant']> {

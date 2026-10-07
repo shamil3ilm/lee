@@ -42,7 +42,10 @@ export function HistoryList({ entries, showSkill = true }: { entries: HistoryEnt
             <span title="Composite score">{e.composite}/100</span>
             {delta(e) ? <span title="Rating change">{delta(e)}</span> : null}
             <span title="XP">+{e.xp} XP</span>
-            <Link href={`/playground/play/${e.id}`} className="text-primary underline-offset-4 hover:underline">
+            <Link
+              href={e.format === 'coding' ? `/playground/problems/${e.itemId}` : `/playground/play/${e.id}`}
+              className="text-primary underline-offset-4 hover:underline"
+            >
               Open
             </Link>
           </div>

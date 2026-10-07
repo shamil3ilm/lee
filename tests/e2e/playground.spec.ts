@@ -38,7 +38,7 @@ test('hub renders a plan, one built-in item is completed, and history shows it',
   await page.waitForURL(/\/playground\/history$/)
   const entry = page.getByTestId('history-entry').first()
   await expect(entry).toBeVisible()
-  await expect(entry).toContainText('engine 13.0.0')
+  await expect(entry).toContainText('engine 13.1.0')
   if (skillTitle) await expect(page.getByRole('list', { name: 'Attempt history' })).toContainText(skillTitle)
 
   // Back on the hub the plan item is done.
