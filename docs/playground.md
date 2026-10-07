@@ -358,7 +358,7 @@ One warm worker per runtime is kept, so a runtime loads once per page.
   try/catch, so it still works when storage is blocked. At phone widths the
   panes stack behind Problem / Code / Result tabs.
 
-### Data (migration `0033_coding_workbench`)
+### Data (migration `0034_coding_workbench`)
 
 | Table | Rows |
 |---|---|

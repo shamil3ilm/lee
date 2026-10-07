@@ -239,6 +239,13 @@
       "when": 1791374434141,
       "tag": "0033_apply_faster",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1791379163512,
+      "tag": "0034_coding_workbench",
+      "breakpoints": true
     }
   ]
 }
