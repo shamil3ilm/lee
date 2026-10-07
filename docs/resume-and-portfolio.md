@@ -60,6 +60,7 @@ It runs in bounded batches inside the run's time budget and is idempotent. The p
 **Outputs.** All outputs reuse existing pipelines:
 
 - A `latex_cv` document per variant version gives the PDF, the LaTeX editor and the PDF cache.
+- **Make PDF** has two steps, each visible in the panel. *Preparing* writes the document (server action, database only). *Compiling* fetches `/api/documents/[id]/pdf`, which compiles through the PDF cache, and shows elapsed seconds and a Cancel button. The result is *PDF ready* with Download and editor links, or a failure: "not answering" (route 503, Retry-After 30) and "took too long" (the browser's 75 s deadline) offer **Try again**; a LaTeX error (422) links to the editor for the log. No database transaction is open during the compile (`components/variants/use-variant-pdf.ts`, `lib/variants/pdf-client.ts`).
 - The PDF can be saved to Drive in lee/CVs.
 - "Score this variant" goes through CV Score's public `scoreCv`.
 - A plain-text export is available for portal forms.
