@@ -300,6 +300,60 @@ body {
   border-radius: calc(var(--radius) - 6px);
 }
 
+/* LaTeX editor PDF viewer: pdf.js text layer (selectable, invisible text over
+ * the canvas). Variables follow pdf.js v5's TextLayer; the viewer sets
+ * --total-scale-factor per page. */
+.lee-pdf-text-layer {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  line-height: 1;
+  text-align: initial;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+  --scale-round-x: 1px;
+  --scale-round-y: 1px;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+.lee-pdf-text-layer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+.lee-pdf-text-layer > :not(.markedContent),
+.lee-pdf-text-layer .markedContent span:not(.markedContent) {
+  z-index: 1;
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+.lee-pdf-text-layer .markedContent {
+  display: contents;
+}
+.lee-pdf-text-layer ::selection {
+  background: hsl(var(--ring) / 0.3);
+}
+.lee-pdf-text-layer br::selection {
+  background: transparent;
+}
+/* Thin indeterminate bar while the LaTeX editor compiles. */
+@keyframes lee-indeterminate {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}
+/* Optional dark PDF: invert the page, keep hues roughly right. */
+.lee-pdf-dark canvas {
+  filter: invert(0.9) hue-rotate(180deg);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

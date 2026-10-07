@@ -1,46 +1,40 @@
 'use client'
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
-import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { toast } from 'sonner'
-import {
-  ChevronLeft,
-  Download,
-  Eye,
-  FileCode2,
-  ListTree,
-  Loader2,
-  MoreHorizontal,
-  PlayCircle,
-  Save,
-  Zap,
-  ImageOff,
-} from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { PreviewPane } from '@/components/latex/preview-pane'
-import { Input } from '@/components/ui/input'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { cn } from '@/lib/utils'
-import { saveLatexSource } from '@/app/(authed)/documents/[id]/edit/actions'
 import { LatexAssetsDialog } from '@/components/latex-assets-dialog'
 import type { AssetMetadata } from '@/lib/db/queries/documentAssets'
-import { defaultSnippetForAsset } from '@/lib/latex/snippets'
 import { extractLatexHint, isMainFile, parseLatexLog } from '@/lib/latex/errors'
 import { extractOutline } from '@/lib/latex/outline'
+import { applyToolbarCommand } from '@/lib/latex/editor-commands'
+import { DEFAULT_COMPILE_SETTINGS, type CompileSettings } from '@/lib/latex/compile-settings'
+import { IMPORT_ACCEPT, MAIN_FILE } from '@/lib/latex/file-kinds'
+import { packageLine } from '@/lib/latex/missing'
+import { looksLikeFilePath, pathFileName } from '@/lib/latex/path-paste'
+import { stepFontSize, type SidePanel } from '@/lib/latex/editor-prefs'
 import type { CodeEditorHandle } from '@/components/latex/code-editor'
 import type { CompileDiagnostic } from '@/components/latex/cm-setup'
-import { OutlinePanel } from '@/components/latex/outline-panel'
 import { ProblemsPanel } from '@/components/latex/problems-panel'
 import { useBibSources } from '@/components/latex/use-bib-sources'
 import { useLatexCompile, type CompileError, type CompileSnapshot } from '@/components/latex/use-latex-compile'
-import { CompileSettingsControl } from '@/components/latex/compile-settings-control'
-import { BACKEND_NAMES, DEFAULT_COMPILE_SETTINGS, type CompileSettings } from '@/lib/latex/compile-settings'
-import { packageLine } from '@/lib/latex/missing'
+import { TopBar } from '@/components/latex/workspace/top-bar'
+import { SideRail } from '@/components/latex/workspace/side-rail'
+import { FilesPanel } from '@/components/latex/workspace/files-panel'
+import { SearchPanel } from '@/components/latex/workspace/search-panel'
+import { FileTabs } from '@/components/latex/workspace/file-tabs'
+import { EditorToolbar } from '@/components/latex/workspace/editor-toolbar'
+import { PdfPane } from '@/components/latex/workspace/pdf-pane'
+import { PathBanner } from '@/components/latex/workspace/path-banner'
+import { ImportTexDialog } from '@/components/latex/workspace/import-dialog'
+import { WorkspaceLayout } from '@/components/latex/workspace/workspace-layout'
+import { useEditorPrefs } from '@/components/latex/workspace/use-editor-prefs'
+import { useWorkspaceSize } from '@/components/latex/workspace/use-workspace-size'
+import { useAutosave } from '@/components/latex/workspace/use-autosave'
+import { useProjectFiles } from '@/components/latex/workspace/use-project-files'
+import { useImport } from '@/components/latex/workspace/use-import'
 
 // CodeMirror 6 is bundled (no CDN) into its own chunk that only this route
 // loads, after hydration. Until it arrives a plain textarea is editable, so
@@ -59,41 +53,20 @@ interface LatexEditorProps {
   initialAssets: AssetMetadata[]
   /** Saved compile service + engine (defaults: auto fallback, pdfLaTeX). */
   initialSettings?: CompileSettings
-  /** Overrides the default full-viewport height (e.g. when a breadcrumb sits above). */
   className?: string
 }
 
-type UploadFn = (files: FileList | File[]) => Promise<AssetMetadata[]>
-
-function ToggleButton({
-  pressed,
-  onClick,
-  children,
-  title,
-}: {
-  pressed: boolean
-  onClick: () => void
-  children: React.ReactNode
-  title: string
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={pressed}
-      title={title}
-      className={cn(
-        'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition-colors',
-        pressed
-          ? 'border-primary/30 bg-primary/10 text-foreground'
-          : 'border-transparent text-muted-foreground hover:bg-muted hover:text-foreground',
-      )}
-    >
-      {children}
-    </button>
-  )
+interface Banner {
+  fileName: string | null
+  pasted: string | null
 }
 
+/**
+ * The LaTeX workspace, laid out like Overleaf: a top bar (title, save state,
+ * layout), a rail with Files + outline and Search, file tabs and a
+ * formatting toolbar over the code, and the PDF column with its own
+ * pdf.js viewer, the Recompile menu and the logs.
+ */
 export function LatexEditor({
   documentId,
   initialTitle,
@@ -103,93 +76,136 @@ export function LatexEditor({
   initialSettings = DEFAULT_COMPILE_SETTINGS,
   className,
 }: LatexEditorProps) {
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  const editorRef = useRef<CodeEditorHandle | null>(null)
   const [source, setSource] = useState(initialSource)
   const [title, setTitle] = useState(initialTitle)
-  const [saving, setSaving] = useState(false)
-  const [assets, setAssets] = useState<AssetMetadata[]>(initialAssets)
-  const [dragActive, setDragActive] = useState(false)
-  const [editorReady, setEditorReady] = useState(false)
-  const [draft, setDraft] = useState(false)
   const [settings, setSettings] = useState<CompileSettings>(initialSettings)
-  const [outlineOpen, setOutlineOpen] = useState(false)
-  // Narrow-editor pane toggle; wide editors always show source and preview side by side.
-  const [mobilePane, setMobilePane] = useState<'source' | 'preview'>('source')
-  const editorRef = useRef<CodeEditorHandle | null>(null)
+  const [editorReady, setEditorReady] = useState(false)
+  const [dragActive, setDragActive] = useState(false)
+  const [assetsOpen, setAssetsOpen] = useState(false)
+  const [narrowPane, setNarrowPane] = useState<'editor' | 'pdf'>('editor')
+  const [banner, setBanner] = useState<Banner | null>(null)
+  const [overlayPanel, setOverlayPanel] = useState<SidePanel>(null)
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null)
+  const [prefs, setPrefs] = useEditorPrefs()
+  const size = useWorkspaceSize(rootRef)
+  const files = useProjectFiles(documentId, initialAssets)
+  const autosave = useAutosave(documentId, source, title)
+  const bibSources = useBibSources(documentId, files.assets)
 
-  const compile = useLatexCompile({ documentId, initialError })
-  const { notifyChange, compileNow } = compile
-  const bibSources = useBibSources(documentId, assets)
-
-  const assetKey = useMemo(
-    () => assets.map((a) => `${a.id}:${a.filename}:${a.sizeBytes}`).join('|'),
-    [assets],
+  const beforeCompile = useCallback(
+    async (snapshot: CompileSnapshot): Promise<boolean> => {
+      if (looksLikeFilePath(snapshot.source)) {
+        setBanner({ fileName: pathFileName(snapshot.source), pasted: null })
+        return false
+      }
+      await files.flushTexts()
+      return true
+    },
+    [files],
   )
+  const compile = useLatexCompile({ documentId, initialError, beforeCompile })
+  const { notifyChange, compileNow } = compile
+
+  const assetKey = useMemo(() => files.assets.map((a) => `${a.id}:${a.filename}:${a.sizeBytes}`).join('|'), [files.assets])
   const snapshot = useMemo<CompileSnapshot>(
-    () => ({ source, draft, assetKey, settings }),
-    [source, draft, assetKey, settings],
+    () => ({ source, draft: prefs.fastMode, assetKey, settings }),
+    [source, prefs.fastMode, assetKey, settings],
   )
   const snapshotRef = useRef(snapshot)
-  const firstSnapshot = useRef(true)
+  const initialKey = useRef<string | null>(null)
+  const edited = useRef(false)
   useEffect(() => {
     snapshotRef.current = snapshot
-    // The saved source is already compiled (the preview loads it); only
-    // changes after mount schedule an auto-compile.
-    if (firstSnapshot.current) {
-      firstSnapshot.current = false
-      return
-    }
+    // The saved source is already compiled (the preview loads it). Until the
+    // source or the files change, nothing auto-compiles: the per-viewer
+    // preferences arriving after hydration are not an edit.
+    const key = `${snapshot.assetKey}\0${snapshot.source}`
+    initialKey.current ??= key
+    if (!edited.current && key === initialKey.current) return
+    edited.current = true
     notifyChange(snapshot)
   }, [snapshot, notifyChange])
 
   const compileCurrent = useCallback(() => compileNow(snapshotRef.current), [compileNow])
+  const saveAndCompile = useCallback(() => {
+    void autosave.saveNow()
+    compileCurrent()
+  }, [autosave, compileCurrent])
 
-  // Ctrl/Cmd+Enter and Ctrl/Cmd+S compile from anywhere on the page. Inside
-  // CodeMirror its own keymap handles them first (and marks them handled).
+  // Ctrl/Cmd+Enter and Ctrl/Cmd+S compile (and save) from anywhere on the
+  // page. Inside CodeMirror its own keymap handles them first.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || !(e.ctrlKey || e.metaKey) || e.altKey) return
       if (e.key === 'Enter' || e.key.toLowerCase() === 's') {
         e.preventDefault()
-        compileCurrent()
+        saveAndCompile()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [compileCurrent])
+  }, [saveAndCompile])
 
-  /** Insert a snippet at the cursor (or `pos`); falls back to appending. */
-  const insertAtCursor = useCallback((snippet: string, pos?: number | null): void => {
+  // A text asset opens in the editor once its text has loaded (until then
+  // the editor stays on main.tex), so its editor state never starts empty.
+  const editorFile =
+    files.active === MAIN_FILE || files.texts[files.active]?.loading !== false ? MAIN_FILE : files.active
+  const activeText = editorFile === MAIN_FILE ? source : (files.texts[editorFile]?.value ?? '')
+  const insertSnippet = useCallback((snippet: string, pos: number | null = null) => {
     const editor = editorRef.current
-    if (editor) {
-      editor.insertText(`${snippet}\n`, pos)
-      return
-    }
-    setSource((s) => (s.endsWith('\n') ? `${s}${snippet}\n` : `${s}\n${snippet}\n`))
+    if (editor) editor.insertText(`${snippet}\n`, pos)
+    else setSource((s) => (s.endsWith('\n') ? `${s}${snippet}\n` : `${s}\n${snippet}\n`))
   }, [])
-
-  const handleDropFiles = useCallback(
-    async (files: FileList, pos: number | null) => {
-      const uploader = (window as unknown as { __latexAssetsUpload?: UploadFn }).__latexAssetsUpload
-      if (!uploader) {
-        toast.error('Assets panel not ready — try again in a moment.')
+  const replaceMain = useCallback(
+    (text: string) => {
+      setBanner(null)
+      if (editorFile === MAIN_FILE && editorRef.current) {
+        editorRef.current.replaceAll(text)
         return
       }
-      const uploaded = await uploader(files)
-      uploaded.forEach((asset, i) => insertAtCursor(defaultSnippetForAsset(asset), i === 0 ? pos : null))
+      // Switch to main.tex first; its editor state (with undo) takes the text.
+      files.setActive(MAIN_FILE)
+      setTimeout(() => {
+        if (editorRef.current) editorRef.current.replaceAll(text)
+        else setSource(text)
+      }, 50)
     },
-    [insertAtCursor],
+    [files, editorFile],
+  )
+  const importInputRef = useRef<HTMLInputElement | null>(null)
+  const importer = useImport({ files, inputRef: importInputRef, replaceMain, insertSnippet })
+
+  const jumpToLine = useCallback(
+    (line: number, file: string = MAIN_FILE) => {
+      setNarrowPane('editor')
+      setOverlayPanel(null)
+      compile.setProblemsOpen(false)
+      if (file !== files.active) {
+        void files.open(file)
+        setTimeout(() => editorRef.current?.jumpTo(line), 50)
+        return
+      }
+      editorRef.current?.jumpTo(line)
+    },
+    [compile, files],
   )
 
-  const jumpToLine = useCallback((line: number) => {
-    setMobilePane('source')
-    editorRef.current?.jumpTo(line)
+  const onChange = useCallback(
+    (fileId: string, value: string) => {
+      if (fileId === MAIN_FILE) setSource(value)
+      else files.setText(fileId, value)
+    },
+    [files],
+  )
+  const onPathPaste = useCallback((text: string) => {
+    if (!looksLikeFilePath(text)) return false
+    setBanner({ fileName: pathFileName(text), pasted: text })
+    return true
   }, [])
-
+  const onDropFiles = useCallback((list: FileList, pos: number | null) => void importer.importFiles(list, pos), [importer])
   const onEditorReady = useCallback(() => setEditorReady(true), [])
-  const onDropFiles = useCallback(
-    (files: FileList, pos: number | null) => void handleDropFiles(files, pos),
-    [handleDropFiles],
-  )
 
   const parsedLog = useMemo(() => (compile.error ? parseLatexLog(compile.error.log) : null), [compile.error])
   const deferredSource = useDeferredValue(source)
@@ -198,7 +214,33 @@ export function LatexEditor({
     [compile.error, deferredSource],
   )
   const hintLine = hint?.kind === 'missing_package' && hint.subject ? packageLine(deferredSource, hint.subject) : null
-  const switchToAuto = useCallback(() => setSettings((s) => ({ ...s, service: 'auto' })), [])
+  const compileDiagnostics = useMemo<CompileDiagnostic[]>(
+    () =>
+      editorFile !== MAIN_FILE
+        ? []
+        : (parsedLog?.all ?? [])
+            .filter((e) => e.line !== null && isMainFile(e.file))
+            .map((e) => ({
+              line: e.line!,
+              severity: e.severity === 'error' ? 'error' : e.severity === 'warning' ? 'warning' : 'info',
+              message: e.message,
+            })),
+    [parsedLog, editorFile],
+  )
+  const completionData = useMemo(
+    () => ({ bibSources, assetFilenames: files.assets.map((a) => a.filename) }),
+    [bibSources, files.assets],
+  )
+  const deferredActive = useDeferredValue(activeText)
+  const outline = useMemo(() => extractOutline(deferredActive), [deferredActive])
+  const searchFiles = useMemo(
+    () => [
+      { name: MAIN_FILE, text: source },
+      ...Object.entries(files.texts).map(([name, t]) => ({ name, text: t.value })),
+    ],
+    [source, files.texts],
+  )
+
   // Say once (per distinct message) when a fallback or stand-in produced the PDF.
   const lastNotes = useRef('')
   useEffect(() => {
@@ -206,37 +248,8 @@ export function LatexEditor({
     if (text && text !== lastNotes.current) toast.info(text)
     lastNotes.current = text
   }, [compile.outcome])
-  const compileDiagnostics = useMemo<CompileDiagnostic[]>(
-    () =>
-      (parsedLog?.all ?? [])
-        .filter((e) => e.line !== null && isMainFile(e.file))
-        .map((e) => ({
-          line: e.line!,
-          severity: e.severity === 'error' ? 'error' : e.severity === 'warning' ? 'warning' : 'info',
-          message: e.message,
-        })),
-    [parsedLog],
-  )
-  const completionData = useMemo(
-    () => ({ bibSources, assetFilenames: assets.map((a) => a.filename) }),
-    [bibSources, assets],
-  )
-  const outline = useMemo(() => extractOutline(deferredSource), [deferredSource])
 
-  async function handleSave(): Promise<void> {
-    setSaving(true)
-    try {
-      const result = await saveLatexSource({ documentId, source, title })
-      if ('error' in result) toast.error(result.error)
-      else toast.success('Saved')
-    } catch {
-      toast.error('Could not save.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  function handleDownload(): void {
+  function downloadTex(): void {
     const blob = new Blob([source], { type: 'application/x-tex' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -244,225 +257,228 @@ export function LatexEditor({
     a.download = `${title.replace(/[^a-z0-9\-_. ]/gi, '_') || 'document'}.tex`
     document.body.appendChild(a)
     a.click()
-    document.body.removeChild(a)
+    a.remove()
     URL.revokeObjectURL(url)
   }
 
-  const outlinePanel = <OutlinePanel items={outline} onJump={jumpToLine} />
+  const narrow = size === 'narrow'
+  // Wide: the remembered side panel sits inline. Narrower: it overlays the
+  // editor only while opened from the rail.
+  const sidePanel = size === 'wide' ? prefs.sidePanel : overlayPanel
+  const setSidePanel = (next: SidePanel) => (size === 'wide' ? setPrefs({ sidePanel: next }) : setOverlayPanel(next))
+  const panel =
+    sidePanel === 'files' ? (
+      <FilesPanel
+        assets={files.assets}
+        active={files.active}
+        busy={files.busy}
+        outline={outline}
+        onOpen={(f) => void files.open(f)}
+        onDelete={setPendingDelete}
+        onCreate={files.create}
+        onUpload={importer.openPicker}
+        onDropFiles={(list) => void importer.importFiles(list)}
+        onJump={(line) => jumpToLine(line, files.active)}
+      />
+    ) : sidePanel === 'search' ? (
+      <SearchPanel files={searchFiles} onOpen={(file, line) => jumpToLine(line, file)} />
+    ) : null
+
+  const editorColumn = (
+    <section aria-label="Source" className="flex h-full min-h-0 min-w-0 flex-col bg-background">
+      <FileTabs
+        tabs={files.tabs}
+        active={files.active}
+        dirty={[...files.dirtyTexts, ...(autosave.state === 'unsaved' ? [MAIN_FILE] : [])]}
+        onSelect={files.setActive}
+        onClose={files.close}
+      />
+      <EditorToolbar
+        onUndo={() => editorRef.current?.undo()}
+        onRedo={() => editorRef.current?.redo()}
+        onCommand={(c) => editorRef.current?.edit((doc, from, to) => applyToolbarCommand(c, doc, from, to))}
+        onSymbol={(latex) => editorRef.current?.insertText(latex)}
+        onFind={() => editorRef.current?.openSearch()}
+        fontSize={prefs.fontSize}
+        onFontSize={(d) => setPrefs({ fontSize: stepFontSize(prefs.fontSize, d) })}
+      />
+      {banner ? (
+        <PathBanner
+          fileName={banner.fileName}
+          fromPaste={banner.pasted !== null}
+          onImport={() => {
+            setBanner(null)
+            importer.openPicker()
+          }}
+          onPasteAnyway={() => {
+            if (banner.pasted) editorRef.current?.insertText(banner.pasted)
+            setBanner(null)
+          }}
+          onDismiss={() => setBanner(null)}
+        />
+      ) : null}
+      <div className="relative min-h-0 flex-1">
+        {!editorReady ? (
+          <textarea
+            value={activeText}
+            onChange={(e) => onChange(editorFile, e.target.value)}
+            aria-label="LaTeX source"
+            spellCheck={false}
+            autoCapitalize="off"
+            autoCorrect="off"
+            className="absolute inset-0 z-10 h-full w-full resize-none bg-background p-3 font-mono text-[13px] leading-relaxed text-foreground outline-none"
+          />
+        ) : null}
+        <CodeEditor
+          fileId={editorFile}
+          initialValue={activeText}
+          fontSize={prefs.fontSize}
+          handleRef={editorRef}
+          onChange={onChange}
+          onCompile={saveAndCompile}
+          onDropFiles={onDropFiles}
+          onDragActive={setDragActive}
+          onPathPaste={onPathPaste}
+          completionData={completionData}
+          compileDiagnostics={compileDiagnostics}
+          onReady={onEditorReady}
+        />
+        {dragActive ? (
+          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-primary/10 ring-2 ring-inset ring-primary backdrop-blur-sm">
+            <p className="rounded-md bg-background/90 px-4 py-2 text-sm font-medium shadow">Drop files to add them</p>
+          </div>
+        ) : null}
+      </div>
+    </section>
+  )
+
+  const logs =
+    compile.error && parsedLog ? (
+      <ProblemsPanel
+        className="h-full"
+        title={compile.error.message}
+        parsed={parsedLog}
+        rawLog={compile.error.log}
+        hint={hint}
+        notes={compile.error.notes}
+        hintLine={hintLine}
+        onUseFallback={settings.service === 'auto' ? undefined : () => setSettings((s) => ({ ...s, service: 'auto' }))}
+        onImport={importer.openPicker}
+        onJump={(line) => jumpToLine(line)}
+        onClose={() => compile.setProblemsOpen(false)}
+      />
+    ) : (
+      <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+        No problems in the last compile.{' '}
+        <button type="button" className="ml-1 underline" onClick={() => compile.setProblemsOpen(false)}>
+          Back to the PDF
+        </button>
+      </div>
+    )
+
+  const pdfColumn = (
+    <PdfPane
+      compile={{
+        compiling: compile.compiling,
+        autoCompile: compile.autoCompile,
+        onAutoCompile: compile.setAutoCompile,
+        fastMode: prefs.fastMode,
+        onFastMode: (on) => setPrefs({ fastMode: on }),
+        settings,
+        onSettings: setSettings,
+        onCompile: saveAndCompile,
+        onClearCache: () => compileNow(snapshotRef.current, { fresh: true }),
+      }}
+      previewState={compile.previewState}
+      pdfBytes={compile.pdfBytes}
+      pdfUrl={compile.pdfUrl}
+      pdfIsDraft={compile.pdfIsDraft}
+      service={compile.outcome.service}
+      serviceNote={compile.outcome.notes.join(' ')}
+      lastCompile={compile.lastCompile}
+      downloadName={`${title.replace(/[^a-z0-9\-_. ]/gi, '_') || 'document'}.pdf`}
+      errors={parsedLog?.errors.length ?? (compile.error ? 1 : 0)}
+      warnings={parsedLog?.warnings.length ?? 0}
+      logsOpen={compile.problemsOpen}
+      onLogs={compile.setProblemsOpen}
+      logs={logs}
+      dark={prefs.darkPdf}
+      onDark={(on) => setPrefs({ darkPdf: on })}
+    />
+  )
 
   return (
-    // Layout responds to the editor's own width (container queries), not the
-    // viewport: at tablet width the sidebar leaves ~480px, which is a phone
-    // layout even though the viewport is "md".
-    <div className={cn('@container/editor flex h-[calc(100vh-6rem)] flex-col', className)}>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-background px-3 py-2">
-        <div className="flex min-w-[min(100%,14rem)] flex-1 items-center gap-2">
-          <Button asChild variant="ghost" size="icon" aria-label="Back to documents">
-            <Link href="/documents">
-              <ChevronLeft className="size-4" />
-            </Link>
-          </Button>
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="min-w-0 flex-1 @4xl/editor:max-w-80"
-            placeholder="Document title"
-            aria-label="Document title"
-          />
-        </div>
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-          {compile.compiling ? (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground" role="status">
-              <Loader2 className="size-3 animate-spin" />
-              <span className="hidden @lg/editor:inline">Compiling…</span>
-            </span>
-          ) : null}
-          <div className="inline-flex items-center rounded-md border bg-muted p-0.5 @2xl/editor:hidden">
-            {(['source', 'preview'] as const).map((pane) => (
-              <button
-                key={pane}
-                type="button"
-                onClick={() => setMobilePane(pane)}
-                className={cn(
-                  'inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors',
-                  mobilePane === pane ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground',
-                )}
-                aria-pressed={mobilePane === pane}
-              >
-                {pane === 'source' ? <FileCode2 className="size-3.5" /> : <Eye className="size-3.5" />}
-                {pane === 'source' ? 'Source' : 'Preview'}
-              </button>
-            ))}
-          </div>
-          <LatexAssetsDialog
-            documentId={documentId}
-            assets={assets}
-            onAssetsChange={setAssets}
-            onInsertSnippet={insertAtCursor}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={compileCurrent}
-            disabled={compile.compiling}
-            title="Compile (Ctrl/Cmd+Enter or Ctrl/Cmd+S)"
-            aria-label="Compile"
-          >
-            <PlayCircle className="size-4" />
-            <span className="hidden @lg/editor:inline">Compile</span>
-          </Button>
-          <Button
-            type="button"
-            variant="default"
-            size="sm"
-            onClick={handleSave}
-            disabled={saving}
-            aria-label="Save"
-          >
-            {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-            <span className="hidden @lg/editor:inline">Save</span>
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button type="button" variant="ghost" size="icon" className="size-8" aria-label="More document actions">
-                <MoreHorizontal className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={handleDownload}>
-                <Download className="size-4" />
-                Download .tex
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-1 border-b bg-muted/30 px-3 py-1">
-        <ToggleButton pressed={outlineOpen} onClick={() => setOutlineOpen((v) => !v)} title="Show the section outline">
-          <ListTree className="size-3.5" />
-          Outline
-        </ToggleButton>
-        <ToggleButton
-          pressed={compile.autoCompile}
-          onClick={() => compile.setAutoCompile(!compile.autoCompile)}
-          title="Compile automatically when you stop typing"
-        >
-          <Zap className="size-3.5" />
-          Auto-compile
-        </ToggleButton>
-        <ToggleButton
-          pressed={draft}
-          onClick={() => setDraft((v) => !v)}
-          title="Draft mode: images are drawn as boxes for faster previews"
-        >
-          <ImageOff className="size-3.5" />
-          Draft
-        </ToggleButton>
-        <CompileSettingsControl value={settings} onChange={setSettings} />
-        <span className="ml-auto hidden text-[11px] text-muted-foreground @4xl/editor:inline">
-          Ctrl/⌘+Enter to compile · Ctrl/⌘+F to find · Ctrl+Space for suggestions
-        </span>
-      </div>
-
+    <TooltipProvider delayDuration={300}>
       <div
-        className={cn(
-          'grid min-h-0 flex-1 grid-cols-1 overflow-hidden',
-          outlineOpen ? '@2xl/editor:grid-cols-[13rem_minmax(0,1fr)_minmax(0,1fr)]' : '@2xl/editor:grid-cols-2',
-        )}
+        ref={rootRef}
+        className={cn('@container/editor flex h-[calc(100dvh-3.5rem)] min-h-[480px] flex-col overflow-hidden bg-background', className)}
       >
-        {outlineOpen ? <aside className="hidden min-h-0 border-r @2xl/editor:block">{outlinePanel}</aside> : null}
-        <div
-          className={cn(
-            'flex h-full min-h-[400px] flex-col border-b @2xl/editor:border-b-0 @2xl/editor:border-r',
-            mobilePane === 'preview' && 'hidden @2xl/editor:flex',
-          )}
-        >
-          {outlineOpen ? <div className="max-h-40 border-b @2xl/editor:hidden">{outlinePanel}</div> : null}
-          <div className="relative min-h-0 flex-1">
-            {!editorReady ? (
-              <textarea
-                value={source}
-                onChange={(e) => setSource(e.target.value)}
-                aria-label="LaTeX source"
-                spellCheck={false}
-                autoCapitalize="off"
-                autoCorrect="off"
-                className="absolute inset-0 z-10 h-full w-full resize-none bg-background p-3 font-mono text-[13px] leading-relaxed text-foreground outline-none"
-              />
-            ) : null}
-            <CodeEditor
-              initialValue={source}
-              handleRef={editorRef}
-              onChange={setSource}
-              onCompile={compileCurrent}
-              onDropFiles={onDropFiles}
-              onDragActive={setDragActive}
-              completionData={completionData}
-              compileDiagnostics={compileDiagnostics}
-              onReady={onEditorReady}
+        <TopBar
+          title={title}
+          onTitle={setTitle}
+          saveState={autosave.state}
+          onSave={() => void autosave.saveNow()}
+          layout={narrow ? narrowPane : prefs.layout}
+          onLayout={(l) => (narrow ? setNarrowPane(l === 'pdf' ? 'pdf' : 'editor') : setPrefs({ layout: l }))}
+          onSwap={() => setPrefs({ order: prefs.order === 'editor-first' ? 'pdf-first' : 'editor-first' })}
+          narrow={narrow}
+          pdfUrl={compile.pdfUrl}
+          onImport={importer.openPicker}
+          onDownloadTex={downloadTex}
+        />
+        <WorkspaceLayout
+          size={size}
+          prefs={prefs}
+          onPrefs={setPrefs}
+          narrowPane={narrowPane}
+          rail={
+            <SideRail
+              panel={sidePanel}
+              onPanel={setSidePanel}
+              onAssets={() => setAssetsOpen(true)}
+              assetCount={files.assets.length}
             />
-            {dragActive ? (
-              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-primary/10 ring-2 ring-inset ring-primary backdrop-blur-sm">
-                <p className="rounded-md bg-background/90 px-4 py-2 text-sm font-medium shadow">Drop files to attach</p>
-              </div>
-            ) : null}
-          </div>
-          {compile.error && compile.problemsOpen && parsedLog ? (
-            <ProblemsPanel
-              title={compile.error.message}
-              parsed={parsedLog}
-              rawLog={compile.error.log}
-              hint={hint}
-              notes={compile.error.notes}
-              hintLine={hintLine}
-              onUseFallback={settings.service === 'auto' ? undefined : switchToAuto}
-              onJump={jumpToLine}
-              onClose={() => compile.setProblemsOpen(false)}
-            />
-          ) : null}
-        </div>
-
-        <div
-          className={cn(
-            'relative h-full min-h-[400px] bg-muted/20',
-            mobilePane === 'source' && 'hidden @2xl/editor:block',
-          )}
-        >
-          <PreviewPane
-            state={compile.previewState}
-            pdfUrl={compile.pdfUrl}
-            compiling={compile.compiling}
-            onCompile={compileCurrent}
-          />
-          {compile.error && !compile.problemsOpen ? (
-            <button
-              type="button"
-              onClick={() => {
-                compile.setProblemsOpen(true)
-                setMobilePane('source')
-              }}
-              className="absolute bottom-3 left-3 rounded-md border border-destructive/40 bg-background px-2 py-1 text-xs font-medium text-destructive shadow"
-            >
-              Last compile failed · show problems
-            </button>
-          ) : null}
-          {compile.outcome.service === 'ytotech' ? (
-            <span
-              className="pointer-events-none absolute left-3 top-3 rounded bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
-              title={compile.outcome.notes.join(' ')}
-            >
-              Compiled on {BACKEND_NAMES.ytotech}
-            </span>
-          ) : null}
-          {compile.pdfIsDraft ? (
-            <span className="pointer-events-none absolute right-3 top-3 rounded bg-warning-soft px-2 py-0.5 text-[11px] font-medium text-warning">
-              Draft preview
-            </span>
-          ) : null}
-        </div>
+          }
+          panel={panel}
+          onClosePanel={() => setSidePanel(null)}
+          editor={editorColumn}
+          pdf={pdfColumn}
+        />
+        <input
+          ref={importInputRef}
+          type="file"
+          multiple
+          accept={IMPORT_ACCEPT}
+          className="hidden"
+          aria-hidden="true"
+          tabIndex={-1}
+          data-testid="import-input"
+          onChange={(e) => {
+            if (e.target.files) void importer.importFiles(e.target.files)
+            e.target.value = ''
+          }}
+        />
+        <ImportTexDialog {...importer.dialog} />
+        <ConfirmDialog
+          open={pendingDelete !== null}
+          onOpenChange={(open) => !open && setPendingDelete(null)}
+          title={`Delete ${pendingDelete ?? ''}?`}
+          description="The file is removed from this document. A \includegraphics or \input that names it will stop compiling."
+          onConfirm={() => {
+            if (pendingDelete) void files.remove(pendingDelete)
+            setPendingDelete(null)
+          }}
+        />
+        <LatexAssetsDialog
+          documentId={documentId}
+          assets={files.assets}
+          onAssetsChange={files.setAssets}
+          onInsertSnippet={(s) => insertSnippet(s)}
+          open={assetsOpen}
+          onOpenChange={setAssetsOpen}
+        />
       </div>
-    </div>
+    </TooltipProvider>
   )
 }
+

@@ -1,7 +1,7 @@
 // CodeMirror 6 setup for the LaTeX editor (v17 §8.5 decisions 1–7). Only
 // imported by components/latex/code-editor.tsx, which is lazy-loaded on the
 // editor route, so none of this reaches any other route's bundle.
-import { EditorState, Prec, StateEffect, StateField, type Extension } from '@codemirror/state'
+import { Compartment, EditorState, Prec, StateEffect, StateField, type Extension } from '@codemirror/state'
 import {
   EditorView,
   drawSelection,
@@ -61,6 +61,8 @@ export interface CompletionData {
 
 export interface EditorCallbacks {
   onChange: (doc: string) => void
+  /** A paste that looks like a local file path; return true to swallow it. */
+  onPathPaste?: (text: string) => boolean
   onCompile: () => void
   onDropFiles: (files: FileList, pos: number | null) => void
   onDragActive: (active: boolean) => void
@@ -227,9 +229,16 @@ const sectionFolding = foldService.of((state, lineStart, lineEnd) => {
 
 // --- look ---------------------------------------------------------------------
 
+/** The code font size lives in a compartment so the toolbar can change it. */
+export const fontSizeCompartment = new Compartment()
+
+export function fontSizeTheme(px: number): Extension {
+  return EditorView.theme({ '&': { fontSize: `${px}px` } })
+}
+
 // --- assembly -----------------------------------------------------------------
 
-export function createExtensions(callbacks: { current: EditorCallbacks }): Extension[] {
+export function createExtensions(callbacks: { current: EditorCallbacks }, fontSize = 13): Extension[] {
   const run = (fn: () => void) => () => {
     fn()
     return true
@@ -266,6 +275,7 @@ export function createExtensions(callbacks: { current: EditorCallbacks }): Exten
     EditorView.lineWrapping,
     EditorView.contentAttributes.of({ spellcheck: 'true', 'aria-label': 'LaTeX source' }),
     theme,
+    fontSizeCompartment.of(fontSizeTheme(fontSize)),
     keymap.of([
       ...closeBracketsKeymap,
       ...defaultKeymap,
@@ -280,6 +290,12 @@ export function createExtensions(callbacks: { current: EditorCallbacks }): Exten
       if (update.docChanged) callbacks.current.onChange(update.state.doc.toString())
     }),
     EditorView.domEventHandlers({
+      paste(event) {
+        const text = event.clipboardData?.getData('text/plain') ?? ''
+        if (!text || !callbacks.current.onPathPaste?.(text)) return false
+        event.preventDefault()
+        return true
+      },
       dragenter(event) {
         if (!event.dataTransfer?.types.includes('Files')) return false
         event.preventDefault()

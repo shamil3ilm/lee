@@ -33,6 +33,9 @@ interface AssetsDialogProps {
    * The editor owns cursor state; this component only produces text.
    */
   onInsertSnippet: (snippet: string) => void
+  /** Controlled open state (the workspace rail opens it); omit for the built-in trigger. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 function isImage(mime: string): boolean {
@@ -54,8 +57,13 @@ export function LatexAssetsDialog({
   assets,
   onAssetsChange,
   onInsertSnippet,
+  open: controlledOpen,
+  onOpenChange,
 }: AssetsDialogProps): React.ReactElement {
-  const [open, setOpen] = useState(false)
+  const [ownOpen, setOwnOpen] = useState(false)
+  const controlled = controlledOpen !== undefined
+  const open = controlled ? controlledOpen : ownOpen
+  const setOpen = (next: boolean) => (controlled ? onOpenChange?.(next) : setOwnOpen(next))
   const [uploading, setUploading] = useState(false)
   const [attaching, setAttaching] = useState(false)
   const [drive, setDrive] = useState<DriveStatus | null>(null)
@@ -159,6 +167,7 @@ export function LatexAssetsDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
+      {controlled ? null : (
       <DialogTrigger asChild>
         <Button
           type="button"
@@ -173,6 +182,7 @@ export function LatexAssetsDialog({
           </span>
         </Button>
       </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Document assets</DialogTitle>

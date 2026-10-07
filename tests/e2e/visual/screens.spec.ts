@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { appendFile, mkdir } from 'node:fs/promises'
 import path from 'node:path'
+import { onePagePdf } from '../pdf-fixture'
 
 // v17 §9.1 — visual QA pass. Opt-in: `pnpm e2e:screens`. Screenshots every
 // authed page at phone and desktop sizes (light + dark) into the gitignored
@@ -10,9 +11,12 @@ import path from 'node:path'
 const OUT = path.resolve('.e2e/screens')
 
 const VIEWPORTS = [
-  { name: 'mobile', width: 390, height: 844 },
-  { name: 'tablet', width: 768, height: 1024 },
-  { name: 'desktop', width: 1280, height: 900 },
+  { name: 'mobile', width: 390, height: 844, editorOnly: false },
+  { name: 'tablet', width: 768, height: 1024, editorOnly: false },
+  { name: 'desktop', width: 1280, height: 900, editorOnly: false },
+  // The LaTeX workspace's three-pane layout also at wide desktops.
+  { name: 'wide', width: 1440, height: 900, editorOnly: true },
+  { name: 'full', width: 1920, height: 1080, editorOnly: true },
 ] as const
 
 const ONLY = process.env.E2E_SCREENS_ONLY?.split(',')
@@ -21,9 +25,11 @@ const VIEWPORT_FILTER = process.env.E2E_SCREENS_VIEWPORTS?.split(',')
 const THEMES = (process.env.E2E_SCREENS_THEMES ?? 'light,dark').split(',') as Array<'light' | 'dark'>
 
 // `noPdf` stubs the saved-PDF route with a 422 to capture the LaTeX editor's
-// uncompiled preview (a themed empty state, never a blank white panel).
+// uncompiled preview (a themed empty state, never a blank white panel);
+// `pdf` stubs it with a one-page PDF so the in-page viewer renders offline.
 type Target = ({ name: string; path: string } | { name: string; from: string; link: RegExp | string }) & {
   noPdf?: boolean
+  pdf?: boolean
 }
 
 const TARGETS: Target[] = [
@@ -37,7 +43,7 @@ const TARGETS: Target[] = [
   { name: 'application-detail', from: '/applications', link: /^\/applications\/[0-9a-f-]{36}$/ },
   { name: 'application-new', path: '/applications/new' },
   { name: 'documents', path: '/documents' },
-  { name: 'document-editor', from: '/documents', link: /^\/documents\/[0-9a-f-]{36}\/edit$/ },
+  { name: 'document-editor', from: '/documents', link: /^\/documents\/[0-9a-f-]{36}\/edit$/, pdf: true },
   { name: 'document-editor-uncompiled', from: '/documents', link: /^\/documents\/[0-9a-f-]{36}\/edit$/, noPdf: true },
   { name: 'document-latex-new', path: '/documents/new/latex' },
   { name: 'contacts', path: '/contacts' },
@@ -166,12 +172,18 @@ for (const theme of THEMES) {
 
         for (const t of group.targets) {
           if (ONLY && !ONLY.includes(t.name)) continue
+          if (vp.editorOnly && !t.name.startsWith('document-editor')) continue
           test(t.name, async ({ page }) => {
             const errors: string[] = []
             page.on('console', (m) => {
               if (m.type() === 'error') errors.push(m.text().slice(0, 300))
             })
             page.on('pageerror', (e) => errors.push(`pageerror: ${e.message.slice(0, 300)}`))
+            if (t.pdf) {
+              await page.route('**/api/documents/*/pdf**', (route) =>
+                route.fulfill({ status: 200, contentType: 'application/pdf', body: onePagePdf() }),
+              )
+            }
             if (t.noPdf) {
               await page.route('**/api/documents/*/pdf**', (route) =>
                 route.fulfill({ status: 422, contentType: 'application/json', body: '{"error":"Not compiled yet."}' }),

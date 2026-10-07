@@ -5,17 +5,21 @@ import type { OutlineItem } from '@/lib/latex/outline'
 interface OutlinePanelProps {
   items: readonly OutlineItem[]
   onJump: (line: number) => void
+  /** Omit the panel's own heading (the Files panel draws one). */
+  hideHeading?: boolean
 }
 
 /** Section outline (\part … \subparagraph, starred too); click to jump. */
-export function OutlinePanel({ items, onJump }: OutlinePanelProps) {
+export function OutlinePanel({ items, onJump, hideHeading = false }: OutlinePanelProps) {
   const minLevel = items.reduce((m, o) => Math.min(m, o.level), Infinity)
   return (
     <nav aria-label="Document outline" className="flex h-full min-h-0 flex-col text-xs">
-      <p className="flex items-center gap-1.5 border-b px-3 py-2 font-semibold text-muted-foreground">
-        <ListTree className="size-3.5" />
-        Outline
-      </p>
+      {hideHeading ? null : (
+        <p className="flex items-center gap-1.5 border-b px-3 py-2 font-semibold text-muted-foreground">
+          <ListTree className="size-3.5" />
+          Outline
+        </p>
+      )}
       {items.length === 0 ? (
         <p className="px-3 py-2 text-muted-foreground">No sections yet. Add \section&#123;…&#125; to see them here.</p>
       ) : (

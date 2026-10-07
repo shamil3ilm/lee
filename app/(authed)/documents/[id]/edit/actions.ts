@@ -10,6 +10,8 @@ const saveInputSchema = z.object({
   documentId: z.string().min(1),
   source: z.string(),
   title: z.string().min(1).max(200).optional(),
+  /** Autosave: the editor already holds this state, so skip re-rendering its route. */
+  autosave: z.boolean().optional(),
 })
 
 export type SaveResult = { success: true } | { error: string }
@@ -23,6 +25,7 @@ export async function saveLatexSource(input: {
   documentId: string
   source: string
   title?: string
+  autosave?: boolean
 }): Promise<SaveResult> {
   try {
     const userId = await requireUserId()
@@ -44,7 +47,7 @@ export async function saveLatexSource(input: {
       ...(parsed.data.title ? { title: parsed.data.title } : {}),
     })
     revalidatePath('/documents')
-    revalidatePath(`/documents/${parsed.data.documentId}/edit`)
+    if (!parsed.data.autosave) revalidatePath(`/documents/${parsed.data.documentId}/edit`)
     return { success: true }
   } catch (err) {
     logger.error('saveLatexSource failed', {

@@ -5,7 +5,6 @@ import * as assetsQ from '@/lib/db/queries/documentAssets'
 import { latexDocumentContentSchema } from '@/lib/documents/types'
 import { LatexEditor } from '@/components/latex-editor'
 import { readCompileSettings } from '@/lib/latex/compile-settings'
-import { Breadcrumbs } from '@/components/breadcrumbs'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,25 +28,15 @@ export default async function EditLatexPage({ params }: EditPageProps) {
   const compileLog = content.success ? content.data.compileLog : undefined
   const initialAssets = await assetsQ.list(userId, doc.id)
 
+  // The workspace fills the app shell's content area edge to edge (the
+  // negative margins cancel <main>'s padding), like Overleaf's editor.
   return (
-    <div className="space-y-2">
-      <Breadcrumbs
-        items={[
-          { label: 'Apply' },
-          { label: 'Documents', href: '/documents' },
-          { label: doc.title },
-        ]}
-      />
+    <div className="-mx-4 -my-6 md:-mx-8 md:-my-8">
       <LatexEditor
-        className="h-[calc(100vh-8rem)]"
         documentId={doc.id}
         initialTitle={doc.title}
         initialSource={initialSource}
-        initialError={
-          compileError
-            ? { message: compileError, log: compileLog ?? '' }
-            : null
-        }
+        initialError={compileError ? { message: compileError, log: compileLog ?? '' } : null}
         initialAssets={initialAssets}
         initialSettings={readCompileSettings(content.success ? content.data.compileSettings : undefined)}
       />
