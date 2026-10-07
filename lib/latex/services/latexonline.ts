@@ -5,8 +5,11 @@ import { compileCancelled, MAX_LOG_CHARS, readPdf, type BackendRequest, type Com
 
 const LATEX_ONLINE_URL = 'https://latexonline.cc/data'
 
-/** Server config: `LATEX_ONLINE_URL` points lee at a stand-in (the e2e stub). */
+/** Dev/test config: `LATEX_ONLINE_URL` points lee at a stand-in (the e2e stub); ignored in production. */
 export function latexOnlineUrl(): string {
+  // Production always uses the real service, so a stray env value can never
+  // send documents somewhere else.
+  if (process.env.VERCEL_ENV === 'production') return LATEX_ONLINE_URL
   return process.env.LATEX_ONLINE_URL || LATEX_ONLINE_URL
 }
 

@@ -4,8 +4,11 @@ import { compileCancelled, readPdf, tailLog, type BackendRequest, type CompileRe
 
 const YTOTECH_URL = 'https://latex.ytotech.com/builds/sync'
 
-/** Server config: `LATEX_YTOTECH_URL` points lee at a stand-in (the e2e stub). */
+/** Dev/test config: `LATEX_YTOTECH_URL` points lee at a stand-in (the e2e stub); ignored in production. */
 export function ytotechUrl(): string {
+  // Production always uses the real service, so a stray env value can never
+  // send documents somewhere else.
+  if (process.env.VERCEL_ENV === 'production') return YTOTECH_URL
   return process.env.LATEX_YTOTECH_URL || YTOTECH_URL
 }
 const MAIN_DOC = /__main_document__\.(tex|log)/g
