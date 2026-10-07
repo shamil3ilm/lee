@@ -17,7 +17,12 @@ const DROP_WITH_ARGS = new Set([
   'ref', 'pagenumbering', 'setmainfont', 'setsansfont', 'colorlet', 'moderncvstyle',
   'moderncvcolor', 'photo', 'rule', 'titlerule', 'raisebox', 'newenvironment',
   'renewenvironment', 'def', 'let', 'setcounter', 'addcontentsline', 'linespread',
+  'entrygap',
 ])
+
+/** Primitives followed by a bare dimension (`\kern 5pt`), not a brace group. */
+const DIMENSION_CMDS = new Set(['kern', 'hskip', 'vskip', 'mskip'])
+const DIMENSION = /^\s*-?[\d.]+\s*(?:pt|cm|mm|em|ex|in|bp|sp|pc|dd|cc)(?:\s+(?:plus|minus)\s+-?[\d.]+\s*(?:pt|cm|mm|em|ex|fil+))*/
 
 const SECTION_CMDS = new Set(['section', 'subsection', 'subsubsection', 'cvsection', 'chapter'])
 const FORMAT_CMDS = new Set([
@@ -127,8 +132,25 @@ function convert(src: string): string {
         continue
       }
       const name = m[0].replace(/\*$/, '')
+      if (DIMENSION_CMDS.has(name)) {
+        const after = i + 1 + m[0].length
+        i = after + (DIMENSION.exec(src.slice(after))?.[0].length ?? 0)
+        out += ' '
+        continue
+      }
       const { args, end } = readArgs(src, i + 1 + m[0].length, arityOf(name))
       i = end
+      if (name === 'begin' && args[0] === 'twocolentry') {
+        // RenderCV-style `\begin{twocolentry}{dates} Role \\ Company \end{twocolentry}`:
+        // one header line "Role | Company | dates", like a resume entry macro.
+        const closeTag = '\\end{twocolentry}'
+        const close = src.indexOf(closeTag, i)
+        const inner = src.slice(i, close === -1 ? src.length : close)
+        i = close === -1 ? src.length : close + closeTag.length
+        const parts = [...convert(inner).split('\n'), convert(args[1] ?? '')].map((p) => p.trim()).filter(Boolean)
+        out += `\n${parts.join(' | ')}\n`
+        continue
+      }
       if (name === 'begin' || name === 'end') {
         // `\begin{itemize}` etc. — environment name is args[0]; drop it.
         // Extra args (e.g. tabular column spec) are layout, also dropped.

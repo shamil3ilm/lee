@@ -1,0 +1,124 @@
+%% cv-classic template — lee's Classic layout (RenderCV-style: Charter, ruled sections, dates on the right).
+%% Standard packages only; compiles on latexonline.cc. Placeholders are filled from your master CV.
+\documentclass[10pt, letterpaper]{article}
+
+% Packages:
+\usepackage[
+    ignoreheadfoot,
+    top=2 cm,
+    bottom=2 cm,
+    left=2 cm,
+    right=2 cm,
+    footskip=1.0 cm
+]{geometry}
+
+\usepackage{ragged2e}
+\usepackage{titlesec}
+\usepackage[dvipsnames]{xcolor}
+\definecolor{primaryColor}{RGB}{0, 0, 0}
+\usepackage{enumitem}
+\usepackage[
+    pdfcreator={LaTeX},
+    colorlinks=true,
+    urlcolor=primaryColor,
+    linkcolor=primaryColor
+]{hyperref}
+\usepackage{calc}
+\usepackage{bookmark}
+\usepackage{changepage}
+\usepackage{paracol}
+\usepackage{needspace}
+\usepackage{iftex}
+\usepackage{etoolbox}
+
+\ifPDFTeX
+    \input{glyphtounicode}
+    \pdfgentounicode=1
+    \usepackage[T1]{fontenc}
+    \usepackage[utf8]{inputenc}
+    \usepackage{lmodern}
+\fi
+
+\usepackage{charter}
+\usepackage{textcomp}
+\usepackage{graphicx}
+
+% Settings
+\raggedright
+\AtBeginEnvironment{adjustwidth}{\partopsep0pt}
+\pagestyle{empty}
+\setcounter{secnumdepth}{0}
+\setlength{\parindent}{0pt}
+\setlength{\topskip}{0pt}
+\setlength{\columnsep}{0.15cm}
+\pagenumbering{gobble}
+
+% Prevent awkward word splitting
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
+\tolerance=1000
+
+\titleformat{\section}
+    {\needspace{4\baselineskip}\bfseries\large}
+    {}
+    {0pt}
+    {}
+    [\vspace{1pt}\titlerule]
+
+\titlespacing{\section}{-1pt}{0.3 cm}{0.2 cm}
+
+\renewcommand\labelitemi{$\vcenter{\hbox{\small$\bullet$}}$}
+
+% Space between entries. The LaTeX of 2017 (latexonline.cc) drops a \vspace
+% right before paracol; an empty box of the same size keeps the spacing of
+% current TeX Live (Overleaf, YtoTech).
+\makeatletter
+\@ifl@t@r\fmtversion{2020/10/01}
+    {\newcommand{\entrygap}[1]{\vspace{#1}}}
+    {\newcommand{\entrygap}[1]{\par\ifdim\prevdepth>\z@\dimen@=\prevdepth\else\dimen@=\z@\fi\nointerlineskip\vbox to \dimexpr #1+\dimen@\relax{}}}
+\makeatother
+
+\newenvironment{highlights}{
+    \begin{itemize}[
+        topsep=0.10 cm,
+        parsep=0.10 cm,
+        partopsep=0pt,
+        itemsep=0pt,
+        leftmargin=0 cm + 10pt
+    ]
+}{
+    \end{itemize}
+}
+
+\newenvironment{onecolentry}{
+    \begin{adjustwidth}{0 cm + 0.00001 cm}{0 cm + 0.00001 cm}
+}{
+    \end{adjustwidth}
+}
+
+\newenvironment{twocolentry}[2][]{
+    \onecolentry
+    \def\secondColumn{#2}
+    \setcolumnwidth{\fill, 4.5 cm}
+    \begin{paracol}{2}
+    \raggedright
+}{
+    \switchcolumn
+    \raggedleft
+    \secondColumn
+    \end{paracol}
+    \endonecolentry
+}
+
+\hypersetup{pdftitle={{{name}}}, pdfauthor={{{name}}}}
+
+\begin{document}
+
+\justifying
+\sloppy
+
+{{header_block}}
+
+{{sections}}
+
+\end{document}

@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import type { CoverLetter, MasterCV } from '@/lib/documents/types'
 import { escapeLatex } from '../escape'
+import { fillClassic } from './classic-fill'
 
 // Templates are shipped as .tex files next to this module. Read them at module
 // init (server-only paths — this file is imported from server actions and the
@@ -24,6 +25,7 @@ const academicCVSource = readTemplate('cv-academic-cv.tex')
 const deedyCVSource = readTemplate('cv-deedy-resume.tex')
 const jakeCVSource = readTemplate('cv-jake-gwinnett.tex')
 const friggeriCVSource = readTemplate('cv-friggeri.tex')
+const classicCVSource = readTemplate('cv-classic.tex')
 
 // ---- Cover letter template sources ------------------------------------------
 const letterClassicSource = readTemplate('letter-classic.tex')
@@ -305,6 +307,10 @@ function fillFriggeriCV(master: MasterCV): string {
   return replaceAll(friggeriCVSource, genericCvValues(master))
 }
 
+function fillClassicCV(master: MasterCV): string {
+  return fillClassic(classicCVSource, master)
+}
+
 // ---------------------------------------------------------------------------
 // Cover letter template fillers
 // ---------------------------------------------------------------------------
@@ -461,6 +467,17 @@ export const TEMPLATES: LatexTemplate[] = [
     packages: ['xcolor', 'titlesec', 'enumitem', 'tikz', 'lmodern'],
     source: friggeriCVSource,
     fill: fillFriggeriCV,
+  },
+  {
+    id: 'cv-classic',
+    name: 'Classic',
+    description:
+      'RenderCV-style classic: Charter, ruled section headings, dates right-aligned, tight bullets. Same layout as the Classic résumé variant.',
+    kind: 'cv',
+    category: 'classic',
+    packages: ['charter', 'titlesec', 'paracol', 'changepage', 'enumitem', 'hyperref'],
+    source: classicCVSource,
+    fill: fillClassicCV,
   },
 
   // ---- Cover letter templates ----

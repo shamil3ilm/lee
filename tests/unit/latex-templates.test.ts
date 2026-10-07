@@ -87,7 +87,7 @@ describe('splitName', () => {
 })
 
 describe('LaTeX templates', () => {
-  it('exposes 9 CV templates and 5 cover-letter templates', () => {
+  it('exposes 10 CV templates and 5 cover-letter templates', () => {
     const cvs = TEMPLATES.filter((t) => t.kind === 'cv').map((t) => t.id).sort()
     const letters = TEMPLATES.filter((t) => t.kind === 'cover_letter')
       .map((t) => t.id)
@@ -97,6 +97,7 @@ describe('LaTeX templates', () => {
         'altacv-tw',
         'awesome-cv',
         'cv-academic-cv',
+        'cv-classic',
         'cv-deedy-resume',
         'cv-europass-style',
         'cv-friggeri',

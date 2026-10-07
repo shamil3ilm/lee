@@ -35,7 +35,7 @@ A variant is a versioned **recipe**. It holds no facts, only:
 - which items and highlights are included, and their order
 - the wording chosen for each highlight
 - the headline and summary
-- the section order, length target (1 or 2 pages) and template (`ats` or `brand`)
+- the section order, length target (1 or 2 pages) and template (`ats`, `brand` or `classic`)
 - the region-field toggles
 - explicit overrides for not-ready `ai_assisted` items, which are shown with "You may be asked about this in an interview"
 
@@ -51,6 +51,12 @@ A variant is a versioned **recipe**. It holds no facts, only:
 
 It runs in bounded batches inside the run's time budget and is idempotent. The per-version `latex_cv` documents are documents, so they are not touched.
 
+**Templates** (`lib/variants/latex.ts`). All three take the same fact-locked `RenderedResume` and escape every string (`lib/latex/escape.ts`, one pass, so text like "BSc" is never mangled):
+
+- `ats`: single column, no colour, no icons; parses cleanly.
+- `brand`: the same structure in the lee brand colours.
+- `classic` (`latex-classic.ts`, layout in `lib/latex/classic-layout.ts`): a RenderCV-style layout. It uses article 10pt on letter paper with 2 cm margins and Charter. Section headings are titlesec, in caps, over a full-width rule. Each entry is a `twocolentry` (paracol) with the title and employer on the left and italic dates right-aligned in a 4.5 cm column, followed by a tight `highlights` list. The name is in 22pt bold caps at the top left, with the headline in bold and two contact lines (facts, then links) below. Education and certificate dates go to the right column. Links reach `\href` only when their URL is safe (`hrefUrl`); otherwise they are printed as text. It uses standard packages only, so it compiles on latexonline.cc with no fallback. It drops `fontawesome5` (unused) and `eso-pic` (no footer). The editor gallery has the same layout as the **Classic** template (`templates/cv-classic.tex`), and a unit test keeps the two preambles identical. See [latex-compile.md](latex-compile.md) for the side-by-side layout check.
+
 **Outputs.** All outputs reuse existing pipelines:
 
 - A `latex_cv` document per variant version gives the PDF, the LaTeX editor and the PDF cache.
@@ -65,7 +71,7 @@ The profile photo is uploaded in Settings › Profile › Résumé and is **priv
 - **Validate.** The browser accepts JPEG, PNG or WebP up to 2 MB, then square-crops the centre and downscales it to 512 px on a canvas and uploads a JPEG. lee has no server-side image library (sharp isn't a dependency), and pdflatex can't read WebP. `POST /api/profile/photo` re-checks the bytes themselves: the type sniffed from the header (JPEG or PNG only), at most 2 MB, square, 64 to 1024 px.
 - **Store.** The photo is a document asset (`lee-photo.jpg` or `.png`) on a hidden holder document of kind `profile_photo`, one per user. It goes through the existing asset store, so it lands in Drive when Drive is connected and in Postgres otherwise. `documents.list` leaves the holder out of the library.
 - **Place.** A variant places the photo when its Photo field is on, its region allows it, and a photo exists. Remote / US / EU and India never allow it (`LOCKED_OFF`), and GCC has it off by default. `ensureVariantDocument` then copies the photo into the variant's `latex_cv` document as an asset (same sha256, so the copy is refreshed only when the photo changes). It is removed again when the variant stops placing it.
-- **Compile.** Both templates add `graphicx` and set the name block beside a 2.6 cm photo: plain in `ats`, framed in the brand colour in `brand`. The existing pipeline packs the image into the latexonline.cc tarball, and its sha is part of the PDF cache key. Only lee's own file names are ever embedded in the source.
+- **Compile.** `ats` and `brand` add `graphicx` and set the name block beside a 2.6 cm photo: plain in `ats`, framed in the brand colour in `brand`. `classic` puts a 2.5 cm photo at the top right and narrows the name block to 78% of the width. Without a photo, the header takes the full width. The existing pipeline packs the image into the latexonline.cc tarball, and its sha is part of the PDF cache key. Only lee's own file names are ever embedded in the source.
 - **Warn.** The variant preview warns when Photo is on but no photo is uploaded.
 
 ## Publish to portfolio (`lib/portfolio`)

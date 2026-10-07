@@ -21,11 +21,12 @@ export function isRegion(v: unknown): v is Region {
   return typeof v === 'string' && (REGIONS as readonly string[]).includes(v)
 }
 
-export const TEMPLATES = ['ats', 'brand'] as const
+export const TEMPLATES = ['ats', 'brand', 'classic'] as const
 export type VariantTemplate = (typeof TEMPLATES)[number]
 export const TEMPLATE_LABELS: Readonly<Record<VariantTemplate, string>> = {
   ats: 'ATS-plain (single column)',
   brand: 'Designed (lee brand colours)',
+  classic: 'Classic (Charter, ruled sections, dates on the right)',
 }
 
 export const SECTION_KEYS = ['summary', 'work', 'projects', 'skills', 'education', 'languages', 'certificates'] as const

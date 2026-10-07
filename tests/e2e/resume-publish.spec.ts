@@ -75,9 +75,22 @@ test('edit the master profile, build a variant, preview it and publish to the po
   await expect(preview).toContainText('no profile photo is uploaded')
   await page.getByLabel(/^Wording for: Designed an idempotent payouts/).selectOption({ label: 'Idempotent payouts API in Go at 2M+ requests per day and 99.99% availability' })
   await expect(preview).toContainText('Idempotent payouts API in Go at 2M+ requests per day and 99.99% availability')
+  await page.getByLabel('Template').selectOption('classic')
   await page.getByRole('button', { name: 'Save variant' }).click()
   await expectToast(page, 'Saved as version 2')
   await expect(page.getByLabel('Plain-text résumé')).toHaveValue(/ASHA MENON/)
+
+  // The Classic template's LaTeX opens in the editor (PDF route stubbed: no compile service).
+  await page.route('**/api/documents/*/pdf**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/pdf', body: '%PDF-1.4\n%%EOF\n' }),
+  )
+  await page.getByRole('button', { name: 'Make PDF' }).click()
+  await page.getByRole('link', { name: 'Open in the LaTeX editor' }).click()
+  // CodeMirror renders only the lines in view: check the top of the file.
+  await expect(page.locator('.cm-content')).toContainText('(Classic layout)')
+  await expect(page.locator('.cm-content')).toContainText('\\documentclass[10pt, letterpaper]{article}')
+  await expect(page.getByLabel('Compiler')).toHaveValue('auto')
+  await page.unroute('**/api/documents/*/pdf**')
 
   // 3. Publish: repository, token (checked against the stub), preview, publish.
   await page.goto('/settings/profile/publish')

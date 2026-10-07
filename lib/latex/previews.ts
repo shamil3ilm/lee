@@ -1,5 +1,5 @@
 /**
- * Stylized SVG wireframe previews for the 14 LaTeX templates. These are
+ * Stylized SVG wireframe previews for the 15 LaTeX templates. These are
  * hand-crafted mockups — NOT real LaTeX renders — that hint at each
  * template's layout (single vs. two-column, header block, sidebar, letter
  * body, colored accent stripe, etc.) so the picker can convey visual
@@ -292,6 +292,7 @@ export const TEMPLATE_PREVIEWS: Record<string, string> = {
     ruled: true,
   }),
   'cv-friggeri': makeCreativeCv(),
+  'cv-classic': makeSingleColumnCv({ accent: INK, headerFill: INK, ruled: true }),
 
   // Cover letters
   'letter-classic': makeLetter({ senderRight: true }),
