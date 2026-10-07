@@ -93,6 +93,17 @@ export default function PrivacyPage() {
         </p>
       </Section>
 
+      <Section title="PDF compilation">
+        <p>
+          When you compile a LaTeX document (a CV, cover letter or other document), its source and any images
+          it uses are sent to a public LaTeX compile service to produce the PDF: latexonline.cc by default, and
+          latex.ytotech.com when the first lacks a package or is unavailable. You can choose the service per
+          document in the compile menu. Neither service is run by {APP_NAME}; each handles what it receives
+          under its own terms. {APP_NAME} keeps its own cache of compiled PDFs so unchanged documents are not sent
+          again.
+        </p>
+      </Section>
+
       <Section title="Where data is stored">
         <p>
           Application data is stored in a hosted PostgreSQL database (Neon), and the app is hosted on Vercel.
