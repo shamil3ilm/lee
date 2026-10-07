@@ -104,7 +104,8 @@ describe('Classic résumé variant template', () => {
 
 describe('Classic gallery template', () => {
   it('shares the variant preamble exactly', () => {
-    const file = readFileSync(path.join(process.cwd(), 'lib/latex/templates/cv-classic.tex'), 'utf8')
+    // A Windows checkout may turn the file's line endings into CRLF.
+    const file = readFileSync(path.join(process.cwd(), 'lib/latex/templates/cv-classic.tex'), 'utf8').replace(/\r\n/g, '\n')
     expect(file).toContain(CLASSIC_PREAMBLE)
   })
 
