@@ -6,7 +6,7 @@
 
 **Depends on:** v1-v4 all shipped. 266 tests passing.
 
-**Working dir:** `employ`
+**Working dir:** the repository root
 
 ## Scope
 

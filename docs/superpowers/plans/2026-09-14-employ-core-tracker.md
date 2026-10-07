@@ -10,14 +10,14 @@
 
 **Spec:** [`docs/superpowers/specs/2026-09-14-employ-core-tracker-design.md`](../specs/2026-09-14-employ-core-tracker-design.md)
 
-**Working directory:** `employ`
+**Working directory:** the repository root
 
 ---
 
 ## Conventions used throughout this plan
 
-- **All paths are relative to `employ` unless otherwise noted.**
-- **All commands assume `pwd` is `employ` and use pnpm.**
+- **All paths are relative to the repository root unless otherwise noted.**
+- **All commands assume `pwd` is the repository root and use pnpm.**
 - **Every task ends with a commit.** Commit messages follow `type: description` per user global rules.
 - **TDD discipline:** unless a task is pure scaffolding, write the failing test first, watch it fail, implement, watch it pass, commit.
 - **Placeholder for user-supplied values:**
@@ -40,7 +40,7 @@
 - [ ] **Step 1: Init the Next.js app**
 
 ```bash
-cd employ
+cd lee
 pnpm dlx create-next-app@latest . --typescript --tailwind --app --src-dir=false --import-alias='@/*' --use-pnpm --eslint --no-turbo
 ```
 When prompted for anything not covered by flags, accept defaults. Expected: directory populated with a Next 15 skeleton.

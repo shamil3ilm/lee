@@ -7,7 +7,7 @@
 **Spec:** `docs/superpowers/specs/2026-09-24-employ-v4-outreach-prep-design.md`
 **Depends on:** v1 + v1.5 + v2 + v3 all shipped.
 
-**Working dir:** `employ`
+**Working dir:** the repository root
 
 ---
 

@@ -7,7 +7,7 @@
 **Spec:** `docs/superpowers/specs/2026-09-25-employ-v5-latex-editor-design.md`
 **Depends on:** v1-v4 all shipped.
 
-**Working dir:** `employ`
+**Working dir:** the repository root
 
 ---
 

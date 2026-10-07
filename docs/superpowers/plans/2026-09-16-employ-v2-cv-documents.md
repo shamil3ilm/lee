@@ -7,7 +7,7 @@
 **Spec:** `docs/superpowers/specs/2026-09-16-employ-v2-cv-documents-design.md`
 **Depends on:** v1 + v1.5 shipped and live at `https://employ4me.vercel.app`
 
-**Working dir:** `employ`
+**Working dir:** the repository root
 
 ---
 

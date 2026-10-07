@@ -7,7 +7,7 @@
 **Spec:** `docs/superpowers/specs/2026-09-15-employ-v1_5-discovery-design.md`
 **Depends on:** v1 Core Tracker shipped and live at https://employ4me.vercel.app
 
-**Working dir:** `employ`
+**Working dir:** the repository root
 
 ---
 
