@@ -24,6 +24,11 @@ import { SetupChecklist } from '@/components/setup-checklist'
 import { NextBestAction } from '@/components/next-best-action'
 import { JourneyStrip } from '@/components/journey-strip'
 import { Skeleton } from '@/components/ui/skeleton'
+import { DueFollowups } from '@/components/apply/due-followups'
+import { WeekFunnel } from '@/components/apply/week-funnel'
+import { weekFunnel } from '@/lib/apply/funnel'
+import { dueFollowups } from '@/lib/apply/followups'
+import * as prepsQ from '@/lib/db/queries/applicationPreps'
 import {
   APPLICATION_STATUSES,
   isActiveStatus,
@@ -85,7 +90,7 @@ export async function JourneyStripWidget({ userId }: Pick<WidgetProps, 'userId'>
 export async function ThisWeekWidget({ userId, now }: WidgetProps) {
   const endOfToday = new Date(now)
   endOfToday.setUTCHours(23, 59, 59, 999)
-  const [rows, followupRows, todayTodos] = await Promise.all([
+  const [rows, followupRows, todayTodos, scheduled] = await Promise.all([
     loadApplications(userId),
     // v4.2 — latest `followup_recommended` per application from the last 7
     // days. Oldest→newest so the last assignment per app wins below.
@@ -106,6 +111,9 @@ export async function ThisWeekWidget({ userId, now }: WidgetProps) {
       .orderBy(activities.createdAt),
     // v8 — today's todos (top 3 by priority, due today or overdue).
     todosQ.listDueByEnd(userId, endOfToday, 3),
+    // Applications with a follow-up scheduled by "Mark applied" show in Due
+    // follow-ups instead, so they are not nudged twice.
+    prepsQ.pendingIds(userId),
   ])
 
   const attention: AttentionItem[] = attentionRows(rows, now).map((r) => ({
@@ -121,6 +129,7 @@ export async function ThisWeekWidget({ userId, now }: WidgetProps) {
   const rowById = new Map(rows.map((r) => [r.id, r] as const))
   const followups: FollowupNudge[] = []
   for (const [applicationId, row] of latestByApp) {
+    if (scheduled.has(applicationId)) continue
     const app = rowById.get(applicationId)
     if (!app) continue
     const payload = row.payload as { daysSince?: number; suggestedInterval?: number }
@@ -152,6 +161,24 @@ export async function ThisWeekWidget({ userId, now }: WidgetProps) {
       totalApplications={rows.length}
       now={now}
     />
+  )
+}
+
+/** Apply faster: the week's funnel and the follow-ups due from "Mark applied". */
+export async function ApplyFasterWidget({ userId, now }: WidgetProps) {
+  const [funnel, due] = await Promise.all([weekFunnel(userId, new Date(now)), dueFollowups(userId, new Date(now))])
+  return (
+    <>
+      <DueFollowups
+        items={due.map((d) => ({
+          applicationId: d.applicationId,
+          jobTitle: d.jobTitle,
+          companyName: d.companyName,
+          dueAt: d.dueAt.toISOString(),
+        }))}
+      />
+      <WeekFunnel funnel={funnel} />
+    </>
   )
 }
 

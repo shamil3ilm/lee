@@ -41,6 +41,10 @@ import { getProfile } from '@/lib/profile/service'
 import { ApplicationVariantCard } from '@/components/variants/application-variant-card'
 import { variantSummaries } from '@/lib/variants/service'
 import { jobSignals, suggestVariant } from '@/lib/variants/suggest'
+import * as prepsQ from '@/lib/db/queries/applicationPreps'
+import Link from 'next/link'
+import { Wand2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 export const dynamic = 'force-dynamic'
 
@@ -96,6 +100,7 @@ export default async function ApplicationDetail({
   // instead of awaiting the application row first. If the application does
   // not exist the page 404s and the other results are simply dropped.
   const appP = appsQ.getById(userId, id)
+  const prepP = prepsQ.get(userId, id)
   const restP = Promise.all([
     stagesQ.list(userId, id),
     actQ.list(userId, id, { limit: 50 }),
@@ -113,7 +118,7 @@ export default async function ApplicationDetail({
   // Keep a rejection of the batch from surfacing as unhandled while we wait
   // on the application row; it is re-thrown by the await below.
   restP.catch(() => undefined)
-  const app = await appP
+  const [app, prep] = await Promise.all([appP, prepP])
   if (!app) notFound()
 
   // v17 §1 — Scam Shield: re-assessed here when missing, stale (rules
@@ -227,6 +232,14 @@ export default async function ApplicationDetail({
         description={app.job.company?.name ?? undefined}
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            {status === 'saved' || prep ? (
+              <Button asChild size="sm" variant={prep?.appliedAt ? 'outline' : 'default'}>
+                <Link href={`/applications/${app.id}/prepare`}>
+                  <Wand2 className="size-4" />
+                  {prep ? (prep.appliedAt ? 'Preparation' : 'Continue preparing') : 'Prepare application'}
+                </Link>
+              </Button>
+            ) : null}
             <StatusPicker applicationId={app.id} current={status} />
             <ApplicationActions
               applicationId={app.id}

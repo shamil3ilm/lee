@@ -24,6 +24,7 @@ import {
 } from '@/lib/ui/timezone'
 import { todoIsActiveSql } from '@/lib/db/queries/todos'
 import { usageWarningsForUser, type UsageWarning } from '@/lib/usage/alerts'
+import { shortlistForEmail, type EmailShortlistItem } from '@/lib/apply/email'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -81,6 +82,9 @@ export interface PipelineSnapshot {
   }[]
   // v17 §9.6 — free-tier meters at 70 % / 90 % (latest usage snapshot).
   usageWarnings?: UsageWarning[]
+  // Apply faster — the latest shortlist's open picks, when the user keeps
+  // "Include the shortlist in emails" on (lib/apply/email.ts).
+  shortlist?: EmailShortlistItem[]
 }
 
 // ---------------------------------------------------------------------------
@@ -359,6 +363,8 @@ export async function gatherPipelineSnapshot(
     return [] as UsageWarning[]
   })
 
+  const shortlist = await shortlistForEmail(userId, now)
+
   return {
     userId,
     userEmail: user.email,
@@ -373,6 +379,7 @@ export async function gatherPipelineSnapshot(
     upcomingTodos,
     completedStagesThisWeek,
     usageWarnings,
+    shortlist,
   }
 }
 

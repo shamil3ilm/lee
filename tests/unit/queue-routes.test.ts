@@ -60,9 +60,9 @@ describe('cron queue routes', () => {
     const first = await scheduleGET(cronRequest('/api/cron/schedule', auth))
     expect(first.status).toBe(200)
     const body = (await first.json()) as { schedule: { enqueued: number }; drain: { claimed: number } }
-    // reminders + usage snapshot + followups, gmail, digest, scam, email
-    expect(body.schedule.enqueued).toBe(7)
-    expect(body.drain.claimed).toBe(7)
+    // reminders + usage snapshot + followups, gmail, digest, scam, shortlist, email
+    expect(body.schedule.enqueued).toBe(8)
+    expect(body.drain.claimed).toBe(8)
     const again = (await (await scheduleGET(cronRequest('/api/cron/schedule', auth))).json()) as {
       schedule: { enqueued: number }
     }

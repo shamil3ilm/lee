@@ -8,6 +8,7 @@ import {
   FileText,
   Gauge,
   Home,
+  ListChecks,
   Settings,
   Shapes,
   Sparkles,
@@ -44,6 +45,7 @@ export const NAV_GROUPS: NavGroup[] = [
     key: 'find',
     label: 'Find',
     items: [
+      { href: '/shortlist', label: 'Shortlist', icon: ListChecks },
       { href: '/discoveries', label: 'Discovery', icon: Sparkles, badge: 'discoveries' },
       { href: '/companies', label: 'Companies', icon: Building2 },
     ],

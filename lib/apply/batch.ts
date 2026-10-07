@@ -9,6 +9,7 @@ import { variantSummaries } from '@/lib/variants/service'
 import { jobSignals, suggestVariant } from '@/lib/variants/suggest'
 import { logger } from '@/lib/logger'
 import { confirmVariant, coverStep, startPrepare, tailorStep } from './prepare'
+import { MAX_BATCH } from './batch-limits'
 
 /**
  * Batch prepare: up to MAX_BATCH shortlisted postings in one go — create the
@@ -20,7 +21,7 @@ import { confirmVariant, coverStep, startPrepare, tailorStep } from './prepare'
  * normal step panel. Nothing is sent.
  */
 
-export const MAX_BATCH = 3
+export { MAX_BATCH }
 
 export type BatchItemStatus = 'prepared' | 'partial' | 'failed'
 

@@ -8,6 +8,7 @@ import { sendEmail as defaultSendEmail } from '@/lib/gmail/send'
 import { logger } from '@/lib/logger'
 import { APP_NAME } from '@/lib/brand'
 import { EmailBrandHeader } from '@/lib/email/brand-header'
+import { shortlistForEmail, type EmailShortlistItem } from '@/lib/apply/email'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -184,6 +185,8 @@ export interface BuildDiscoveryEmailArgs {
   discoveries: NotifiableDiscovery[]
   userEmail: string
   appBaseUrl?: string
+  /** Today's shortlist picks (empty when the user turned that off). */
+  shortlist?: EmailShortlistItem[]
 }
 
 export interface BuiltDiscoveryEmail {
@@ -218,9 +221,11 @@ function buildSubject(items: NotifiableDiscovery[]): string {
 function DiscoveryEmail({
   discoveries: items,
   appBaseUrl,
+  shortlist = [],
 }: {
   discoveries: NotifiableDiscovery[]
   appBaseUrl: string
+  shortlist?: EmailShortlistItem[]
 }): ReactElement {
   return (
     <div style={styles.wrapper}>
@@ -248,6 +253,23 @@ function DiscoveryEmail({
           ) : null}
         </div>
       ))}
+
+      {shortlist.length > 0 ? (
+        <div style={styles.item}>
+          <p style={styles.itemTitle}>Today&apos;s shortlist</p>
+          {shortlist.map((d, i) => (
+            <p key={`${i}-${d.title}`} style={styles.itemMeta}>
+              {d.title} @ {d.companyName} · score {d.score}
+              {d.why ? ` · ${d.why}` : ''}
+            </p>
+          ))}
+          <p style={styles.itemMeta}>
+            <a href={`${appBaseUrl}/shortlist`} style={styles.link}>
+              Prepare from your shortlist →
+            </a>
+          </p>
+        </div>
+      ) : null}
 
       <div style={styles.ctaLine}>
         <a href={`${appBaseUrl}/discoveries`} style={styles.link}>
@@ -285,6 +307,7 @@ export function buildDiscoveryEmail(
     <DiscoveryEmail
       discoveries={args.discoveries}
       appBaseUrl={appBaseUrl}
+      shortlist={args.shortlist}
     />,
   )
   const htmlBody = `<!doctype html><html><head><meta charset="utf-8"><title>${APP_NAME} · New matches</title></head><body style="margin:0;padding:0;background:#f7f7f7;">${body}</body></html>`
@@ -335,6 +358,7 @@ export async function sendDiscoveryEmailIfEnabled(
   const { subject, htmlBody } = buildDiscoveryEmail({
     discoveries: items,
     userEmail: user.email,
+    shortlist: await shortlistForEmail(args.userId, now),
   })
   const result = await send({
     userId: args.userId,

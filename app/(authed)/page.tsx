@@ -4,6 +4,7 @@ import { Plus } from 'lucide-react'
 import { requireUserId } from '@/lib/auth/require-session'
 import { DashboardSection } from '@/components/dashboard-section'
 import {
+  ApplyFasterWidget,
   JourneyStripWidget,
   NextBestActionWidget,
   PipelineWidget,
@@ -13,6 +14,7 @@ import {
   WidgetSkeleton,
 } from '@/components/dashboard/widgets'
 import { UsageBanner } from '@/components/dashboard/usage-banner'
+import { ShortlistStrip } from '@/components/apply/shortlist-strip'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 
@@ -58,7 +60,13 @@ export default async function DashboardPage() {
         <Suspense fallback={<WidgetSkeleton className="h-16" />}>
           <JourneyStripWidget userId={userId} />
         </Suspense>
+        <Suspense fallback={<WidgetSkeleton className="h-40" />}>
+          <ShortlistStrip userId={userId} />
+        </Suspense>
         <DashboardSection title="This week">
+          <Suspense fallback={<WidgetSkeleton className="h-24" />}>
+            <ApplyFasterWidget userId={userId} now={now} />
+          </Suspense>
           <Suspense fallback={<WidgetSkeleton className="h-32" />}>
             <ThisWeekWidget userId={userId} now={now} />
           </Suspense>

@@ -16,6 +16,7 @@ import type {
 } from '@/components/discovery-row'
 import { DiscoveryPager } from '@/components/discovery/pager'
 import { LookingForCard } from '@/components/discovery/looking-for-card'
+import { ShortlistStrip } from '@/components/apply/shortlist-strip'
 import type { NormalizedCompany } from '@/lib/discovery/adapters/types'
 import { PAGE_SIZE_COOKIE } from '@/lib/discovery/pager'
 import { loadRoleSuggestions } from '@/lib/discovery/relevance/service'
@@ -107,6 +108,7 @@ export default async function DiscoveriesPage({
         actions={p.tab === 'jobs' ? <ViewToggle sp={sp} view={view} explicit={explicit} /> : undefined}
       />
       <TabBar tab={p.tab} />
+      {p.tab === 'jobs' && p.page === 1 ? <ShortlistStrip userId={userId} /> : null}
       {lookingFor}
       <DiscoveryFilters
         tab={p.tab}

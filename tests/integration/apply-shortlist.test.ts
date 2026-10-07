@@ -212,3 +212,26 @@ describe('buildShortlistForUser', () => {
     expect(await shortlistQ.latestDay(u.id)).toBe(new Date().toISOString().slice(0, 10))
   })
 })
+
+describe('shortlist in emails', () => {
+  it('adds the open picks to the weekly digest unless the user turned it off', async () => {
+    const { gatherPipelineSnapshot } = await import('@/lib/digest/weekly')
+    const { renderWeeklyDigestHtml } = await import('@/lib/digest/email-template')
+    const u = await makeUser()
+    await profileQ.upsert(u.id, { timezone: 'UTC' })
+    const src = await makeSource(u.id, { kind: 'greenhouse' })
+    await makeDiscovery(u.id, src.id, {
+      matchScore: 88,
+      normalized: { kind: 'job', title: 'Backend Engineer', companyName: 'Payco', companyDomain: 'payco.example' },
+    })
+    await buildShortlistForUser(u.id)
+    const snap = await gatherPipelineSnapshot(u.id)
+    expect(snap.shortlist).toMatchObject([{ title: 'Backend Engineer', companyName: 'Payco' }])
+    expect(renderWeeklyDigestHtml(snap)).toContain('Your shortlist')
+
+    await profileQ.upsert(u.id, { shortlistInEmails: false })
+    const off = await gatherPipelineSnapshot(u.id)
+    expect(off.shortlist).toEqual([])
+    expect(renderWeeklyDigestHtml(off)).not.toContain('Your shortlist')
+  })
+})

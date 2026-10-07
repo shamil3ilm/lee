@@ -98,6 +98,7 @@ export function WeeklyDigestEmail({
     upcomingTodos,
     completedStagesThisWeek,
     usageWarnings = [],
+    shortlist = [],
   } = snapshot
   return (
     <div style={styles.wrapper}>
@@ -185,6 +186,29 @@ export function WeeklyDigestEmail({
           </ul>
         )}
       </div>
+
+      {shortlist.length > 0 ? (
+        <div style={styles.section}>
+          <h2 style={styles.h2}>Your shortlist</h2>
+          <ul style={styles.list}>
+            {shortlist.map((d, i) => (
+              <li key={`${i}-${d.title}`} style={styles.listItem}>
+                {d.title} @ {d.companyName}
+                <span style={styles.meta}>
+                  {' '}
+                  · score {d.score}
+                  {d.why ? ` · ${d.why}` : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p style={styles.meta}>
+            <a href={`${appBaseUrl}/shortlist`} style={styles.link}>
+              Prepare from your shortlist
+            </a>
+          </p>
+        </div>
+      ) : null}
 
       <div style={styles.section}>
         <h2 style={styles.h2}>Top discoveries</h2>

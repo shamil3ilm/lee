@@ -110,11 +110,11 @@ describe('scheduler', () => {
     const now = new Date('2026-09-26T09:00:00Z')
     const first = await scheduleDailyJobs(now)
     // reminders + usage snapshot + followups + gmail + digest + 2 sources + scam + email
-    expect(first).toMatchObject({ day: '2026-09-26', users: 1, planned: 9, enqueued: 9 })
+    expect(first).toMatchObject({ day: '2026-09-26', users: 1, planned: 10, enqueued: 10 })
     const again = await scheduleDailyJobs(new Date('2026-09-26T21:00:00Z'))
     expect(again.enqueued).toBe(0)
     const nextDay = await scheduleDailyJobs(new Date(now.getTime() + DAY))
-    expect(nextDay.enqueued).toBe(9)
+    expect(nextDay.enqueued).toBe(10)
 
     const polls = await db.select().from(queueJobs).where(eq(queueJobs.type, JOB_TYPES.discoverySource))
     expect(new Set(polls.map((p) => (p.payload as { sourceId: string }).sourceId)).size).toBe(2)

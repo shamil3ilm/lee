@@ -7,6 +7,8 @@ import { BrowserNotificationsToggle } from '@/components/browser-notifications-t
 import { DiscoveryNotificationsPanel } from '@/components/discovery-notifications-panel'
 import { NotificationsPanel } from '@/components/notifications-panel'
 import { PageHeader } from '@/components/page-header'
+import { ApplySettingsPanel } from '@/components/apply/apply-settings-panel'
+import { applySettingsFrom } from '@/lib/apply/settings'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,6 +46,7 @@ export default async function NotificationsSettingsPage() {
         lastSentAt={profile?.discoveryEmailLastSentAt?.toISOString() ?? null}
         hasGmailSendScope={hasGmailSendScope}
       />
+      <ApplySettingsPanel initial={applySettingsFrom(profile)} />
       <BrowserNotificationsToggle />
     </div>
   )
