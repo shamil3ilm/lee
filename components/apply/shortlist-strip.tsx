@@ -9,14 +9,31 @@ import { joinMeta } from '@/lib/ui/meta'
 const SHOWN = 3
 
 /**
- * Compact "Today's shortlist" for the top of Home and Discovery: the first
- * few open picks with their score, linking to /shortlist. Reads the
- * precomputed snapshot only; renders nothing when there is none.
+ * "Today's shortlist" for the top of Home (the first few open picks with
+ * their score) and Discovery (`banner`: one line with the count, since the
+ * postings themselves are listed right below). Reads the precomputed
+ * snapshot only; renders nothing when there is none.
  */
-export async function ShortlistStrip({ userId }: { userId: string }) {
+export async function ShortlistStrip({ userId, banner = false }: { userId: string; banner?: boolean }) {
   const view = await readShortlist(userId)
   const open = view.entries.filter((e) => e.state === 'open')
   if (!view.day || (open.length === 0 && !view.today)) return null
+  if (banner) {
+    return (
+      <Link
+        href="/shortlist"
+        data-testid="shortlist-banner"
+        className="flex items-center gap-2 rounded-lg border bg-info-soft px-3 py-2 text-sm text-info transition-colors hover:bg-info-soft/70"
+      >
+        <ListChecks className="size-4 shrink-0" aria-hidden="true" />
+        <span className="min-w-0 flex-1">
+          <span className="font-medium">Today’s shortlist:</span>{' '}
+          {open.length === 0 ? 'every pick handled' : `${open.length} ${open.length === 1 ? 'pick' : 'picks'} ranked by fit`}
+        </span>
+        <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
+      </Link>
+    )
+  }
   return (
     <Card data-testid="shortlist-strip">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">

@@ -41,6 +41,7 @@ export function VariantStep({ view, state }: { view: PrepareView; state: StepSta
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
+              variant={state === 'current' ? 'default' : 'outline'}
               disabled={pending}
               onClick={() => run(() => confirmVariantAction(view.applicationId, choice === MASTER ? null : choice).then(toResult))}
             >

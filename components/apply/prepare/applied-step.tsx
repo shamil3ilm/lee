@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { CheckCircle2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { FormField } from '@/components/ui/form-field'
+import { FormActions, FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { LocalTime } from '@/components/local-time'
 import { markAppliedAction } from '@/app/(authed)/shortlist/actions'
@@ -37,14 +37,22 @@ export function AppliedStep({ view, state }: { view: PrepareView; state: StepSta
 
   return (
     <StepShell n={5} title="Mark applied" state={applied ? 'done' : state} summary={summary} testId="prepare-step-applied">
-      <div className="grid gap-3 sm:grid-cols-[12rem_auto] sm:items-end">
-        <FormField htmlFor="applied-day" label="Applied on">
-          <Input id="applied-day" type="date" value={day} max={view.today} onChange={(e) => setDay(e.target.value)} disabled={pending} />
+      <div className="grid gap-3 sm:grid-cols-[12rem_auto]">
+        <FormField htmlFor="applied-day" label="Applied on" help={day ? shortDay(day) : undefined}>
+          <Input
+            id="applied-day"
+            type="date"
+            value={day}
+            max={view.today}
+            onChange={(e) => setDay(e.target.value)}
+            disabled={pending}
+            aria-describedby="applied-day-help"
+          />
         </FormField>
-        <div>
+        <FormActions>
           <Button
             size="sm"
-            variant={applied ? 'outline' : 'default'}
+            variant={!applied && state === 'current' ? 'default' : 'outline'}
             disabled={pending || !day}
             onClick={() =>
               run(() =>
@@ -55,7 +63,7 @@ export function AppliedStep({ view, state }: { view: PrepareView; state: StepSta
             {pending ? <Loader2 className="size-4 animate-spin" /> : null}
             {applied ? 'Update date' : 'Mark applied'}
           </Button>
-        </div>
+        </FormActions>
       </div>
     </StepShell>
   )

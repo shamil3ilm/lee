@@ -25,6 +25,8 @@ export const PROFILE = {
   dealbreakers: ['crypto trading'],
   keywords: ['payments', 'ledger', 'platform'],
   timezone: 'Asia/Kolkata',
+  // Every seeded inbox posting fits on the daily shortlist.
+  shortlistSize: 6,
 }
 
 export const COMPANIES = [
@@ -302,12 +304,24 @@ interface SeedDiscovery {
   reasoning: Record<string, unknown> | null
 }
 
+const JD_PAYOUTS = [
+  'Build the payouts service that moves money to sellers in 30 countries.',
+  '',
+  '- Go and PostgreSQL in production',
+  '- Idempotent payment APIs and reconciliation',
+  '',
+  'Please include a short cover letter and a link to your GitHub.',
+  'How have you handled a failed payout end to end?',
+].join('\n')
+
 export const DISCOVERIES: SeedDiscovery[] = [
   { status: 'new', score: 91, benefits: 72, job: { title: 'Senior Backend Engineer, Ledger', companyName: 'Juspay', companyDomain: 'juspay.example', location: 'Bengaluru, IN', remoteType: 'hybrid', employmentType: 'fulltime', descriptionMd: JD_BACKEND, applyUrl: 'https://juspay.example/jobs/ledger', techStack: ['Go', 'PostgreSQL', 'Kafka'], salary: { min: 4_500_000, max: 6_000_000, currency: 'INR' } }, reasoning: { summary: 'Strong match: ledger + Go + Kafka.', strengths: ['Ledger migration experience', 'Go and Kafka in production'], red_flags: [], stack_overlap: ['Go', 'PostgreSQL', 'Kafka'], stack_gaps: [] } },
   { status: 'new', score: 78, benefits: 60, job: { title: 'Platform Engineer (Kubernetes)', companyName: 'CRED', companyDomain: 'cred.example', location: 'Bengaluru, IN', remoteType: 'onsite', employmentType: 'fulltime', descriptionMd: 'Run our Kubernetes platform on AWS.', applyUrl: 'https://cred.example/jobs/platform', techStack: ['Kubernetes', 'AWS', 'Terraform'] }, reasoning: { summary: 'Good platform overlap.', strengths: ['Kubernetes', 'AWS'], red_flags: ['Onsite five days a week'], stack_overlap: ['Kubernetes', 'AWS'], stack_gaps: ['Istio'] } },
   { status: 'new', score: 64, benefits: null, job: { title: 'Backend Engineer, Webhooks', companyName: 'Hasura', companyDomain: 'hasura.example', location: 'Remote', remoteType: 'remote', employmentType: 'fulltime', descriptionMd: 'Build our webhook delivery pipeline.', applyUrl: 'https://hasura.example/jobs/webhooks', techStack: ['Haskell', 'Go', 'PostgreSQL'] }, reasoning: { summary: 'Partial match; Haskell is a gap.', strengths: ['PostgreSQL'], red_flags: [], stack_overlap: ['Go', 'PostgreSQL'], stack_gaps: ['Haskell'] } },
   { status: 'new', score: 42, benefits: 35, job: { title: 'Senior Data Engineer', companyName: 'Swiggy', companyDomain: 'swiggy.example', location: 'Bengaluru, IN', remoteType: 'hybrid', employmentType: 'fulltime', descriptionMd: 'Spark and Airflow pipelines.', applyUrl: 'https://swiggy.example/jobs/data', techStack: ['Spark', 'Airflow', 'Scala'] }, reasoning: { summary: 'Weak match: data engineering.', strengths: [], red_flags: ['Different specialisation'], stack_overlap: [], stack_gaps: ['Spark', 'Scala'] } },
   { status: 'new', score: null, benefits: null, job: { title: 'Software Engineer — Payments Infrastructure (Contract, 6 months, extension possible)', companyName: 'Tabby', location: 'Dubai, AE', remoteType: 'unknown', employmentType: 'contract', descriptionMd: 'Contract role.', applyUrl: 'https://tabby.example/jobs/payments', techStack: [] }, reasoning: null },
+  // Apply faster (tests/e2e/apply-faster.spec.ts) prepares this one; no other journey touches it.
+  { status: 'new', score: 88, benefits: 64, job: { title: 'Backend Engineer, Payouts', companyName: 'Paylane', companyDomain: 'paylane.example', location: 'Remote', remoteType: 'remote', employmentType: 'fulltime', descriptionMd: JD_PAYOUTS, applyUrl: 'https://boards.greenhouse.io/paylane/jobs/42', techStack: ['Go', 'PostgreSQL'] }, reasoning: { summary: 'Payouts in Go: strong overlap.', strengths: ['Payments background'], red_flags: [], stack_overlap: ['Go', 'PostgreSQL'], stack_gaps: [] } },
   { status: 'dismissed', score: 30, benefits: 20, job: { title: 'Frontend Engineer', companyName: 'Meesho', location: 'Bengaluru, IN', remoteType: 'hybrid', employmentType: 'fulltime', descriptionMd: 'React.', applyUrl: 'https://meesho.example/jobs/fe', techStack: ['React'] }, reasoning: { summary: 'Frontend role.' } },
 ]
 

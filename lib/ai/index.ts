@@ -5,6 +5,12 @@ import { GroqProvider } from './groq'
 import { findModel, MODEL_REGISTRY, type ModelChoice } from './registry'
 import * as profileQ from '@/lib/db/queries/profile'
 import { resolveAiKey } from '@/lib/settings/secrets'
+import { isTestLoginEnabled } from '@/lib/auth/test-login-guard'
+
+/** E2E_AI_FIXTURES=1 with the local test sign-in enabled (never on Vercel or in production). */
+export function e2eAiFixturesEnabled(env: Readonly<Record<string, string | undefined>>): boolean {
+  return isTestLoginEnabled(env) && env.E2E_AI_FIXTURES === '1'
+}
 
 const MISSING_KEY: Record<ModelChoice['provider'], string> = {
   gemini: 'No Gemini key: add a Google AI Studio key in Settings › AI (or set GEMINI_API_KEY).',
@@ -47,6 +53,14 @@ export function getAIProvider(): AIProvider {
 // (env key when unset). Every user-facing AI call site should use this so
 // both the dropdown and the saved keys actually take effect.
 export async function getAIProviderForUser(userId: string): Promise<AIProvider> {
+  // Local E2E only: deterministic fixture AI (lib/ai/fixtures.ts) so journeys
+  // that generate documents run without a real key. The literal NODE_ENV
+  // check folds to false in production builds; the test sign-in guard adds
+  // the same VERCEL / E2E_TEST_LOGIN conditions.
+  if (process.env.NODE_ENV !== 'production' && e2eAiFixturesEnabled(process.env)) {
+    const { FixtureAIProvider } = await import('./fixtures')
+    return new FixtureAIProvider()
+  }
   const profile = await profileQ.get(userId)
   const picked =
     findModel(

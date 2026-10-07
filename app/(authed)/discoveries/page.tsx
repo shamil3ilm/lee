@@ -108,7 +108,7 @@ export default async function DiscoveriesPage({
         actions={p.tab === 'jobs' ? <ViewToggle sp={sp} view={view} explicit={explicit} /> : undefined}
       />
       <TabBar tab={p.tab} />
-      {p.tab === 'jobs' && p.page === 1 ? <ShortlistStrip userId={userId} /> : null}
+      {p.tab === 'jobs' && p.page === 1 ? <ShortlistStrip userId={userId} banner /> : null}
       {lookingFor}
       <DiscoveryFilters
         tab={p.tab}

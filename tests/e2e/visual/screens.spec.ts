@@ -28,6 +28,8 @@ type Target = ({ name: string; path: string } | { name: string; from: string; li
 
 const TARGETS: Target[] = [
   { name: 'dashboard', path: '/' },
+  { name: 'shortlist', path: '/shortlist' },
+  { name: 'application-prepare', from: '/shortlist', link: /^\/applications\/[0-9a-f-]{36}\/prepare$/ },
   { name: 'discoveries', path: '/discoveries' },
   { name: 'companies', path: '/companies' },
   { name: 'company-detail', from: '/companies', link: /^\/companies\/[0-9a-f-]{36}$/ },

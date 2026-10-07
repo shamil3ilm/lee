@@ -114,12 +114,12 @@ test('contacts board: drag with the mouse and move with the keyboard', async ({ 
 test('board view is remembered per page', async ({ page }) => {
   await page.goto('/contacts?view=board')
   await expect(page.locator('[data-board="contacts"]')).toBeVisible()
-  await page.getByRole('link', { name: 'List' }).click()
+  await page.getByRole('link', { name: 'List', exact: true }).click()
   await expect(page).toHaveURL(/view=list/)
   // No explicit view: the last choice (list) wins.
   await page.goto('/contacts')
   await expect(page.locator('[data-board="contacts"]')).toHaveCount(0)
-  await page.getByRole('link', { name: 'Board' }).click()
+  await page.getByRole('link', { name: 'Board', exact: true }).click()
   await expect(page.locator('[data-board="contacts"]')).toBeVisible()
   await page.goto('/contacts')
   await expect(page).toHaveURL(/view=board/)

@@ -313,6 +313,20 @@ async function main(): Promise<void> {
       createdAt: ago(i * 0.5),
     })
   }
+  // Today's shortlist from the seeded inbox (what the shortlist:user job
+  // writes after the morning polls).
+  const { buildShortlistForUser } = await import('@/lib/apply/shortlist')
+  await buildShortlistForUser(userId)
+  // One application mid-preparation (the Swiggy posting, which no journey
+  // reads), so the step panel has a resumable example.
+  const { confirmVariant, startPrepare } = await import('@/lib/apply/prepare')
+  const [dataEng] = await db
+    .select({ id: s.discoveries.id })
+    .from(s.discoveries)
+    .where(eq(s.discoveries.sourceJobId, 'seed-3'))
+  const { applicationId: preparing } = await startPrepare(userId, { discoveryId: dataEng!.id })
+  await confirmVariant(userId, preparing, variant!.id)
+
   for (const [i, c] of data.COMPANY_DISCOVERIES.entries()) {
     await db.insert(s.companyDiscoveries).values({
       userId,
