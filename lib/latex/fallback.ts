@@ -1,6 +1,12 @@
 import { logger } from '@/lib/logger'
 import { LATEX_COMPILE_TIMEOUT_MS } from '@/lib/net/timeout'
-import { BACKEND_NAMES, DEFAULT_COMPILE_SETTINGS, type CompileBackend } from './compile-settings'
+import {
+  BACKEND_NAMES,
+  canCompileAnyway,
+  DEFAULT_COMPILE_SETTINGS,
+  type CompileBackend,
+  type CompileSettings,
+} from './compile-settings'
 import {
   isServiceUnavailable,
   type BackendCompile,
@@ -21,6 +27,8 @@ import { compileOnYtoTech } from './services/ytotech'
  *   3. if the fallback is down too and a missing package has a bundled
  *      stand-in (lib/latex/shims.ts), the primary again with the stand-in.
  * 'latexonline' runs steps 1 and 3; 'ytotech' runs only that service.
+ * With stopOnError off, a document error is compiled again on YtoTech with
+ * latexmk -f, returning that PDF together with the first attempt's log.
  * Every attempt shares one time budget that fits the route's maxDuration.
  */
 
@@ -65,14 +73,42 @@ export async function compileWithFallback(
   const assets = opts.assets ?? []
   const deadline = deps.now() + COMPILE_BUDGET_MS
   const remaining = (): number => deadline - deps.now()
-  const run = (backend: CompileBackend, extra: readonly CompileAsset[] = []): Promise<CompileResult> =>
+  const run = (backend: CompileBackend, extra: readonly CompileAsset[] = [], force = false): Promise<CompileResult> =>
     deps.backends[backend]({
       source: opts.source,
       assets: [...assets, ...extra],
       engine: settings.engine,
       timeoutMs: Math.max(MIN_ATTEMPT_MS, Math.min(LATEX_COMPILE_TIMEOUT_MS, remaining())),
+      ...(force ? { force: true } : {}),
     })
+  const result = await runSettings(settings, assets, run, remaining)
+  return settings.stopOnError || !canCompileAnyway(settings) ? result : compileAnyway(result, run, remaining)
+}
 
+/** "Try to compile anyway": a document error still yields a PDF, with its log. */
+async function compileAnyway(
+  result: CompileResult,
+  run: Runner,
+  remaining: () => number,
+): Promise<CompileResult> {
+  if (result.ok || isServiceUnavailable(result.status) || remaining() < MIN_ATTEMPT_MS) return result
+  const forced = await run('ytotech', [], true)
+  if (!forced.ok) return result
+  return {
+    ...forced,
+    log: result.log,
+    notes: [...(result.notes ?? []), 'Compiled anyway despite errors (Stop on first error is off); fix the errors in the log.'],
+  }
+}
+
+type Runner = (backend: CompileBackend, extra?: readonly CompileAsset[], force?: boolean) => Promise<CompileResult>
+
+async function runSettings(
+  settings: CompileSettings,
+  assets: readonly CompileAsset[],
+  run: Runner,
+  remaining: () => number,
+): Promise<CompileResult> {
   if (settings.service === 'ytotech') return withNotes(await run('ytotech'), [])
 
   const first = await run('latexonline')

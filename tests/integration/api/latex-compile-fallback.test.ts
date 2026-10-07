@@ -86,7 +86,7 @@ describe('compile fallback selection', () => {
     expect(calls).toHaveLength(0)
 
     const saved = latexDocumentContentSchema.parse((await docsQ.getById(u.id, doc.id))!.content)
-    expect(saved.compileSettings).toEqual({ service: 'auto', engine: 'pdflatex' })
+    expect(saved.compileSettings).toEqual({ service: 'auto', engine: 'pdflatex', stopOnError: true })
     expect(saved.compileError).toBeUndefined()
   })
 
@@ -107,7 +107,7 @@ describe('compile fallback selection', () => {
     fakeServices({ ytotech: 'pdf' })
     const { u, doc } = await seed()
     const { POST } = await import('@/app/api/latex/compile/route')
-    const settings = { service: 'ytotech', engine: 'xelatex' }
+    const settings = { service: 'ytotech', engine: 'xelatex', stopOnError: true }
     const res = await POST(post({ documentId: doc.id, source: SOURCE, settings }))
     expect(res.status).toBe(200)
     expect(calls.map((c) => new URL(c.url).host)).toEqual(['latex.ytotech.com'])
@@ -129,5 +129,43 @@ describe('compile fallback selection', () => {
     expect(body.log).toContain("File `fontawesome5.sty' not found")
     expect(body.notes).toEqual(["fontawesome5 isn't available on the compile service; icons shown as text."])
     expect(calls.every((c) => c.url.startsWith('https://latexonline.cc/'))).toBe(true)
+  })
+
+  it('stop on first error off: the PDF comes back with the error log, and is not cached', async () => {
+    const ERR = 'main.tex:4: error: Undefined control sequence'
+    globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
+      const url = String(input)
+      calls.push({ url, init })
+      if (url.startsWith('https://latexonline.cc/')) return new Response(ERR, { status: 400 })
+      const body = JSON.parse(String(init?.body)) as { options: { compiler: { force: boolean } } }
+      if (!body.options.compiler.force) return new Response(JSON.stringify({ logs: ERR }), { status: 400 })
+      return new Response(PDF, { status: 201, headers: { 'content-type': 'application/pdf' } })
+    }) as typeof fetch
+    const { doc } = await seed()
+    const { POST } = await import('@/app/api/latex/compile/route')
+    const settings = { service: 'auto', engine: 'pdflatex', stopOnError: false }
+    const res = await POST(post({ documentId: doc.id, source: SOURCE, settings }))
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { pdfBase64: string; log: string; notes: string[] }
+    expect([...Buffer.from(body.pdfBase64, 'base64')]).toEqual([...PDF])
+    expect(body.log).toContain('Undefined control sequence')
+    expect(body.notes.at(-1)).toContain('Compiled anyway despite errors')
+
+    // Not cached: the next compile goes to the services again.
+    calls = []
+    await POST(post({ documentId: doc.id, source: SOURCE, settings }))
+    expect(calls.length).toBeGreaterThan(0)
+  })
+
+  it('fresh: "Clear cache and recompile" skips a cached PDF', async () => {
+    fakeServices({ ytotech: 'pdf' })
+    const { doc } = await seed()
+    const { POST } = await import('@/app/api/latex/compile/route')
+    await POST(post({ documentId: doc.id, source: SOURCE }))
+    calls = []
+    await POST(post({ documentId: doc.id, source: SOURCE }))
+    expect(calls).toHaveLength(0)
+    await POST(post({ documentId: doc.id, source: SOURCE, fresh: true }))
+    expect(calls.length).toBeGreaterThan(0)
   })
 })

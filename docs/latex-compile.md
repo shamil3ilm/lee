@@ -10,7 +10,7 @@ lee compiles LaTeX documents (the editor, résumé variants and merged PDFs) thr
 
 ## Automatic fallback (`fallback.ts`)
 
-The editor's compile settings choose the **Compiler** (Auto, latexonline.cc only, or YtoTech only) and the **engine** (pdfLaTeX, XeLaTeX or LuaLaTeX). The choice is saved on the document (`content.compileSettings`). The PDF route and the variant Drive export use it too.
+The editor's Recompile menu ([latex-editor.md](latex-editor.md)) chooses the **Compile service** (Automatic, Primary (latexonline.cc) or Full TeX Live (YtoTech)), the **Compiler** (pdfLaTeX, XeLaTeX or LuaLaTeX) and **On errors** (Stop on first error, or Try to compile anyway). The choice is saved on the document (`content.compileSettings`). The PDF route and the variant Drive export use it too.
 
 With **Auto** (the default):
 
@@ -21,20 +21,21 @@ With **Auto** (the default):
 
 All attempts share one 55 s budget. Each attempt gets at most 25 s. The compile and PDF routes allow 60 s (`maxDuration`).
 
-The response says which service compiled it (`x-lee-compile-service`) and why (`x-lee-compile-notes`). The editor shows "Compiled on YtoTech (full TeX Live)" over the preview and a one-time toast with the note. Notes from a failed compile appear in the problems panel. The route logs `service`, `fallback` and the settings, never the source or the log.
+The response says which service compiled it (`x-lee-compile-service`) and why (`x-lee-compile-notes`). The editor shows "Compiled on YtoTech (full TeX Live)" over the preview and a one-time toast with the note. Notes from a failed compile appear in the logs view. The route logs `service`, `fallback` and the settings, never the source or the log.
 
 **Cache.** The PDF cache key (`pdf-cache.ts`) includes the settings when they are not the default, so existing cache entries stay valid. Whichever service produced the PDF, it is cached the same way.
 
-**YtoTech options.** By default YtoTech keeps going after errors (latexmk `-f`, nonstopmode) and can return a PDF for a broken document. lee sends `halt_on_error: true, force: false`, so a document fails there exactly when it would fail on latexonline.cc. The main file is reported as `__main_document__.tex`; lee maps it back to `main.tex` for the log parser.
+**YtoTech options.** By default YtoTech keeps going after errors (latexmk `-f`, nonstopmode) and can return a PDF for a broken document. lee sends `halt_on_error: true, force: false`, so a document fails there exactly when it would fail on latexonline.cc. With Try to compile anyway, a failing document is compiled again with `force: true`; that PDF is returned (as JSON `{ pdfBase64, log, notes }`) with the first attempt's log, and it is never cached. The main file is reported as `__main_document__.tex`; lee maps it back to `main.tex` for the log parser.
 
 ## Hints for a missing package (`hints.ts`, `missing.ts`)
 
 A `File 'x.sty' not found` error means the document **already loads** the package, so "add `\usepackage{x}`" was the wrong advice. The hint now says "The compile service doesn't have package X" and offers a fix based on how the document uses it:
 
 - **unused** (none of its known commands appear outside comments): remove `\usepackage{x}`. The editor offers "Go to the \usepackage line". The user's own résumé is this case: it loads `fontawesome5` but uses no `\fa…` command.
-- **used**: switch the Compiler to Auto or YtoTech. The editor offers a "Compile with full TeX Live" button. The hint also mentions the stand-in, if there is one.
-- **not loaded by the document** (a class or another package needs it): switch the Compiler.
-- a missing `.cls`: upload it via Assets or switch the Compiler. `fontspec` under pdfLaTeX: change the engine.
+- **used**: choose Compile service › Automatic or Full TeX Live. The editor offers a "Compile with full TeX Live" button. The hint also mentions the stand-in, if there is one.
+- **not loaded by the document** (a class or another package needs it): switch the compile service.
+- a missing `.cls`: upload it via Assets or switch the compile service. `fontspec` under pdfLaTeX: pick XeLaTeX or LuaLaTeX under Compiler.
+- a pasted local file path: import the file (see [latex-editor.md](latex-editor.md)).
 
 ## Package availability (probed 2026-10-07)
 

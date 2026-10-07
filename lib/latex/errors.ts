@@ -1,5 +1,5 @@
 // Hints (one-line suggested fixes) live in ./hints; re-exported here.
-export { extractLatexHint, missingPackageHint, type HintAction, type LatexHint } from './hints'
+export { extractLatexHint, filePathHint, missingPackageHint, type HintAction, type LatexHint } from './hints'
 
 // ---------------------------------------------------------------------------
 // Compile-log parser (v17 §8.5 decision 4). Written from scratch for lee —

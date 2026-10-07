@@ -21,9 +21,15 @@ export const COMPILE_ENGINES = ['pdflatex', 'xelatex', 'lualatex'] as const
 export type CompileEngine = (typeof COMPILE_ENGINES)[number]
 
 export const SERVICE_LABELS: Readonly<Record<CompileService, string>> = {
-  auto: 'Auto (latexonline.cc, full TeX Live fallback)',
-  latexonline: 'latexonline.cc only',
-  ytotech: 'YtoTech (full TeX Live)',
+  auto: 'Automatic',
+  latexonline: 'Primary (latexonline.cc)',
+  ytotech: 'Full TeX Live (YtoTech)',
+}
+
+export const SERVICE_HINTS: Readonly<Record<CompileService, string>> = {
+  auto: 'Primary first; full TeX Live when a package is missing or the primary is down',
+  latexonline: 'Fast, but lacks some packages (fontawesome5 …)',
+  ytotech: 'Every package; a free public beta service',
 }
 
 export const BACKEND_NAMES: Readonly<Record<CompileBackend, string>> = {
@@ -40,13 +46,28 @@ export const ENGINE_LABELS: Readonly<Record<CompileEngine, string>> = {
 export const compileSettingsSchema = z.object({
   service: z.enum(COMPILE_SERVICES).default('auto'),
   engine: z.enum(COMPILE_ENGINES).default('pdflatex'),
+  /**
+   * false = "try to compile anyway": a document error still yields a PDF
+   * (YtoTech's latexmk -f) next to the log. latexonline.cc can't do this.
+   */
+  stopOnError: z.boolean().default(true),
 })
 export type CompileSettings = z.infer<typeof compileSettingsSchema>
 
-export const DEFAULT_COMPILE_SETTINGS: CompileSettings = { service: 'auto', engine: 'pdflatex' }
+export const DEFAULT_COMPILE_SETTINGS: CompileSettings = { service: 'auto', engine: 'pdflatex', stopOnError: true }
 
 export function isDefaultSettings(s: CompileSettings | undefined): boolean {
-  return !s || (s.service === DEFAULT_COMPILE_SETTINGS.service && s.engine === DEFAULT_COMPILE_SETTINGS.engine)
+  return (
+    !s ||
+    (s.service === DEFAULT_COMPILE_SETTINGS.service &&
+      s.engine === DEFAULT_COMPILE_SETTINGS.engine &&
+      s.stopOnError === DEFAULT_COMPILE_SETTINGS.stopOnError)
+  )
+}
+
+/** "Try to compile anyway" needs a service that can (YtoTech). */
+export function canCompileAnyway(s: CompileSettings): boolean {
+  return s.service !== 'latexonline'
 }
 
 /** Lenient read of a stored value: anything invalid falls back to the defaults. */

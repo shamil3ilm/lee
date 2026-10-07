@@ -28,7 +28,7 @@ export async function compileOnYtoTech(req: BackendRequest): Promise<CompileResu
       ...req.assets.map((a) => ({ path: a.filename, file: a.bytes.toString('base64') })),
     ],
     options: {
-      compiler: { halt_on_error: true, force: false },
+      compiler: req.force ? { halt_on_error: false, force: true } : { halt_on_error: true, force: false },
       response: { log_files_on_failure: true },
     },
   })

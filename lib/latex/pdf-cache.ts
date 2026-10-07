@@ -33,7 +33,9 @@ export function latexCacheKey(
 ): string {
   const h = createHash('sha256')
   h.update(`${CACHE_VERSION}\0${source}\0`)
-  if (settings && !isDefaultSettings(settings)) h.update(`settings\0${settings.service}\0${settings.engine}\0`)
+  if (settings && !isDefaultSettings(settings)) {
+    h.update(`settings\0${settings.service}\0${settings.engine}\0${settings.stopOnError ? '' : 'anyway\0'}`)
+  }
   const sorted = [...assets].sort((a, b) => (a.filename < b.filename ? -1 : a.filename > b.filename ? 1 : 0))
   for (const a of sorted) h.update(`${a.filename}\0${a.sha256}\0`)
   return h.digest('hex')
@@ -51,7 +53,16 @@ export async function documentCacheKey(
 }
 
 export type CompiledPdf =
-  | { ok: true; pdf: Buffer; cacheKey: string; cached: boolean; service?: CompileBackend; notes: string[] }
+  | {
+      ok: true
+      pdf: Buffer
+      cacheKey: string
+      cached: boolean
+      service?: CompileBackend
+      notes: string[]
+      /** The error log when the PDF was compiled anyway despite errors. */
+      log?: string
+    }
   | { ok: false; status: number; log: string; cacheKey: string; service?: CompileBackend; notes: string[] }
 
 export interface CompileDocumentPdfInput {
@@ -65,6 +76,8 @@ export interface CompileDocumentPdfInput {
   draft?: boolean
   /** Compile service + engine (defaults: auto fallback, pdflatex). */
   settings?: CompileSettings
+  /** "Clear cache and recompile": skip the cache read (a success still writes it). */
+  fresh?: boolean
   /** Injected for tests; defaults to the fallback-aware compile client. */
   compile?: (input: CompileOptions) => Promise<CompileResult>
   store?: AssetStore
@@ -76,7 +89,7 @@ export async function compileDocumentPdf(input: CompileDocumentPdfInput): Promis
   const source = input.draft ? withDraftMode(input.source) : input.source
   const { cacheKey, assets } = await documentCacheKey(input.userId, input.documentId, source, input.settings)
 
-  const cached = input.draft
+  const cached = input.draft || input.fresh
     ? null
     : await store.get(input.userId, store.refForPdfCache(input.documentId, cacheKey))
   if (cached) return { ok: true, pdf: cached, cacheKey, cached: true, notes: [] }
@@ -96,7 +109,9 @@ export async function compileDocumentPdf(input: CompileDocumentPdfInput): Promis
   if (!result.ok) return { ok: false, status: result.status, log: result.log, cacheKey, service: result.service, notes }
 
   const pdf = Buffer.from(result.pdf)
-  if (!input.draft && pdf.byteLength <= MAX_PDF_CACHE_BYTES) {
+  // A PDF compiled anyway despite errors is never cached: the next view
+  // must recompile and show the errors again.
+  if (!input.draft && !result.log && pdf.byteLength <= MAX_PDF_CACHE_BYTES) {
     try {
       await store.put(
         input.userId,
@@ -112,5 +127,5 @@ export async function compileDocumentPdf(input: CompileDocumentPdfInput): Promis
       })
     }
   }
-  return { ok: true, pdf, cacheKey, cached: false, service: result.service, notes }
+  return { ok: true, pdf, cacheKey, cached: false, service: result.service, notes, ...(result.log ? { log: result.log } : {}) }
 }

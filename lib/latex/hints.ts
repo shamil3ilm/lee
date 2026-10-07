@@ -6,9 +6,10 @@
 
 import { hasShim } from './shims'
 import { declaredPackages, packageUsage } from './missing'
+import { looksLikeFilePath, pathFileName } from './path-paste'
 
 /** A fix the editor can offer next to the hint. */
-export type HintAction = 'use_fallback' | 'remove_package' | 'switch_engine' | 'upload_file'
+export type HintAction = 'use_fallback' | 'remove_package' | 'switch_engine' | 'upload_file' | 'import_file'
 
 export interface LatexHint {
   /** Human-readable suggestion shown next to the raw log. */
@@ -22,13 +23,14 @@ export interface LatexHint {
     | 'missing_font'
     | 'unclosed_environment'
     | 'wrong_engine'
+    | 'file_path'
   /** Fixes worth offering, best first. */
   actions?: HintAction[]
   /** The package / class / file the hint is about, when there is one. */
   subject?: string
 }
 
-const FALLBACK_TIP = 'set Compiler to Auto or YtoTech (full TeX Live) in the compile settings'
+const FALLBACK_TIP = 'choose Compile service › Automatic or Full TeX Live in the Recompile menu'
 
 /**
  * A `.sty` was not found. The document already loads it (that is why TeX
@@ -72,6 +74,16 @@ export function missingPackageHint(pkg: string, source?: string): LatexHint {
   }
 }
 
+export function filePathHint(source: string): LatexHint {
+  const name = pathFileName(source)
+  return {
+    kind: 'file_path',
+    subject: name ?? undefined,
+    actions: ['import_file'],
+    message: `That's a file path, not LaTeX. Browsers can't read files from your computer by path: import ${name ?? 'the file'} instead.`,
+  }
+}
+
 type HintFactory = (match: RegExpMatchArray, source: string | undefined) => LatexHint
 
 const HINT_PATTERNS: { pattern: RegExp; toHint: HintFactory }[] = [
@@ -106,7 +118,7 @@ const HINT_PATTERNS: { pattern: RegExp; toHint: HintFactory }[] = [
     toHint: () => ({
       kind: 'wrong_engine',
       actions: ['switch_engine'],
-      message: 'This document needs XeLaTeX or LuaLaTeX (it loads fontspec): change the engine in the compile settings.',
+      message: 'This document needs XeLaTeX or LuaLaTeX (it loads fontspec): pick it under Compiler in the Recompile menu.',
     }),
   },
   {
@@ -155,6 +167,9 @@ const HINT_PATTERNS: { pattern: RegExp; toHint: HintFactory }[] = [
  * the raw log — the hint is additive, not a replacement.
  */
 export function extractLatexHint(log: string, source?: string): LatexHint | null {
+  // A pasted local path ("C:\Users\me\cv.tex") makes TeX report \Users, \me …
+  // as undefined commands; the fix is importing the file, not a package.
+  if (source !== undefined && looksLikeFilePath(source)) return filePathHint(source)
   if (!log) return null
   for (const { pattern, toHint } of HINT_PATTERNS) {
     const m = log.match(pattern)

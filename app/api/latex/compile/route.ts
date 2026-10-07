@@ -27,16 +27,20 @@ const bodySchema = z.object({
   draft: z.boolean().optional(),
   /** Compile service + engine; saved on the document. Omitted = keep the saved choice. */
   settings: compileSettingsSchema.optional(),
+  /** "Clear cache and recompile": skip the compiled-PDF cache. */
+  fresh: z.boolean().optional(),
 })
 
 /**
  * POST /api/latex/compile
- *   body: { documentId, source, draft?, settings? }
+ *   body: { documentId, source, draft?, settings?, fresh? }
  *
  * On success: streams the compiled PDF bytes back (application/pdf) and
  * updates the document row's `compiledAt` + clears any prior error. The
  * x-lee-compile-service / x-lee-compile-notes headers say which service
- * compiled it (e.g. the full-TeX-Live fallback) and why.
+ * compiled it (e.g. the full-TeX-Live fallback) and why. A PDF compiled
+ * anyway despite errors (Stop on first error off) comes back as 200 JSON
+ * `{ pdfBase64, log, notes, service }` so the editor shows both.
  *
  * On failure: returns 422 JSON `{error, log}` and stores the log/error on
  * the document row so the editor can display it after a page reload.
@@ -52,7 +56,7 @@ export async function POST(req: Request): Promise<Response> {
     if (!parsed.success) {
       return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 })
     }
-    const { documentId, source, draft } = parsed.data
+    const { documentId, source, draft, fresh } = parsed.data
 
     const doc = await documentsQ.getById(userId, documentId)
     if (!doc) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
@@ -69,7 +73,7 @@ export async function POST(req: Request): Promise<Response> {
     const existing = latexDocumentContentSchema.safeParse(doc.content)
     const settings = parsed.data.settings ?? readCompileSettings(existing.success ? existing.data.compileSettings : undefined)
     const started = Date.now()
-    const result = await compileDocumentPdf({ userId, documentId, source, draft: draft === true, settings })
+    const result = await compileDocumentPdf({ userId, documentId, source, draft: draft === true, settings, fresh: fresh === true })
     // Outcome only (never the source or the log): shown in Settings › Logs.
     logger.info('latex_compile', {
       userId,
@@ -97,6 +101,17 @@ export async function POST(req: Request): Promise<Response> {
         compileLog: undefined,
       }
       await documentsQ.update(userId, documentId, { content: updated })
+      if (result.log) {
+        return NextResponse.json(
+          {
+            pdfBase64: result.pdf.toString('base64'),
+            log: truncateLog(result.log),
+            notes: result.notes,
+            service: result.service ?? null,
+          },
+          { headers: { 'cache-control': 'no-store' } },
+        )
+      }
       return new Response(new Uint8Array(result.pdf), {
         status: 200,
         headers: {

@@ -1,7 +1,14 @@
 import type { CompileBackend, CompileSettings } from './compile-settings'
 
 export type CompileResult =
-  | { ok: true; pdf: ArrayBuffer; service?: CompileBackend; notes?: string[] }
+  | {
+      ok: true
+      pdf: ArrayBuffer
+      service?: CompileBackend
+      notes?: string[]
+      /** Set when the PDF was compiled anyway despite errors: the error log. */
+      log?: string
+    }
   | { ok: false; status: number; log: string; service?: CompileBackend; notes?: string[] }
 
 export interface CompileAsset {
@@ -29,6 +36,8 @@ export interface BackendRequest {
   assets: readonly CompileAsset[]
   engine: CompileSettings['engine']
   timeoutMs: number
+  /** Keep going after errors and return whatever PDF results (YtoTech only). */
+  force?: boolean
 }
 
 export type BackendCompile = (req: BackendRequest) => Promise<CompileResult>

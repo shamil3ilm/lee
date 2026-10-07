@@ -100,7 +100,7 @@ describe('compileWithFallback (manual service)', () => {
     const lo = seq(fail(400, FA5_MISSING), ok())
     const yt = seq(ok())
     const r = await compileWithFallback(
-      { source: SOURCE, settings: { service: 'latexonline', engine: 'pdflatex' } },
+      { source: SOURCE, settings: { service: 'latexonline', engine: 'pdflatex', stopOnError: true } },
       deps(lo, yt),
     )
     expect(r.ok).toBe(true)
@@ -111,8 +111,42 @@ describe('compileWithFallback (manual service)', () => {
   it('ytotech only, with the chosen engine', async () => {
     const lo = seq(ok())
     const yt = seq(ok())
-    await compileWithFallback({ source: 'x', settings: { service: 'ytotech', engine: 'xelatex' } }, deps(lo, yt))
+    await compileWithFallback({ source: 'x', settings: { service: 'ytotech', engine: 'xelatex', stopOnError: true } }, deps(lo, yt))
     expect(lo).not.toHaveBeenCalled()
     expect(yt.mock.calls[0]![0].engine).toBe('xelatex')
+  })
+})
+
+describe('compileWithFallback (stop on first error off)', () => {
+  const ERR = 'main.tex:5: error: Undefined control sequence'
+
+  it('compiles anyway on YtoTech with force and returns the error log', async () => {
+    const lo = seq(fail(400, ERR))
+    const yt = seq({ ...ok(), service: 'ytotech' })
+    const r = await compileWithFallback(
+      { source: 'x', settings: { service: 'auto', engine: 'pdflatex', stopOnError: false } },
+      deps(lo, yt),
+    )
+    expect(r).toMatchObject({ ok: true, log: ERR, service: 'ytotech' })
+    expect(yt.mock.calls[0]![0].force).toBe(true)
+    expect(r.notes?.at(-1)).toContain('Compiled anyway despite errors')
+  })
+
+  it('stays a failure when even the forced compile yields nothing', async () => {
+    const r = await compileWithFallback(
+      { source: 'x', settings: { service: 'ytotech', engine: 'pdflatex', stopOnError: false } },
+      deps(seq(ok()), seq(fail(400, ERR), fail(400, ERR))),
+    )
+    expect(r).toMatchObject({ ok: false, log: ERR })
+  })
+
+  it('is not offered on latexonline.cc only', async () => {
+    const yt = seq(ok())
+    const r = await compileWithFallback(
+      { source: 'x', settings: { service: 'latexonline', engine: 'pdflatex', stopOnError: false } },
+      deps(seq(fail(400, ERR)), yt),
+    )
+    expect(r.ok).toBe(false)
+    expect(yt).not.toHaveBeenCalled()
   })
 })

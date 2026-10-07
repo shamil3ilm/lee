@@ -38,7 +38,7 @@ describe('missing-package hint', () => {
   it('suggests the full-TeX-Live compiler (and mentions the stand-in) when the package is used', () => {
     const hint = extractLatexHint(LATEXONLINE_FA5, preamble('\\faGithub\\ example-asha'))
     expect(hint?.actions).toEqual(['use_fallback'])
-    expect(hint?.message).toMatch(/Your document uses it: set Compiler to Auto or YtoTech/)
+    expect(hint?.message).toMatch(/Your document uses it: choose Compile service › Automatic or Full TeX Live/)
     expect(hint?.message).toContain('stand-in for fontawesome5')
   })
 
