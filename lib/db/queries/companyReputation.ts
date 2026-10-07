@@ -162,3 +162,18 @@ export async function staleWatched(
     .orderBy(sql`${companyReputation.fetchedAt} asc nulls first`, companies.createdAt)
     .limit(limit)
 }
+
+/**
+ * Every reputation row of the user with the company's name and domain (the
+ * shortlist matches postings to companies by domain, else by name). One
+ * row per company the user tracks; bounded.
+ */
+export async function listWithCompany(userId: string, limit = 1_000, client: DbClient = db): Promise<ConfirmedCompany[]> {
+  const rows = await client
+    .select({ rep: companyReputation, name: companies.name, domain: companies.domain })
+    .from(companyReputation)
+    .innerJoin(companies, eq(companies.id, companyReputation.companyId))
+    .where(eq(companyReputation.userId, userId))
+    .limit(limit)
+  return rows.map((r) => ({ companyId: r.rep.companyId, name: r.name, domain: r.domain, record: toRecord(r.rep) }))
+}

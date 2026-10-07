@@ -14,6 +14,7 @@ export const JOB_TYPES = {
   discoveryRelevance: 'discovery-relevance:user',
   usageSnapshot: 'usage-snapshot:all',
   companyReputation: 'company-reputation:user+company',
+  shortlist: 'shortlist:user',
 } as const
 
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES]
@@ -38,6 +39,9 @@ export const JOB_PRIORITY: Readonly<Record<JobType, number>> = {
   // Queued by a search-preferences save; DB-only and batched.
   [JOB_TYPES.discoveryRelevance]: 45,
   [JOB_TYPES.scamReassess]: 50,
+  // After the polls and the Scam Shield re-check (it waits for that job),
+  // before the discovery email (which waits for it and can include it).
+  [JOB_TYPES.shortlist]: 55,
   [JOB_TYPES.discoveryEmail]: 60,
 }
 
@@ -53,6 +57,7 @@ export const JOB_LABELS: Readonly<Record<string, string>> = {
   [JOB_TYPES.discoveryRelevance]: 'Discovery relevance re-check',
   [JOB_TYPES.usageSnapshot]: 'Usage snapshot',
   [JOB_TYPES.companyReputation]: 'Company reputation refresh',
+  [JOB_TYPES.shortlist]: 'Daily shortlist',
 }
 
 export function jobLabel(type: string): string {
@@ -79,6 +84,7 @@ export const jobKeys = {
   /** One per preferences save (`stamp` = save time), so every change re-runs. */
   discoveryRelevance: (userId: string, stamp: string) => `discovery-relevance:${userId}:${stamp}`,
   scamReassess: (userId: string, day: string) => `scam-reassess:${userId}:${day}`,
+  shortlist: (userId: string, day: string) => `shortlist:${userId}:${day}`,
   usageSnapshot: (day: string) => `usage-snapshot:all:${day}`,
   /** Weekly: once per ISO week (`2026-W39`) per company. */
   companyReputationWeekly: (userId: string, companyId: string, isoWeek: string) =>

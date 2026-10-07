@@ -13,6 +13,7 @@ import { reassessStaleDiscoveries } from '@/lib/scam/service'
 import { reevaluateRelevance } from '@/lib/discovery/relevance/service'
 import { enqueueRelevanceJob } from '@/lib/discovery/relevance/enqueue'
 import { takeUsageSnapshot } from '@/lib/usage/snapshot'
+import { buildShortlistForUser } from '@/lib/apply/shortlist'
 import { isThrottled } from '@/lib/usage/throttle'
 import { JOB_TYPES } from './job-types'
 import { createRegistry, defineHandler, type HandlerRegistry } from './registry'
@@ -277,6 +278,26 @@ const companyReputation = defineHandler({
   },
 })
 
+/**
+ * The daily shortlist (lib/apply/shortlist.ts): ranks the user's new and
+ * recent discoveries after the polls and the Scam Shield re-check, and
+ * stores the top N for the shortlist page. DB-only, no AI; a rerun replaces
+ * only the entries the user has not acted on.
+ */
+const shortlist = defineHandler({
+  type: JOB_TYPES.shortlist,
+  scope: 'user',
+  payload: USER_PAYLOAD,
+  timeoutMs: 30_000,
+  async run({ job }): Promise<JobResult> {
+    const r = await buildShortlistForUser(userId(job))
+    return {
+      metrics: { shortlist_candidates: r.candidates, shortlisted: r.shortlisted },
+      summary: { kind: 'shortlist', candidates: r.candidates, shortlisted: r.shortlisted },
+    }
+  },
+})
+
 export const appHandlers = [
   reminders,
   followups,
@@ -288,6 +309,7 @@ export const appHandlers = [
   discoveryRelevance,
   usageSnapshot,
   companyReputation,
+  shortlist,
 ] as const
 
 export const appRegistry: HandlerRegistry = createRegistry(appHandlers)

@@ -35,8 +35,11 @@ export type DiscoveryEmailSummary =
   | { kind: 'discovery-email'; sent: true; count: number }
   | { kind: 'discovery-email'; sent: false; reason?: 'disabled' | 'no_matches' | 'no_google_account' }
 
+export type ShortlistSummary = { kind: 'shortlist'; candidates: number; shortlisted: number }
+
 export type JobSummary =
   | DiscoverySourceSummary
+  | ShortlistSummary
   | GmailSyncSummary
   | DigestSummary
   | FollowupsSummary
@@ -149,6 +152,8 @@ export function describeSummary(summary: JobSummary | null | undefined): string 
         : `Snapshot taken · throttles: ${summary.throttles.join(', ')}`
     case 'scam-reassess':
       return summary.paused ? 'Paused by the usage throttle' : plural(summary.reassessed, 'listing') + ' re-checked'
+    case 'shortlist':
+      return `${plural(summary.shortlisted, 'posting')} shortlisted from ${plural(summary.candidates, 'candidate')}`
     case 'discovery-email':
       if (summary.sent) return `Sent · ${plural(summary.count, 'match', 'matches')}`
       if (summary.reason === 'no_google_account') return 'Not sent: no Google account'

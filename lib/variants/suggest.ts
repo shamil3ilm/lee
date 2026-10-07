@@ -37,6 +37,14 @@ export function jobSignals(job: GateInput): JobSignals {
   return { regions, families: gate.families }
 }
 
+/** Signals from stored region tags (discoveries.regions) and title families. */
+export function signalsFromTags(tags: readonly string[], families: readonly string[]): JobSignals {
+  const regions = [
+    ...new Set(tags.flatMap((t) => (t in TAG_TO_REGION ? [TAG_TO_REGION[t as RegionTag]] : []))),
+  ]
+  return { regions, families: [...families] }
+}
+
 export function suggestVariant(variants: readonly VariantSummary[], signals: JobSignals): VariantSuggestion {
   const region: Region | null = signals.regions.find((r) => r !== 'remote') ?? signals.regions[0] ?? null
   const family = signals.families[0] ?? null

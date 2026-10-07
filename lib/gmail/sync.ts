@@ -13,6 +13,7 @@ import {
 } from './adapter'
 import { matchThreadToApplication } from './matcher'
 import { mapWithConcurrency } from '@/lib/util/concurrency'
+import { cancelOnReply } from '@/lib/apply/followups'
 
 /** Gmail thread fetches in flight at once (well inside Gmail's per-user quota). */
 export const GMAIL_THREAD_CONCURRENCY = 5
@@ -48,6 +49,9 @@ async function processThread(args: {
       matchReason: match.reason,
     })
     await processedQ.markProcessed(userId, summary.id, match.applicationId)
+    // A reply arrived: the follow-up nudge scheduled on "Mark applied" is
+    // no longer needed.
+    await cancelOnReply(userId, match.applicationId)
     return 'matched'
   } catch (err) {
     logger.warn('gmail_sync_thread_failed', {

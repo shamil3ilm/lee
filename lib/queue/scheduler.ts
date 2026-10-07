@@ -17,8 +17,9 @@ export interface ScheduleResult {
 
 /**
  * Plan one user's jobs for `day`. Discovery is one job per active source
- * (enabled, under the error limit); the discovery email and the Scam Shield
- * re-check wait for those polls (wait_for_type).
+ * (enabled, under the error limit); the Scam Shield re-check waits for those
+ * polls, the daily shortlist for the re-check, and the discovery email for
+ * the shortlist (wait_for_type).
  */
 export function planUserJobs(userId: string, sourceIds: readonly string[], day: string, now: Date): EnqueueSpec[] {
   const base = { userId, runAfter: now }
@@ -35,7 +36,11 @@ export function planUserJobs(userId: string, sourceIds: readonly string[], day: 
       priority: JOB_PRIORITY[JOB_TYPES.discoverySource],
     })),
     { ...base, ...waitForPolls, type: JOB_TYPES.scamReassess, idempotencyKey: jobKeys.scamReassess(userId, day), priority: JOB_PRIORITY[JOB_TYPES.scamReassess] },
-    { ...base, ...waitForPolls, type: JOB_TYPES.discoveryEmail, idempotencyKey: jobKeys.discoveryEmail(userId, day), priority: JOB_PRIORITY[JOB_TYPES.discoveryEmail] },
+    // polls → Scam Shield re-check → shortlist → discovery email: each waits
+    // for the one before (wait_for_type), so the shortlist never includes a
+    // posting the re-check would quarantine and the email can carry it.
+    { ...base, waitForType: JOB_TYPES.scamReassess, type: JOB_TYPES.shortlist, idempotencyKey: jobKeys.shortlist(userId, day), priority: JOB_PRIORITY[JOB_TYPES.shortlist] },
+    { ...base, waitForType: JOB_TYPES.shortlist, type: JOB_TYPES.discoveryEmail, idempotencyKey: jobKeys.discoveryEmail(userId, day), priority: JOB_PRIORITY[JOB_TYPES.discoveryEmail] },
   ]
 }
 

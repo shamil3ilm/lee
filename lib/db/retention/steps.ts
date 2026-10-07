@@ -20,6 +20,7 @@ export const USER_STEP_IDS = [
   'reputationCache',
   'variantVersions',
   'academyHistory',
+  'applyHistory',
 ] as const
 
 export const GLOBAL_STEP_IDS = [
@@ -62,6 +63,7 @@ export const STEP_LABELS: Readonly<Record<RetentionStepId, string>> = {
   reputationCache: 'Old company reputation signals cleared',
   variantVersions: 'Old résumé variant versions deleted',
   academyHistory: 'Old Playground attempts and plans compacted (scores and history kept)',
+  applyHistory: 'Old daily shortlists and “Not for me” feedback deleted',
   queueJobs: 'Finished background jobs deleted',
   orphanAiCallLogs: 'AI call logs of deleted users deleted',
   expiredAuth: 'Expired sign-in records deleted',

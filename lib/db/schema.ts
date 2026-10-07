@@ -420,6 +420,12 @@ export const userProfile = pgTable('user_profile', {
   // lib/resume/types.ts. Null until first saved (or migrated from the
   // legacy master_cv document on first read, lib/resume/service.ts).
   resume: jsonb('resume'),
+  // Apply faster (lib/apply/settings.ts): daily shortlist size, days until
+  // the follow-up nudge after "Mark applied", and whether the shortlist is
+  // added to the weekly digest and the discovery email.
+  shortlistSize: smallint('shortlist_size').notNull().default(5),
+  followupDays: smallint('followup_days').notNull().default(7),
+  shortlistInEmails: boolean('shortlist_in_emails').notNull().default(true),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
@@ -1578,3 +1584,5 @@ export const retentionSettings = pgTable('retention_settings', {
 
 // v13 Playground core engine tables (kept in their own module).
 export * from './schema-academy'
+// Apply faster: daily shortlist, dismiss feedback, prepare progress.
+export * from './schema-apply'

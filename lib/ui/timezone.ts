@@ -17,7 +17,7 @@ export const DEFAULT_TIMEZONE = 'Asia/Dubai'
  * at the given instant. Uses Intl to avoid a tz database dep. Returns 0 if
  * the tz id is invalid.
  */
-function tzOffsetMinutes(tz: string, at: Date): number {
+export function tzOffsetMinutes(tz: string, at: Date): number {
   try {
     const dtf = new Intl.DateTimeFormat('en-US', {
       timeZone: tz,

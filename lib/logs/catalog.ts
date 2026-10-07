@@ -197,6 +197,26 @@ export const EVENT_CATALOG: Readonly<Record<string, EventSpec>> = {
     strings: ['achievementId'],
     message: (c) => `Achievement earned: ${s(c, 'achievementId')}`,
   },
+  // Apply faster (lib/apply). Context: ids and counts only — never titles,
+  // company names, CV or letter text.
+  shortlist_built: {
+    category: 'job',
+    persist: true,
+    message: (c) => `Shortlist built: ${n(c, 'shortlisted')} of ${n(c, 'candidates')} candidate(s)`,
+  },
+  application_prepared: {
+    category: 'app',
+    persist: true,
+    strings: ['applicationId'],
+    message: (c) => `Application prepared: ${n(c, 'done')} step(s) done, ${n(c, 'skipped')} skipped`,
+  },
+  marked_applied: {
+    category: 'app',
+    persist: true,
+    strings: ['applicationId'],
+    message: (c) =>
+      `Marked applied with ${n(c, 'documents')} document(s)${n(c, 'followupDays') > 0 ? `; follow-up in ${n(c, 'followupDays')} days` : ''}`,
+  },
   // LaTeX
   latex_compile: {
     category: 'latex',
