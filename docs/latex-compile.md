@@ -19,13 +19,17 @@ With **Auto** (the default):
 3. If YtoTech fails on the document itself, return *its* log, since it has every package and so shows the real error.
 4. If YtoTech is down too and a missing package has a stand-in, retry on latexonline.cc with the stand-in .sty. The note says "fontawesome5 isn't available on the compile service; icons shown as text." A `.sty` the user uploaded is never replaced.
 
-All attempts share one 55 s budget. Each attempt gets at most 25 s. The compile and PDF routes allow 60 s (`maxDuration`).
+All attempts share one 45 s budget. Each attempt gets at most 25 s, and its timeout also covers reading the PDF body (a service that stalls mid-body counts as unavailable). The compile and PDF routes allow 60 s (`maxDuration`); the remaining 15 s cover the database round trips around the compile. When the browser gives up (closes the tab, cancels), the request signal aborts the compile call and no further attempt starts. No database transaction is held across a compile.
 
 The response says which service compiled it (`x-lee-compile-service`) and why (`x-lee-compile-notes`). The editor shows "Compiled on YtoTech (full TeX Live)" over the preview and a one-time toast with the note. Notes from a failed compile appear in the logs view. The route logs `service`, `fallback` and the settings, never the source or the log.
 
 **Cache.** The PDF cache key (`pdf-cache.ts`) includes the settings when they are not the default, so existing cache entries stay valid. Whichever service produced the PDF, it is cached the same way.
 
 **YtoTech options.** By default YtoTech keeps going after errors (latexmk `-f`, nonstopmode) and can return a PDF for a broken document. lee sends `halt_on_error: true, force: false`, so a document fails there exactly when it would fail on latexonline.cc. With Try to compile anyway, a failing document is compiled again with `force: true`; that PDF is returned (as JSON `{ pdfBase64, log, notes }`) with the first attempt's log, and it is never cached. The main file is reported as `__main_document__.tex`; lee maps it back to `main.tex` for the log parser.
+
+**Endpoints.** `LATEX_ONLINE_URL` and `LATEX_YTOTECH_URL` (server env, optional) replace the two service URLs. Only the e2e run sets them, to `tests/e2e/latex-stub.mjs`, so server-side compiles in e2e never leave the machine. The stub can answer a PDF, a LaTeX error, 503 or nothing at all (`POST /__test/mode`).
+
+**When a service is down.** The PDF route answers 503 with `Retry-After: 30` when the failure was the service's (5xx, 429 or a timeout), and 422 when the document failed. A compile the browser abandons answers 499 internally and starts no further attempt.
 
 ## Hints for a missing package (`hints.ts`, `missing.ts`)
 

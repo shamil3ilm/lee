@@ -1,8 +1,13 @@
 import { logger } from '@/lib/logger'
 import { fetchWithTimeout, isTimeoutError } from '@/lib/net/timeout'
-import { tailLog, type BackendRequest, type CompileResult } from '../compile-types'
+import { compileCancelled, readPdf, tailLog, type BackendRequest, type CompileResult } from '../compile-types'
 
 const YTOTECH_URL = 'https://latex.ytotech.com/builds/sync'
+
+/** Server config: `LATEX_YTOTECH_URL` points lee at a stand-in (the e2e stub). */
+export function ytotechUrl(): string {
+  return process.env.LATEX_YTOTECH_URL || YTOTECH_URL
+}
 const MAIN_DOC = /__main_document__\.(tex|log)/g
 const SAFE_NAME = /^[A-Za-z0-9._ -]{1,100}$/
 
@@ -35,12 +40,13 @@ export async function compileOnYtoTech(req: BackendRequest): Promise<CompileResu
   let res: Response
   try {
     res = await fetchWithTimeout(
-      YTOTECH_URL,
-      { method: 'POST', headers: { 'content-type': 'application/json' }, body },
+      ytotechUrl(),
+      { method: 'POST', headers: { 'content-type': 'application/json' }, body, signal: req.signal },
       { timeoutMs: req.timeoutMs, label: 'YtoTech compile' },
     )
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
+    if (req.signal?.aborted) return compileCancelled('ytotech')
     if (isTimeoutError(err)) {
       logger.error('ytotech timeout', { timeoutMs: req.timeoutMs })
       return { ok: false, status: 504, log: `Fallback compile service unavailable: ${message}`, service: 'ytotech' }
@@ -49,7 +55,7 @@ export async function compileOnYtoTech(req: BackendRequest): Promise<CompileResu
     return { ok: false, status: 502, log: `Fallback compile service unreachable: ${message}`, service: 'ytotech' }
   }
   const type = res.headers.get('content-type') ?? ''
-  if (res.ok && type.includes('pdf')) return { ok: true, pdf: await res.arrayBuffer(), service: 'ytotech' }
+  if (res.ok && type.includes('pdf')) return readPdf(res, req, 'ytotech')
   const text = await res.text().catch(() => '')
   return { ok: false, status: res.ok ? 502 : res.status, log: tailLog(ytotechLog(text)), service: 'ytotech' }
 }

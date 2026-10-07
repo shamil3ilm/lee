@@ -73,7 +73,7 @@ export async function POST(req: Request): Promise<Response> {
     const existing = latexDocumentContentSchema.safeParse(doc.content)
     const settings = parsed.data.settings ?? readCompileSettings(existing.success ? existing.data.compileSettings : undefined)
     const started = Date.now()
-    const result = await compileDocumentPdf({ userId, documentId, source, draft: draft === true, settings, fresh: fresh === true })
+    const result = await compileDocumentPdf({ userId, documentId, source, draft: draft === true, settings, fresh: fresh === true, signal: req.signal })
     // Outcome only (never the source or the log): shown in Settings › Logs.
     logger.info('latex_compile', {
       userId,

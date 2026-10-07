@@ -8,6 +8,7 @@ import {
   type CompileSettings,
 } from './compile-settings'
 import {
+  compileCancelled,
   isServiceUnavailable,
   type BackendCompile,
   type CompileAsset,
@@ -32,8 +33,12 @@ import { compileOnYtoTech } from './services/ytotech'
  * Every attempt shares one time budget that fits the route's maxDuration.
  */
 
-/** Total time for all attempts; the compile routes allow 60 s. */
-export const COMPILE_BUDGET_MS = 55_000
+/**
+ * Total time for all attempts. The compile routes allow 60 s; the rest is
+ * headroom for the database round trips around the compile (auth, document,
+ * asset hashes, cache read and write), which on a cold Neon take seconds.
+ */
+export const COMPILE_BUDGET_MS = 45_000
 const MIN_ATTEMPT_MS = 3_000
 
 export interface FallbackDeps {
@@ -73,16 +78,20 @@ export async function compileWithFallback(
   const assets = opts.assets ?? []
   const deadline = deps.now() + COMPILE_BUDGET_MS
   const remaining = (): number => deadline - deps.now()
-  const run = (backend: CompileBackend, extra: readonly CompileAsset[] = [], force = false): Promise<CompileResult> =>
-    deps.backends[backend]({
+  const run = (backend: CompileBackend, extra: readonly CompileAsset[] = [], force = false): Promise<CompileResult> => {
+    if (opts.signal?.aborted) return Promise.resolve(compileCancelled(backend))
+    return deps.backends[backend]({
       source: opts.source,
       assets: [...assets, ...extra],
       engine: settings.engine,
       timeoutMs: Math.max(MIN_ATTEMPT_MS, Math.min(LATEX_COMPILE_TIMEOUT_MS, remaining())),
       ...(force ? { force: true } : {}),
+      ...(opts.signal ? { signal: opts.signal } : {}),
     })
+  }
   const result = await runSettings(settings, assets, run, remaining)
-  return settings.stopOnError || !canCompileAnyway(settings) ? result : compileAnyway(result, run, remaining)
+  if (opts.signal?.aborted || settings.stopOnError || !canCompileAnyway(settings)) return result
+  return compileAnyway(result, run, remaining)
 }
 
 /** "Try to compile anyway": a document error still yields a PDF, with its log. */

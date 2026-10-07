@@ -1,9 +1,14 @@
 import { logger } from '@/lib/logger'
 import { fetchWithTimeout, isTimeoutError } from '@/lib/net/timeout'
 import { createTar, TarNameError } from '../tar'
-import { MAX_LOG_CHARS, type BackendRequest, type CompileResult } from '../compile-types'
+import { compileCancelled, MAX_LOG_CHARS, readPdf, type BackendRequest, type CompileResult } from '../compile-types'
 
 const LATEX_ONLINE_URL = 'https://latexonline.cc/data'
+
+/** Server config: `LATEX_ONLINE_URL` points lee at a stand-in (the e2e stub). */
+export function latexOnlineUrl(): string {
+  return process.env.LATEX_ONLINE_URL || LATEX_ONLINE_URL
+}
 
 /**
  * latexonline.cc: the primary compile service (free, no key). It only
@@ -27,16 +32,17 @@ export async function compileOnLatexOnline(req: BackendRequest): Promise<Compile
   }
   const form = new FormData()
   form.append('file', new Blob([tar], { type: 'application/x-tar' }), 'bundle.tar')
-  const url = `${LATEX_ONLINE_URL}?target=main.tex&command=${req.engine}`
+  const url = `${latexOnlineUrl()}?target=main.tex&command=${req.engine}`
   let res: Response
   try {
     res = await fetchWithTimeout(
       url,
-      { method: 'POST', body: form },
+      { method: 'POST', body: form, signal: req.signal },
       { timeoutMs: req.timeoutMs, label: 'latexonline.cc compile' },
     )
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
+    if (req.signal?.aborted) return compileCancelled('latexonline')
     if (isTimeoutError(err)) {
       logger.error('latexonline.cc timeout', { timeoutMs: req.timeoutMs })
       return { ok: false, status: 504, log: `Compile service unavailable: ${message}`, service: 'latexonline' }
@@ -53,5 +59,5 @@ export async function compileOnLatexOnline(req: BackendRequest): Promise<Compile
     const text = await res.text().catch(() => '')
     return { ok: false, status: res.status, log: text.slice(0, MAX_LOG_CHARS), service: 'latexonline' }
   }
-  return { ok: true, pdf: await res.arrayBuffer(), service: 'latexonline' }
+  return readPdf(res, req, 'latexonline')
 }

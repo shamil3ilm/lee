@@ -26,6 +26,7 @@ import {
 } from '@/lib/documents/types'
 import { getMasterCV } from '@/lib/documents/master'
 import { truncateLog } from '@/lib/latex/compile'
+import { isServiceUnavailable } from '@/lib/latex/compile-types'
 import { compileDocumentPdf, documentCacheKey } from '@/lib/latex/pdf-cache'
 import { readCompileSettings } from '@/lib/latex/compile-settings'
 import { logger } from '@/lib/logger'
@@ -36,6 +37,7 @@ export const runtime = 'nodejs'
 export const maxDuration = 60
 
 const LATEX_CACHE_CONTROL = 'private, max-age=60'
+const COMPILE_RETRY_AFTER_S = 30
 
 /** True when an If-None-Match header lists `etag` (or `*`). */
 function etagMatches(header: string | null, etag: string): boolean {
@@ -70,7 +72,7 @@ async function latexPdfResponse(
     })
   }
 
-  const result = await compileDocumentPdf({ userId, documentId: id, source: content.source, settings })
+  const result = await compileDocumentPdf({ userId, documentId: id, source: content.source, settings, signal: req.signal })
   if (result.ok) {
     // Only clear a stale error; never rewrite the row just because it was viewed.
     if (content.compileError !== undefined || content.compileLog !== undefined) {
@@ -96,6 +98,14 @@ async function latexPdfResponse(
   const compileError = `Compile failed (status ${result.status})`
   if (content.compileError !== compileError || content.compileLog !== log) {
     await persistCompileStatus(userId, id, { ...content, compileError, compileLog: log })
+  }
+  // The service (not the document) failed: 503 + Retry-After, so a caller
+  // can tell "try again later" from "fix the LaTeX".
+  if (isServiceUnavailable(result.status)) {
+    return NextResponse.json(
+      { error: 'Compile service unavailable', log },
+      { status: 503, headers: { 'retry-after': String(COMPILE_RETRY_AFTER_S) } },
+    )
   }
   return NextResponse.json({ error: 'Compile failed', log }, { status: 422 })
 }

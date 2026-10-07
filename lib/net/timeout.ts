@@ -17,7 +17,7 @@ export const GROQ_TRANSCRIBE_TIMEOUT_MS = 25_000
 export const GEMINI_ATTEMPT_TIMEOUT_MS = 25_000
 /** Laya decision Space: POST and SSE read, each. Short, so the Groq/heuristic fallback still fits. */
 export const LAYA_TIMEOUT_MS = 10_000
-/** latexonline.cc compile — under the 30 s maxDuration of the compile/PDF routes. */
+/** One LaTeX compile attempt (either service); all attempts share lib/latex/fallback.ts COMPILE_BUDGET_MS under the routes' 60 s maxDuration. */
 export const LATEX_COMPILE_TIMEOUT_MS = 25_000
 /** Firecrawl scrape (renders the page on their side). */
 export const FIRECRAWL_TIMEOUT_MS = 20_000

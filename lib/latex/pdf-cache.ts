@@ -78,6 +78,8 @@ export interface CompileDocumentPdfInput {
   settings?: CompileSettings
   /** "Clear cache and recompile": skip the cache read (a success still writes it). */
   fresh?: boolean
+  /** The caller gave up (request aborted): the compile service call stops too. */
+  signal?: AbortSignal
   /** Injected for tests; defaults to the fallback-aware compile client. */
   compile?: (input: CompileOptions) => Promise<CompileResult>
   store?: AssetStore
@@ -100,6 +102,7 @@ export async function compileDocumentPdf(input: CompileDocumentPdfInput): Promis
   const result = await compile({
     source,
     settings: input.settings,
+    ...(input.signal ? { signal: input.signal } : {}),
     assets: assets.flatMap((a, i) => {
       const b = bytes.get(refs[i]!)
       return b ? [{ filename: a.filename, mimeType: a.mimeType, bytes: b }] : []
