@@ -52,3 +52,6 @@ jobs:
       - run: pnpm build
       # Prove the production build contains no test sign-in code.
       - run: node scripts/assert-no-test-login.mjs
+      # v13 13.1: runners stay out of initial bundles, Playground route JS
+      # within the 5.5 budget, reference solutions never in client output.
+      - run: pnpm check:bundle
