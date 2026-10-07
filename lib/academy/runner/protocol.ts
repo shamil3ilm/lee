@@ -67,6 +67,8 @@ export type WorkerReply =
   /** The runtime is loaded: the hard timeout starts now. */
   | { type: 'ready' }
   | { type: 'case'; index: number; outcome: CaseOutcome }
+  /** One timing point of the complexity fit (kept even if the job then times out). */
+  | { type: 'scale'; point: ScalePoint }
   | { type: 'result'; result: RunResult }
   | { type: 'fatal'; message: string }
 

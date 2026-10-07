@@ -244,6 +244,17 @@ describe('server-side judging and the coding evaluator', () => {
     expect(ce.improvements[0]).toMatch(/compile error/)
   })
 
+  it('grades a solution too slow to time as worse than its target, never skipped', () => {
+    const j: Judgement = { verdict: 'accepted', passed: 8, total: 8, failed: null, runtimeMs: 5, message: null }
+    const base = { judgement: j, elapsedSec: 60, parSec: 600, hintsUsed: 0, priorSubmissions: 0, target: { time: 'O(n)' as const, space: 'O(n)' as const }, quality: null, visibleCount: 2 }
+    const slow = evaluateCoding({ ...base, fit: null, tooSlow: true })
+    expect(slow.complexity).toMatchObject({ status: 'scored', score: 25, detail: { measuredTime: 'too slow to time' } })
+    expect(slow.effectiveness).toMatchObject({ detail: { approachOptimal: false } })
+    expect(slow.correctness).toMatchObject({ detail: { passed: 8, hiddenPassed: 6 } })
+    const fast = evaluateCoding({ ...base, fit: { label: 'O(n)', residual: 0, slope: 1 } })
+    expect(fast.composite).toBeGreaterThan(slow.composite)
+  })
+
   it('reports how many earlier accepted runs this one beat', () => {
     expect(beatsPercent(5, [10, 4, 6, 5])).toBe(50)
     expect(beatsPercent(5, [])).toBeNull()

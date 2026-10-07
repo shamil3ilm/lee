@@ -28,6 +28,8 @@ export const runReportSchema = z.object({
     .array(z.object({ n: z.number().int().min(1).max(10_000_000), ms: z.number().min(0).max(600_000) }))
     .max(20)
     .nullable(),
+  /** ok: measured; timeout: the timing job hit its limit (too slow); failed: crashed; skipped: not run. */
+  scaleStatus: z.enum(['ok', 'timeout', 'failed', 'skipped']).default('skipped'),
   quality: z.unknown().nullable(),
   memoryKb: z.number().int().min(0).max(16_000_000).nullable(),
 })

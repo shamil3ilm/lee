@@ -5,6 +5,14 @@ import { assertTestLoginNotInProduction } from "./lib/auth/test-login-guard";
 // test sign-in flag leaks into a production or Vercel environment.
 assertTestLoginNotInProduction(process.env);
 
+const RUNNER_CDN = "https://cdn.jsdelivr.net";
+const RUNNER_WORKER_CSP = [
+  "default-src 'none'",
+  `script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' ${RUNNER_CDN}`,
+  `connect-src 'self' ${RUNNER_CDN}`,
+  "worker-src 'none'",
+].join("; ");
+
 const nextConfig: NextConfig = {
   // @electric-sql/pglite ships a WASM binary that Next's server bundler
   // fails to resolve correctly when included in a compiled server chunk
@@ -42,6 +50,23 @@ const nextConfig: NextConfig = {
       // Provider keys moved to Settings › AI; match before the catch-all.
       { source: '/lab/providers', destination: '/settings/ai', permanent: true },
       { source: '/lab/:path*', destination: '/playground/models/:path*', permanent: true },
+    ];
+  },
+  // v13 phase 13.1 — the Playground's code runners are Web Workers whose
+  // entry script is Turbopack's `turbopack-worker-*.js`. A worker takes its
+  // CSP from its own script response (documents ignore CSP headers on script
+  // files), so this policy confines user code to the worker: scripts only
+  // from this origin and the jsDelivr CDN (Pyodide, php-wasm, PGlite), and
+  // no network except that CDN. It blocks what the runtime guards cannot:
+  // dynamic import() and eval-built requests to any other host. `'unsafe-eval'`
+  // is the JS runner's `new Function`; `'wasm-unsafe-eval'` the wasm runtimes.
+  // The rest of the app sends no CSP (docs/playground.md).
+  async headers() {
+    return [
+      {
+        source: '/_next/static/chunks/:file(turbopack-worker-.*)',
+        headers: [{ key: 'Content-Security-Policy', value: RUNNER_WORKER_CSP }],
+      },
     ];
   },
 };

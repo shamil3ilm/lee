@@ -65,7 +65,7 @@ async function run(job: FunctionJob): Promise<RunResult> {
           } catch {
             return Number.NaN
           }
-        })
+        }, undefined, (point) => post({ type: 'scale', point }))
       : null
   return { compileError: null, cases: result.cases, stdout: result.stdout, scale, quality: null, memoryKb: null }
 }

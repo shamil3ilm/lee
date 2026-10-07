@@ -98,7 +98,7 @@ async function run(job: FunctionJob): Promise<RunResult> {
         const t = await runScript(php, PHP_TIMER_DRIVER)
         const ms = t.ok ? readMarked<{ ms: number }>(t.text)?.ms : undefined
         return typeof ms === 'number' && ms >= 0 ? ms : Number.NaN
-      })
+      }, undefined, (point) => post({ type: 'scale', point }))
     : null
   return { compileError: null, cases: out.cases, stdout, scale, quality: null, memoryKb: out.memoryKb ?? null }
 }

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, isNotNull, notInArray, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, inArray, isNotNull, lt, notInArray, sql } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import {
   academyAttempts,
@@ -169,13 +169,19 @@ export async function acceptedRuntimes(userId: string, slug: string, language: s
 export async function pruneSubmissions(userId: string, slug: string, keep = SUBMISSIONS_KEPT_PER_PROBLEM, client: DbClient = db): Promise<number> {
   const t = academySubmissions
   const scope = and(eq(t.userId, userId), eq(t.problemSlug, slug))
-  const latest = await client.select({ id: t.id }).from(t).where(scope).orderBy(desc(t.createdAt)).limit(keep)
+  const latest = await client.select({ id: t.id, createdAt: t.createdAt }).from(t).where(scope).orderBy(desc(t.createdAt), desc(t.id)).limit(keep)
+  const oldestKept = latest.at(-1)
+  if (latest.length < keep || !oldestKept) return 0
   const accepted = and(scope, eq(t.verdict, 'accepted'))
   const [fastest] = await client.select({ id: t.id }).from(t).where(accepted).orderBy(asc(t.runtimeMs), desc(t.createdAt)).limit(1)
   const [lastAccepted] = await client.select({ id: t.id }).from(t).where(accepted).orderBy(desc(t.createdAt)).limit(1)
   const kept = [...new Set([...latest.map((r) => r.id), fastest?.id, lastAccepted?.id].filter((x): x is string => !!x))]
-  if (kept.length === 0) return 0
-  const deleted = await client.delete(t).where(and(scope, notInArray(t.id, kept))).returning()
+  // Only rows strictly older than the oldest kept recent row: a submission
+  // committed concurrently (newer) is never deleted by this snapshot.
+  const deleted = await client
+    .delete(t)
+    .where(and(scope, lt(t.createdAt, oldestKept.createdAt), notInArray(t.id, kept)))
+    .returning()
   return deleted.length
 }
 

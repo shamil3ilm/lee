@@ -35,7 +35,9 @@ function fnProblem(slug: string): FunctionProblem {
 function report(p: FunctionProblem, pack: JudgePack, code: string, scale: RunReportInput['scale'] = null): RunReportInput {
   if (pack.kind !== 'function') throw new Error('function pack expected')
   const compiled = compileJs(code, p.fn.name, consoleSink())
-  if (!compiled.ok) return { language: 'javascript', code, compileError: compiled.error, timedOut: false, cases: [], scale: null, quality: null, memoryKb: null }
+  if (!compiled.ok) {
+    return { language: 'javascript', code, compileError: compiled.error, timedOut: false, cases: [], scale: null, scaleStatus: 'skipped', quality: null, memoryKb: null }
+  }
   const inputs = [...p.samples.map((s) => s.args), ...pack.hiddenArgs]
   return {
     language: 'javascript',
@@ -44,6 +46,7 @@ function report(p: FunctionProblem, pack: JudgePack, code: string, scale: RunRep
     timedOut: false,
     cases: inputs.map((args) => runCase(compiled.fn, args)),
     scale,
+    scaleStatus: scale ? 'ok' : 'skipped',
     quality: { maxFnLength: 9, nesting: 2, cyclomatic: 3, namingIssues: 0 },
     memoryKb: 2048,
   }
@@ -110,6 +113,17 @@ describe('coding workbench: submit → attempt → rating → progress', () => {
     expect(result.evaluation.complexity.status).toBe('n/a')
     expect((await codingQ.getProgress(u.id, p.slug))).toMatchObject({ status: 'attempted', submissions: 1, accepted: 0 })
     expect((await ratingsQ.get(u.id, p.skillId))!.rating).toBeLessThan(1400)
+  })
+
+  it('an accepted solution whose timing run timed out is graded too slow, not skipped', async () => {
+    const u = await makeUser()
+    const p = fnProblem('refund-pair')
+    const begun = await beginCodingSubmit(u.id, { slug: p.slug, language: 'javascript', mode: 'practice' }, NOW)
+    const r = { ...report(p, begun.pack, p.reference.code, [{ n: 256, ms: 150 }, { n: 512, ms: 600 }]), scaleStatus: 'timeout' as const }
+    const result = await finishCodingSubmit(u.id, begun.attemptId, { report: r }, at(30))
+    expect(result.judgement.verdict).toBe('accepted')
+    expect(result.evaluation.complexity).toMatchObject({ status: 'scored', score: 25 })
+    expect(result.firstSolve).toBe(true)
   })
 
   it('compile errors and bad reports are handled without counting a malformed request', async () => {

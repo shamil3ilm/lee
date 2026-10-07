@@ -13,6 +13,7 @@ export async function measureScale(
   job: ScaleJob,
   timeAt: (args: unknown[]) => number | Promise<number>,
   clock: () => number = () => performance.now(),
+  onPoint?: (point: ScalePoint) => void,
 ): Promise<ScalePoint[]> {
   const start = clock()
   const points: ScalePoint[] = []
@@ -21,6 +22,7 @@ export async function measureScale(
     const ms = await timeAt(generateArgs(job.specs, n, job.seed))
     if (!Number.isFinite(ms) || ms < 0) break
     points.push({ n, ms })
+    onPoint?.({ n, ms })
     if (ms > SLOW_CALL_MS) break
   }
   return points

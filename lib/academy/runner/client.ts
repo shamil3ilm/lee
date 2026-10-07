@@ -1,4 +1,4 @@
-import type { CaseOutcome, RunJob, RunResult, WorkerReply } from './protocol'
+import type { CaseOutcome, RunJob, RunResult, ScalePoint, WorkerReply } from './protocol'
 
 /**
  * Main-thread side of the runners (browser only). One warm worker per
@@ -10,7 +10,7 @@ import type { CaseOutcome, RunJob, RunResult, WorkerReply } from './protocol'
  * this reaches a page's initial JavaScript.
  */
 
-type Runtime = 'js' | 'python' | 'php' | 'sql'
+type Runtime = 'js' | 'ts' | 'python' | 'php' | 'sql'
 
 export interface JobOutcome {
   result: RunResult | null
@@ -19,6 +19,8 @@ export interface JobOutcome {
   fatal: string | null
   /** Cases reported before a timeout (JS, Python and SQL report each case). */
   partial: CaseOutcome[]
+  /** Timing points reported before a timeout. */
+  partialScale: ScalePoint[]
 }
 
 export interface JobOptions {
@@ -34,6 +36,7 @@ function runtimeFor(job: RunJob): Runtime {
   if (job.kind === 'sql') return 'sql'
   if (job.language === 'python') return 'python'
   if (job.language === 'php') return 'php'
+  if (job.language === 'typescript') return 'ts'
   return 'js'
 }
 
@@ -41,6 +44,8 @@ function create(runtime: Runtime): Worker {
   switch (runtime) {
     case 'js':
       return new Worker(new URL('./workers/js.worker.ts', import.meta.url), { type: 'module', name: 'lee-runner-js' })
+    case 'ts':
+      return new Worker(new URL('./workers/ts.worker.ts', import.meta.url), { type: 'module', name: 'lee-runner-ts' })
     case 'python':
       return new Worker(new URL('./workers/python.worker.ts', import.meta.url), { type: 'module', name: 'lee-runner-python' })
     case 'php':
@@ -76,10 +81,17 @@ export function runJob(job: RunJob, opts: JobOptions): Promise<JobOutcome> {
   try {
     worker = workerFor(runtime)
   } catch (err) {
-    return Promise.resolve({ result: null, timedOut: false, fatal: err instanceof Error ? err.message : 'Could not start the runner.', partial: [] })
+    return Promise.resolve({
+      result: null,
+      timedOut: false,
+      fatal: err instanceof Error ? err.message : 'Could not start the runner.',
+      partial: [],
+      partialScale: [],
+    })
   }
   return new Promise<JobOutcome>((resolve) => {
     const partial: CaseOutcome[] = []
+    const partialScale: ScalePoint[] = []
     let timer: ReturnType<typeof setTimeout> | null = null
     let settled = false
     const finish = (outcome: JobOutcome) => {
@@ -94,7 +106,7 @@ export function runJob(job: RunJob, opts: JobOptions): Promise<JobOutcome> {
       if (timer) clearTimeout(timer)
       timer = setTimeout(() => {
         kill(runtime)
-        finish({ result: null, timedOut, fatal: message, partial })
+        finish({ result: null, timedOut, fatal: message, partial, partialScale })
       }, ms)
     }
     const onMessage = (event: MessageEvent<WorkerReply>) => {
@@ -102,16 +114,17 @@ export function runJob(job: RunJob, opts: JobOptions): Promise<JobOutcome> {
       if (msg.type === 'status') opts.onStatus?.(msg.message)
       else if (msg.type === 'ready') arm(opts.timeoutMs, true, null)
       else if (msg.type === 'case') partial[msg.index] = msg.outcome
-      else if (msg.type === 'result') finish({ result: msg.result, timedOut: false, fatal: null, partial })
+      else if (msg.type === 'scale') partialScale.push(msg.point)
+      else if (msg.type === 'result') finish({ result: msg.result, timedOut: false, fatal: null, partial, partialScale })
       else if (msg.type === 'fatal') {
         kill(runtime)
-        finish({ result: null, timedOut: false, fatal: msg.message, partial })
+        finish({ result: null, timedOut: false, fatal: msg.message, partial, partialScale })
       }
     }
     const onError = (event: ErrorEvent) => {
       event.preventDefault()
       kill(runtime)
-      finish({ result: null, timedOut: false, fatal: event.message || 'The runner crashed.', partial })
+      finish({ result: null, timedOut: false, fatal: event.message || 'The runner crashed.', partial, partialScale })
     }
     worker.addEventListener('message', onMessage)
     worker.addEventListener('error', onError)

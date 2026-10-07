@@ -36,6 +36,8 @@ import { parseRunReport, type RunReportInput } from './report'
  *      submission retention and the daily problem.
  */
 
+class AlreadyRecorded extends Error {}
+
 export const CODING_MODES = ['practice', 'plan', 'daily', 'mock'] as const
 export type CodingMode = (typeof CODING_MODES)[number]
 
@@ -203,8 +205,10 @@ export async function finishCodingSubmit(userId: string, attemptId: string, inpu
 
   const judgement = judgeReport(problem, report)
   const accepted = judgement.verdict === 'accepted'
-  const scale = problem.kind === 'function' && problem.scale && accepted && report.scale ? report.scale : null
-  const fit = scale ? fitComplexity(scale) : null
+  const timed = problem.kind === 'function' && !!problem.scale && accepted
+  const fit = timed && report.scale ? fitComplexity(report.scale) : null
+  // Too slow to time: the timing job hit its limit, or ran but could not get enough points.
+  const tooSlow = timed && (report.scaleStatus === 'timeout' || (report.scaleStatus === 'ok' && (!fit || fit.label === 'unknown')))
   const quality = qualityFor(report)
   const [progress, timeZone, previousRuntimes] = await Promise.all([
     codingQ.getProgress(userId, problem.slug),
@@ -220,18 +224,26 @@ export async function finishCodingSubmit(userId: string, attemptId: string, inpu
     priorSubmissions: progress?.submissions ?? 0,
     target: problem.complexity,
     fit,
+    tooSlow,
+    visibleCount: problem.samples.length,
     quality,
   })
   const today = localDay(now, timeZone)
   const daily = await codingQ.getDaily(userId, today)
   const solvesDaily = accepted && daily?.problemSlug === problem.slug && daily.solvedAt === null
   const streak = solvesDaily ? dailyStreak([...(await codingQ.solvedDailyDates(userId)), today], today) : 0
-  const firstSolve = accepted && progress?.status !== 'solved'
   const mockId = await validMockId(userId, input.mockId, problem.slug, now)
   const runtimeMs = report.compileError ? null : judgement.runtimeMs
   const content = loadAcademyContent()
 
+  let firstSolve = false
+  let dailySolved = false
   const result = await db.transaction(async (tx) => {
+    // Progress first, inside the transaction: whether this is the first solve
+    // comes from the row this submission wrote, so two concurrent accepted
+    // submissions cannot both claim it.
+    const progressRow = await codingQ.recordProgress(userId, problem.slug, { accepted, runtimeMs, language: report.language, at: now }, tx)
+    firstSolve = accepted && progressRow.accepted === 1
     const applied = await applyScoredAttempt(
       userId,
       content,
@@ -245,9 +257,10 @@ export async function finishCodingSubmit(userId: string, attemptId: string, inpu
       now,
       today,
       tx,
-      { dailyStreak: streak, newlySolved: firstSolve },
+      { dailyStreak: streak },
     )
-    if (!applied) return null
+    // Already submitted (a replay): roll back the progress write above.
+    if (!applied) throw new AlreadyRecorded()
     await codingQ.addSubmission(
       userId,
       {
@@ -265,10 +278,12 @@ export async function finishCodingSubmit(userId: string, attemptId: string, inpu
       },
       tx,
     )
-    await codingQ.recordProgress(userId, problem.slug, { accepted, runtimeMs, language: report.language, at: now }, tx)
     await codingQ.pruneSubmissions(userId, problem.slug, undefined, tx)
-    if (solvesDaily) await codingQ.markDailySolved(userId, problem.slug, today, now, tx)
+    dailySolved = solvesDaily && (await codingQ.markDailySolved(userId, problem.slug, today, now, tx))
     return applied
+  }).catch((err: unknown) => {
+    if (err instanceof AlreadyRecorded) return null
+    throw err
   })
   if (!result) {
     const again = await attemptsQ.get(userId, attemptId)
@@ -289,7 +304,7 @@ export async function finishCodingSubmit(userId: string, attemptId: string, inpu
     memoryKb: report.memoryKb,
     beatsPercent: accepted && runtimeMs !== null ? beatsPercent(runtimeMs, previousRuntimes) : null,
     firstSolve,
-    dailySolved: solvesDaily,
+    dailySolved,
     alreadySubmitted: false,
   }
 }

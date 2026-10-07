@@ -237,7 +237,7 @@ One warm worker per runtime is kept, so a runtime loads once per page.
 | Language | Runtime | First load |
 |---|---|---|
 | JavaScript | the worker's own engine | none |
-| TypeScript | `typescript`'s `transpileModule` (types stripped, not checked), lazy chunk | ≈ 1 MB, once |
+| TypeScript | `typescript`'s `transpileModule` (types stripped, not checked), in its own worker so JavaScript runs never load it | ≈ 1 MB gzipped, once |
 | Python 3.13 | Pyodide 0.29.5 from jsDelivr | ≈ 10 MB, browser-cached |
 | PHP 8.3 | `@php-wasm/universal` + `@php-wasm/web-8-3` 3.1.57 (WordPress Playground, maintained) from jsDelivr | ≈ 18 MB wasm (≈ 5 MB compressed), cached; ≈ 5 s cold start |
 | SQL (Postgres) | PGlite 0.5.8 from jsDelivr, in memory | ≈ 3 MB |
@@ -258,9 +258,18 @@ One warm worker per runtime is kept, so a runtime loads once per page.
     rejects it (and `importScripts`) at parse time with acorn.
   - PHP has no TCP-over-fetch and a refusing WebSocket shim.
   - Python can import the standard library only (no `micropip`).
-  - **Known residual:** code that builds `import()` through `eval` can still
-    reach the network from the worker. It is the user's own code in their own
-    browser and session, and it can never reach the server's secrets.
+  - **Worker CSP** (`next.config.ts` `headers()`): the worker entry scripts
+    (`/_next/static/chunks/turbopack-worker-*`) carry their own
+    Content-Security-Policy:
+    `default-src 'none'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'
+    https://cdn.jsdelivr.net; connect-src 'self' https://cdn.jsdelivr.net;
+    worker-src 'none'`. It stops what the runtime guards cannot, such as an
+    `eval`-built `import()` (or Python's `js.eval`) to any other host; e2e
+    checks the header and that such an import is blocked (`csp`).
+  - **Residuals:** the CDN runtimes are pinned by version but not by hash
+    (dynamic `import()` takes no SRI; self-hosting them is the follow-up),
+    and user code can still reach this origin with the user's own session.
+    Neither exposes anything beyond what the signed-in user already has.
 - **Harness** (`js-harness.ts`, `python-harness.ts`, `php-harness.ts`,
   `sql-harness.ts`):
   - calls the user's function with deep-copied arguments;
@@ -283,7 +292,9 @@ One warm worker per runtime is kept, so a runtime loads once per page.
 - **Submit, step 3 — `finishSubmitAction`:** sends the **outputs**. The server
   judges them against the hidden **expected values**, which never leave the
   server, then:
-  - fits the complexity curve;
+  - fits the complexity curve. Timing points stream from the worker, so a
+    timing run that hits its limit keeps what it measured; an accepted
+    solution too slow to time is scored 25 on complexity, never skipped;
   - scores quality (acorn metrics from the worker for JS/TS, line-based
     metrics on the server for Python/PHP);
   - records everything in one transaction through the 13.0 pipeline:
@@ -363,10 +374,12 @@ history) are never deleted.
 
 ### Content-Security-Policy
 
-lee sends **no CSP today**: there is none in `proxy.ts`, `next.config.ts` or
-`vercel.json`. So nothing had to change for workers, wasm or the jsDelivr CDN.
+Before 13.1 lee sent **no CSP**: there is none in `proxy.ts` or
+`vercel.json`. 13.1 adds one, and only one: the policy on the runner worker
+scripts described above. Pages still send none, so Google sign-in and the
+rest of the app are unchanged.
 
-If a CSP is added later, the workbench needs:
+If a page CSP is added later, the workbench needs:
 - `worker-src 'self'`;
 - `script-src 'wasm-unsafe-eval'` for Pyodide, PHP and PGlite;
 - `script-src https://cdn.jsdelivr.net` (the runtimes are imported as modules

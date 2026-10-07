@@ -53,8 +53,12 @@ function buildJob(problem: PublicProblem, language: CodeLanguage, code: string, 
   }
 }
 
+/** Cases in order; a case never reported (the timeout hit first) ends the list. */
 function casesOf(outcome: JobOutcome): CaseOutcome[] {
-  return outcome.result ? outcome.result.cases : outcome.partial.filter(Boolean)
+  if (outcome.result) return outcome.result.cases
+  const out: CaseOutcome[] = []
+  for (let i = 0; i < outcome.partial.length && outcome.partial[i]; i++) out.push(outcome.partial[i] as CaseOutcome)
+  return out
 }
 
 function compileErrorOf(outcome: JobOutcome): string | null {
@@ -112,6 +116,7 @@ export async function runSubmission(
   const outcome = await runJob(buildJob(problem, language, code, inputs, { quality }), { timeoutMs: SUBMIT_TIMEOUT_MS, onStatus })
   if (outcome.fatal && !outcome.timedOut) return { report: null, fatal: outcome.fatal, stdout: '' }
   let scale: RunReportInput['scale'] = null
+  let scaleStatus: RunReportInput['scaleStatus'] = 'skipped'
   if (pack.kind === 'function' && pack.scale && problem.kind === 'function' && noErrors(outcome.result)) {
     onStatus?.('Measuring how your solution scales…')
     const timing = await runJob(
@@ -125,7 +130,10 @@ export async function runSubmission(
       },
       { timeoutMs: SCALE_TIMEOUT_MS, onStatus },
     )
-    scale = timing.result?.scale ?? null
+    // A timing job that hits its timeout keeps the points it measured: the
+    // server grades such a solution as slower than its target.
+    scale = timing.result?.scale ?? (timing.partialScale.length > 0 ? timing.partialScale : null)
+    scaleStatus = timing.timedOut ? 'timeout' : timing.result ? 'ok' : 'failed'
   }
   return {
     report: {
@@ -135,6 +143,7 @@ export async function runSubmission(
       timedOut: outcome.timedOut,
       cases: casesOf(outcome),
       scale,
+      scaleStatus,
       quality: outcome.result?.quality ?? null,
       memoryKb: outcome.result?.memoryKb ?? null,
     },

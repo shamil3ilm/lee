@@ -25,8 +25,20 @@ export interface CodingEvaluationInput {
   target: { time: BigO; space: BigO }
   /** Null when the problem has no scaled inputs or the run was not accepted. */
   fit: FitResult | null
+  /**
+   * The problem has scaled inputs but the timing run could not finish a
+   * curve because calls were too slow (its timeout, or too few points):
+   * graded as worse than the target rather than skipped.
+   */
+  tooSlow?: boolean
+  /** Visible samples among the judged cases (the rest are hidden). */
+  visibleCount?: number
   quality: QualityMetrics | null
 }
+
+/** Score for a solution too slow to time at the scaled sizes. */
+export const TOO_SLOW_SCORE = 25
+export const TOO_SLOW_LABEL = 'too slow to time'
 
 const WEIGHTS: Readonly<Partial<Record<EvaluationAxis, number>>> = {
   correctness: 0.5,
@@ -47,6 +59,13 @@ function effectiveness(hintsUsed: number, priorSubmissions: number): number {
 
 function complexityAxis(input: CodingEvaluationInput): Axis<{ measuredTime: string; measuredSpace: string; targetTime: string; targetSpace: string }> {
   if (input.judgement.verdict !== 'accepted') return notApplicable('Measured only for accepted submissions')
+  if (input.tooSlow) {
+    return {
+      status: 'scored',
+      score: TOO_SLOW_SCORE,
+      detail: { measuredTime: TOO_SLOW_LABEL, measuredSpace: 'not measured', targetTime: input.target.time, targetSpace: input.target.space },
+    }
+  }
   if (!input.fit) return notApplicable('This problem has no scaled inputs to time')
   if (input.fit.label === 'unknown') return notApplicable('Too few timing points to fit a curve')
   return {
@@ -96,7 +115,7 @@ export function evaluateCoding(input: CodingEvaluationInput): AttemptEvaluation 
   const correctness: AttemptEvaluation['correctness'] = {
     status: 'scored',
     score: accepted ? 100 : passRate(j),
-    detail: { passed: j.passed, total: j.total, hiddenPassed: j.passed },
+    detail: { passed: j.passed, total: j.total, hiddenPassed: Math.max(0, j.passed - (input.visibleCount ?? 0)) },
   }
   const time: AttemptEvaluation['time'] = { status: 'scored', score: timeScore(elapsedSec, input.parSec), detail: { elapsedSec, parSec: input.parSec } }
   const complexity = complexityAxis(input)

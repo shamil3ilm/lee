@@ -24,8 +24,6 @@ export interface ProgressInput extends ProgressExtra {
 /** Coding-workbench facts for the coding achievements (phase 13.1). */
 export interface ProgressExtra {
   dailyStreak?: number
-  /** This submission solved a problem for the first time (its progress row is written after). */
-  newlySolved?: boolean
 }
 
 export interface ProgressResult {
@@ -70,7 +68,7 @@ export async function applyProgress(
       domainsPracticed: domains.size,
       reviews: reviewsDone,
       rank,
-      problemsSolved: (await codingQ.solvedCount(userId, tx)) + (input.newlySolved ? 1 : 0),
+      problemsSolved: await codingQ.solvedCount(userId, tx),
       dailyStreak: input.dailyStreak ?? 0,
     },
     already,
