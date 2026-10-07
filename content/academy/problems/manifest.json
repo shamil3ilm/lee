@@ -1,0 +1,5 @@
+{
+  "pack": "academy-problems",
+  "version": "1.0.0",
+  "description": "The coding problem set for the Playground workbench (phase 13.1): statements, signatures, visible samples, hidden tests, reference solutions, hints and study plans. Written for lee; never copied from another site. Bump the version whenever any file in this folder changes; every coding attempt records it."
+}
