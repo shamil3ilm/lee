@@ -9,6 +9,12 @@ interface ProblemsPanelProps {
   parsed: ParsedLog
   rawLog: string
   hint: LatexHint | null
+  /** Server notes: which fallback / stand-in ran and why. */
+  notes?: readonly string[]
+  /** Line of the \usepackage the hint suggests removing, when found. */
+  hintLine?: number | null
+  /** Offered when the hint suggests the full-TeX-Live fallback. */
+  onUseFallback?: () => void
   onJump: (line: number) => void
   onClose: () => void
 }
@@ -39,7 +45,49 @@ function summary(parsed: ParsedLog): string {
 }
 
 /** Compile problems parsed from the log; click a problem to jump to its line. */
-export function ProblemsPanel({ title, parsed, rawLog, hint, onJump, onClose }: ProblemsPanelProps) {
+interface HintBoxProps {
+  hint: LatexHint
+  hintLine: number | null
+  onUseFallback?: () => void
+  onJump: (line: number) => void
+}
+
+function HintBox({ hint, hintLine, onUseFallback, onJump }: HintBoxProps) {
+  const actions = hint.actions ?? []
+  const showFallback = onUseFallback !== undefined && actions.includes('use_fallback')
+  const showLine = hintLine !== null && actions.includes('remove_package')
+  return (
+    <div className="m-2 rounded border border-warning/40 bg-warning-soft px-2 py-1 text-warning">
+      <p className="font-medium">Suggestion: {hint.message}</p>
+      {showFallback || showLine ? (
+        <div className="mt-1 flex flex-wrap gap-3">
+          {showFallback ? (
+            <button type="button" onClick={onUseFallback} className="font-semibold underline underline-offset-2">
+              Compile with full TeX Live
+            </button>
+          ) : null}
+          {showLine ? (
+            <button type="button" onClick={() => onJump(hintLine)} className="font-semibold underline underline-offset-2">
+              Go to the \usepackage line ({hintLine})
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+export function ProblemsPanel({
+  title,
+  parsed,
+  rawLog,
+  hint,
+  notes = [],
+  hintLine = null,
+  onUseFallback,
+  onJump,
+  onClose,
+}: ProblemsPanelProps) {
   const [showRaw, setShowRaw] = useState(parsed.all.length === 0)
   return (
     <section
@@ -74,11 +122,12 @@ export function ProblemsPanel({ title, parsed, rawLog, hint, onJump, onClose }: 
         </div>
       </header>
       <div className="min-h-0 overflow-y-auto">
-        {hint ? (
-          <p className="m-2 rounded border border-warning/40 bg-warning-soft px-2 py-1 font-medium text-warning">
-            Suggestion: {hint.message}
+        {notes.map((note) => (
+          <p key={note} className="mx-2 mt-2 rounded border bg-muted/40 px-2 py-1 text-muted-foreground">
+            {note}
           </p>
-        ) : null}
+        ))}
+        {hint ? <HintBox hint={hint} hintLine={hintLine} onUseFallback={onUseFallback} onJump={onJump} /> : null}
         {parsed.all.length > 0 ? (
           <ul className="divide-y">
             {parsed.all.map((entry, i) => {

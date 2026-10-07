@@ -4,6 +4,7 @@ import * as documentsQ from '@/lib/db/queries/documents'
 import * as assetsQ from '@/lib/db/queries/documentAssets'
 import { latexDocumentContentSchema } from '@/lib/documents/types'
 import { LatexEditor } from '@/components/latex-editor'
+import { readCompileSettings } from '@/lib/latex/compile-settings'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 
 export const dynamic = 'force-dynamic'
@@ -48,6 +49,7 @@ export default async function EditLatexPage({ params }: EditPageProps) {
             : null
         }
         initialAssets={initialAssets}
+        initialSettings={readCompileSettings(content.success ? content.data.compileSettings : undefined)}
       />
     </div>
   )

@@ -1,10 +1,25 @@
 'use client'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createCompileScheduler, type CompileScheduler } from '@/lib/latex/auto-compile'
+import {
+  COMPILE_NOTES_HEADER,
+  COMPILE_SERVICE_HEADER,
+  decodeNotesHeader,
+  type CompileBackend,
+  type CompileSettings,
+} from '@/lib/latex/compile-settings'
 
 export interface CompileError {
   message: string
   log: string
+  /** Why a fallback / stand-in ran (from the server), if any. */
+  notes?: string[]
+}
+
+/** Which service produced the shown PDF, and the notes that came with it. */
+export interface CompileOutcome {
+  service: CompileBackend | null
+  notes: string[]
 }
 
 export interface CompileSnapshot {
@@ -12,6 +27,7 @@ export interface CompileSnapshot {
   draft: boolean
   /** Changes whenever the document's asset set changes. */
   assetKey: string
+  settings: CompileSettings
 }
 
 const AUTO_COMPILE_STORAGE_KEY = 'lee.latex.autoCompile'
@@ -46,7 +62,8 @@ function subscribePreference(listener: () => void): () => void {
   return () => preferenceListeners.delete(listener)
 }
 
-const keyOf = (s: CompileSnapshot): string => `${s.draft ? 'draft' : 'final'}\0${s.assetKey}\0${s.source}`
+const keyOf = (s: CompileSnapshot): string =>
+  `${s.draft ? 'draft' : 'final'}\0${s.settings.service}/${s.settings.engine}\0${s.assetKey}\0${s.source}`
 
 interface UseLatexCompileOptions {
   documentId: string
@@ -64,6 +81,7 @@ export function useLatexCompile({ documentId, initialError }: UseLatexCompileOpt
   const [problemsOpen, setProblemsOpen] = useState(initialError !== null)
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
   const [pdfIsDraft, setPdfIsDraft] = useState(false)
+  const [outcome, setOutcome] = useState<CompileOutcome>({ service: null, notes: [] })
   const autoCompile = useSyncExternalStore(subscribePreference, readAutoCompilePreference, () => true)
   const schedulerRef = useRef<CompileScheduler<CompileSnapshot> | null>(null)
   const pdfUrlRef = useRef<string | null>(null)
@@ -75,7 +93,12 @@ export function useLatexCompile({ documentId, initialError }: UseLatexCompileOpt
         const res = await fetch('/api/latex/compile', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ documentId, source: snapshot.source, draft: snapshot.draft }),
+          body: JSON.stringify({
+            documentId,
+            source: snapshot.source,
+            draft: snapshot.draft,
+            settings: snapshot.settings,
+          }),
         })
         if (res.ok) {
           // Show exactly the PDF this compile produced (draft or final)
@@ -85,12 +108,18 @@ export function useLatexCompile({ documentId, initialError }: UseLatexCompileOpt
           pdfUrlRef.current = url
           setPdfUrl(url)
           setPdfIsDraft(snapshot.draft)
+          const service = res.headers.get(COMPILE_SERVICE_HEADER)
+          setOutcome({
+            service: service === 'latexonline' || service === 'ytotech' ? service : null,
+            notes: decodeNotesHeader(res.headers.get(COMPILE_NOTES_HEADER)),
+          })
           setError(null)
           setProblemsOpen(false)
           return
         }
-        const body = (await res.json().catch(() => ({}))) as { error?: string; log?: string }
-        setError({ message: body.error ?? 'Compile failed', log: body.log ?? '' })
+        const body = (await res.json().catch(() => ({}))) as { error?: string; log?: string; notes?: unknown }
+        const notes = Array.isArray(body.notes) ? body.notes.filter((n): n is string => typeof n === 'string') : []
+        setError({ message: body.error ?? 'Compile failed', log: body.log ?? '', notes })
         setProblemsOpen(true)
       } catch {
         setError({
@@ -186,6 +215,7 @@ export function useLatexCompile({ documentId, initialError }: UseLatexCompileOpt
     error,
     pdfUrl,
     pdfIsDraft,
+    outcome,
     previewState,
     problemsOpen,
     setProblemsOpen,

@@ -99,6 +99,59 @@ test('LaTeX editor: autocomplete, compile via shortcut, jump to error', async ({
   await expect(page.getByText('Draft preview')).toBeVisible()
 })
 
+test('LaTeX editor: a package the service lacks → hint, full TeX Live, fallback badge', async ({ page }) => {
+  const compiles: (CompileRequest & { settings?: { service: string; engine: string } })[] = []
+  await page.route('**/api/documents/*/pdf**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/pdf', body: MINIMAL_PDF }),
+  )
+  await page.route('**/api/latex/compile', async (route) => {
+    const body = route.request().postDataJSON() as (typeof compiles)[number]
+    compiles.push(body)
+    if (body.settings?.service === 'latexonline') {
+      await route.fulfill({
+        status: 422,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: 'Compile failed',
+          log: "/tmp/downloads/tmp_1/main.tex:3: error: File `fontawesome5.sty' not found\n      at <read *>\n",
+          notes: [],
+        }),
+      })
+      return
+    }
+    const note = "latexonline.cc doesn't have package fontawesome5; compiled on YtoTech (full TeX Live) instead."
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/pdf',
+      headers: { 'x-lee-compile-service': 'ytotech', 'x-lee-compile-notes': encodeURIComponent(JSON.stringify([note])) },
+      body: MINIMAL_PDF,
+    })
+  })
+
+  await openLatexEditor(page)
+  const auto = page.getByRole('button', { name: 'Auto-compile' })
+  if ((await auto.getAttribute('aria-pressed')) === 'true') await auto.click()
+
+  // latexonline.cc only: the missing package fails with a precise hint.
+  await page.getByLabel('Compiler').selectOption('latexonline')
+  await page.locator('.cm-content').click()
+  await page.keyboard.press('ControlOrMeta+Enter')
+  await expect.poll(() => compiles.length).toBe(1)
+  expect(compiles[0]!.settings).toEqual({ service: 'latexonline', engine: 'pdflatex' })
+  const problems = page.getByRole('region', { name: 'Compile problems' })
+  await expect(problems).toContainText("The compile service doesn't have package fontawesome5.")
+  await expect(problems).not.toContainText('Add \\usepackage{fontawesome5}')
+
+  // One click switches to Auto (full TeX Live fallback) and compiles there.
+  await problems.getByRole('button', { name: 'Compile with full TeX Live' }).click()
+  await expect(page.getByLabel('Compiler')).toHaveValue('auto')
+  await page.keyboard.press('ControlOrMeta+Enter')
+  await expect.poll(() => compiles.length).toBe(2)
+  expect(compiles[1]!.settings).toEqual({ service: 'auto', engine: 'pdflatex' })
+  await expect(problems).toBeHidden()
+  await expect(page.getByText('Compiled on YtoTech (full TeX Live)')).toBeVisible()
+})
+
 test('LaTeX editor: outline lists sections and jumps to them', async ({ page }) => {
   await page.route('**/api/documents/*/pdf**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/pdf', body: MINIMAL_PDF }),

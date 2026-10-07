@@ -38,6 +38,9 @@ import { OutlinePanel } from '@/components/latex/outline-panel'
 import { ProblemsPanel } from '@/components/latex/problems-panel'
 import { useBibSources } from '@/components/latex/use-bib-sources'
 import { useLatexCompile, type CompileError, type CompileSnapshot } from '@/components/latex/use-latex-compile'
+import { CompileSettingsControl } from '@/components/latex/compile-settings-control'
+import { BACKEND_NAMES, DEFAULT_COMPILE_SETTINGS, type CompileSettings } from '@/lib/latex/compile-settings'
+import { packageLine } from '@/lib/latex/missing'
 
 // CodeMirror 6 is bundled (no CDN) into its own chunk that only this route
 // loads, after hydration. Until it arrives a plain textarea is editable, so
@@ -54,6 +57,8 @@ interface LatexEditorProps {
   initialSource: string
   initialError: CompileError | null
   initialAssets: AssetMetadata[]
+  /** Saved compile service + engine (defaults: auto fallback, pdfLaTeX). */
+  initialSettings?: CompileSettings
   /** Overrides the default full-viewport height (e.g. when a breadcrumb sits above). */
   className?: string
 }
@@ -95,6 +100,7 @@ export function LatexEditor({
   initialSource,
   initialError,
   initialAssets,
+  initialSettings = DEFAULT_COMPILE_SETTINGS,
   className,
 }: LatexEditorProps) {
   const [source, setSource] = useState(initialSource)
@@ -104,6 +110,7 @@ export function LatexEditor({
   const [dragActive, setDragActive] = useState(false)
   const [editorReady, setEditorReady] = useState(false)
   const [draft, setDraft] = useState(false)
+  const [settings, setSettings] = useState<CompileSettings>(initialSettings)
   const [outlineOpen, setOutlineOpen] = useState(false)
   // Narrow-editor pane toggle; wide editors always show source and preview side by side.
   const [mobilePane, setMobilePane] = useState<'source' | 'preview'>('source')
@@ -117,7 +124,10 @@ export function LatexEditor({
     () => assets.map((a) => `${a.id}:${a.filename}:${a.sizeBytes}`).join('|'),
     [assets],
   )
-  const snapshot = useMemo<CompileSnapshot>(() => ({ source, draft, assetKey }), [source, draft, assetKey])
+  const snapshot = useMemo<CompileSnapshot>(
+    () => ({ source, draft, assetKey, settings }),
+    [source, draft, assetKey, settings],
+  )
   const snapshotRef = useRef(snapshot)
   const firstSnapshot = useRef(true)
   useEffect(() => {
@@ -182,7 +192,20 @@ export function LatexEditor({
   )
 
   const parsedLog = useMemo(() => (compile.error ? parseLatexLog(compile.error.log) : null), [compile.error])
-  const hint = compile.error ? extractLatexHint(compile.error.log) : null
+  const deferredSource = useDeferredValue(source)
+  const hint = useMemo(
+    () => (compile.error ? extractLatexHint(compile.error.log, deferredSource) : null),
+    [compile.error, deferredSource],
+  )
+  const hintLine = hint?.kind === 'missing_package' && hint.subject ? packageLine(deferredSource, hint.subject) : null
+  const switchToAuto = useCallback(() => setSettings((s) => ({ ...s, service: 'auto' })), [])
+  // Say once (per distinct message) when a fallback or stand-in produced the PDF.
+  const lastNotes = useRef('')
+  useEffect(() => {
+    const text = compile.outcome.notes.join(' ')
+    if (text && text !== lastNotes.current) toast.info(text)
+    lastNotes.current = text
+  }, [compile.outcome])
   const compileDiagnostics = useMemo<CompileDiagnostic[]>(
     () =>
       (parsedLog?.all ?? [])
@@ -198,7 +221,6 @@ export function LatexEditor({
     () => ({ bibSources, assetFilenames: assets.map((a) => a.filename) }),
     [bibSources, assets],
   )
-  const deferredSource = useDeferredValue(source)
   const outline = useMemo(() => extractOutline(deferredSource), [deferredSource])
 
   async function handleSave(): Promise<void> {
@@ -338,6 +360,7 @@ export function LatexEditor({
           <ImageOff className="size-3.5" />
           Draft
         </ToggleButton>
+        <CompileSettingsControl value={settings} onChange={setSettings} />
         <span className="ml-auto hidden text-[11px] text-muted-foreground @4xl/editor:inline">
           Ctrl/⌘+Enter to compile · Ctrl/⌘+F to find · Ctrl+Space for suggestions
         </span>
@@ -392,6 +415,9 @@ export function LatexEditor({
               parsed={parsedLog}
               rawLog={compile.error.log}
               hint={hint}
+              notes={compile.error.notes}
+              hintLine={hintLine}
+              onUseFallback={settings.service === 'auto' ? undefined : switchToAuto}
               onJump={jumpToLine}
               onClose={() => compile.setProblemsOpen(false)}
             />
@@ -421,6 +447,14 @@ export function LatexEditor({
             >
               Last compile failed · show problems
             </button>
+          ) : null}
+          {compile.outcome.service === 'ytotech' ? (
+            <span
+              className="pointer-events-none absolute left-3 top-3 rounded bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
+              title={compile.outcome.notes.join(' ')}
+            >
+              Compiled on {BACKEND_NAMES.ytotech}
+            </span>
           ) : null}
           {compile.pdfIsDraft ? (
             <span className="pointer-events-none absolute right-3 top-3 rounded bg-warning-soft px-2 py-0.5 text-[11px] font-medium text-warning">

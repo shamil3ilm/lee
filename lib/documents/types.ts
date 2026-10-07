@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { compileSettingsSchema } from '@/lib/latex/compile-settings'
 
 // ---------------------------------------------------------------------------
 // Master CV (spec §3.2) — the source of truth per user, stored as a
@@ -229,6 +230,8 @@ export const latexDocumentContentSchema = z.object({
   compiledAt: z.string().optional(),
   compileError: z.string().optional(),
   compileLog: z.string().optional(),
+  /** Compile service + engine chosen in the editor; absent = auto + pdflatex. */
+  compileSettings: compileSettingsSchema.optional().catch(undefined),
 })
 
 export type LatexDocumentContent = z.infer<typeof latexDocumentContentSchema>

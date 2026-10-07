@@ -27,11 +27,13 @@ import {
 import { getMasterCV } from '@/lib/documents/master'
 import { truncateLog } from '@/lib/latex/compile'
 import { compileDocumentPdf, documentCacheKey } from '@/lib/latex/pdf-cache'
+import { readCompileSettings } from '@/lib/latex/compile-settings'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
-export const maxDuration = 30
+// Room for the primary LaTeX compile plus the full-TeX-Live fallback.
+export const maxDuration = 60
 
 const LATEX_CACHE_CONTROL = 'private, max-age=60'
 
@@ -58,7 +60,8 @@ async function latexPdfResponse(
 
   // The key is computed from metadata only, so a revalidation that matches
   // the browser's copy costs one small query and no bytes.
-  const { cacheKey } = await documentCacheKey(userId, id, content.source)
+  const settings = readCompileSettings(content.compileSettings)
+  const { cacheKey } = await documentCacheKey(userId, id, content.source, settings)
   const etag = `"${cacheKey}"`
   if (etagMatches(req.headers.get('if-none-match'), etag)) {
     return new Response(null, {
@@ -67,7 +70,7 @@ async function latexPdfResponse(
     })
   }
 
-  const result = await compileDocumentPdf({ userId, documentId: id, source: content.source })
+  const result = await compileDocumentPdf({ userId, documentId: id, source: content.source, settings })
   if (result.ok) {
     // Only clear a stale error; never rewrite the row just because it was viewed.
     if (content.compileError !== undefined || content.compileLog !== undefined) {

@@ -3,6 +3,7 @@ import type { Document } from '@/lib/db/queries/documents'
 import { latexDocumentContentSchema } from '@/lib/documents/types'
 import { saveCvCopyToDrive, type CvCopyResult } from '@/lib/drive/cv-copy'
 import { compileDocumentPdf } from '@/lib/latex/pdf-cache'
+import { readCompileSettings } from '@/lib/latex/compile-settings'
 import { scoreCv, type CvScoreRecord } from '@/lib/cv-score/score'
 import type { AIProvider } from '@/lib/ai/types'
 import { variantToLatex } from './latex'
@@ -45,7 +46,9 @@ async function upsertVariantDocument(userId: string, title: string, source: stri
     const full = await documentsQ.getById(userId, existing.id)
     const current = latexDocumentContentSchema.safeParse(full?.content)
     if (current.success && current.data.source === source) return full!
-    const updated = await documentsQ.update(userId, existing.id, { content })
+    // A compile service / engine chosen in the editor survives a refresh.
+    const compileSettings = current.success ? current.data.compileSettings : undefined
+    const updated = await documentsQ.update(userId, existing.id, { content: { ...content, compileSettings } })
     if (updated) return updated
   }
   const next = await documentsQ.nextVersion(userId, null, 'latex_cv')
@@ -54,8 +57,8 @@ async function upsertVariantDocument(userId: string, title: string, source: stri
 
 export async function saveVariantPdfToDrive(userId: string, variantId: string): Promise<CvCopyResult> {
   const doc = await ensureVariantDocument(userId, variantId)
-  const { source } = latexDocumentContentSchema.parse(doc.content)
-  const compiled = await compileDocumentPdf({ userId, documentId: doc.id, source })
+  const { source, compileSettings } = latexDocumentContentSchema.parse(doc.content)
+  const compiled = await compileDocumentPdf({ userId, documentId: doc.id, source, settings: readCompileSettings(compileSettings) })
   if (!compiled.ok) throw new VariantError('The PDF did not compile. Open it in the LaTeX editor to see the log.')
   return saveCvCopyToDrive({ userId, scoreId: null, name: `${doc.title}.pdf`, mimeType: 'application/pdf', bytes: compiled.pdf })
 }

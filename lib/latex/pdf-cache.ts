@@ -4,6 +4,7 @@ import { compileLatex, type CompileOptions, type CompileResult } from '@/lib/lat
 import { getAssetStoreForUser, MAX_PDF_CACHE_BYTES, type AssetStore } from '@/lib/storage/asset-store'
 import { logger } from '@/lib/logger'
 import { withDraftMode } from '@/lib/latex/draft'
+import { isDefaultSettings, type CompileBackend, type CompileSettings } from '@/lib/latex/compile-settings'
 
 /**
  * Compiled-PDF cache for LaTeX documents. The key is a sha256 over the .tex
@@ -21,9 +22,18 @@ export interface HashedAsset {
   sha256: string
 }
 
-export function latexCacheKey(source: string, assets: readonly HashedAsset[]): string {
+/**
+ * Non-default compile settings (service / engine) are part of the key; the
+ * defaults add nothing, so existing cache entries stay valid.
+ */
+export function latexCacheKey(
+  source: string,
+  assets: readonly HashedAsset[],
+  settings?: CompileSettings,
+): string {
   const h = createHash('sha256')
   h.update(`${CACHE_VERSION}\0${source}\0`)
+  if (settings && !isDefaultSettings(settings)) h.update(`settings\0${settings.service}\0${settings.engine}\0`)
   const sorted = [...assets].sort((a, b) => (a.filename < b.filename ? -1 : a.filename > b.filename ? 1 : 0))
   for (const a of sorted) h.update(`${a.filename}\0${a.sha256}\0`)
   return h.digest('hex')
@@ -34,14 +44,15 @@ export async function documentCacheKey(
   userId: string,
   documentId: string,
   source: string,
+  settings?: CompileSettings,
 ): Promise<{ cacheKey: string; assets: assetsQ.AssetHash[] }> {
   const assets = await assetsQ.listHashes(userId, documentId)
-  return { cacheKey: latexCacheKey(source, assets), assets }
+  return { cacheKey: latexCacheKey(source, assets, settings), assets }
 }
 
 export type CompiledPdf =
-  | { ok: true; pdf: Buffer; cacheKey: string; cached: boolean }
-  | { ok: false; status: number; log: string; cacheKey: string }
+  | { ok: true; pdf: Buffer; cacheKey: string; cached: boolean; service?: CompileBackend; notes: string[] }
+  | { ok: false; status: number; log: string; cacheKey: string; service?: CompileBackend; notes: string[] }
 
 export interface CompileDocumentPdfInput {
   userId: string
@@ -52,7 +63,9 @@ export interface CompileDocumentPdfInput {
    * key and never writes the cache, so the final PDF stays cached.
    */
   draft?: boolean
-  /** Injected for tests; defaults to the latexonline.cc client. */
+  /** Compile service + engine (defaults: auto fallback, pdflatex). */
+  settings?: CompileSettings
+  /** Injected for tests; defaults to the fallback-aware compile client. */
   compile?: (input: CompileOptions) => Promise<CompileResult>
   store?: AssetStore
 }
@@ -61,24 +74,26 @@ export async function compileDocumentPdf(input: CompileDocumentPdfInput): Promis
   const store = input.store ?? (await getAssetStoreForUser(input.userId))
   const compile = input.compile ?? compileLatex
   const source = input.draft ? withDraftMode(input.source) : input.source
-  const { cacheKey, assets } = await documentCacheKey(input.userId, input.documentId, source)
+  const { cacheKey, assets } = await documentCacheKey(input.userId, input.documentId, source, input.settings)
 
   const cached = input.draft
     ? null
     : await store.get(input.userId, store.refForPdfCache(input.documentId, cacheKey))
-  if (cached) return { ok: true, pdf: cached, cacheKey, cached: true }
+  if (cached) return { ok: true, pdf: cached, cacheKey, cached: true, notes: [] }
 
   // Miss: only now load asset bytes (one query) and call the compile service.
   const refs = assets.map((a) => store.refForDocumentAsset(a))
   const bytes = await store.getMany(input.userId, refs)
   const result = await compile({
     source,
+    settings: input.settings,
     assets: assets.flatMap((a, i) => {
       const b = bytes.get(refs[i]!)
       return b ? [{ filename: a.filename, mimeType: a.mimeType, bytes: b }] : []
     }),
   })
-  if (!result.ok) return { ok: false, status: result.status, log: result.log, cacheKey }
+  const notes = result.notes ?? []
+  if (!result.ok) return { ok: false, status: result.status, log: result.log, cacheKey, service: result.service, notes }
 
   const pdf = Buffer.from(result.pdf)
   if (!input.draft && pdf.byteLength <= MAX_PDF_CACHE_BYTES) {
@@ -97,5 +112,5 @@ export async function compileDocumentPdf(input: CompileDocumentPdfInput): Promis
       })
     }
   }
-  return { ok: true, pdf, cacheKey, cached: false }
+  return { ok: true, pdf, cacheKey, cached: false, service: result.service, notes }
 }

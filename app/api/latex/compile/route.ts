@@ -6,25 +6,37 @@ import * as documentsQ from '@/lib/db/queries/documents'
 import { truncateLog } from '@/lib/latex/compile'
 import { compileDocumentPdf } from '@/lib/latex/pdf-cache'
 import { latexDocumentContentSchema } from '@/lib/documents/types'
+import {
+  COMPILE_NOTES_HEADER,
+  COMPILE_SERVICE_HEADER,
+  compileSettingsSchema,
+  encodeNotesHeader,
+  readCompileSettings,
+} from '@/lib/latex/compile-settings'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
-export const maxDuration = 30
+// Room for the primary compile plus the full-TeX-Live fallback (lib/latex/fallback.ts).
+export const maxDuration = 60
 
 const bodySchema = z.object({
   documentId: z.string().min(1),
   source: z.string().min(1),
   /** Draft mode: graphicx `draft` for a fast preview (never cached). */
   draft: z.boolean().optional(),
+  /** Compile service + engine; saved on the document. Omitted = keep the saved choice. */
+  settings: compileSettingsSchema.optional(),
 })
 
 /**
  * POST /api/latex/compile
- *   body: { documentId, source, draft? }
+ *   body: { documentId, source, draft?, settings? }
  *
  * On success: streams the compiled PDF bytes back (application/pdf) and
- * updates the document row's `compiledAt` + clears any prior error.
+ * updates the document row's `compiledAt` + clears any prior error. The
+ * x-lee-compile-service / x-lee-compile-notes headers say which service
+ * compiled it (e.g. the full-TeX-Live fallback) and why.
  *
  * On failure: returns 422 JSON `{error, log}` and stores the log/error on
  * the document row so the editor can display it after a page reload.
@@ -54,8 +66,10 @@ export async function POST(req: Request): Promise<Response> {
     // skips the compile service entirely. A success also primes the cache
     // for the document's PDF view route.
     // The saved source never carries the draft option; only the compile does.
+    const existing = latexDocumentContentSchema.safeParse(doc.content)
+    const settings = parsed.data.settings ?? readCompileSettings(existing.success ? existing.data.compileSettings : undefined)
     const started = Date.now()
-    const result = await compileDocumentPdf({ userId, documentId, source, draft: draft === true })
+    const result = await compileDocumentPdf({ userId, documentId, source, draft: draft === true, settings })
     // Outcome only (never the source or the log): shown in Settings › Logs.
     logger.info('latex_compile', {
       userId,
@@ -64,13 +78,15 @@ export async function POST(req: Request): Promise<Response> {
       status: result.ok ? 200 : result.status,
       cached: result.ok && 'cached' in result && result.cached === true,
       draft: draft === true,
+      service: result.service ?? null,
+      fallback: result.service === 'ytotech' && settings.service === 'auto',
+      settings: `${settings.service}/${settings.engine}`,
       durationMs: Date.now() - started,
     })
     // Preserve existing content shape then overlay the new source + compile
     // status. If content isn't a valid latex shape (edge case: schema drift)
     // we fall back to a minimal shape rather than crashing.
-    const existing = latexDocumentContentSchema.safeParse(doc.content)
-    const base = existing.success ? existing.data : { source }
+    const base = { ...(existing.success ? existing.data : { source }), compileSettings: settings }
 
     if (result.ok) {
       const updated = {
@@ -86,6 +102,8 @@ export async function POST(req: Request): Promise<Response> {
         headers: {
           'content-type': 'application/pdf',
           'cache-control': 'no-store',
+          ...(result.service ? { [COMPILE_SERVICE_HEADER]: result.service } : {}),
+          ...(result.notes.length > 0 ? { [COMPILE_NOTES_HEADER]: encodeNotesHeader(result.notes) } : {}),
         },
       })
     }
@@ -98,7 +116,10 @@ export async function POST(req: Request): Promise<Response> {
       compileLog: log,
     }
     await documentsQ.update(userId, documentId, { content: updated })
-    return NextResponse.json({ error: 'Compile failed', log }, { status: 422 })
+    return NextResponse.json(
+      { error: 'Compile failed', log, notes: result.notes, service: result.service ?? null },
+      { status: 422 },
+    )
   } catch (err) {
     // Drive-held assets: a revoked grant etc. gets its friendly message.
     if (err instanceof DriveError) return driveErrorResponse(err)
