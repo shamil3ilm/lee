@@ -40,6 +40,9 @@ export interface EffectivenessDetail {
   approachOptimal: boolean
 }
 
+/** Choice formats (content items) plus the 13.1 coding workbench. */
+export type AttemptFormat = ItemFormat | 'coding'
+
 export const EVALUATION_AXES = ['correctness', 'time', 'complexity', 'performance', 'quality', 'effectiveness'] as const
 export type EvaluationAxis = (typeof EVALUATION_AXES)[number]
 
@@ -55,7 +58,7 @@ export const AXIS_LABELS: Readonly<Record<EvaluationAxis, string>> = {
 export interface AttemptEvaluation {
   /** Shape version of this object. */
   v: 1
-  format: ItemFormat
+  format: AttemptFormat
   correctness: Axis<CorrectnessDetail>
   time: Axis<TimeDetail>
   complexity: Axis<ComplexityDetail>

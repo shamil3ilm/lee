@@ -13,6 +13,8 @@ import { readSeed } from './skill-states'
 
 export interface HistoryEntry {
   id: string
+  /** The item id, or the problem slug for coding attempts. */
+  itemId: string
   submittedAt: Date
   skillId: string
   skillName: string
@@ -34,6 +36,7 @@ function toEntry(row: AttemptRow, content: AcademyContent): HistoryEntry | null 
   const ev = readEvaluation(row.evaluation)
   return {
     id: row.id,
+    itemId: row.itemId,
     submittedAt: row.submittedAt,
     skillId: row.skillId,
     skillName: skill?.name ?? row.skillId,

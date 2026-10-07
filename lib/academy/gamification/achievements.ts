@@ -13,6 +13,10 @@ export interface AchievementStats {
   domainsPracticed: number
   reviews: number
   rank: Rank
+  /** Coding problems solved at least once (phase 13.1). */
+  problemsSolved?: number
+  /** Consecutive days with the daily problem solved. */
+  dailyStreak?: number
 }
 
 export function ruleMet(rule: AchievementRule, s: AchievementStats): boolean {
@@ -33,6 +37,10 @@ export function ruleMet(rule: AchievementRule, s: AchievementStats): boolean {
       return s.reviews >= rule.count
     case 'rank':
       return rankIndex(s.rank) >= rankIndex(rule.rank)
+    case 'problems_solved':
+      return (s.problemsSolved ?? 0) >= rule.count
+    case 'daily_streak':
+      return (s.dailyStreak ?? 0) >= rule.days
   }
 }
 

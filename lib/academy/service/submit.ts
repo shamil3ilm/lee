@@ -7,7 +7,6 @@ import type { AttemptRow } from '@/lib/db/queries/academyAttempts'
 import { logger } from '@/lib/logger'
 import { getUserTimeZone } from '@/lib/settings/timezone'
 import { loadAcademyContent, type AcademyContent } from '@/lib/academy/content/catalog'
-import type { Item } from '@/lib/academy/content/schema'
 import { localDay } from '@/lib/academy/day'
 import { evaluateAttempt } from '@/lib/academy/evaluation/registry'
 import { readEvaluation, type AttemptEvaluation } from '@/lib/academy/evaluation/types'
@@ -19,7 +18,7 @@ import { markDone, readPlanItems } from '@/lib/academy/selector/plan-store'
 import { nextDue } from '@/lib/academy/srs/sm2'
 import { capJson, EVALUATION_MAX_BYTES, SUBMISSION_MAX_BYTES } from './caps'
 import { AcademyError } from './errors'
-import { applyProgress } from './progress'
+import { applyProgress, type ProgressExtra } from './progress'
 
 /**
  * Submitting an attempt: score it (multi-axis), move the skill rating
@@ -47,7 +46,7 @@ function elapsedSince(startedAt: Date, now: Date): number {
   return Math.min(MAX_ELAPSED_SEC, Math.max(0, Math.round((now.getTime() - startedAt.getTime()) / 1000)))
 }
 
-function priorResult(row: AttemptRow): SubmitResult {
+export function priorResult(row: AttemptRow): SubmitResult {
   const evaluation = readEvaluation(row.evaluation)
   if (!evaluation) throw new AcademyError('invalid', 'This attempt was already submitted.')
   const before = levelForRating(row.ratingBefore ?? DEFAULT_RATING)
@@ -83,77 +82,95 @@ async function advancePlacement(userId: string, content: AcademyContent, now: Da
   return false
 }
 
-interface Scored {
+export interface ScoredAttempt {
   row: AttemptRow
-  item: Item
+  /** The item's (or problem's) difficulty on the rating scale. */
+  difficulty: number
   evaluation: AttemptEvaluation
   submission: unknown
   elapsedSec: number
 }
 
-async function record(userId: string, content: AcademyContent, s: Scored, now: Date, today: string): Promise<SubmitResult | null> {
-  return db.transaction(async (tx) => {
-    const stored = await ratingsQ.get(userId, s.row.skillId, tx)
-    const current = stored
-      ? ratingAsOf({ rating: stored.rating, deviation: stored.deviation, lastPracticedAt: stored.lastPracticedAt }, now)
-      : { rating: DEFAULT_RATING, deviation: DEFAULT_DEVIATION }
-    const next = updateRating(current, { difficulty: s.item.difficulty, outcome: s.evaluation.outcome })
-    const levelBefore: Level = stored && stored.level > 0 ? levelForRating(current.rating) : 0
-    const levelAfter = levelForRating(next.rating)
-    const xp = xpForAttempt({ difficulty: s.item.difficulty, composite: s.evaluation.composite })
-    const evaluation = capJson(s.evaluation, EVALUATION_MAX_BYTES, { ...s.evaluation, improvements: [] })
-    const updated = await attemptsQ.submit(
-      userId,
-      s.row.id,
-      {
-        submittedAt: now,
-        elapsedSec: s.elapsedSec,
-        submission: capJson(s.submission, SUBMISSION_MAX_BYTES, { truncated: true }),
-        evaluation,
-        composite: s.evaluation.composite,
-        xpAwarded: xp,
-        ratingBefore: current.rating,
-        ratingAfter: next.rating,
-      },
-      tx,
-    )
-    if (!updated) return null
-    await ratingsQ.upsert(
-      userId,
-      {
-        skillId: s.row.skillId,
-        rating: next.rating,
-        deviation: next.deviation,
-        level: levelAfter,
-        attempts: (stored?.attempts ?? 0) + 1,
-        lastPracticedAt: now,
-        seed: stored?.seed ?? null,
-      },
-      tx,
-    )
-    const kind = s.row.mode === 'diagnostic' ? 'diagnostic' : 'attempt'
-    await ratingsQ.addHistory(userId, [{ skillId: s.row.skillId, attemptId: s.row.id, kind, ...next, level: levelAfter }], tx)
-    const dueAt = s.evaluation.outcome >= 1 ? nextDue(now, 1) : now
-    const cards = content.cardsBySkill.get(s.row.skillId) ?? []
-    await reviewsQ.enroll(userId, cards.map((c) => ({ cardId: c.id, skillId: c.skillId, dueAt })), tx)
-    await tickPlan(userId, s.row, tx)
-    const morePlacement = s.row.mode === 'diagnostic' ? await advancePlacement(userId, content, now, tx) : false
-    const progress = await applyProgress(userId, content, { today, xpGain: xp, reviewsGain: 0, attemptId: s.row.id }, tx)
-    return {
-      attemptId: s.row.id,
-      skillId: s.row.skillId,
+/**
+ * Apply one scored attempt inside the caller's transaction: rating, history
+ * snapshot, card enrolment, plan tick, placement, XP / streak / rank /
+ * achievements. Returns null when the attempt was already submitted (so it
+ * is counted exactly once).
+ */
+export async function applyScoredAttempt(
+  userId: string,
+  content: AcademyContent,
+  s: ScoredAttempt,
+  now: Date,
+  today: string,
+  tx: DbClient,
+  extra: ProgressExtra = {},
+): Promise<SubmitResult | null> {
+  const stored = await ratingsQ.get(userId, s.row.skillId, tx)
+  const current = stored
+    ? ratingAsOf({ rating: stored.rating, deviation: stored.deviation, lastPracticedAt: stored.lastPracticedAt }, now)
+    : { rating: DEFAULT_RATING, deviation: DEFAULT_DEVIATION }
+  const next = updateRating(current, { difficulty: s.difficulty, outcome: s.evaluation.outcome })
+  const levelBefore: Level = stored && stored.level > 0 ? levelForRating(current.rating) : 0
+  const levelAfter = levelForRating(next.rating)
+  const xp = xpForAttempt({ difficulty: s.difficulty, composite: s.evaluation.composite })
+  const evaluation = capJson(s.evaluation, EVALUATION_MAX_BYTES, { ...s.evaluation, improvements: [] })
+  const updated = await attemptsQ.submit(
+    userId,
+    s.row.id,
+    {
+      submittedAt: now,
+      elapsedSec: s.elapsedSec,
+      submission: capJson(s.submission, SUBMISSION_MAX_BYTES, { truncated: true }),
       evaluation,
-      xp,
-      levelBefore,
-      levelAfter,
-      earned: progress.earned,
-      next: morePlacement ? ('placement' as const) : null,
-      alreadySubmitted: false,
-    }
-  })
+      composite: s.evaluation.composite,
+      xpAwarded: xp,
+      ratingBefore: current.rating,
+      ratingAfter: next.rating,
+    },
+    tx,
+  )
+  if (!updated) return null
+  await ratingsQ.upsert(
+    userId,
+    {
+      skillId: s.row.skillId,
+      rating: next.rating,
+      deviation: next.deviation,
+      level: levelAfter,
+      attempts: (stored?.attempts ?? 0) + 1,
+      lastPracticedAt: now,
+      seed: stored?.seed ?? null,
+    },
+    tx,
+  )
+  const kind = s.row.mode === 'diagnostic' ? 'diagnostic' : 'attempt'
+  await ratingsQ.addHistory(userId, [{ skillId: s.row.skillId, attemptId: s.row.id, kind, ...next, level: levelAfter }], tx)
+  const dueAt = s.evaluation.outcome >= 1 ? nextDue(now, 1) : now
+  const cards = content.cardsBySkill.get(s.row.skillId) ?? []
+  await reviewsQ.enroll(userId, cards.map((c) => ({ cardId: c.id, skillId: c.skillId, dueAt })), tx)
+  // A coding plan item is done only when the problem is solved.
+  if (s.row.format !== 'coding' || s.evaluation.outcome >= 1) await tickPlan(userId, s.row, tx)
+  const morePlacement = s.row.mode === 'diagnostic' ? await advancePlacement(userId, content, now, tx) : false
+  const progress = await applyProgress(userId, content, { today, xpGain: xp, reviewsGain: 0, attemptId: s.row.id, ...extra }, tx)
+  return {
+    attemptId: s.row.id,
+    skillId: s.row.skillId,
+    evaluation,
+    xp,
+    levelBefore,
+    levelAfter,
+    earned: progress.earned,
+    next: morePlacement ? ('placement' as const) : null,
+    alreadySubmitted: false,
+  }
 }
 
-function logResult(r: SubmitResult, row: AttemptRow): void {
+async function record(userId: string, content: AcademyContent, s: ScoredAttempt, now: Date, today: string): Promise<SubmitResult | null> {
+  return db.transaction((tx) => applyScoredAttempt(userId, content, s, now, today, tx))
+}
+
+export function logResult(r: SubmitResult, row: AttemptRow): void {
   logger.info('academy_attempt_submitted', {
     skillId: r.skillId,
     format: row.format,
@@ -176,7 +193,7 @@ export async function submitAttempt(userId: string, attemptId: string, raw: unkn
   const evaluation = evaluateAttempt(item, raw, { elapsedSec, hintsUsed: 0 })
   const submission = { choice: (raw as { choice: number }).choice }
   const today = localDay(now, await getUserTimeZone(userId))
-  const result = await record(userId, content, { row, item, evaluation, submission, elapsedSec }, now, today)
+  const result = await record(userId, content, { row, difficulty: item.difficulty, evaluation, submission, elapsedSec }, now, today)
   if (!result) {
     const again = await attemptsQ.get(userId, attemptId)
     if (!again) throw new AcademyError('not_found', 'That attempt was not found.')

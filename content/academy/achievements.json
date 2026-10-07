@@ -1,5 +1,5 @@
 {
-  "version": "2026.10.06",
+  "version": "2026.10.07",
   "achievements": [
     { "id": "first-steps", "name": "First steps", "description": "Finish your first Playground item.", "rule": { "type": "attempts", "count": 1 } },
     { "id": "ten-down", "name": "Ten down", "description": "Finish 10 items.", "rule": { "type": "attempts", "count": 10 } },
@@ -12,6 +12,11 @@
     { "id": "broad-base", "name": "Broad base", "description": "Practise skills in 5 domains.", "rule": { "type": "domains", "count": 5 } },
     { "id": "recall-10", "name": "Total recall", "description": "Complete 10 concept-card reviews.", "rule": { "type": "reviews", "count": 10 } },
     { "id": "rank-junior", "name": "Junior engineer", "description": "Reach the Junior rank.", "rule": { "type": "rank", "rank": "junior" } },
-    { "id": "rank-mid", "name": "Mid-level engineer", "description": "Reach the Mid rank.", "rule": { "type": "rank", "rank": "mid" } }
+    { "id": "rank-mid", "name": "Mid-level engineer", "description": "Reach the Mid rank.", "rule": { "type": "rank", "rank": "mid" } },
+    { "id": "first-accepted", "name": "Accepted", "description": "Solve your first coding problem.", "rule": { "type": "problems_solved", "count": 1 } },
+    { "id": "solved-10", "name": "Problem solver", "description": "Solve 10 coding problems.", "rule": { "type": "problems_solved", "count": 10 } },
+    { "id": "solved-40", "name": "Deep bench", "description": "Solve 40 coding problems.", "rule": { "type": "problems_solved", "count": 40 } },
+    { "id": "daily-3", "name": "Daily habit", "description": "Solve the daily problem 3 days in a row.", "rule": { "type": "daily_streak", "days": 3 } },
+    { "id": "daily-7", "name": "Daily week", "description": "Solve the daily problem 7 days in a row.", "rule": { "type": "daily_streak", "days": 7 } }
   ]
 }

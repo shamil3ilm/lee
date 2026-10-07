@@ -6,7 +6,7 @@ import type { AcademyContent } from './content/catalog'
  * version when scoring, rating or selection behaviour changes; bump
  * content/academy/manifest.json when any content file changes.
  */
-export const ACADEMY_ENGINE_VERSION = '13.0.0'
+export const ACADEMY_ENGINE_VERSION = '13.1.0'
 
 /** "academy-core@13.0.0". */
 export function contentVersion(content: Pick<AcademyContent, 'packName' | 'packVersion'>): string {

@@ -27,6 +27,23 @@ function stateOf(inp: PlanInputs, skillId: string): SkillState {
   )
 }
 
+/** Today's coding problem (the daily problem), done once it is solved. */
+export function codingCandidate(inp: PlanInputs): PlanItem | null {
+  const c = inp.coding
+  if (!c) return null
+  return {
+    id: `coding:${c.slug}`,
+    kind: 'coding',
+    skillId: c.skillId,
+    itemId: c.slug,
+    minutes: c.minutes,
+    title: c.title,
+    reasons: [{ code: 'coding', text: 'Today\u2019s coding problem, picked near 70% expected success for your rating in this skill.' }],
+    status: c.solved ? 'done' : 'todo',
+    attemptId: null,
+  }
+}
+
 function skillName(inp: PlanInputs, skillId: string): string {
   return inp.content.graph.byId.get(skillId)?.name ?? skillId
 }

@@ -1,5 +1,5 @@
 {
   "pack": "academy-core",
-  "version": "13.0.0",
+  "version": "13.1.0",
   "description": "Built-in Playground content: the skill graph, concept checks, predict-the-output items, concept cards and achievements. Bump the version whenever any file in content/academy changes; every attempt records it."
 }

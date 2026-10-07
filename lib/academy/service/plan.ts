@@ -15,7 +15,8 @@ import type { Placement } from '@/lib/academy/placement/seed'
 import { buildPlan, mergePlans, planSignature } from '@/lib/academy/selector/plan'
 import { readPlanItems } from '@/lib/academy/selector/plan-store'
 import { INTERVIEW_WINDOW_DAYS } from '@/lib/academy/selector/interviews'
-import { PLAN_MODES, type PlanInputs, type PlanItem, type PlanMode, type UpcomingInterview } from '@/lib/academy/selector/types'
+import { PLAN_MODES, type CodingCandidate, type PlanInputs, type PlanItem, type PlanMode, type UpcomingInterview } from '@/lib/academy/selector/types'
+import { dailyProblem } from '@/lib/academy/coding/daily'
 import { capJson, PLAN_MAX_BYTES } from './caps'
 import { syncPlacement } from './placement'
 import { toSkillStates } from './skill-states'
@@ -56,6 +57,17 @@ async function placementProgress(
   return { done: false, remaining: diagnosticRemaining(content, state.placementDomains, done) }
 }
 
+/** Today's coding problem for the plan; a failure never blocks the plan. */
+async function codingCandidateFor(userId: string, now: Date): Promise<CodingCandidate | null> {
+  try {
+    const d = await dailyProblem(userId, now)
+    return d ? { slug: d.slug, title: d.title, skillId: d.skillId, minutes: d.minutes, solved: d.solved } : null
+  } catch (err) {
+    logger.error('academy daily problem failed', { err: err instanceof Error ? err.message : String(err) })
+    return null
+  }
+}
+
 export async function loadPlanContext(userId: string, now: Date = new Date()): Promise<PlanContext> {
   const content = loadAcademyContent()
   const placement = await syncPlacement(userId, content)
@@ -68,6 +80,7 @@ export async function loadPlanContext(userId: string, now: Date = new Date()): P
     attemptsQ.recentItemIds(userId),
   ])
   const today = localDay(now, timeZone)
+  const coding = await codingCandidateFor(userId, now)
   const inputs: PlanInputs = {
     content,
     now,
@@ -81,6 +94,7 @@ export async function loadPlanContext(userId: string, now: Date = new Date()): P
     studyTargets: placement.studyTargets,
     recentItemIds,
     placement: await placementProgress(userId, state, content),
+    coding,
   }
   return { content, now, timeZone, today, state, ratingRows, placement, interviews, dueReviews, inputs }
 }

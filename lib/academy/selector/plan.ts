@@ -1,4 +1,5 @@
 import {
+  codingCandidate,
   interviewCandidates,
   placementCandidate,
   reviewCandidate,
@@ -38,6 +39,7 @@ function candidates(inp: PlanInputs): PlanItem[] {
   push(placementCandidate(inp))
   push(reviewCandidate(inp))
   push(interviewCandidates(inp, usedSkills(out), limits.interviews))
+  if (inp.mode !== 'quick') push(codingCandidate(inp))
   push(studyCandidates(inp, usedSkills(out), limits.study))
   push(weaknessCandidate(inp, usedSkills(out)))
   push(uncertainCandidate(inp, usedSkills(out)))
@@ -74,6 +76,7 @@ export function planSignature(inp: PlanInputs): string {
     inp.placement.done,
     inp.interviews.map((i) => [i.stageId, i.kind, i.scheduledAt.toISOString()]),
     inp.studyTargets.map((t) => [t.skillId, t.targetDate]),
+    inp.coding ? [inp.coding.slug, inp.coding.solved] : null,
   ])
 }
 

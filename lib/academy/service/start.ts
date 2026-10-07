@@ -79,6 +79,9 @@ export async function startPlanItem(userId: string, planItemId: string, now: Dat
   if (!planItem) throw new AcademyError('not_found', 'That plan item is no longer in today’s plan. Refresh to see the latest plan.')
   if (planItem.kind === 'placement') return startPlacement(userId, now, ctx)
   if (planItem.kind === 'review') return { href: '/playground/review' }
+  if (planItem.kind === 'coding' && planItem.itemId) {
+    return { href: `/playground/problems/${planItem.itemId}?plan=${encodeURIComponent(planItem.id)}` }
+  }
   const item = planItem.itemId ? ctx.content.itemById.get(planItem.itemId) : undefined
   if (!item) throw new AcademyError('retired', 'That exercise is no longer available. Refresh the plan.')
   const id = await createAttempt(userId, ctx.content, now, { item, mode: 'plan', planDate: ctx.today, planItemId: planItem.id })

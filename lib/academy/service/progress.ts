@@ -1,5 +1,6 @@
 import type { DbClient } from '@/lib/db/client'
 import * as attemptsQ from '@/lib/db/queries/academyAttempts'
+import * as codingQ from '@/lib/db/queries/academyCoding'
 import * as ratingsQ from '@/lib/db/queries/academyRatings'
 import * as stateQ from '@/lib/db/queries/academyState'
 import type { AcademyContent } from '@/lib/academy/content/catalog'
@@ -13,11 +14,18 @@ import { nextStreak } from '@/lib/academy/gamification/streak'
  * caller's transaction so a result is counted exactly once.
  */
 
-export interface ProgressInput {
+export interface ProgressInput extends ProgressExtra {
   today: string
   xpGain: number
   reviewsGain: number
   attemptId: string | null
+}
+
+/** Coding-workbench facts for the coding achievements (phase 13.1). */
+export interface ProgressExtra {
+  dailyStreak?: number
+  /** This submission solved a problem for the first time (its progress row is written after). */
+  newlySolved?: boolean
 }
 
 export interface ProgressResult {
@@ -62,6 +70,8 @@ export async function applyProgress(
       domainsPracticed: domains.size,
       reviews: reviewsDone,
       rank,
+      problemsSolved: (await codingQ.solvedCount(userId, tx)) + (input.newlySolved ? 1 : 0),
+      dailyStreak: input.dailyStreak ?? 0,
     },
     already,
   )

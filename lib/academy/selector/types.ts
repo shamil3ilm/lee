@@ -48,9 +48,19 @@ export interface PlanInputs {
   /** Most recent first. */
   recentItemIds: readonly string[]
   placement: { done: boolean; remaining: number }
+  /** Today's adaptive coding problem (phase 13.1), when one is available. */
+  coding?: CodingCandidate | null
 }
 
-export const PLAN_ITEM_KINDS = ['placement', 'review', 'interview', 'study', 'weakness', 'uncertain', 'stretch'] as const
+export interface CodingCandidate {
+  slug: string
+  title: string
+  skillId: string
+  minutes: number
+  solved: boolean
+}
+
+export const PLAN_ITEM_KINDS = ['placement', 'review', 'interview', 'coding', 'study', 'weakness', 'uncertain', 'stretch'] as const
 export type PlanItemKind = (typeof PLAN_ITEM_KINDS)[number]
 
 export interface PlanReason {

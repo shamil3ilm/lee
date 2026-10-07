@@ -87,6 +87,8 @@ export const achievementRuleSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('domains'), count: z.number().int().min(1) }),
   z.object({ type: z.literal('reviews'), count: z.number().int().min(1) }),
   z.object({ type: z.literal('rank'), rank: z.enum(RANKS) }),
+  z.object({ type: z.literal('problems_solved'), count: z.number().int().min(1) }),
+  z.object({ type: z.literal('daily_streak'), days: z.number().int().min(1) }),
 ])
 export type AchievementRule = z.infer<typeof achievementRuleSchema>
 
