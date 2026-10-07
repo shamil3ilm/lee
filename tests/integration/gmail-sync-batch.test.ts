@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { db, pgliteClient } from '@/lib/db/client'
+import { db, getPgliteClient } from '@/lib/db/client'
 import { accounts, processedGmailThreads } from '@/lib/db/schema'
 import { GMAIL_THREAD_CONCURRENCY, syncGmail } from '@/lib/gmail/sync'
 import type { GmailThreadFull, GmailThreadSummary } from '@/lib/gmail/adapter'
@@ -54,7 +54,7 @@ describe('syncGmail batching', () => {
       return thread(threadId)
     })
 
-    const spy = vi.spyOn(pgliteClient!, 'query')
+    const spy = vi.spyOn(getPgliteClient()!, 'query')
     const result = await syncGmail({
       userId: u.id,
       adapters: { listThreads: async () => summaries, getThread },

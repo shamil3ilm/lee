@@ -2,7 +2,7 @@ import { beforeAll, beforeEach } from 'vitest'
 import { readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { sql } from 'drizzle-orm'
-import { db, isPglite, pgliteClient } from '@/lib/db/client'
+import { db, isPglite, getPgliteClient } from '@/lib/db/client'
 import { clearThrottleCache } from '@/lib/usage/throttle'
 
 // App-level tables to truncate between tests. Ordered from child to parent
@@ -71,7 +71,8 @@ const TABLES = [
 let migrationsApplied = false
 
 async function applyMigrationsToPglite(): Promise<void> {
-  if (!isPglite || !pgliteClient) return
+  const pgliteClient = isPglite ? getPgliteClient() : undefined
+  if (!pgliteClient) return
   if (migrationsApplied) return
 
   // Guard against re-applying when the same PGlite instance is reused

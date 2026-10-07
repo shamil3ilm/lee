@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { db, pgliteClient } from '@/lib/db/client'
+import { db, getPgliteClient } from '@/lib/db/client'
 import { activities, documents } from '@/lib/db/schema'
 import { findFollowupCandidates, recordFollowupNudges } from '@/lib/followups/service'
 import { makeApplication, makeCompany, makeJob, makeUser } from '@/tests/factories'
@@ -7,7 +7,7 @@ import { makeApplication, makeCompany, makeJob, makeUser } from '@/tests/factori
 const DAY = 24 * 60 * 60 * 1000
 
 async function captureSql<T>(fn: () => Promise<T>): Promise<{ result: T; sqls: string[] }> {
-  const spy = vi.spyOn(pgliteClient!, 'query')
+  const spy = vi.spyOn(getPgliteClient()!, 'query')
   try {
     const result = await fn()
     return { result, sqls: spy.mock.calls.map((c) => String(c[0])) }

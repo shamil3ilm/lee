@@ -41,8 +41,9 @@ async function resetDatabaseDir(): Promise<void> {
 async function main(): Promise<void> {
   await resetDatabaseDir()
 
-  // Import after env + directory are ready: the client opens the DB on load.
-  const { db, pgliteClient, closeDb } = await import('@/lib/db/client')
+  // Import after env + directory are ready (the client opens the DB on first use).
+  const { db, getPgliteClient, closeDb } = await import('@/lib/db/client')
+  const pgliteClient = getPgliteClient()
   const s = await import('@/lib/db/schema')
   const { scoreCv } = await import('@/lib/cv-score/score')
   const { TEST_LOGIN_EMAIL, TEST_LOGIN_NAME } = await import('@/lib/auth/test-login')

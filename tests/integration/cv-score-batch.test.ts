@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { pgliteClient } from '@/lib/db/client'
+import { getPgliteClient } from '@/lib/db/client'
 import { FixtureAIProvider } from '@/lib/ai/fixtures'
 import { MAX_AI_ITEMS_PER_BATCH, batchScoreMaster } from '@/lib/cv-score/compare'
 import { saveMasterCV } from '@/lib/documents/master'
@@ -34,7 +34,7 @@ async function seed(n: number) {
 describe('batchScoreMaster', () => {
   it('reuses the preloaded applications and profile instead of re-fetching per item', async () => {
     const userId = await seed(6)
-    const spy = vi.spyOn(pgliteClient!, 'query')
+    const spy = vi.spyOn(getPgliteClient()!, 'query')
     const b = await batchScoreMaster({ userId, ai: null, now: NOW })
     const sqls = spy.mock.calls.map((c) => String(c[0]))
     spy.mockRestore()

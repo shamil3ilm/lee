@@ -72,6 +72,31 @@ Caveats:
   directory, the two instances don't see each other's writes and can abort.
   This is a local-only artifact: Neon doesn't have it.
 
+## PGlite: one process per directory
+
+Local dev and e2e run on PGlite, an embedded single-connection Postgres. Two
+processes on one data directory each start their own Postgres over the same
+files: the second one PANICs ("could not locate a valid checkpoint record",
+logged as `RuntimeError: Aborted()`) or, if the files happen to look
+consistent, runs crash recovery under the first.
+
+`next dev` forks a short-lived static-paths worker for each dynamic route it
+serves (`next/dist/server/dev/static-paths-worker.js`), and that worker loads
+the page's modules. When `lib/db/client.ts` opened PGlite at import time,
+every such worker opened `.e2e/pglite` beside the dev server: that was the
+repeated "Unhandled Rejection: RuntimeError: Aborted()" in the e2e log.
+
+- The client is lazy (`lib/db/lazy.ts`): nothing opens until the first query,
+  and workers never query.
+- A file-backed PGlite takes `<dir>.lock` (`lib/db/pglite-lock.ts`). A second
+  live process gets a clear `PgliteLockedError` instead of a shared directory;
+  a lock left by a dead process is taken over.
+- Within one process every module copy shares one instance (`globalThis`), and
+  PGlite runs one query at a time.
+
+Neon is unaffected: production uses postgres-js, which also only connects on
+the first query.
+
 ## Web vitals data model
 
 `web_vitals_daily` has one row per (user, UTC day, route pattern, metric).

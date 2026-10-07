@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq, isNull } from 'drizzle-orm'
 import { makeUser } from '@/tests/factories'
-import { db, pgliteClient } from '@/lib/db/client'
+import { db, getPgliteClient } from '@/lib/db/client'
 import { discoveries as discTable } from '@/lib/db/schema'
 import { FixtureAIProvider } from '@/lib/ai/fixtures'
 import * as profileQ from '@/lib/db/queries/profile'
@@ -103,7 +103,7 @@ describe('discovery cycle budget and scoring cap', () => {
     const ai = new FixtureAIProvider({ scoreJob: () => scoreResult })
     await runDiscoveryCycleForUser({ userId, ai })
 
-    const client = pgliteClient!
+    const client = getPgliteClient()!
     const spy = vi.spyOn(client, 'query')
     await runDiscoveryCycleForUser({ userId, ai })
     const sqls = spy.mock.calls.map((c) => String(c[0]))

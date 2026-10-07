@@ -46,8 +46,9 @@ const g = globalThis as typeof globalThis & { __leeLogSinkState?: SinkState }
 /**
  * The database is loaded on the first flush, not when the sink is installed:
  * instrumentation runs in every server process, and only a process that
- * actually handles requests (and already has the DB open) should open it —
- * a second PGlite on the same directory aborts in dev/e2e.
+ * actually handles requests (and already has the DB open) should open it.
+ * lib/db/client.ts is lazy too, and refuses a PGlite directory another
+ * process holds (lib/db/pglite-lock.ts).
  */
 async function loadDb(): Promise<{
   db: (typeof import('@/lib/db/client'))['db']

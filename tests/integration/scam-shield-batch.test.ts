@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { makeUser } from '@/tests/factories'
-import { db, pgliteClient } from '@/lib/db/client'
+import { db, getPgliteClient } from '@/lib/db/client'
 import { discoveries as discTable, jobRiskAssessments } from '@/lib/db/schema'
 import * as sourcesQ from '@/lib/db/queries/sources'
 import * as riskQ from '@/lib/db/queries/riskAssessments'
@@ -12,7 +12,7 @@ import { RULES_VERSION } from '@/lib/scam/version'
 
 /** Every SQL statement PGlite runs while `fn` executes. */
 async function captureSql(fn: () => Promise<unknown>): Promise<string[]> {
-  const spy = vi.spyOn(pgliteClient!, 'query')
+  const spy = vi.spyOn(getPgliteClient()!, 'query')
   try {
     await fn()
     return spy.mock.calls.map((c) => String(c[0]))
