@@ -1,13 +1,27 @@
 {
-  "name": "Senior title in Riyadh: filtered, capped if shown anyway",
+  "name": "Senior title in Riyadh: kept with a soft chip, AI score capped as a stretch",
   "inputs": {
-    "job": { "title": "Senior Backend Engineer", "location": "Riyadh, KSA" },
+    "job": {
+      "title": "Senior Backend Engineer",
+      "location": "Riyadh, KSA"
+    },
     "aiScore": 88
   },
   "expect": {
-    "pass": false,
-    "reasons": ["seniority: Senior"],
-    "regions": ["gcc"],
-    "score": 40
+    "pass": true,
+    "reasons": [],
+    "penalties": [
+      "Senior title"
+    ],
+    "regions": [
+      "gcc"
+    ],
+    "score": 70,
+    "match": {
+      "max": 75,
+      "labels": [
+        "Region: Saudi Arabia"
+      ]
+    }
   }
 }

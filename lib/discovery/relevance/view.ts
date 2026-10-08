@@ -18,7 +18,7 @@ export interface LookingForView {
 }
 
 const REMOTE_LABEL: Readonly<Record<RemoteScope, string>> = {
-  worldwide: 'Remote worldwide',
+  worldwide: 'Remote worldwide (workable from home)',
   regions: 'Remote in my regions only',
   none: 'No remote',
 }
@@ -51,6 +51,8 @@ export interface SearchPrefsFormValues {
   remoteScope: RemoteScope
   acceptRelocation: boolean
   willingToRelocateTo: string
+  relocationIfSponsored: boolean
+  relocationCountries: string
   keywords: string
   dealbreakers: string
   rules: Record<string, string>
@@ -78,6 +80,8 @@ export function searchPrefsFormValues(profile: UserProfile | null): SearchPrefsF
     remoteScope: p.remoteScope,
     acceptRelocation: profile?.acceptRelocation ?? false,
     willingToRelocateTo: (profile?.willingToRelocateTo ?? []).join(', '),
+    relocationIfSponsored: p.extra.relocationIfSponsored,
+    relocationCountries: p.extra.relocationCountries.join(', '),
     keywords: p.include.join(', '),
     dealbreakers: p.exclude.join(', '),
     rules: Object.fromEntries(EXCLUSION_RULES.map((r) => [r, ruleMode(p.extra, r)])),

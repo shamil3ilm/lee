@@ -1,0 +1,21 @@
+{
+  "name": "Location written in Arabic (دبي): read as Dubai, UAE",
+  "inputs": {
+    "job": {
+      "title": "Backend Developer",
+      "location": "دبي، الإمارات العربية المتحدة"
+    }
+  },
+  "expect": {
+    "pass": true,
+    "regions": [
+      "ae",
+      "gcc"
+    ],
+    "match": {
+      "labels": [
+        "Region: UAE"
+      ]
+    }
+  }
+}

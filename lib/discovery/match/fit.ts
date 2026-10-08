@@ -1,5 +1,4 @@
-import { hitsAccepted, firstForeign, isRemotePosting, postingPlaces, scanRestrictions } from '../relevance/gate'
-import { isRegionCode, mergeScans, regionLabel, type PlaceScan } from '../relevance/places'
+import { isRemotePosting } from '../relevance/gate'
 import { classifyRole, roleFamilyLabel } from '../relevance/roles'
 import {
   detectSeniority,
@@ -10,6 +9,7 @@ import {
   type SeniorityLevel,
 } from '../relevance/seniority'
 import { findTerms, normalizeForMatch } from '../relevance/text'
+import { strengthIn, strengthsFrom } from './strengths'
 import type { MatchComponent, MatchJob, MatchProfile } from './types'
 
 /**
@@ -57,7 +57,27 @@ function rangeLabel(levels: readonly SeniorityLevel[]): string {
   return lo === hi ? lo : `${lo}–${hi}`
 }
 
-export function seniorityComponent(job: MatchJob, p: Pick<MatchProfile, 'seniority' | 'years'>): MatchComponent {
+/**
+ * A stretch above your level in one of your strong, ready areas costs half:
+ * "Seniority: Senior (you target Junior–Mid-level) · strong payments match".
+ */
+export function seniorityComponent(
+  job: MatchJob,
+  p: Pick<MatchProfile, 'seniority' | 'years' | 'skills' | 'domains'>,
+): MatchComponent {
+  const base = seniorityBase(job, p)
+  if (base.points >= base.max || !/\(you target|asks \d+\+ yrs, you have/.test(base.label)) return base
+  const strength = strengthIn(
+    `${job.title}
+${(job.techStack ?? []).join(' ')}
+${job.descriptionMd ?? ''}`,
+    strengthsFrom(p.skills, p.domains),
+  )
+  if (!strength) return base
+  return { ...base, points: base.points + Math.ceil((base.max - base.points) / 2), label: `${base.label} · strong ${strength} match` }
+}
+
+function seniorityBase(job: MatchJob, p: Pick<MatchProfile, 'seniority' | 'years'>): MatchComponent {
   const max = FIT_MAX.seniority
   const c = (points: number, label: string): MatchComponent => ({ key: 'seniority', label, points, max })
   const targets = targetLevels(p)
@@ -86,35 +106,7 @@ export function seniorityComponent(job: MatchJob, p: Pick<MatchProfile, 'seniori
   return c(12, 'Seniority: not stated')
 }
 
-function placeLabel(places: PlaceScan, accepted: ReadonlySet<string>): string {
-  const code = [...places.regions, ...places.covered, ...places.foreign].find((x) => accepted.has(x))
-  if (!code) return 'your regions'
-  return isRegionCode(code) ? regionLabel(code) : code
-}
-
-export function regionComponent(
-  job: MatchJob,
-  p: Pick<MatchProfile, 'regions' | 'otherCountries' | 'remoteScope'>,
-): MatchComponent {
-  const max = FIT_MAX.region
-  const c = (points: number, label: string): MatchComponent => ({ key: 'region', label, points, max })
-  const accepted = new Set<string>([...p.regions, ...p.otherCountries])
-  const located = postingPlaces(job)
-  if (accepted.size === 0) return c(5, 'Region: no target regions set')
-  if (isRemotePosting(job)) {
-    const eligible = mergeScans({ ...located, worldwide: false }, scanRestrictions(job.descriptionMd))
-    const named = eligible.regions.size + eligible.covered.size + eligible.foreign.size > 0
-    const hits = named && hitsAccepted(eligible, accepted)
-    if (p.remoteScope === 'none') return c(hits ? 6 : 0, hits ? `Remote in ${placeLabel(eligible, accepted)}` : 'Remote (you chose on-site)')
-    if (!named) return p.remoteScope === 'regions' ? c(4, 'Remote, region not stated') : c(8, 'Remote, open to your region')
-    return hits ? c(max, `Remote in ${placeLabel(eligible, accepted)}`) : c(0, `Remote, ${firstForeign(eligible)}-only`)
-  }
-  const named = located.regions.size + located.covered.size + located.foreign.size > 0
-  if (!named && !located.worldwide) return c(5, 'Region: location not stated')
-  if (hitsAccepted(located, accepted)) return c(max, `Region: ${placeLabel(located, accepted)}`)
-  if (located.worldwide) return c(6, 'Region: worldwide')
-  return c(0, `Region: ${firstForeign(located)} (outside your regions)`)
-}
+export { regionComponent } from './region'
 
 type Mode = 'remote' | 'hybrid' | 'onsite' | 'unknown'
 

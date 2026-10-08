@@ -42,7 +42,7 @@ function job(id: string, title: string, over: Partial<NormalizedJob> = {}): Disc
 const ITEMS: DiscoveryItem[] = [
   job('fit-1', 'Laravel Developer', { location: 'Dubai', remoteType: 'onsite' }),
   job('fit-2', 'Backend Engineer', { location: 'Remote' }),
-  job('senior', 'Senior Backend Engineer'),
+  job('senior', 'Engineering Director'),
   job('gardener', 'Gardener Handyman Driver'),
   job('us-only', 'Backend Engineer II', { location: 'Remote - US' }),
   job('frontend', 'Frontend Engineer', { techStack: ['react'] }),
@@ -112,7 +112,7 @@ describe('relevance gate at ingest', () => {
     const s = await statuses(userId)
     expect(s['fit-1']).toEqual({ status: 'new', reason: null })
     expect(s['fit-2']).toEqual({ status: 'new', reason: null })
-    expect(s['senior']).toEqual({ status: 'filtered', reason: 'seniority: Senior' })
+    expect(s['senior']).toEqual({ status: 'filtered', reason: 'seniority: Director' })
     expect(s['gardener']).toEqual({ status: 'filtered', reason: 'role: not engineering' })
     expect(s['us-only']).toEqual({ status: 'filtered', reason: 'location: US-only' })
     expect(s['frontend']).toEqual({ status: 'filtered', reason: 'role: Frontend' })
@@ -155,7 +155,7 @@ describe('re-evaluation when preferences change', () => {
     expect(relevanceStale(await profileQ.get(userId))).toBe(false)
 
     // "Show anyway" survives a later re-evaluation.
-    const senior = (await discQ.list(userId, { status: 'filtered' })).find((d) => d.title === 'Senior Backend Engineer')!
+    const senior = (await discQ.list(userId, { status: 'filtered' })).find((d) => d.title === 'Engineering Director')!
     expect(await relQ.showAnyway(userId, [senior.id])).toBe(1)
     await profileQ.upsert(userId, { seniorityLevels: ['junior'] })
     await reevaluateRelevance(userId)
@@ -176,7 +176,7 @@ describe('re-evaluation when preferences change', () => {
     await profileQ.upsert(userId, { ...PREFS, searchPrefsSavedAt: new Date() })
     await reevaluateRelevance(userId)
     const s = await statuses(userId)
-    expect(s['senior']).toEqual({ status: 'shortlisted', reason: 'seniority: Senior' })
+    expect(s['senior']).toEqual({ status: 'shortlisted', reason: 'seniority: Director' })
     expect(s['gardener']!.status).toBe('dismissed')
   })
 

@@ -86,9 +86,22 @@ describe('regionComponent (GCC spellings)', () => {
   })
 
   it('reads remote eligibility', () => {
-    expect(at('Remote', 'remote')).toMatchObject({ points: 8, label: 'Remote, open to your region' })
+    expect(at('Remote', 'remote')).toMatchObject({ points: 5, label: 'Remote, eligibility unclear' })
+    expect(at('Remote - Worldwide', 'remote')).toMatchObject({ points: 8, label: 'Remote, worldwide' })
+    expect(at('Remote - India', 'remote')).toMatchObject({ points: FIT_MAX.region, label: 'Remote in India' })
+    const hours = matchJob({ location: 'Remote', remoteType: 'remote', descriptionMd: 'Work hours UTC+3 to UTC+7.' })
+    expect(regionComponent(hours, matchProfile())).toMatchObject({ points: 9, label: 'Remote, hours fit your time zone' })
+    const us = matchJob({ location: 'Remote', remoteType: 'remote', descriptionMd: 'You must work US time zones only.' })
+    expect(regionComponent(us, matchProfile())).toMatchObject({ points: 0, label: 'Remote: US time zones only' })
+  })
+
+  it('credits relocation offered outside the target regions', () => {
+    const job = matchJob({ location: 'Berlin, Germany', descriptionMd: 'We offer a relocation package and Blue Card sponsorship.' })
+    expect(regionComponent(job, matchProfile())).toMatchObject({ points: 6, label: 'Relocation offered · Berlin' })
+    const off = matchProfile({ extra: { ...matchProfile().extra, relocationIfSponsored: false } })
+    expect(regionComponent(job, off).points).toBe(0)
     expect(at('Remote - UAE', 'remote')).toMatchObject({ points: FIT_MAX.region, label: 'Remote in UAE' })
-    expect(at('Remote (US only)', 'remote')).toMatchObject({ points: 0, label: 'Remote, US-only' })
+    expect(at('Remote (US only)', 'remote')).toMatchObject({ points: 0, label: 'Remote: US-only' })
   })
 
   it('is neutral when the user set no target regions', () => {

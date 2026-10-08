@@ -10,12 +10,14 @@ import { isRegionCode, REGION_CODES, type RegionCode } from './places'
 import { resolveRoleFamily, SKILL_GROUPS } from './roles'
 import { isSeniorityLevel, SENIORITY_LEVELS, type SeniorityLevel } from './seniority'
 import { findTerms, normalizeForMatch } from './text'
+import { readyEvidence } from '../match/evidence'
+import { strengthsFrom } from '../match/strengths'
 
 /**
  * Bump when the gate's rules or alias lists change in a way that should
  * re-evaluate stored discoveries (the key changes → rows are re-gated).
  */
-export const RELEVANCE_RULES_VERSION = 'r2'
+export const RELEVANCE_RULES_VERSION = 'r3'
 
 export type RemoteScope = 'worldwide' | 'regions' | 'none'
 export const REMOTE_SCOPES: readonly RemoteScope[] = ['worldwide', 'regions', 'none']
@@ -47,6 +49,11 @@ export interface SearchPrefs {
   extra: DiscoveryPrefs
   /** Profile shows container / orchestration / cloud-infra experience. */
   infraExperience: boolean
+  /**
+   * Strong areas with READY profile evidence (lib/discovery/match/strengths):
+   * a seniority stretch in one of them costs half.
+   */
+  strengths: string[]
 }
 
 export const EMPTY_PREFS: SearchPrefs = {
@@ -61,6 +68,7 @@ export const EMPTY_PREFS: SearchPrefs = {
   exclude: [],
   extra: EMPTY_DISCOVERY_PREFS,
   infraExperience: false,
+  strengths: [],
 }
 
 function clean(list: readonly string[] | null | undefined): string[] {
@@ -98,7 +106,7 @@ type PrefsSource = Pick<
   | 'dealbreakers'
   | 'searchPrefsSavedAt'
 > &
-  Partial<Pick<UserProfile, 'discoveryPrefs' | 'skills' | 'stackWeights'>>
+  Partial<Pick<UserProfile, 'discoveryPrefs' | 'skills' | 'stackWeights' | 'resume'>>
 
 const INFRA = ['docker', 'kubernetes', 'k8s', 'terraform', 'helm', 'aws', 'gcp', 'google cloud', 'azure', 'ecs', 'eks']
 
@@ -109,6 +117,11 @@ function hasInfra(profile: PrefsSource): boolean {
       : []
   const text = normalizeForMatch([...(profile.skills ?? []), ...weights].join(' | '))
   return findTerms(text, INFRA).length > 0 && findTerms(text, SKILL_GROUPS.devops).length > 0
+}
+
+function strengthsOf(profile: PrefsSource): string[] {
+  const e = readyEvidence(profile)
+  return strengthsFrom(e.skills, e.domains)
 }
 
 export function searchPrefsFromProfile(profile: PrefsSource | null | undefined): SearchPrefs {
@@ -141,6 +154,7 @@ export function searchPrefsFromProfile(profile: PrefsSource | null | undefined):
     exclude: clean(profile.dealbreakers),
     extra: parseDiscoveryPrefs(profile.discoveryPrefs),
     infraExperience: hasInfra(profile),
+    strengths: strengthsOf(profile),
   }
 }
 
@@ -178,6 +192,9 @@ export function relevanceKey(prefs: SearchPrefs): string {
     x.payFloors.map((f) => `${f.scope}:${f.amount}:${f.currency}:${f.period}`).sort(),
     x.languages.map((l) => `${l.name.toLowerCase()}:${l.level}`).sort(),
     prefs.infraExperience,
+    x.relocationIfSponsored,
+    [...x.relocationCountries].sort(),
+    [...prefs.strengths].sort(),
   ])
   return `${RELEVANCE_RULES_VERSION}:${fnv1a(canonical)}`
 }

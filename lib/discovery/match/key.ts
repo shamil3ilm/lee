@@ -36,6 +36,8 @@ export function matchKey(p: MatchProfile): string {
     p.extra.basedIn,
     sorted(p.extra.sponsorshipFor),
     sorted(p.extra.payFloors.map((f) => `${f.scope}:${f.amount}:${f.currency}:${f.period}`)),
+    p.extra.relocationIfSponsored,
+    sorted(p.extra.relocationCountries),
   ])
   return `${MATCH_SCORE_VERSION}:${fnv1a(canonical)}`
 }

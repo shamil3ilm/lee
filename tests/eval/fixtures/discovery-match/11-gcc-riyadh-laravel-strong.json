@@ -1,0 +1,41 @@
+{
+  "name": "GCC Laravel role in Riyadh offering a visa: strong deterministic match",
+  "inputs": {
+    "profile": {
+      "discoveryPrefs": {
+        "basedIn": "IN",
+        "sponsorshipFor": [
+          "AE",
+          "SA",
+          "QA",
+          "KW",
+          "BH",
+          "OM"
+        ]
+      }
+    },
+    "job": {
+      "title": "Laravel Developer",
+      "location": "Riyadh, Saudi Arabia",
+      "descriptionMd": "## Requirements\n- 1-3 years of PHP and Laravel\n- MySQL and REST APIs\n\nEmployment visa provided."
+    }
+  },
+  "expect": {
+    "pass": true,
+    "boosts": [
+      "visa / relocation offered"
+    ],
+    "regions": [
+      "gcc"
+    ],
+    "match": {
+      "min": 85,
+      "missing": [],
+      "labels": [
+        "Region: Saudi Arabia",
+        "Visa: offered for Saudi Arabia",
+        "Role: Backend"
+      ]
+    }
+  }
+}

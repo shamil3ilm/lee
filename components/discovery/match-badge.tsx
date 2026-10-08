@@ -1,6 +1,6 @@
 'use client'
 import { Info } from 'lucide-react'
-import { Badge, type BadgeProps } from '@/components/ui/badge'
+import { badgeVariants, type BadgeProps } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { focusRing } from '@/components/ui/focus-ring'
 import { BAND_LABELS, blendScores, scoreBand, scoreText, type ScoreBand } from '@/lib/discovery/match/blend'
@@ -91,17 +91,17 @@ export function MatchBadge({ match, ai, detail, interactive = true, filtered = f
   const variant = shown === null ? 'neutral' : BAND_VARIANT[scoreBand(shown)]
   const band = shown === null ? undefined : scoreBand(shown)
   const text = scoreText(match, ai)
+  // A <span> (not the <div> Badge) so it may sit inside the trigger button.
   const badge = (
-    <Badge
-      variant={variant}
+    <span
       data-testid="match-badge"
       data-band={band}
-      className={cn('gap-1 tabular-nums', className)}
+      className={cn(badgeVariants({ variant }), 'gap-1 tabular-nums', className)}
       title={interactive ? undefined : text}
     >
       {text}
       {interactive ? <Info className="size-3 opacity-70" aria-hidden="true" /> : null}
-    </Badge>
+    </span>
   )
   if (!interactive) return badge
   return (

@@ -1,0 +1,22 @@
+{
+  "name": "Berlin role offering relocation and a Blue Card: passes the region rule",
+  "inputs": {
+    "job": {
+      "title": "Backend Developer",
+      "location": "Berlin, Germany",
+      "descriptionMd": "We offer a relocation package and EU Blue Card sponsorship. PHP, Laravel."
+    }
+  },
+  "expect": {
+    "pass": true,
+    "reasons": [],
+    "boosts": [
+      "Relocation offered · Berlin"
+    ],
+    "match": {
+      "labels": [
+        "Relocation offered · Berlin"
+      ]
+    }
+  }
+}

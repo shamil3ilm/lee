@@ -1,0 +1,34 @@
+{
+  "name": "Dubai role preferring UAE nationals: kept, ranked lower",
+  "inputs": {
+    "profile": {
+      "discoveryPrefs": {
+        "basedIn": "IN",
+        "sponsorshipFor": [
+          "AE",
+          "SA",
+          "QA",
+          "KW",
+          "BH",
+          "OM"
+        ]
+      }
+    },
+    "job": {
+      "title": "Laravel Developer",
+      "location": "Dubai - UAE",
+      "descriptionMd": "UAE nationals preferred. Laravel and MySQL."
+    }
+  },
+  "expect": {
+    "pass": true,
+    "penalties": [
+      "visa: nationals preferred"
+    ],
+    "match": {
+      "labels": [
+        "Visa: nationals preferred"
+      ]
+    }
+  }
+}

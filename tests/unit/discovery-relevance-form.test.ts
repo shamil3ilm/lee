@@ -48,6 +48,8 @@ describe('search preferences form', () => {
         ['notice', 'immediate'],
         ['notice', '1_month'],
         ['notice', 'never'],
+        ['relocationIfSponsored', 'on'],
+        ['relocationCountries', 'de, uk, eu, x1'],
       ]),
       null,
       now,
@@ -75,6 +77,8 @@ describe('search preferences form', () => {
         { name: 'Arabic', level: 'basic' },
       ],
       noticePeriods: ['immediate', '1_month'],
+      relocationIfSponsored: true,
+      relocationCountries: ['DE', 'UK', 'EU'],
     })
   })
 
@@ -145,7 +149,10 @@ describe('match scoring with preferences', () => {
   })
 
   it('caps a seniority mismatch and prefers the selected regions', () => {
-    expect(applyCaps(raw, j('Senior Laravel Developer'), baseProfile)).toBe(PREFERENCE_CAPS.seniority)
+    // A Senior title is a soft stretch now: capped, not dropped to the filtered cap.
+    expect(applyCaps(raw, j('Senior Laravel Developer'), baseProfile)).toBe(PREFERENCE_CAPS.seniorityStretchStrong)
+    expect(applyCaps(raw, j('Senior Go Developer', { descriptionMd: 'Go services' }), baseProfile)).toBe(PREFERENCE_CAPS.seniorityStretch)
+    expect(applyCaps(raw, j('Director of Engineering'), baseProfile)).toBe(PREFERENCE_CAPS.seniority)
     expect(applyCaps(raw, j('Laravel Developer'), baseProfile)).toBe(80 + PREFERENCE_CAPS.regionBonus)
     expect(applyCaps(raw, j('Laravel Developer', { location: 'Berlin, Germany' }), baseProfile)).toBe(PREFERENCE_CAPS.location)
     expect(applyCaps(raw, j('Frontend Engineer'), baseProfile)).toBe(PREFERENCE_CAPS.role)
@@ -167,7 +174,7 @@ describe('views', () => {
       roles: ['Backend'],
       seniority: ['Junior', 'Mid-level'],
       regions: ['UAE', 'India'],
-      remote: 'Remote worldwide',
+      remote: 'Remote worldwide (workable from home)',
       notice: 'Immediate or 1 month',
     })
   })

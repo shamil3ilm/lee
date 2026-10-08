@@ -1,31 +1,19 @@
-import {
-  emptyScan,
-  foreignLabel,
-  GCC_CODES,
-  isEmptyScan,
-  mergeScans,
-  scanPlaces,
-  type PlaceScan,
-  type RegionCode,
-} from './places'
+import { ruleMode } from './discovery-prefs'
+import { locationOutcome } from './location-rule'
+import { emptyScan, GCC_CODES, mergeScans, scanPlaces, type PlaceScan } from './places'
 import type { SearchPrefs } from './prefs'
 import { classifyRole, roleFamilyLabel } from './roles'
-import {
-  detectSeniority,
-  detectYearsRequired,
-  isAboveSelected,
-  levelForYears,
-  SENIORITY_LABELS,
-  type SeniorityLevel,
-} from './seniority'
+import { detectSeniority, detectYearsRequired, type SeniorityLevel } from './seniority'
+import { isArchitectTitle, seniorityOutcome } from './seniority-rule'
 import { applySoftRules, rankAdjust } from './soft-rules'
 import { findTerms, normalizeForMatch } from './text'
+import { strengthIn } from '../match/strengths'
 
 /**
  * The deterministic relevance gate. Runs before AI scoring on every
  * ingested posting (and again when preferences change): a posting that
  * fails gets status 'filtered' with human-readable reasons, e.g.
- * "seniority: Senior", "location: US-only", "role: not engineering".
+ * "seniority: Director", "location: US-only", "role: not engineering".
  *
  * Asymmetric by design: the gate drops a posting only on positive evidence
  * (a senior title, a named foreign place, a non-engineering title). Missing
@@ -85,6 +73,8 @@ const RESTRICTION_PATTERNS: readonly RegExp[] = [
   /\b(us|u\.s\.|usa|uk|eu|canada|latam|north america|europe|india|uae|gcc)[\s-]+(?:only|based only)\b/g,
   /\b(us|u\.s\.|american|uk|canadian|eu) (?:citizens?|citizenship|residents?|persons?) (?:only|required)\b/g,
   /\b(?:security clearance|clearance required)\b()/g,
+  /\bright to work in\s+(?:the\s+)?([^.;:\n]{2,40})/g,
+  /\b(uk|us|eu|canadian|australian) (?:right to work|work authori[sz]ation|work permit) (?:is )?(?:required|only|needed)\b/g,
 ]
 
 /** Places named by remote-eligibility phrases in the description. */
@@ -113,6 +103,7 @@ function expandCodes(phrase: string): string {
     .replace(/\buk\b/g, 'united kingdom')
     .replace(/\beu\b/g, 'europe')
     .replace(/\bcanadian\b/g, 'canada')
+    .replace(/\baustralian\b/g, 'australia')
     .replace(/\buae\b/g, 'united arab emirates')
 }
 
@@ -137,54 +128,7 @@ function regionTags(places: PlaceScan, remote: boolean): RegionTag[] {
   return tags
 }
 
-/** Selected target regions + other accepted ISO-2 countries. */
-function acceptedCodes(prefs: SearchPrefs): Set<string> {
-  return new Set<string>([...prefs.regions, ...prefs.otherCountries])
-}
-
-export function hitsAccepted(places: PlaceScan, accepted: ReadonlySet<string>): boolean {
-  for (const c of places.regions) if (accepted.has(c)) return true
-  for (const c of places.covered) if (accepted.has(c)) return true
-  for (const c of places.foreign) if (accepted.has(c)) return true
-  return false
-}
-
-export function firstForeign(places: PlaceScan): string {
-  const code = [...places.foreign][0]
-  if (code) return foreignLabel(code, places.foreignNames.get(code))
-  const region = [...places.regions][0] as RegionCode | undefined
-  return region ?? 'elsewhere'
-}
-
-/**
- * Location rule. Onsite/hybrid: fail only when the posting names places and
- * none is accepted. Remote: fail when the posting (location field or an
- * eligibility phrase) restricts hiring to places that are not accepted.
- */
-function locationReason(
-  prefs: SearchPrefs,
-  located: PlaceScan,
-  restricted: PlaceScan,
-  remote: boolean,
-): string | null {
-  const accepted = acceptedCodes(prefs)
-  const regionRuleActive = accepted.size > 0
-  if (remote) {
-    const eligible = mergeScans({ ...located, worldwide: false }, restricted)
-    const named = eligible.regions.size + eligible.covered.size + eligible.foreign.size > 0
-    if (prefs.remoteScope === 'none') {
-      return named && hitsAccepted(eligible, accepted) ? null : 'location: remote (you chose on-site)'
-    }
-    if (!named) {
-      return prefs.remoteScope === 'regions' && regionRuleActive ? 'location: remote, region not stated' : null
-    }
-    if (!regionRuleActive || hitsAccepted(eligible, accepted)) return null
-    return `location: ${firstForeign(eligible)}-only`
-  }
-  if (!regionRuleActive || isEmptyScan(located) || hitsAccepted(located, accepted)) return null
-  if (located.worldwide) return null
-  return `location: ${firstForeign(located)}`
-}
+export { acceptedCodes, firstForeign, hitsAccepted } from './location-rule'
 
 function roleReason(prefs: SearchPrefs, title: string, families: string[], engineering: boolean, generic: boolean): string | null {
   const targets = prefs.roleFamilies
@@ -199,24 +143,6 @@ function roleReason(prefs: SearchPrefs, title: string, families: string[], engin
   if (!engineering) return 'role: not engineering'
   if (families.length === 0) return 'role: not a target role'
   return `role: ${roleFamilyLabel(families[0]!)}`
-}
-
-/**
- * A title marker outside the selected levels fails ("seniority: Senior").
- * An unmarked title fails only when the description's years requirement
- * sits above every selected level ("seniority: 5+ years required").
- */
-function seniorityReason(
-  prefs: SearchPrefs,
-  title: SeniorityLevel | null,
-  years: number | null,
-): string | null {
-  if (prefs.seniority.length === 0) return null
-  if (title) return prefs.seniority.includes(title) ? null : `seniority: ${SENIORITY_LABELS[title]}`
-  if (years !== null && isAboveSelected(levelForYears(years), prefs.seniority)) {
-    return `seniority: ${years}+ years required`
-  }
-  return null
 }
 
 /**
@@ -245,17 +171,29 @@ export function evaluateRelevance(job: GateInput, prefs: SearchPrefs): GateResul
   if (!prefs.active) return { pass: true, reasons: [], penalties: [], boosts: [], infos: [], rankAdjust: 0, ...base }
 
   const reasons: string[] = []
-  const haystack = normalizeForMatch(
-    [job.title, (job.techStack ?? []).join(' '), (job.descriptionMd ?? '').slice(0, DESCRIPTION_WINDOW)].join(' \n '),
-  )
+  const description = (job.descriptionMd ?? '').slice(0, DESCRIPTION_WINDOW)
+  const haystack = normalizeForMatch([job.title, (job.techStack ?? []).join(' '), description].join(' \n '))
   const excluded = findTerms(haystack, prefs.exclude)
   if (excluded.length > 0) reasons.push(`excluded: ${excluded.slice(0, 2).join(', ')}`)
   const roleWhy = roleReason(prefs, job.title, role.families, role.engineering, role.generic)
   if (roleWhy) reasons.push(roleWhy)
-  const seniorityWhy = seniorityReason(prefs, seniority, yearsRequired)
-  if (seniorityWhy) reasons.push(seniorityWhy)
-  const locWhy = locationReason(prefs, located, restricted, remote)
-  if (locWhy) reasons.push(locWhy)
+  const senior = seniorityOutcome({
+    mode: ruleMode(prefs.extra, 'seniority'),
+    selected: prefs.seniority,
+    title: seniority,
+    years: yearsRequired,
+    architect: isArchitectTitle(normalizeForMatch(job.title)),
+    strength: strengthIn(`${job.title}\n${(job.techStack ?? []).join(' ')}\n${description}`, prefs.strengths),
+  })
+  if (senior.hard) reasons.push(senior.hard)
+  const loc = locationOutcome(prefs, {
+    located,
+    restricted,
+    remote,
+    text: `${job.location ?? ''}\n${description}`,
+    description: job.descriptionMd,
+  })
+  if (loc.reason) reasons.push(loc.reason)
   if (prefs.include.length > 0 && findTerms(haystack, prefs.include).length === 0) {
     reasons.push(`keywords: none of ${prefs.include.slice(0, 3).join(', ')}`)
   }
@@ -272,13 +210,18 @@ export function evaluateRelevance(job: GateInput, prefs: SearchPrefs): GateResul
     prefs,
   )
   reasons.push(...soft.hard)
+  const penalties = [...(senior.penalty ? [senior.penalty.label] : []), ...(loc.penalty ? [loc.penalty] : []), ...soft.penalties]
+  const boosts = [...(loc.boost ? [loc.boost] : []), ...soft.boosts]
+  // Seniority carries its own weight (light / strong / offset); every other
+  // chip counts through rankAdjust's per-chip points.
+  const adjust = rankAdjust({ penalties: [...(loc.penalty ? [loc.penalty] : []), ...soft.penalties], boosts }) + (senior.penalty?.points ?? 0)
   return {
     pass: reasons.length === 0,
     reasons,
-    penalties: soft.penalties,
-    boosts: soft.boosts,
+    penalties,
+    boosts,
     infos: soft.infos,
-    rankAdjust: rankAdjust(soft),
+    rankAdjust: Math.max(-60, Math.min(20, adjust)),
     ...base,
   }
 }

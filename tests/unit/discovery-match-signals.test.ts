@@ -16,7 +16,7 @@ describe('payComponent (soft)', () => {
   })
 
   it('compares SAR pay with an AED floor through the peg', () => {
-    const p = matchProfile({ extra: { basedIn: 'IN', sponsorshipFor: [], payFloors: [GCC_FLOOR] } })
+    const p = matchProfile({ extra: { ...matchProfile().extra, sponsorshipFor: [], payFloors: [GCC_FLOOR] } })
     const ok = payComponent(matchJob({ location: 'Jeddah', descriptionMd: 'Salary SAR 12,000 per month.' }), p)
     expect(ok).toMatchObject({ points: SIGNAL_LIMITS.pay.max, label: 'Pay: SAR 12,000/mo (≈ AED 11,752/mo), meets your range' })
     const low = payComponent(matchJob({ location: 'Riyadh', descriptionMd: 'Salary SAR 5,000 per month.' }), p)
@@ -71,7 +71,7 @@ describe('visaComponent (GCC sponsorship)', () => {
 
   it('is neutral for remote roles and where no sponsorship is needed', () => {
     expect(visaComponent(matchJob({ location: 'Remote', remoteType: 'remote' }), matchProfile()).points).toBe(0)
-    const based = matchProfile({ extra: { basedIn: 'AE', sponsorshipFor: ['AE'], payFloors: [] } })
+    const based = matchProfile({ extra: { ...matchProfile().extra, basedIn: 'AE', sponsorshipFor: ['AE'] } })
     expect(visaComponent(matchJob({ location: 'Dubai', descriptionMd: 'Visa provided.' }), based).points).toBe(0)
   })
 })

@@ -1,0 +1,26 @@
+{
+  "name": "Doha backend role asking for Kubernetes and Docker: missing must-haves listed",
+  "inputs": {
+    "job": {
+      "title": "Backend Engineer",
+      "location": "Doha, Qatar",
+      "descriptionMd": "## Requirements\n- Laravel\n- Kubernetes\n- Docker\n## Nice to have\n- Redis"
+    }
+  },
+  "expect": {
+    "pass": true,
+    "regions": [
+      "gcc"
+    ],
+    "match": {
+      "max": 75,
+      "missing": [
+        "Kubernetes (required)",
+        "Docker (required)"
+      ],
+      "labels": [
+        "Region: Qatar"
+      ]
+    }
+  }
+}

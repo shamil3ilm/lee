@@ -1,0 +1,20 @@
+{
+  "name": "Remote worldwide backend role: workable from home",
+  "inputs": {
+    "job": {
+      "title": "Backend Developer",
+      "location": "Remote - Worldwide",
+      "remoteType": "remote",
+      "descriptionMd": "PHP and Laravel."
+    }
+  },
+  "expect": {
+    "pass": true,
+    "penalties": [],
+    "match": {
+      "labels": [
+        "Remote, worldwide"
+      ]
+    }
+  }
+}

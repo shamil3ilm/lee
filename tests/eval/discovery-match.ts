@@ -17,7 +17,12 @@
  *     "penalties": [...], "boosts": [...], "infos": [...],
  *     "regions": ["ae", "gcc"],
  *     "score": 85,                       // exact capped score (optional)
- *     "promptIncludes": ["\"target_seniority\""]
+ *     "promptIncludes": ["\"target_seniority\""],
+ *     "match": {                         // deterministic Match Score (optional)
+ *       "min": 70, "max": 100,           // inclusive bounds
+ *       "missing": ["Kubernetes (required)"],   // exact missing must-haves
+ *       "labels": ["Region: Saudi Arabia"]       // component labels that must appear
+ *     }
  *   }
  * }
  */
@@ -29,6 +34,9 @@ import { evaluateRelevance, type GateResult } from '@/lib/discovery/relevance/ga
 import { searchPrefsFromProfile } from '@/lib/discovery/relevance/prefs'
 import { applyCaps } from '@/lib/discovery/scoring'
 import { buildScoreJobPrompt } from '@/lib/ai/prompts/score-job'
+import { matchProfileFrom } from '@/lib/discovery/match/profile'
+import { computeMatch } from '@/lib/discovery/match/score'
+import type { MatchDetail } from '@/lib/discovery/match/types'
 
 export interface DiscoveryMatchExpect {
   pass: boolean
@@ -39,6 +47,7 @@ export interface DiscoveryMatchExpect {
   regions?: string[]
   score?: number
   promptIncludes?: string[]
+  match?: { min?: number; max?: number; missing?: string[]; labels?: string[] }
 }
 
 export interface DiscoveryMatchFixture {
@@ -56,6 +65,7 @@ export interface DiscoveryMatchResult {
   gate: GateResult
   score: number | null
   prompt: string
+  match: MatchDetail
 }
 
 export const DISCOVERY_MATCH_DIR = path.resolve(process.cwd(), 'tests/eval/fixtures/discovery-match')
@@ -125,7 +135,12 @@ export function runDiscoveryMatchFixture(f: Pick<DiscoveryMatchFixture, 'inputs'
           profile,
         )
       : null
-  return { gate, score, prompt: buildScoreJobPrompt(job, profile, { cvDigest: 'CV digest' }) }
+  return {
+    gate,
+    score,
+    prompt: buildScoreJobPrompt(job, profile, { cvDigest: 'CV digest' }),
+    match: computeMatch(job, matchProfileFrom(profile, new Date('2026-10-08T00:00:00Z'))),
+  }
 }
 
 function sameList(label: string, want: string[] | undefined, got: string[], out: string[]): void {
@@ -145,5 +160,15 @@ export function checkDiscoveryMatch(f: Pick<DiscoveryMatchFixture, 'expect'>, r:
   sameList('regions', e.regions, r.gate.regions, out)
   if (typeof e.score === 'number' && r.score !== e.score) out.push(`score: expected ${e.score}, got ${r.score}`)
   for (const s of e.promptIncludes ?? []) if (!r.prompt.includes(s)) out.push(`prompt lacks ${JSON.stringify(s)}`)
+  checkMatch(e.match, r.match, out)
   return out
+}
+
+function checkMatch(want: DiscoveryMatchExpect['match'], got: MatchDetail, out: string[]): void {
+  if (!want) return
+  if (typeof want.min === 'number' && got.score < want.min) out.push(`match: ${got.score} below ${want.min}`)
+  if (typeof want.max === 'number' && got.score > want.max) out.push(`match: ${got.score} above ${want.max}`)
+  sameList('match.missing', want.missing, got.missing, out)
+  const labels = got.components.map((c) => c.label)
+  for (const l of want.labels ?? []) if (!labels.includes(l)) out.push(`match lacks component ${JSON.stringify(l)} (got ${JSON.stringify(labels)})`)
 }

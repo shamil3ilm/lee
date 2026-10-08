@@ -1,0 +1,22 @@
+{
+  "name": "Remote role tied to US time zones: filtered with the reason",
+  "inputs": {
+    "job": {
+      "title": "Backend Developer",
+      "location": "Remote",
+      "remoteType": "remote",
+      "descriptionMd": "You must work US time zones only."
+    }
+  },
+  "expect": {
+    "pass": false,
+    "reasons": [
+      "location: US time zones only"
+    ],
+    "match": {
+      "labels": [
+        "Remote: US time zones only"
+      ]
+    }
+  }
+}

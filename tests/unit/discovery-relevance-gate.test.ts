@@ -98,8 +98,12 @@ describe('evaluateRelevance', () => {
   })
 
   it('gives seniority, role and location reasons', () => {
-    expect(evaluateRelevance(job('Senior Backend Engineer', { location: 'Dubai' }), USER).reasons).toEqual([
-      'seniority: Senior',
+    // Senior is a soft stretch (a chip, ranked lower); Director is still filtered.
+    const senior = evaluateRelevance(job('Senior Backend Engineer', { location: 'Dubai' }), USER)
+    expect(senior.pass).toBe(true)
+    expect(senior.penalties).toEqual(['Senior title'])
+    expect(evaluateRelevance(job('Director of Engineering', { location: 'Dubai' }), USER).reasons).toEqual([
+      'seniority: Director',
     ])
     expect(evaluateRelevance(job('Payroll Specialist', { location: 'Dubai' }), USER).reasons).toEqual([
       'role: not engineering',
@@ -114,7 +118,8 @@ describe('evaluateRelevance', () => {
       'location: Berlin',
     ])
     const many = evaluateRelevance(job('Staff Frontend Engineer', { remoteType: 'remote', location: 'United States' }), USER)
-    expect(formatReasons(many.reasons)).toBe('role: Frontend · seniority: Staff · location: US-only')
+    expect(formatReasons(many.reasons)).toBe('role: Frontend · location: US-only')
+    expect(many.penalties).toEqual(['Staff title'])
   })
 
   it('keeps remote postings with an empty or worldwide location', () => {
@@ -260,16 +265,20 @@ describe('RemoteOK sample (99 real postings, 2026-09-27)', () => {
     expect(inputs.filter((j) => evaluateRelevance(j, EMPTY_PREFS).pass)).toHaveLength(99)
   })
 
-  it('keeps only the relevant few for this user', () => {
+  it('keeps only the relevant few for this user (8 of 99; Senior titles pass with a chip)', () => {
     const passed = inputs.filter((j) => evaluateRelevance(j, USER).pass).map((j) => j.title)
     expect(passed).toEqual([
       'Software Engineer',
+      'Senior .NET Software Engineer',
       'Backend Software Engineer',
       'Golang Kubernetes Engineer',
       'Software Engineer',
+      'Senior Backend Engineer Build AI Agents',
       'DESARROLLADOR FULL STACK',
       'Software Engineer II Golang',
     ])
+    const senior = evaluateRelevance(inputs.find((j) => j.title === 'Senior .NET Software Engineer')!, USER)
+    expect(senior.penalties).toContain('Senior title')
   })
 
   it('explains every rejection', () => {
@@ -280,7 +289,8 @@ describe('RemoteOK sample (99 real postings, 2026-09-27)', () => {
     const byTitle = (t: string): string | null =>
       formatReasons(evaluateRelevance(inputs.find((j) => j.title === t)!, USER).reasons)
     expect(byTitle('Gardener Handyman Driver')).toBe('role: not engineering · location: Alice Springs-only')
-    expect(byTitle('Staff Software Engineer')).toBe('seniority: Staff · location: US-only')
+    expect(byTitle('Staff Software Engineer')).toBe('location: US-only')
+    expect(byTitle('Principal Engineer')).toBe('seniority: Principal')
     expect(byTitle('Frontend Engineer')).toBe('role: Frontend · location: Singapore-only')
     expect(byTitle('Java Developer')).toBe('location: US-only')
     // "Mostly remote (within Germany)" in the description.
@@ -313,9 +323,14 @@ describe('years of experience', () => {
     expect(detectYearsRequired('Founded 10 years ago, we have been remote for 7 years.')).toBeNull()
   })
 
-  it('filters an unmarked title that asks for more years than the selected levels', () => {
+  it('ranks an unmarked title that asks for more years than the selected levels lower, never filters it', () => {
     const five = job('Backend Developer', { location: 'Dubai', descriptionMd: 'You have 5+ years of experience.' })
-    expect(evaluateRelevance(five, USER).reasons).toEqual(['seniority: 5+ years required'])
+    const r = evaluateRelevance(five, USER)
+    expect(r.pass).toBe(true)
+    expect(r.penalties).toEqual(['5+ yrs asked'])
+    expect(evaluateRelevance(five, { ...USER, extra: { ...USER.extra, rules: { seniority: 'hard' } } }).reasons).toEqual([
+      'seniority: 5+ years required',
+    ])
     const two = job('Backend Developer', { location: 'Dubai', descriptionMd: 'You have 2-4 years of experience.' })
     expect(evaluateRelevance(two, USER).pass).toBe(true)
     // A title marker wins over the years line.

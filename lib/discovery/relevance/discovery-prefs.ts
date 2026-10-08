@@ -17,7 +17,7 @@ export type RuleMode = (typeof RULE_MODES)[number]
  * Pay is not a rule: a posting below the user's range is always kept and only
  * ranked lower (never filtered), so it has no hard/soft/off switch.
  */
-export const EXCLUSION_RULES = ['sales', 'contract', 'shifts', 'support', 'visa', 'language'] as const
+export const EXCLUSION_RULES = ['sales', 'contract', 'shifts', 'support', 'visa', 'language', 'seniority'] as const
 export type ExclusionRule = (typeof EXCLUSION_RULES)[number]
 
 export const RULE_LABELS: Readonly<Record<ExclusionRule, string>> = {
@@ -27,16 +27,27 @@ export const RULE_LABELS: Readonly<Record<ExclusionRule, string>> = {
   support: 'Pure support (L1/L2) roles',
   visa: 'Nationals-only roles (e.g. Emiratisation, Saudization)',
   language: 'Language I don’t speak well required',
+  seniority: 'Above my level (Senior / Lead title, 5+ years asked)',
 }
 
-/** Defaults for a developer job-seeker; the user changes each per rule. */
+/**
+ * Defaults for a developer job-seeker; the user changes each per rule.
+ *   visa       nationals-only openings are skipped ("UAE nationals
+ *              preferred" stays a soft penalty either way);
+ *   seniority  soft: a Senior / Lead / Staff title or a years ask only
+ *              ranks lower (offset by a strong ready match); Principal,
+ *              Director, Head of, VP and 10+ yr Architect roles are still
+ *              filtered. "hard" filters any title or years above your
+ *              levels; "off" ignores seniority.
+ */
 export const DEFAULT_RULE_MODES: Readonly<Record<ExclusionRule, RuleMode>> = {
   sales: 'hard',
   contract: 'hard',
   shifts: 'soft',
   support: 'soft',
-  visa: 'soft',
+  visa: 'hard',
   language: 'soft',
+  seniority: 'soft',
 }
 
 export const NOTICE_PERIODS = ['immediate', '2_weeks', '1_month', '2_months', '3_months'] as const
@@ -99,6 +110,14 @@ export const discoveryPrefsSchema = z.object({
   languages: z.array(languageSchema).max(12).catch([]),
   /** Notice periods the user can do, e.g. ["immediate", "1_month"]; shown, used later in outreach. */
   noticePeriods: z.array(z.enum(NOTICE_PERIODS)).max(NOTICE_PERIODS.length).catch([]),
+  /**
+   * Open to relocating anywhere (or to `relocationCountries`) when the
+   * employer offers relocation or visa sponsorship: such a posting passes the
+   * region rule with a "Relocation offered" chip. On unless turned off.
+   */
+  relocationIfSponsored: z.boolean().catch(true),
+  /** ISO-2 countries or place groups (EU, AU…); empty = any country. */
+  relocationCountries: z.array(z.string().regex(/^[A-Z_]{2,10}$/)).max(30).catch([]),
 })
 export type DiscoveryPrefs = z.infer<typeof discoveryPrefsSchema>
 
@@ -109,6 +128,8 @@ export const EMPTY_DISCOVERY_PREFS: DiscoveryPrefs = {
   payFloors: [],
   languages: [],
   noticePeriods: [],
+  relocationIfSponsored: true,
+  relocationCountries: [],
 }
 
 /** Parse the stored jsonb leniently: unknown or broken parts fall back to defaults. */

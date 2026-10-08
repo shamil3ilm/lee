@@ -15,7 +15,13 @@ export function matchProfile(over: Partial<MatchProfile> = {}): MatchProfile {
     remoteScope: 'worldwide',
     remotePref: 'any',
     languages: new Map([['english', 'fluent']]),
-    extra: { basedIn: 'IN', sponsorshipFor: ['AE', 'SA', 'QA', 'KW', 'BH', 'OM'], payFloors: [] },
+    extra: {
+      basedIn: 'IN',
+      sponsorshipFor: ['AE', 'SA', 'QA', 'KW', 'BH', 'OM'],
+      payFloors: [],
+      relocationIfSponsored: true,
+      relocationCountries: [],
+    },
     prefsActive: true,
     ...over,
   }

@@ -2,7 +2,13 @@ import { LANGUAGE_LEVELS } from '../relevance/discovery-prefs'
 import { postingPlaces, isRemotePosting } from '../relevance/gate'
 import { assessPay, floorFor, parsePostedPay } from '../relevance/pay'
 import { GCC_CODES, regionLabel, type RegionCode } from '../relevance/places'
-import { detectLanguages, detectNationalsOnly, detectPresenceRequired, detectVisaOffered } from '../relevance/signals'
+import {
+  detectLanguages,
+  detectNationalsOnly,
+  detectNationalsPreferred,
+  detectPresenceRequired,
+  detectVisaOffered,
+} from '../relevance/signals'
 import { findTerms, normalizeForMatch } from '../relevance/text'
 import { EINVOICING_TERMS, PAYMENTS_TERMS } from './profile'
 import type { MatchComponent, MatchJob, MatchProfile } from './types'
@@ -92,6 +98,7 @@ export function visaComponent(job: MatchJob, p: Pick<MatchProfile, 'extra'>): Ma
   if (nationals && (needs.length > 0 || (p.extra.sponsorshipFor.length > 0 && !remote))) {
     return c(min, 'Visa: nationals only (e.g. Emiratisation, Saudization)')
   }
+  if (!remote && needs.length > 0 && detectNationalsPreferred(description)) return c(-5, 'Visa: nationals preferred')
   if (remote || needs.length === 0) return c(0, p.extra.sponsorshipFor.length > 0 ? 'Visa: no sponsorship needed here' : 'Visa: not relevant')
   const country = regionLabel(needs[0]!)
   if (detectVisaOffered(description)) return c(max, `Visa: offered for ${country}`)

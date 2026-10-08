@@ -1,0 +1,38 @@
+{
+  "name": "ERP Business Analyst in Dubai for a business-analyst target",
+  "inputs": {
+    "profile": {
+      "roleTypes": [
+        "business_analyst"
+      ],
+      "skills": [
+        "Requirements gathering",
+        "User stories",
+        "UAT",
+        "SQL"
+      ]
+    },
+    "job": {
+      "title": "ERP Business Analyst",
+      "location": "Dubai, UAE",
+      "descriptionMd": "## Requirements\n- Requirements gathering with business users\n- BRD and functional specifications\n- UAT coordination\n- Process mapping (BPMN)"
+    }
+  },
+  "expect": {
+    "pass": true,
+    "reasons": [],
+    "regions": [
+      "ae",
+      "gcc"
+    ],
+    "match": {
+      "min": 60,
+      "missing": [
+        "Process mapping (required)"
+      ],
+      "labels": [
+        "Role: Business / Systems Analyst"
+      ]
+    }
+  }
+}
