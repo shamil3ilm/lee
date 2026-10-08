@@ -57,6 +57,8 @@ export interface RadarMetrics {
   links?: string[]
   /** Hugging Face repo id ("org/name") or GitHub full name. */
   repoId?: string
+  /** Release version (What's new releases). */
+  version?: string
 }
 
 /** One parsed item, before storage. */

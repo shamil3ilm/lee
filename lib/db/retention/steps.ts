@@ -32,6 +32,7 @@ export const GLOBAL_STEP_IDS = [
   'usageHistory',
   'scamDomains',
   'systemEvents',
+  'radarWhatsNew',
 ] as const
 
 export type UserStepId = (typeof USER_STEP_IDS)[number]
@@ -74,6 +75,7 @@ export const STEP_LABELS: Readonly<Record<RetentionStepId, string>> = {
   usageHistory: 'Old usage snapshots and alerts deleted',
   scamDomains: 'Stale domain checks deleted',
   systemEvents: 'Old log events deleted',
+  radarWhatsNew: "AI Radar what's new entries older than 60 days deleted (saved, watched and briefed kept)",
 }
 
 function zeros<K extends string>(ids: readonly K[]): Record<K, number> {

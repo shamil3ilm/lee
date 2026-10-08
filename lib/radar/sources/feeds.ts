@@ -35,6 +35,7 @@ interface RawItem {
   description?: unknown
   summary?: unknown
   content?: unknown
+  'content:encoded'?: unknown
 }
 
 function text(v: unknown): string {
@@ -58,6 +59,15 @@ function linkOf(item: RawItem): string | null {
   return typeof href === 'string' && /^https?:\/\//i.test(href) ? href : null
 }
 
+const OFFICIAL_LINK = /https:\/\/(?:huggingface\.co|github\.com)\/[\w.-]+\/[\w.-]+/gi
+const SITE_PAGE = /^https:\/\/[^/]+\/(?:blog|docs|papers|spaces|datasets|features|about|pricing|login|orgs|topics|sponsors|collections|settings)\//i
+
+/** Model and repo links in a post's HTML (open weights, code), for clustering and launch detection. */
+export function officialLinks(html: string): string[] {
+  const found = (html.match(OFFICIAL_LINK) ?? []).map((u) => u.replace(/[.)]+$/, ''))
+  return [...new Set(found)].filter((u) => !SITE_PAGE.test(`${u}/`)).slice(0, 3)
+}
+
 function idOf(feedId: string, key: string): string {
   return `${feedId}:${createHash('sha1').update(key).digest('hex').slice(0, 16)}`
 }
@@ -73,6 +83,7 @@ export function toFeedItems(xml: string, feed: OfficialFeed, now: Date): RadarIt
     if (!url || !title || !url.startsWith('https://')) continue
     const published = dateOrNull(item.pubDate ?? item.published ?? item['dc:date'] ?? item.updated)
     if (!published || published.getTime() < since || published.getTime() > now.getTime() + DAY_MS) continue
+    const links = officialLinks([text(item.description), text(item.content), text(item['content:encoded'])].join(' '))
     out.push({
       source: 'feeds',
       externalId: idOf(feed.id, text(item.guid) || text(item.id) || url),
@@ -81,7 +92,7 @@ export function toFeedItems(xml: string, feed: OfficialFeed, now: Date): RadarIt
       url,
       publishedAt: published,
       excerpt: excerptOf(text(item.description) || text(item.summary) || text(item.content)),
-      metrics: { feedId: feed.id },
+      metrics: { feedId: feed.id, ...(links.length > 0 ? { links } : {}) },
     })
     if (out.length >= PER_FEED) break
   }

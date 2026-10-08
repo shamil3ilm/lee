@@ -1,0 +1,16 @@
+{
+  "show": {
+    "hits": [
+      { "objectID": "7001", "title": "Show HN: Zorb – a local inference server", "url": "https://github.com/acme-lab/zorb", "points": 210, "num_comments": 40, "created_at": "2026-10-06T12:00:00Z", "_tags": ["story", "show_hn"] },
+      { "objectID": "7002", "title": "Launch HN: Ledgerly (YC F26) – Payments ledgers for small teams", "url": "https://ledgerly.example.com/", "points": 90, "num_comments": 30, "created_at": "2026-10-05T12:00:00Z", "_tags": ["story", "launch_hn"] },
+      { "objectID": "7003", "title": "Show HN: A pendulum clock made from scrap", "url": "https://clock.example.org/", "points": 300, "num_comments": 50, "created_at": "2026-10-05T12:00:00Z", "_tags": ["story", "show_hn"] },
+      { "objectID": "7004", "title": "Show HN: Tiny thing", "url": "https://github.com/x/tiny", "points": 12, "created_at": "2026-10-05T12:00:00Z", "_tags": ["story", "show_hn"] }
+    ]
+  },
+  "arxiv": {
+    "hits": [
+      { "objectID": "7101", "title": "Context Zorbs", "url": "https://arxiv.org/abs/2610.00001v2", "points": 177, "num_comments": 60, "created_at": "2026-10-04T12:00:00Z" },
+      { "objectID": "7102", "title": "arXiv's new policy", "url": "https://blog.arxiv.org/2026/10/01/policy/", "points": 150, "created_at": "2026-10-04T12:00:00Z" }
+    ]
+  }
+}

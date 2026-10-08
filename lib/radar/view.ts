@@ -48,6 +48,8 @@ function day(d: Date | null | undefined): string {
 
 export function sourceLabel(source: string, metrics?: RadarMetrics): string {
   if (source === 'feeds') return feedById(metrics?.feedId)?.label ?? RADAR_SOURCE_LABELS.feeds
+  // Items opened from What's new keep its source ids; 'releases' is the only extra one.
+  if (source === 'releases') return 'Releases'
   return isRadarSource(source) ? RADAR_SOURCE_LABELS[source] : source
 }
 

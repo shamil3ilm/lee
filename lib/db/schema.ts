@@ -437,6 +437,9 @@ export const userProfile = pgTable('user_profile', {
   // and the radar sources the user switched off (Radar › Sources).
   radarNotify: text('radar_notify').notNull().default('weekly'),
   radarSourcesOff: text('radar_sources_off').array().notNull().default([]),
+  // What's new (lib/radar/new/projects.ts): the release projects the user
+  // follows; null = derived from the master profile until edited.
+  radarReleaseProjects: text('radar_release_projects').array(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
@@ -1614,3 +1617,5 @@ export * from './schema-apply'
 export * from './schema-compare'
 // v16 AI Radar: items, entries, watch terms, briefs.
 export * from './schema-radar'
+// AI Radar "What's new": shared (not per-user) entries and items.
+export * from './schema-radar-new'
