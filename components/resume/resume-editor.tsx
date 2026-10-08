@@ -53,13 +53,15 @@ export function ResumeEditor({ initial, stored }: ResumeEditorProps) {
   const saveBar = (
     <div
       data-testid="resume-save-bar"
-      className="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center justify-end gap-3 border-t bg-background/95 px-1 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80"
+      // Save sits on the left: the Public/Private chips line the right edge
+      // of the fields, and the bar must never cover one (axe target-size).
+      className="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center gap-3 border-t bg-background/95 px-1 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80"
     >
-      {dirty ? <span className="text-xs text-muted-foreground">Unsaved changes</span> : null}
       <Button type="button" onClick={save} disabled={pending}>
         {pending ? <Loader2 className="animate-spin" /> : <Save />}
         Save profile
       </Button>
+      {dirty ? <span className="text-xs text-muted-foreground">Unsaved changes</span> : null}
     </div>
   )
 
