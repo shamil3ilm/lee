@@ -20,6 +20,7 @@ import type { InterviewStage } from '@/lib/db/queries/stages'
 import type { CallMeta } from './log'
 import type { CompareNarrativeInput, CompareNarrativeResult } from './prompts/compare-narrative'
 import type { ReputationSummaryInput, ReputationSummaryResult } from './prompts/reputation-summary'
+import type { RadarBriefInput, RadarBriefResult } from './prompts/radar-brief'
 import type { ScoreJobContext } from './prompts/score-job'
 import type { SharedLink } from './prompts/shared-links'
 import type { SuggestRolesInput, SuggestRolesResult } from './prompts/suggest-roles'
@@ -206,6 +207,9 @@ export interface AIProvider {
   // "Add from text or link" — openings from pasted text; the caller keeps
   // only URLs that appear in that text and the user picks what to import.
   extractOpenings(input: ExtractOpeningsInput, meta?: CallMeta): Promise<ExtractOpeningsResult>
+  // AI Radar — grounded brief draft; the caller drops every sentence whose
+  // quote is not verbatim in its fetched source, and the user confirms.
+  writeRadarBrief(input: RadarBriefInput, meta?: CallMeta): Promise<RadarBriefResult>
 }
 
 export const latexCVResultSchema = z.object({ source: z.string().min(1) })

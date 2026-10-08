@@ -127,6 +127,50 @@ export const EVENT_CATALOG: Readonly<Record<string, EventSpec>> = {
     persist: true,
     message: (c) => `Company reputation summary confirmed (${n(c, 'redFlags')} red flag(s))`,
   },
+  // AI Radar (lib/radar). Context: source ids, counts and short safe error
+  // text only — never watch terms, titles or brief text.
+  radar_source_polled: {
+    category: 'radar',
+    persist: true,
+    strings: ['source'],
+    message: (c) =>
+      `Radar ${s(c, 'source') || 'source'}: ${n(c, 'fetched')} found, ${n(c, 'new')} new, ${n(c, 'matched')} on watch terms${n(c, 'partialErrors') > 0 ? ` · ${n(c, 'partialErrors')} request(s) failed` : ''}`,
+  },
+  radar_source_failed: {
+    category: 'radar',
+    strings: ['source'],
+    message: (c) => `Radar ${s(c, 'source') || 'source'} failed: ${s(c, 'err')}`,
+  },
+  radar_watch_changed: {
+    category: 'radar',
+    persist: true,
+    strings: ['action'],
+    message: (c) => `Watch term ${s(c, 'action') || 'changed'}`,
+  },
+  radar_brief_drafted: {
+    category: 'radar',
+    persist: true,
+    message: (c) => `Radar brief drafted from ${n(c, 'sources')} source(s): ${n(c, 'kept')} cited sentence(s) kept, ${n(c, 'dropped')} dropped`,
+  },
+  radar_brief_skipped: {
+    category: 'radar',
+    persist: true,
+    message: (c) => `Radar brief skipped: ${n(c, 'sources')} primary source(s), 2 needed`,
+  },
+  radar_brief_source_failed: {
+    category: 'radar',
+    message: (c) => `Radar brief: ${n(c, 'failed')} source(s) could not be fetched (${s(c, 'err')})`,
+  },
+  radar_brief_saved: {
+    category: 'radar',
+    persist: true,
+    message: (c) => `Radar brief saved: ${n(c, 'sentences')} sentence(s) from ${n(c, 'sources')} source(s)`,
+  },
+  radar_module_created: {
+    category: 'playground',
+    persist: true,
+    message: (c) => `Radar brief added to the Playground: ${n(c, 'cards')} card(s)`,
+  },
   // Gmail / digest / notifications
   gmail_sync_done: {
     category: 'gmail',
@@ -256,6 +300,7 @@ const CATEGORY_RULES: ReadonlyArray<readonly [RegExp, EventCategory]> = [
   [/latex|compile/, 'latex'],
   [/usage|throttle/, 'usage'],
   [/^academy_|playground/, 'playground'],
+  [/^radar_/, 'radar'],
   [/auth|sign_?in|test_login|session/, 'auth'],
   [
     /^ai_|_ai_|^lab_|arena|generate|cv_score|cv_requirement|voice|decision|outreach|prep_pack|cover_letter|debrief|rate_ai/,

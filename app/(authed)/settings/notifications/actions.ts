@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { requireUserId } from '@/lib/auth/require-session'
 import { saveProfile } from '@/lib/profile/service'
 import { logger } from '@/lib/logger'
+import { RADAR_NOTIFY_MODES } from '@/lib/radar/digest'
 
 export type ActionResult = { success: true } | { error: string }
 
@@ -85,5 +86,21 @@ export async function setDiscoveryMinScoreAction(
       err: err instanceof Error ? err.message : String(err),
     })
     return { error: 'Could not update minimum score.' }
+  }
+}
+
+/** AI Radar updates: instant / daily / weekly / off (lib/radar/digest.ts). */
+export async function setRadarNotifyAction(mode: string): Promise<ActionResult> {
+  try {
+    if (!(RADAR_NOTIFY_MODES as readonly string[]).includes(mode)) return { error: 'Pick one of the options.' }
+    const userId = await requireUserId()
+    await saveProfile(userId, { radarNotify: mode })
+    revalidatePath('/settings/notifications')
+    return { success: true }
+  } catch (err) {
+    logger.error('setRadarNotify failed', {
+      err: err instanceof Error ? err.message : String(err),
+    })
+    return { error: 'Could not update the Radar setting.' }
   }
 }

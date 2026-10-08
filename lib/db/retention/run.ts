@@ -14,6 +14,7 @@ import { pruneReputationCache } from './reputation'
 import { pruneVariantVersions } from './variants'
 import { pruneApplyHistory } from './apply'
 import { compactAcademyHistory, pruneCodingSubmissions } from './academy'
+import { pruneRadarItems } from './radar'
 import { pruneAiCallLogs, pruneProcessedGmailThreads, pruneQueueJobs, pruneSystemEvents, pruneWebVitals } from './logs'
 import {
   EMPTY_GLOBAL_COUNTS,
@@ -74,6 +75,7 @@ export async function runUserCleanup(
     academyHistory: await compactAcademyHistory(now, o),
     applyHistory: await pruneApplyHistory(now, o),
     codingSubmissions: await pruneCodingSubmissions(o),
+    radarItems: await pruneRadarItems(now, o),
   }
 }
 

@@ -5,10 +5,14 @@ import { loadAcademyContent } from '@/lib/academy/content/catalog'
 import { localDay } from '@/lib/academy/day'
 import { XP_PER_REVIEW } from '@/lib/academy/gamification/xp'
 import { GRADE_QUALITY, nextDue, reviewCard, type Grade } from '@/lib/academy/srs/sm2'
+import { RADAR_SKILL_NAME, isRadarCardId, radarCards } from '@/lib/radar/brief/module'
 import { AcademyError } from './errors'
 import { applyProgress } from './progress'
 
-/** Spaced review of concept cards (SM-2). */
+/**
+ * Spaced review of concept cards (SM-2): the content pack's cards plus the
+ * cards of AI Radar "Learn this" modules (lib/radar/brief/module.ts).
+ */
 
 export interface DueCard {
   cardId: string
@@ -21,7 +25,10 @@ export interface DueCard {
 export async function dueCards(userId: string, now: Date = new Date(), limit = 20): Promise<DueCard[]> {
   const content = loadAcademyContent()
   const rows = await reviewsQ.listDue(userId, now, limit)
+  const radar = await radarCards(userId, rows.map((r) => r.cardId).filter(isRadarCardId))
   return rows.flatMap((r) => {
+    const rc = radar.get(r.cardId)
+    if (rc) return [{ cardId: rc.id, skillId: r.skillId, skillName: RADAR_SKILL_NAME, front: rc.front, back: rc.back }]
     const card = content.cardById.get(r.cardId)
     if (!card) return []
     const skillName = content.graph.byId.get(card.skillId)?.name ?? card.skillId
@@ -37,7 +44,8 @@ export interface ReviewResult {
 export async function gradeCard(userId: string, cardId: string, grade: Grade, now: Date = new Date()): Promise<ReviewResult> {
   const content = loadAcademyContent()
   const row = await reviewsQ.get(userId, cardId)
-  if (!row || !content.cardById.has(cardId)) throw new AcademyError('not_found', 'That card is not in your reviews.')
+  const known = content.cardById.has(cardId) || (isRadarCardId(cardId) && (await radarCards(userId, [cardId])).has(cardId))
+  if (!row || !known) throw new AcademyError('not_found', 'That card is not in your reviews.')
   const next = reviewCard(row, GRADE_QUALITY[grade])
   const today = localDay(now, await getUserTimeZone(userId))
   return db.transaction(async (tx) => {

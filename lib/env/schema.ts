@@ -49,6 +49,9 @@ export const envSchema = z
     // Optional Adzuna job-search key, "APP_ID:APP_KEY". A key saved in
     // Settings › AI › Service keys wins over this default.
     ADZUNA_KEY: z.string().optional(),
+    // Optional Hugging Face read token for the AI Radar. A key saved in
+    // Settings › AI › Service keys wins over this default.
+    HF_TOKEN: z.string().optional(),
   })
 
 export type Env = z.infer<typeof envSchema>

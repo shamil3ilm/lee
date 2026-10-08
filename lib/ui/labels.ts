@@ -22,6 +22,7 @@ const LABELS: Readonly<Record<string, string>> = {
   interview_debrief: 'Interview debrief',
   company_reputation_summary: 'Company reputation',
   job_comparison_narrative: 'Job comparison',
+  radar_brief: 'AI Radar brief',
   suggest_roles: 'Role suggestions',
   distill_github: 'GitHub summary',
   discovery_scoring: 'Discovery scoring',

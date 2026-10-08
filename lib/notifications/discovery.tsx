@@ -9,6 +9,9 @@ import { logger } from '@/lib/logger'
 import { APP_NAME } from '@/lib/brand'
 import { EmailBrandHeader } from '@/lib/email/brand-header'
 import { shortlistForEmail, type EmailShortlistItem } from '@/lib/apply/email'
+import { radarLinesFor } from '@/lib/radar/notify'
+import { RadarSection } from '@/lib/radar/email-section'
+import type { DigestLine } from '@/lib/radar/digest'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -187,6 +190,8 @@ export interface BuildDiscoveryEmailArgs {
   appBaseUrl?: string
   /** Today's shortlist picks (empty when the user turned that off). */
   shortlist?: EmailShortlistItem[]
+  /** AI Radar lines when the radar mode is daily. */
+  radar?: DigestLine[]
 }
 
 export interface BuiltDiscoveryEmail {
@@ -203,7 +208,10 @@ function truncate(s: string, max: number): string {
  * match → "N new job matches — Top @ Co, Next @ Co, ..." (max 3 items, then
  * "…"). Kept under ~90 chars so the whole subject renders in a Gmail row.
  */
-function buildSubject(items: NotifiableDiscovery[]): string {
+function buildSubject(items: NotifiableDiscovery[], radarCount = 0): string {
+  if (items.length === 0) {
+    return `Radar: ${radarCount} new on your watch terms`
+  }
   if (items.length === 1) {
     const only = items[0]
     if (!only) return 'New job match'
@@ -222,22 +230,28 @@ function DiscoveryEmail({
   discoveries: items,
   appBaseUrl,
   shortlist = [],
+  radar = [],
 }: {
   discoveries: NotifiableDiscovery[]
   appBaseUrl: string
   shortlist?: EmailShortlistItem[]
+  radar?: DigestLine[]
 }): ReactElement {
   return (
     <div style={styles.wrapper}>
       <EmailBrandHeader appBaseUrl={appBaseUrl} />
       <h1 style={styles.h1}>
-        {items.length === 1
-          ? '1 new job match'
-          : `${items.length} new job matches`}
+        {items.length === 0
+          ? 'Radar: new on your watch terms'
+          : items.length === 1
+            ? '1 new job match'
+            : `${items.length} new job matches`}
       </h1>
-      <p style={styles.subline}>
-        Fresh from your discovery sources — sorted by match score.
-      </p>
+      {items.length > 0 ? (
+        <p style={styles.subline}>
+          Fresh from your discovery sources — sorted by match score.
+        </p>
+      ) : null}
 
       {items.map((d) => (
         <div key={d.id} style={styles.item}>
@@ -253,6 +267,8 @@ function DiscoveryEmail({
           ) : null}
         </div>
       ))}
+
+      <RadarSection lines={radar} appBaseUrl={appBaseUrl} sectionStyle={styles.item} h2Style={styles.itemTitle} />
 
       {shortlist.length > 0 ? (
         <div style={styles.item}>
@@ -298,7 +314,7 @@ export function buildDiscoveryEmail(
   args: BuildDiscoveryEmailArgs,
 ): BuiltDiscoveryEmail {
   const appBaseUrl = args.appBaseUrl ?? 'https://employ4me.vercel.app'
-  const subject = buildSubject(args.discoveries)
+  const subject = buildSubject(args.discoveries, args.radar?.length ?? 0)
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { renderToStaticMarkup } = require('react-dom/server') as {
     renderToStaticMarkup: (el: ReactElement) => string
@@ -308,6 +324,7 @@ export function buildDiscoveryEmail(
       discoveries={args.discoveries}
       appBaseUrl={appBaseUrl}
       shortlist={args.shortlist}
+      radar={args.radar}
     />,
   )
   const htmlBody = `<!doctype html><html><head><meta charset="utf-8"><title>${APP_NAME} · New matches</title></head><body style="margin:0;padding:0;background:#f7f7f7;">${body}</body></html>`
@@ -347,7 +364,10 @@ export async function sendDiscoveryEmailIfEnabled(
     profile.notifyDiscoveryMinScore,
     sinceDate.toISOString(),
   )
-  if (items.length === 0) {
+  // Daily radar mode: new watch-term matches ride along, and alone are
+  // reason enough to send.
+  const radar = await radarLinesFor(args.userId, 'daily_email', { since: sinceDate, now })
+  if (items.length === 0 && radar.length === 0) {
     return { sent: false, count: 0, reason: 'no_matches' }
   }
 
@@ -359,6 +379,7 @@ export async function sendDiscoveryEmailIfEnabled(
     discoveries: items,
     userEmail: user.email,
     shortlist: await shortlistForEmail(args.userId, now),
+    radar,
   })
   const result = await send({
     userId: args.userId,
@@ -371,6 +392,7 @@ export async function sendDiscoveryEmailIfEnabled(
     userId: args.userId,
     messageId: result.messageId,
     count: items.length,
+    radar: radar.length,
     topScore: items[0]?.matchScore,
   })
   return { sent: true, count: items.length, messageId: result.messageId }

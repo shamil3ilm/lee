@@ -26,6 +26,8 @@ import { todoIsActiveSql } from '@/lib/db/queries/todos'
 import { usageWarningsForUser, type UsageWarning } from '@/lib/usage/alerts'
 import { shortlistForEmail, type EmailShortlistItem } from '@/lib/apply/email'
 import { domainFilterReview } from '@/lib/discovery/relevance/review'
+import { radarLinesFor } from '@/lib/radar/notify'
+import type { DigestLine } from '@/lib/radar/digest'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -89,6 +91,8 @@ export interface PipelineSnapshot {
   // "Did we filter something useful?" — the week's top titles the domain
   // rule filtered (lib/discovery/relevance/review.ts). Titles only.
   filterReview?: Array<{ title: string; domain: string; count: number }>
+  // AI Radar — "new on your watch terms" when the radar mode is weekly.
+  radar?: DigestLine[]
 }
 
 // ---------------------------------------------------------------------------
@@ -369,6 +373,7 @@ export async function gatherPipelineSnapshot(
 
   const shortlist = await shortlistForEmail(userId, now)
   const filterReview = (await domainFilterReview(userId, now).catch(() => [])).map(({ title, domain, count }) => ({ title, domain, count }))
+  const radar = await radarLinesFor(userId, 'weekly_digest', { now })
 
   return {
     userId,
@@ -386,6 +391,7 @@ export async function gatherPipelineSnapshot(
     usageWarnings,
     shortlist,
     filterReview,
+    radar,
   }
 }
 
@@ -416,6 +422,7 @@ function digestFingerprint(snap: PipelineSnapshot): string {
     stale: snap.staleApplications.length,
     todos: snap.upcomingTodos.length,
     completed: snap.completedStagesThisWeek.length,
+    radar: snap.radar?.length ?? 0,
   })
 }
 

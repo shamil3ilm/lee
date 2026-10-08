@@ -420,9 +420,10 @@ describe('Neon service key', () => {
 describe('size measurements', () => {
   // The exact path walks every relation file in PGlite's in-memory FS
   // (production uses it only on Postgres). Fast alone, but it can take
-  // several seconds late in a long shuffled run, so allow more than the
-  // default 5 s.
-  it('exact and catalog-estimate paths both return sane values', { timeout: 30_000 }, async () => {
+  // several seconds late in a long shuffled run — tens of seconds since the
+  // AI Radar tables joined the per-test TRUNCATE (every truncate leaves new
+  // relation files behind) — so allow far more than the default 5 s.
+  it('exact and catalog-estimate paths both return sane values', { timeout: 120_000 }, async () => {
     const { databaseSizeBytes, largestTables, LARGEST_TABLES_LIMIT } = await import('@/lib/usage/collect')
     for (const exact of [true, false]) {
       expect(await databaseSizeBytes(undefined, exact)).toBeGreaterThanOrEqual(0)

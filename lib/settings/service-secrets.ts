@@ -5,7 +5,16 @@
  * named by `envKey` is only the fallback default when the user has not
  * saved their own.
  */
-export const SERVICE_SECRET_IDS = ['firecrawl', 'laya', 'neon', 'google_places', 'adzuna', 'github_portfolio'] as const
+export const SERVICE_SECRET_IDS = [
+  'firecrawl',
+  'laya',
+  'neon',
+  'google_places',
+  'adzuna',
+  'github_portfolio',
+  'github_search',
+  'huggingface',
+] as const
 
 export type ServiceSecretId = (typeof SERVICE_SECRET_IDS)[number]
 
@@ -20,6 +29,8 @@ export interface ServiceSecretInfo {
     | 'GOOGLE_PLACES_API_KEY'
     | 'ADZUNA_KEY'
     | 'GITHUB_PORTFOLIO_TOKEN'
+    | 'GITHUB_TOKEN'
+    | 'HF_TOKEN'
   keyUrl?: string
   /** True when a cheap authenticated call can verify the key. */
   testable: boolean
@@ -81,6 +92,24 @@ export const SERVICE_SECRETS: readonly ServiceSecretInfo[] = [
     keyUrl: 'https://github.com/settings/personal-access-tokens/new',
     testable: true,
     managedIn: '/settings/profile/publish',
+  },
+  {
+    id: 'github_search',
+    label: 'GitHub (AI Radar)',
+    description:
+      'Optional read-only token (no scopes needed) for the AI Radar repo search: it raises GitHub search from 10 to 30 requests a minute. Without it the radar still runs, more slowly.',
+    envKey: 'GITHUB_TOKEN',
+    keyUrl: 'https://github.com/settings/personal-access-tokens/new',
+    testable: true,
+  },
+  {
+    id: 'huggingface',
+    label: 'Hugging Face (AI Radar)',
+    description:
+      'Optional read token for the AI Radar Hugging Face lists. Without it the public API is used (500 requests per 5 minutes, far more than lee needs).',
+    envKey: 'HF_TOKEN',
+    keyUrl: 'https://huggingface.co/settings/tokens',
+    testable: true,
   },
 ]
 

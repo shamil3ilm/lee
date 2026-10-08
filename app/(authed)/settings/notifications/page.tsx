@@ -9,6 +9,8 @@ import { NotificationsPanel } from '@/components/notifications-panel'
 import { PageHeader } from '@/components/page-header'
 import { ApplySettingsPanel } from '@/components/apply/apply-settings-panel'
 import { applySettingsFrom } from '@/lib/apply/settings'
+import { radarNotifyMode } from '@/lib/radar/digest'
+import { RadarNotifyPanel } from '@/components/radar/radar-notify-panel'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,6 +49,7 @@ export default async function NotificationsSettingsPage() {
         hasGmailSendScope={hasGmailSendScope}
       />
       <ApplySettingsPanel initial={applySettingsFrom(profile)} />
+      <RadarNotifyPanel mode={radarNotifyMode(profile?.radarNotify)} discoveryEmailOn={profile?.notifyDiscoveryEmail ?? false} />
       <BrowserNotificationsToggle />
     </div>
   )

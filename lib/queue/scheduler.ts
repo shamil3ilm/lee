@@ -5,6 +5,8 @@ import { MAX_ERRORS_BEFORE_SKIP } from '@/lib/discovery/service'
 import { JOB_PRIORITY, JOB_TYPES, jobKeys, utcDay } from './job-types'
 import { enqueueMany, type EnqueueSpec } from './queue'
 import { applyDefaults } from '@/lib/defaults/apply'
+import { radarSourcesByUser } from '@/lib/radar/schedule'
+import type { RadarSource } from '@/lib/radar/types'
 
 export interface ScheduleResult {
   day: string
@@ -21,7 +23,13 @@ export interface ScheduleResult {
  * polls, the daily shortlist for the re-check, and the discovery email for
  * the shortlist (wait_for_type).
  */
-export function planUserJobs(userId: string, sourceIds: readonly string[], day: string, now: Date): EnqueueSpec[] {
+export function planUserJobs(
+  userId: string,
+  sourceIds: readonly string[],
+  day: string,
+  now: Date,
+  radarSources: readonly RadarSource[] = [],
+): EnqueueSpec[] {
   const base = { userId, runAfter: now }
   const waitForPolls = { waitForType: JOB_TYPES.discoverySource }
   return [
@@ -41,6 +49,17 @@ export function planUserJobs(userId: string, sourceIds: readonly string[], day: 
     // posting the re-check would quarantine and the email can carry it.
     { ...base, waitForType: JOB_TYPES.scamReassess, type: JOB_TYPES.shortlist, idempotencyKey: jobKeys.shortlist(userId, day), priority: JOB_PRIORITY[JOB_TYPES.shortlist] },
     { ...base, waitForType: JOB_TYPES.shortlist, type: JOB_TYPES.discoveryEmail, idempotencyKey: jobKeys.discoveryEmail(userId, day), priority: JOB_PRIORITY[JOB_TYPES.discoveryEmail] },
+    // AI Radar (lib/radar/schedule.ts): one job per source the user keeps
+    // on, once they watch at least one term.
+    ...radarSources.map((source) => ({
+      ...base,
+      type: JOB_TYPES.radarSource,
+      payload: { source, trigger: 'daily' },
+      idempotencyKey: jobKeys.radarSource(userId, source, day),
+      priority: JOB_PRIORITY[JOB_TYPES.radarSource],
+      // A failed source is recorded, not retried; one extra try covers a crash.
+      maxAttempts: 2,
+    })),
   ]
 }
 
@@ -63,7 +82,8 @@ export async function scheduleUserToday(
       and(eq(sources.userId, userId), eq(sources.enabled, true), lt(sources.errorCount, MAX_ERRORS_BEFORE_SKIP)),
     )
     .orderBy(sources.createdAt)
-  const { created } = await enqueueMany(planUserJobs(userId, active.map((s) => s.id), day, now))
+  const radar = (await radarSourcesByUser(userId)).get(userId) ?? []
+  const { created } = await enqueueMany(planUserJobs(userId, active.map((s) => s.id), day, now, radar))
   return { day, enqueued: created }
 }
 
@@ -102,13 +122,14 @@ export async function scheduleDailyJobs(now: Date = new Date()): Promise<Schedul
   for (const u of await db.select({ id: users.id }).from(users)) {
     await applyDefaults(u.id)
   }
-  const [allUsers, activeSources] = await Promise.all([
+  const [allUsers, activeSources, radar] = await Promise.all([
     db.select({ id: users.id }).from(users),
     db
       .select({ id: sources.id, userId: sources.userId })
       .from(sources)
       .where(and(eq(sources.enabled, true), lt(sources.errorCount, MAX_ERRORS_BEFORE_SKIP)))
       .orderBy(sources.createdAt),
+    radarSourcesByUser(),
   ])
   const byUser = new Map<string, string[]>()
   for (const s of activeSources) byUser.set(s.userId, [...(byUser.get(s.userId) ?? []), s.id])
@@ -128,7 +149,7 @@ export async function scheduleDailyJobs(now: Date = new Date()): Promise<Schedul
       idempotencyKey: jobKeys.usageSnapshot(day),
       priority: JOB_PRIORITY[JOB_TYPES.usageSnapshot],
     },
-    ...allUsers.flatMap((u) => planUserJobs(u.id, byUser.get(u.id) ?? [], day, now)),
+    ...allUsers.flatMap((u) => planUserJobs(u.id, byUser.get(u.id) ?? [], day, now, radar.get(u.id) ?? [])),
   ]
   const { created } = await enqueueMany(specs)
   return { day, users: allUsers.length, planned: specs.length, enqueued: created }

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel><title>Example Lab News</title>
+<item><title><![CDATA[Introducing Zorb]]></title><link>https://lab.example.com/news/introducing-zorb/</link><guid isPermaLink="false">post-1</guid><pubDate>Mon, 05 Oct 2026 10:00:00 GMT</pubDate><description><![CDATA[<p>Zorb is our new <b>model</b>.</p>]]></description></item>
+<item><title>Old post</title><link>https://lab.example.com/news/old/</link><pubDate>Mon, 01 Jun 2026 10:00:00 GMT</pubDate></item>
+<item><title>No link</title><pubDate>Mon, 05 Oct 2026 10:00:00 GMT</pubDate></item>
+</channel></rss>

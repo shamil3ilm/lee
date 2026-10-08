@@ -16,6 +16,7 @@ export const JOB_TYPES = {
   usageSnapshot: 'usage-snapshot:all',
   companyReputation: 'company-reputation:user+company',
   shortlist: 'shortlist:user',
+  radarSource: 'radar-source:user+source',
 } as const
 
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES]
@@ -46,6 +47,9 @@ export const JOB_PRIORITY: Readonly<Record<JobType, number>> = {
   // before the discovery email (which waits for it and can include it).
   [JOB_TYPES.shortlist]: 55,
   [JOB_TYPES.discoveryEmail]: 60,
+  // AI Radar sources: non-essential, after the job-search work; the discovery
+  // email of the NEXT day carries what they find (daily radar mode).
+  [JOB_TYPES.radarSource]: 65,
 }
 
 /** Short human labels for Settings › Background jobs (no internals). */
@@ -62,6 +66,7 @@ export const JOB_LABELS: Readonly<Record<string, string>> = {
   [JOB_TYPES.usageSnapshot]: 'Usage snapshot',
   [JOB_TYPES.companyReputation]: 'Company reputation refresh',
   [JOB_TYPES.shortlist]: 'Daily shortlist',
+  [JOB_TYPES.radarSource]: 'AI Radar source',
 }
 
 export function jobLabel(type: string): string {
@@ -98,4 +103,7 @@ export const jobKeys = {
   /** On demand: at most once per UTC hour (`2026-09-27T10`) per company. */
   companyReputationManual: (userId: string, companyId: string, hour: string) =>
     `company-reputation:${userId}:${companyId}:now:${hour}`,
+  radarSource: (userId: string, source: string, day: string) => `radar-source:${userId}:${source}:${day}`,
+  /** Radar › Refresh now: at most once per UTC hour per source. */
+  radarSourceManual: (userId: string, source: string, hour: string) => `radar-source:${userId}:${source}:now:${hour}`,
 } as const

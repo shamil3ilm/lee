@@ -1,13 +1,23 @@
 import { eq, sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { companies, sources, userDefaults } from '@/lib/db/schema'
-import { DEFAULT_SOURCES, DEFAULTS_VERSION, sourceIdentity, type DefaultSource } from './catalog'
+import * as radarTermsQ from '@/lib/db/queries/radarTerms'
+import {
+  DEFAULT_SOURCES,
+  DEFAULT_WATCH_TERMS,
+  DEFAULTS_VERSION,
+  sourceIdentity,
+  type DefaultSource,
+  type DefaultWatchTerm,
+} from './catalog'
 
 export interface ApplyDefaultsResult {
   /** Version recorded for the user after this call. */
   version: number
   addedSources: number
   addedCompanies: number
+  /** AI Radar watch terms added. */
+  addedWatchTerms: number
   /** Newly added sources that are enabled — callers queue their first poll. */
   enabledSourceIds: string[]
 }
@@ -15,6 +25,7 @@ export interface ApplyDefaultsResult {
 interface ApplyOptions {
   /** Test seams: a different catalog / version. */
   catalog?: readonly DefaultSource[]
+  watchTerms?: readonly DefaultWatchTerm[]
   version?: number
 }
 
@@ -31,6 +42,7 @@ interface ApplyOptions {
  */
 export async function applyDefaults(userId: string, opts: ApplyOptions = {}): Promise<ApplyDefaultsResult> {
   const catalog = opts.catalog ?? DEFAULT_SOURCES
+  const watchTerms = opts.watchTerms ?? DEFAULT_WATCH_TERMS
   const targetVersion = opts.version ?? DEFAULTS_VERSION
 
   return db.transaction(async (tx) => {
@@ -42,7 +54,7 @@ export async function applyDefaults(userId: string, opts: ApplyOptions = {}): Pr
       .for('update')
     const current = state?.version ?? 0
     if (current >= targetVersion) {
-      return { version: current, addedSources: 0, addedCompanies: 0, enabledSourceIds: [] }
+      return { version: current, addedSources: 0, addedCompanies: 0, addedWatchTerms: 0, enabledSourceIds: [] }
     }
 
     const pending = catalog.filter((d) => d.since > current && d.since <= targetVersion)
@@ -80,6 +92,14 @@ export async function applyDefaults(userId: string, opts: ApplyOptions = {}): Pr
             .onConflictDoNothing({ target: [companies.userId, companies.domain] })
             .returning()
 
+    const addedWatchTerms = await radarTermsQ.insertMany(
+      userId,
+      watchTerms
+        .filter((t) => t.since > current && t.since <= targetVersion)
+        .map((t) => ({ term: t.term, aliases: [...t.aliases], kind: t.kind })),
+      tx,
+    )
+
     await tx
       .update(userDefaults)
       .set({ version: targetVersion, appliedAt: sql`now()` })
@@ -89,6 +109,7 @@ export async function applyDefaults(userId: string, opts: ApplyOptions = {}): Pr
       version: targetVersion,
       addedSources: inserted.length,
       addedCompanies: addedCompanies.length,
+      addedWatchTerms,
       enabledSourceIds: inserted.filter((r) => r.enabled).map((r) => r.id),
     }
   })

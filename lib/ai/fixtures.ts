@@ -15,6 +15,8 @@ import { contentStems } from '@/lib/cv-score/text'
 import { replacementVerb, weakOpenerOf } from '@/lib/cv-score/dimensions/impact'
 import type { CallMeta } from './log'
 import type { ReputationSummaryInput, ReputationSummaryResult } from './prompts/reputation-summary'
+import type { RadarBriefInput, RadarBriefResult } from './prompts/radar-brief'
+import { pseudoRadarBrief } from './fixtures-radar'
 import type { ScoreJobContext } from './prompts/score-job'
 import type { SuggestRolesInput, SuggestRolesResult } from './prompts/suggest-roles'
 import type { ExtractOpeningsInput, ExtractOpeningsResult } from './prompts/extract-openings'
@@ -83,6 +85,7 @@ export class FixtureAIProvider implements AIProvider {
       suggestRoles?: (input: SuggestRolesInput) => SuggestRolesResult
       proposeResumeVariant?: (input: ResumeVariantInput) => ResumeVariantResult
       extractOpenings?: (input: ExtractOpeningsInput) => ExtractOpeningsResult
+      writeRadarBrief?: (input: RadarBriefInput) => RadarBriefResult
     } = {},
   ) {}
 
@@ -276,6 +279,12 @@ export class FixtureAIProvider implements AIProvider {
       summary: input.facts.slice(0, 3).map((f) => ({ text: f.text, cites: [f.id] })),
       questions: input.unknowns.slice(0, 4).map((u) => ({ text: `Could you tell me more about: ${u.text}?`, cites: [u.id] })),
     }
+  }
+
+  async writeRadarBrief(input: RadarBriefInput, meta?: CallMeta): Promise<RadarBriefResult> {
+    await this.emitLoggedCallId('radar_brief', meta)
+    if (this.fixtures.writeRadarBrief) return this.fixtures.writeRadarBrief(input)
+    return pseudoRadarBrief(input)
   }
   async summarizeReputation(
     input: ReputationSummaryInput,

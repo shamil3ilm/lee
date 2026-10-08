@@ -18,6 +18,7 @@ export const EVENT_CATEGORIES = [
   'auth',
   'usage',
   'playground',
+  'radar',
   'app',
 ] as const
 export type EventCategory = (typeof EVENT_CATEGORIES)[number]
@@ -34,6 +35,7 @@ export const CATEGORY_LABELS: Readonly<Record<EventCategory, string>> = {
   auth: 'Sign-in',
   usage: 'Usage',
   playground: 'Playground',
+  radar: 'AI Radar',
   app: 'App',
 }
 

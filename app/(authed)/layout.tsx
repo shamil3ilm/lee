@@ -3,6 +3,7 @@ import { preconnect } from 'react-dom'
 import { getSession } from '@/lib/auth/require-session'
 import * as discoveriesQ from '@/lib/db/queries/discoveries'
 import * as todosQ from '@/lib/db/queries/todos'
+import { countNewWatched } from '@/lib/db/queries/radarItems'
 import { logger } from '@/lib/logger'
 import { scheduleVisitDrain } from '@/lib/queue/visit'
 import { Sidebar } from '@/components/sidebar'
@@ -25,14 +26,15 @@ import { APP_NAME } from '@/lib/brand'
 
 export const dynamic = 'force-dynamic'
 
-/** Two cheap count queries; a failure degrades to "no badges", never a 500. */
+/** Three cheap count queries; a failure degrades to "no badges", never a 500. */
 async function loadNavBadges(userId: string, now: Date): Promise<NavBadges> {
   try {
-    const [discoveries, todos] = await Promise.all([
+    const [discoveries, todos, radar] = await Promise.all([
       discoveriesQ.countNew(userId),
       todosQ.countOverdue(userId, now),
+      countNewWatched(userId),
     ])
-    return { discoveries, todos }
+    return { discoveries, todos, radar }
   } catch (err) {
     logger.error('nav.badges_failed', { userId, error: err instanceof Error ? err.message : String(err) })
     return {}

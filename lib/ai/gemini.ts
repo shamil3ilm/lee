@@ -76,6 +76,13 @@ import {
   type ReputationSummaryResult,
 } from './prompts/reputation-summary'
 import {
+  buildRadarBriefPrompt,
+  RADAR_BRIEF_PROMPT_VERSION,
+  radarBriefResultSchema,
+  type RadarBriefInput,
+  type RadarBriefResult,
+} from './prompts/radar-brief'
+import {
   bulletRewriteResultSchema,
   requirementFitResultSchema,
   type BulletRewriteInput,
@@ -426,6 +433,15 @@ export class GeminiProvider implements AIProvider {
       promptVersion: COMPARE_NARRATIVE_PROMPT_VERSION,
     })
     return compareNarrativeResultSchema.parse(JSON.parse(raw))
+  }
+
+  async writeRadarBrief(input: RadarBriefInput, meta: CallMeta = {}): Promise<RadarBriefResult> {
+    const raw = await this.generate(buildRadarBriefPrompt(input), {
+      ...meta,
+      kind: 'radar_brief',
+      promptVersion: RADAR_BRIEF_PROMPT_VERSION,
+    })
+    return radarBriefResultSchema.parse(JSON.parse(raw))
   }
 
   async proposeResumeVariant(input: ResumeVariantInput, meta: CallMeta = {}): Promise<ResumeVariantResult> {

@@ -11,6 +11,8 @@ const LOOKAHEAD_HOURS = 24
 const TODO_STORAGE_KEY = 'employ.notified_todo_ids'
 const DISCOVERY_STORAGE_KEY = 'employ.notified_discovery_ids'
 const DISCOVERY_SINCE_KEY = 'employ.discovery_last_poll_at'
+const RADAR_STORAGE_KEY = 'lee.notified_radar_ids'
+const RADAR_SINCE_KEY = 'lee.radar_last_poll_at'
 const DAY_MS = 24 * 60 * 60 * 1000
 
 interface DueTodo {
@@ -26,6 +28,12 @@ interface NotifiableDiscovery {
   companyName: string | null
   matchScore: number
   createdAt: string
+}
+
+interface RadarUpdate {
+  id: string
+  name: string
+  terms: string[]
 }
 
 interface NotifiedState {
@@ -54,9 +62,9 @@ function persistNotified(key: string, set: Set<string>): void {
   }
 }
 
-function loadLastPollIso(): string {
+function loadLastPollIso(key: string = DISCOVERY_SINCE_KEY): string {
   try {
-    const raw = sessionStorage.getItem(DISCOVERY_SINCE_KEY)
+    const raw = sessionStorage.getItem(key)
     if (raw) return raw
   } catch {
     /* ignore */
@@ -66,19 +74,20 @@ function loadLastPollIso(): string {
   return new Date(Date.now() - DAY_MS).toISOString()
 }
 
-function persistLastPollIso(iso: string): void {
+function persistLastPollIso(iso: string, key: string = DISCOVERY_SINCE_KEY): void {
   try {
-    sessionStorage.setItem(DISCOVERY_SINCE_KEY, iso)
+    sessionStorage.setItem(key, iso)
   } catch {
     /* ignore */
   }
 }
 
 /**
- * Polls two channels every 5 minutes on any authenticated page:
+ * Polls three channels every 5 minutes on any authenticated page:
  *   1. /api/todos — surfaces todos that have crossed their due time.
  *   2. /api/discoveries/notifiable — surfaces newly-ingested discoveries
  *      whose match score clears the user's threshold.
+ *   3. /api/radar/notifiable — new AI Radar watch-term matches ("Instant").
  *
  * Both channels dedupe via sessionStorage keyed by entity id so a tab
  * refresh doesn't re-fire, and each maintains its own "since" watermark for
@@ -88,6 +97,8 @@ export function NotificationScheduler() {
   const notifiedTodosRef = useRef<Set<string>>(new Set())
   const notifiedDiscoveriesRef = useRef<Set<string>>(new Set())
   const lastPollIsoRef = useRef<string>('')
+  const notifiedRadarRef = useRef<Set<string>>(new Set())
+  const radarSinceRef = useRef<string>('')
 
   useEffect(() => {
     if (!isSupported()) return
@@ -96,6 +107,8 @@ export function NotificationScheduler() {
     notifiedTodosRef.current = loadNotified(TODO_STORAGE_KEY)
     notifiedDiscoveriesRef.current = loadNotified(DISCOVERY_STORAGE_KEY)
     lastPollIsoRef.current = loadLastPollIso()
+    notifiedRadarRef.current = loadNotified(RADAR_STORAGE_KEY)
+    radarSinceRef.current = loadLastPollIso(RADAR_SINCE_KEY)
 
     let cancelled = false
 
@@ -184,8 +197,37 @@ export function NotificationScheduler() {
       }
     }
 
+    // AI Radar "Instant": new watch-term matches (the route answers an
+    // empty list unless that mode is on).
+    async function pollRadar(): Promise<void> {
+      try {
+        const since = radarSinceRef.current
+        const res = await fetch(`/api/radar/notifiable?since=${encodeURIComponent(since)}`)
+        if (!res.ok) return
+        const json = (await res.json().catch(() => ({}))) as { entries?: RadarUpdate[] }
+        if (cancelled) return
+        const now = new Date().toISOString()
+        radarSinceRef.current = now
+        persistLastPollIso(now, RADAR_SINCE_KEY)
+        const notified = notifiedRadarRef.current
+        const fresh = (json.entries ?? []).filter((e) => !notified.has(e.id))
+        const top = fresh[0]
+        if (!top) return
+        showNotification({
+          title: fresh.length === 1 ? `Radar: ${top.terms.join(', ')}` : `Radar: ${fresh.length} new on your watch terms`,
+          body: fresh.length === 1 ? top.name : fresh.slice(0, 3).map((e) => e.name).join(' · '),
+          url: fresh.length === 1 ? `/radar/${top.id}` : '/radar?watched=1',
+          tag: fresh.length === 1 ? `radar-${top.id}` : `radar-batch-${now}`,
+        })
+        for (const e of fresh) notified.add(e.id)
+        persistNotified(RADAR_STORAGE_KEY, notified)
+      } catch {
+        /* transient — try again next tick */
+      }
+    }
+
     async function tick(): Promise<void> {
-      await Promise.allSettled([pollTodos(), pollDiscoveries()])
+      await Promise.allSettled([pollTodos(), pollDiscoveries(), pollRadar()])
     }
 
     void tick()

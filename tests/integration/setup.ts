@@ -9,6 +9,10 @@ import { clearThrottleCache } from '@/lib/usage/throttle'
 // (though CASCADE handles the rest). Keep in sync with lib/db/schema.ts.
 const TABLES = [
   'job_comparison',
+  'radar_briefs',
+  'radar_items',
+  'radar_entries',
+  'radar_watch_terms',
   'shortlist_entries',
   'discovery_feedback',
   'application_preps',

@@ -1,0 +1,8 @@
+{
+  "spaces": [{"_id":"s1","id":"acme-lab/zorb-demo","likes":50,"trendingScore":40,"private":false,"sdk":"gradio","tags":["gradio"],"createdAt":"2026-10-02T10:04:36.000Z"}],
+  "datasets": [{"_id":"d1","id":"acme-lab/zorb-eval","author":"acme-lab","likes":9,"downloads":300,"description":"\n\tEval set for Zorb.\n\nContact: someone@example.com for access.\n","tags":["license:cc-by-4.0"],"createdAt":"2026-09-25T11:26:55.000Z"}],
+  "papers": [
+    {"paper":{"id":"2601.00001","authors":[],"publishedAt":"2026-10-01T00:00:00.000Z","title":"Zorb: A Small Fast Model","summary":"We present Zorb, a compact model.","upvotes":12,"githubRepo":"https://github.com/acme-lab/zorb","projectPage":"https://zorb.example.org/"},"publishedAt":"2026-10-01T20:00:00.000Z","title":"Zorb: A Small Fast Model","summary":"We present Zorb, a compact model."},
+    {"paper":{"id":"not-an-id","title":"Broken"}}
+  ]
+}

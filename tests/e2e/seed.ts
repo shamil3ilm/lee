@@ -419,6 +419,10 @@ async function main(): Promise<void> {
     await db.insert(s.aiCallLogs).values({ userId, ...log, createdAt: ago(i % 20) })
   }
 
+  // AI Radar: clustered entries (no watch terms; the journey adds one).
+  const { seedRadar } = await import('./seed-radar')
+  await seedRadar(userId, NOW)
+
   await closeDb()
   console.log(`e2e seed: ${TEST_LOGIN_EMAIL} with ${data.APPLICATIONS.length} applications, ${data.EXPENSES.length} expenses, ${data.DISCOVERIES.length} discoveries`)
 }
