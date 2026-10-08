@@ -121,7 +121,8 @@ async function toViews(userId: string, ranked: readonly Ranked[]): Promise<NewEn
       groupLabel: row.grp ? (GROUP_LABELS[row.grp] ?? null) : null,
       url: row.url,
       excerpt: row.excerpt,
-      facts: factsOf(row.metrics as NewMetrics),
+      // Facts the summary already states are not repeated.
+      facts: factsOf(row.metrics as NewMetrics).filter((f) => !row.excerpt.toLowerCase().includes(f.toLowerCase())),
       createdDay: day(row.createdAt),
       firstSeenDay: day(row.firstSeenAt) as string,
       variantCount: row.variantCount,
