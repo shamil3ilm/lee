@@ -9,6 +9,9 @@ import { SourceRow, type SourceRowItem } from '@/components/source-row'
 import { EmptyState } from '@/components/empty-state'
 import { EmailAlertsPanel } from '@/components/email-alerts-panel'
 import { WatchListPanel, type WatchItem } from '@/components/watch-list-panel'
+import { EmployerWatchPanel } from '@/components/employer-watch-panel'
+import { employerWatchRows } from '@/lib/defaults/watch-status'
+import { lastSeenBySource } from '@/lib/defaults/watch-last-seen'
 import { PopularStarters } from './popular-starters'
 import { describePollStats, readSourceLastResult } from '@/lib/discovery/poll-stats'
 
@@ -44,8 +47,15 @@ export default async function SourcesSettingsPage(): Promise<React.ReactElement>
   const [sources, alertStats] = await Promise.all([sourcesQ.list(userId), emailAlertsQ.summaryBySite(userId)])
 
   const polled = sources.filter((s) => s.kind !== 'watch')
+  const lastSeen = await lastSeenBySource(
+    userId,
+    polled.map((s) => s.id),
+  )
+  const employerRows = employerWatchRows(sources, lastSeen)
+  // Employer links live in the employer watch list, not in "Check these yourself".
+  const employerSourceIds = new Set(employerRows.map((r) => r.sourceId).filter(Boolean))
   const watch: WatchItem[] = sources
-    .filter((s) => s.kind === 'watch')
+    .filter((s) => s.kind === 'watch' && !employerSourceIds.has(s.id))
     .map((s) => {
       const c = (s.config ?? {}) as SourceConfig
       return { id: s.id, name: s.name, url: String(c.url ?? ''), reason: typeof c.reason === 'string' ? c.reason : null }
@@ -107,6 +117,8 @@ export default async function SourcesSettingsPage(): Promise<React.ReactElement>
         stats={alertStats.map((s) => ({ ...s, lastAlertAt: s.lastAlertAt ? s.lastAlertAt.toISOString() : null }))}
         source={alertSource ? { enabled: alertSource.enabled, lastError: alertSource.lastError } : null}
       />
+
+      <EmployerWatchPanel rows={employerRows} />
 
       <WatchListPanel items={watch} />
 

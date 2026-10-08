@@ -119,9 +119,7 @@ describe('WorkdayAdapter', () => {
       'https://salesforce.wd12.myworkdayjobs.com/wday/cxs/salesforce/External_Career_Site/job/India---Bangalore/Software-Engineer_JR0',
     )
     const first = items[0]!.normalized as NormalizedJob
-    expect(first.descriptionMd).toBe('Build payment APIs in PHP & Laravel.
-
-- 3+ years')
+    expect(first.descriptionMd).toBe('Build payment APIs in PHP & Laravel.\n\n- 3+ years')
     expect(first.postedAt?.toISOString().slice(0, 10)).toBe('2026-10-07')
     expect(first.employmentType).toBe('fulltime')
     expect(first.tags).toContain('country:ae')

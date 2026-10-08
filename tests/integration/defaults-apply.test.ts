@@ -88,7 +88,7 @@ describe('applyDefaults', () => {
     // A v1 default the user removed stays removed after the upgrade.
     await db.delete(sources).where(and(eq(sources.userId, u.id), eq(sources.kind, 'remoteok')))
 
-    const r = await applyDefaults(u.id)
+    const r = await applyDefaults(u.id, { version: 2 })
     const v2 = DEFAULT_SOURCES.filter((d) => d.since === 2)
     expect(r.version).toBe(2)
     expect(r.addedSources).toBe(v2.length)
@@ -96,6 +96,20 @@ describe('applyDefaults', () => {
     expect(rows.map((s) => s.kind)).not.toContain('remoteok')
     expect(rows.find((s) => s.kind === 'email_alert')?.enabled).toBe(true)
     // Sites lee may not fetch arrive as watch links, switched off.
+    expect(rows.filter((s) => s.kind === 'watch').every((s) => !s.enabled)).toBe(true)
+  })
+
+  it('v3: a user on v2 receives only the GCC employer watch list', async () => {
+    const u = await makeUser()
+    await applyDefaults(u.id, { version: 2 })
+    const before = (await sourcesOf(u.id)).length
+    const r = await applyDefaults(u.id)
+    const v3 = DEFAULT_SOURCES.filter((d) => d.since === 3)
+    expect(r.version).toBe(3)
+    expect(r.addedSources).toBe(v3.length)
+    const rows = await sourcesOf(u.id)
+    expect(rows).toHaveLength(before + v3.length)
+    expect(rows.find((s) => s.name === 'ENOC (SuccessFactors)')?.enabled).toBe(true)
     expect(rows.filter((s) => s.kind === 'watch').every((s) => !s.enabled)).toBe(true)
   })
 
