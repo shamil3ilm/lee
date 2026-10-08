@@ -29,6 +29,9 @@ import { parseBoardView, viewHref, type BoardView } from '@/lib/board/view'
 import { lastCheck } from '@/lib/discovery/poll-stats'
 import { relativeFromNow } from '@/lib/ui/date'
 import { catchUp, loadBoard, loadJobs, parseDiscoveryParams, type DiscoveryParams, type JobsData } from './data'
+import { AiModeDialog } from '@/components/discovery/ai-mode-dialog'
+import { PasteImportDialog } from '@/components/discovery/paste-import-dialog'
+import { loadAiModePrompts, type AiModePromptSet } from '@/lib/discovery/ai-mode/load'
 
 /** "Last checked 2h ago · 12 new" from the sources' last poll results. */
 function lastCheckedLine(sources: Parameters<typeof lastCheck>[0]): string | null {
@@ -37,6 +40,19 @@ function lastCheckedLine(sources: Parameters<typeof lastCheck>[0]): string | nul
 }
 
 export const dynamic = 'force-dynamic'
+// "Add from text or link" reads ATS job boards and scores within this limit.
+export const maxDuration = 60
+
+/** AI Mode hand-off + paste import, next to the view toggle. */
+function FindMoreActions({ promptSet, children }: { promptSet: AiModePromptSet; children?: React.ReactNode }) {
+  return (
+    <>
+      <AiModeDialog promptSet={promptSet} />
+      <PasteImportDialog />
+      {children}
+    </>
+  )
+}
 
 interface DiscoveriesPageProps {
   searchParams: Promise<Record<string, string | undefined>>
@@ -53,9 +69,10 @@ export default async function DiscoveriesPage({
   const profile = await getProfile(userId)
 
   if (p.tab === 'jobs') await catchUp(userId, profile)
-  const [sources, suggestions] = await Promise.all([
+  const [sources, suggestions, promptSet] = await Promise.all([
     sourcesQ.list(userId),
     p.tab === 'jobs' ? loadRoleSuggestions(userId, profile) : Promise.resolve(null),
+    loadAiModePrompts(userId, { profile }),
   ])
   const sourceOptions = sources.map((s) => ({ id: s.id, name: s.name }))
   const checked = lastCheckedLine(sources)
@@ -75,7 +92,11 @@ export default async function DiscoveriesPage({
         <PageHeader
           title="Discovery"
           description={`Triage AI-scored roles: shortlist, apply or dismiss.${checked ? ` ${checked}.` : ''}`}
-          actions={<ViewToggle sp={sp} view={view} explicit={explicit} />}
+          actions={
+            <FindMoreActions promptSet={promptSet}>
+              <ViewToggle sp={sp} view={view} explicit={explicit} />
+            </FindMoreActions>
+          }
         />
         <TabBar tab={p.tab} />
         {lookingFor}
@@ -105,7 +126,13 @@ export default async function DiscoveriesPage({
       <PageHeader
         title="Discovery"
         description={`AI-scored jobs and companies from your sources.${checked ? ` ${checked}.` : ''}`}
-        actions={p.tab === 'jobs' ? <ViewToggle sp={sp} view={view} explicit={explicit} /> : undefined}
+        actions={
+          p.tab === 'jobs' ? (
+            <FindMoreActions promptSet={promptSet}>
+              <ViewToggle sp={sp} view={view} explicit={explicit} />
+            </FindMoreActions>
+          ) : undefined
+        }
       />
       <TabBar tab={p.tab} />
       {p.tab === 'jobs' && p.page === 1 ? <ShortlistStrip userId={userId} banner /> : null}

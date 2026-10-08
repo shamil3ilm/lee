@@ -10,8 +10,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ShortlistList } from '@/components/apply/shortlist-list'
 import { RefreshShortlistButton } from '@/components/apply/refresh-shortlist-button'
 import { shortDay } from '@/lib/ui/date'
+import { AiModeDialog } from '@/components/discovery/ai-mode-dialog'
+import { PasteImportDialog } from '@/components/discovery/paste-import-dialog'
+import { loadAiModePrompts } from '@/lib/discovery/ai-mode/load'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60
 
 const STATE_BADGE: Record<Exclude<ShortlistEntryView['state'], 'open'>, { label: string; variant: BadgeProps['variant'] }> = {
   preparing: { label: 'Preparing', variant: 'info' },
@@ -27,6 +31,7 @@ const STATE_BADGE: Record<Exclude<ShortlistEntryView['state'], 'open'>, { label:
 export default async function ShortlistPage() {
   const userId = await requireUserId()
   const data = await loadShortlistPage(userId)
+  const promptSet = data.open.length === 0 ? await loadAiModePrompts(userId) : null
   const subtitle = data.day
     ? data.today
       ? `Today's top ${data.size} new roles, ranked by fit. Prepare, park for later, or pass.`
@@ -60,11 +65,17 @@ export default async function ShortlistPage() {
               ? 'You have acted on every pick. New postings join tomorrow’s list, or refresh to pull in the next best.'
               : 'Add discovery sources and run them; the shortlist is built after each daily run.'
           }
-          action={data.day ? <RefreshShortlistButton label="Refresh shortlist" variant="default" /> : (
-            <Button asChild size="sm">
-              <Link href="/settings/sources">Add sources</Link>
-            </Button>
-          )}
+          action={
+            <div className="flex flex-wrap justify-center gap-2">
+              {data.day ? <RefreshShortlistButton label="Refresh shortlist" variant="default" /> : (
+                <Button asChild size="sm">
+                  <Link href="/settings/sources">Add sources</Link>
+                </Button>
+              )}
+              {promptSet ? <AiModeDialog promptSet={promptSet} /> : null}
+              <PasteImportDialog />
+            </div>
+          }
         />
       ) : (
         <ShortlistList items={data.open} />

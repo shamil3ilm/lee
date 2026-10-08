@@ -38,6 +38,13 @@ import {
   GENERATE_LATEX_CV_PROMPT_VERSION,
 } from './prompts/generate-latex-cv'
 import { hashPrompt } from './prompts/hash'
+import {
+  buildExtractOpeningsPrompt,
+  EXTRACT_OPENINGS_PROMPT_VERSION,
+  extractOpeningsResultSchema,
+  type ExtractOpeningsInput,
+  type ExtractOpeningsResult,
+} from './prompts/extract-openings'
 import { withSharedLinks, type SharedLink } from './prompts/shared-links'
 import {
   buildSuggestRolesPrompt,
@@ -421,6 +428,15 @@ export class GeminiProvider implements AIProvider {
       promptVersion: SUGGEST_ROLES_PROMPT_VERSION,
     })
     return suggestRolesResultSchema.parse(JSON.parse(raw))
+  }
+
+  async extractOpenings(input: ExtractOpeningsInput, meta: CallMeta = {}): Promise<ExtractOpeningsResult> {
+    const raw = await this.generate(buildExtractOpeningsPrompt(input), {
+      ...meta,
+      kind: 'extract_openings',
+      promptVersion: EXTRACT_OPENINGS_PROMPT_VERSION,
+    })
+    return extractOpeningsResultSchema.parse(JSON.parse(raw))
   }
 }
 

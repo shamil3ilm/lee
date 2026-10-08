@@ -139,8 +139,9 @@ describe('outbound timeouts', () => {
     phenom: { host: 'careers.acme.com', pageId: 'page1', displayName: 'Acme' },
   }
   // No network of their own: `watch` never fetches; `email_alert` reads
-  // Gmail through lib/gmail/adapter (timeouts covered in the Gmail case).
-  const noFetchKinds = ['watch', 'email_alert']
+  // Gmail through lib/gmail/adapter (timeouts covered in the Gmail case);
+  // `manual_import` only holds openings the user added from pasted text.
+  const noFetchKinds = ['watch', 'email_alert', 'manual_import']
 
   it('covers every registered discovery adapter', () => {
     expect([...Object.keys(adapterConfigs), ...noFetchKinds].sort()).toEqual(listAdapterKinds().sort())

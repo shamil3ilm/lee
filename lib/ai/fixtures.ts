@@ -17,6 +17,8 @@ import type { CallMeta } from './log'
 import type { ReputationSummaryInput, ReputationSummaryResult } from './prompts/reputation-summary'
 import type { ScoreJobContext } from './prompts/score-job'
 import type { SuggestRolesInput, SuggestRolesResult } from './prompts/suggest-roles'
+import type { ExtractOpeningsInput, ExtractOpeningsResult } from './prompts/extract-openings'
+import { pseudoExtractOpenings } from './fixtures-openings'
 import type { NormalizedCompany, NormalizedJob } from '@/lib/discovery/adapters/types'
 import type { UserProfile } from '@/lib/db/queries/profile'
 import type { ApplicationWithJob } from '@/lib/db/queries/applications'
@@ -78,6 +80,7 @@ export class FixtureAIProvider implements AIProvider {
       summarizeReputation?: (input: ReputationSummaryInput) => ReputationSummaryResult
       suggestRoles?: (input: SuggestRolesInput) => SuggestRolesResult
       proposeResumeVariant?: (input: ResumeVariantInput) => ResumeVariantResult
+      extractOpenings?: (input: ExtractOpeningsInput) => ExtractOpeningsResult
     } = {},
   ) {}
 
@@ -253,6 +256,11 @@ export class FixtureAIProvider implements AIProvider {
   }
 
   /** Deterministic default: no extra suggestions beyond the rules. */
+  async extractOpenings(input: ExtractOpeningsInput, meta?: CallMeta): Promise<ExtractOpeningsResult> {
+    await this.emitLoggedCallId('extract_openings', meta)
+    if (this.fixtures.extractOpenings) return this.fixtures.extractOpenings(input)
+    return pseudoExtractOpenings(input.text)
+  }
   async suggestRoles(input: SuggestRolesInput, meta?: CallMeta): Promise<SuggestRolesResult> {
     await this.emitLoggedCallId('suggest_roles', meta)
     if (this.fixtures.suggestRoles) return this.fixtures.suggestRoles(input)
