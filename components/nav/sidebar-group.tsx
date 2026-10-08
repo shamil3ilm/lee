@@ -29,7 +29,7 @@ export function SidebarGroup({
         onClick={() => onToggle(group.key)}
         aria-expanded={open}
         aria-controls={listId}
-        className="flex w-full items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-data-[sidebar=rail]/shell:hidden"
+        className="flex min-h-7 w-full items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-data-[sidebar=rail]/shell:hidden"
       >
         <ChevronRight
           className={cn('size-3 transition-transform', open && 'rotate-90')}

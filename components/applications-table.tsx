@@ -122,7 +122,7 @@ export function ApplicationsTable({ rows, initialFilter = 'all' }: ApplicationsT
           >
             {f.label}
             {filter === f.value ? null : (
-              <span className="ml-1 opacity-60">
+              <span className="ml-1 font-normal tabular-nums">
                 {rows.filter((r) => f.value === 'all' || r.status === f.value).length}
               </span>
             )}

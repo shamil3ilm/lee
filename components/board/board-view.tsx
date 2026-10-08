@@ -150,12 +150,12 @@ export function BoardColumnFrame<C extends string>({
           type="button"
           variant="ghost"
           size="icon"
-          className="size-5 shrink-0 [&_svg]:size-3"
+          className="size-6 shrink-0 [&_svg]:size-3.5"
           aria-label={`Collapse ${def.title} column`}
           aria-expanded={true}
           onClick={() => setCollapsed(true)}
         >
-          <ChevronsRightLeft className="size-3" />
+          <ChevronsRightLeft />
         </Button>
       </div>
       {wip === 'over' ? (
@@ -183,7 +183,7 @@ export function BoardColumnBody({
       {empty ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border/80 px-2 py-4 text-center text-xs text-muted-foreground">
           <span>{emptyText}</span>
-          <span className="text-[11px] opacity-80">Drop a card here</span>
+          <span className="text-[11px]">Drop a card here</span>
         </div>
       ) : (
         children
@@ -200,6 +200,8 @@ interface BoardCardFrameProps<C extends string> {
   columns: readonly BoardColumnDef<C>[]
   onMoveTo?: (to: C) => void
   actions?: BoardQuickAction[]
+  /** Keyboard drag handle (drag layer only); a sibling of the link and menu. */
+  dragHandle?: React.ReactNode
   children: React.ReactNode
 }
 
@@ -216,6 +218,7 @@ export function BoardCardFrame<C extends string>({
   columns,
   onMoveTo,
   actions = [],
+  dragHandle,
   children,
 }: BoardCardFrameProps<C>) {
   const body = (
@@ -237,6 +240,7 @@ export function BoardCardFrame<C extends string>({
       ) : (
         body
       )}
+      {dragHandle && !isOverlay ? <span className="shrink-0 py-1 focus-within:pl-1">{dragHandle}</span> : null}
       {isOverlay || (!onMoveTo && actions.length === 0) ? null : (
         <CardActionsMenu
           label={label}
@@ -279,7 +283,7 @@ function CardActionsMenu<C extends string>({
             type="button"
             variant="ghost"
             size="icon"
-            className="size-7 text-muted-foreground opacity-80 group-hover/card:opacity-100"
+            className="size-7 text-muted-foreground hover:text-foreground"
             aria-label={`Actions for ${label}`}
           >
             <MoreHorizontal />

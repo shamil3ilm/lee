@@ -54,7 +54,7 @@ export function AiModelSelector({ currentModelId }: AiModelSelectorProps) {
           Switch anytime — takes effect on the next AI call.
         </p>
         <Select value={selected} onValueChange={save} disabled={pending}>
-          <SelectTrigger className="w-full">
+          <SelectTrigger className="w-full" aria-label="AI model">
             <SelectValue placeholder="Pick a model" />
           </SelectTrigger>
           <SelectContent>

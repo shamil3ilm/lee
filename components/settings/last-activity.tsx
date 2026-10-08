@@ -32,7 +32,7 @@ export function LastActivity({
         {item.message}
       </span>{' '}
       ·{' '}
-      <Link href={logsHref} className="underline-offset-2 hover:underline">
+      <Link href={logsHref} className="underline underline-offset-2 hover:text-foreground">
         Log
       </Link>
     </div>

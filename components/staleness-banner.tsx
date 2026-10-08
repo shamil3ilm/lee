@@ -147,7 +147,7 @@ export function StalenessBanner({
         <p className="font-medium">
           {isCritical ? 'Stale draft' : 'Minor drift since generated'}
         </p>
-        <p className="mt-0.5 text-xs opacity-90">{result.summary}</p>
+        <p className="mt-0.5 text-xs">{result.summary}</p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {onRegenerate ? (
             <Button

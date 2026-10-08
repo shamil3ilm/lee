@@ -69,7 +69,8 @@ export function BoardViewToggle({
     <Link
       href={href}
       scroll={false}
-      aria-pressed={current === view}
+      // Links can't be toggle buttons: the current view is the current page.
+      aria-current={current === view ? 'page' : undefined}
       onClick={() => choose(view)}
       className={cn(
         'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-medium transition-colors',
