@@ -4,13 +4,9 @@
  * strands them deep in Settings. Only internal paths are accepted.
  */
 
-export function safeReturnPath(value: string | null | undefined): string | null {
-  if (typeof value !== 'string' || value.length === 0 || value.length > 200) return null
-  // Browsers drop tabs and newlines in URLs ("/\t/evil" becomes "//evil"): reject control characters.
-  if (/[\u0000-\u001f\u007f]/.test(value)) return null
-  if (!value.startsWith('/') || value.startsWith('//') || value.startsWith('/\\')) return null
-  return value
-}
+import { safeReturnPath } from './return-path'
+
+export { safeReturnPath }
 
 export function settingsHref(path: string, from?: string | null, anchor?: string): string {
   const back = safeReturnPath(from)
