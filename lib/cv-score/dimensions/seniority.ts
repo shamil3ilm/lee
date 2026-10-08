@@ -1,3 +1,4 @@
+import { plural } from '@/lib/ui/labels'
 /**
  * v12.0 — Seniority alignment (Experience Match component).
  *
@@ -89,7 +90,7 @@ export function scoreSeniority(
   if (scopeSignals < expectedScope) {
     findings.push(makeFinding('seniority', {
       severity: 'minor',
-      message: `${jdLevel ? `${jdLevel[0]!.toUpperCase()}${jdLevel.slice(1)}` : 'This'} role expects ownership signals — only ${scopeSignals} bullet(s) show scope (led, owned, architected, mentored)`,
+      message: `${jdLevel ? `${jdLevel[0]!.toUpperCase()}${jdLevel.slice(1)}` : 'This'} role expects ownership signals — only ${plural(scopeSignals, 'bullet')} ${scopeSignals === 1 ? 'shows' : 'show'} scope (led, owned, architected, mentored)`,
       evidence: cv.bullets.slice(0, 4).flatMap((_, i) => bulletEvidence(cv, i).slice(0, 1)),
       suggestion: 'Where true, make ownership explicit: what you led, designed or owned, and for whom.',
     }))

@@ -1,12 +1,12 @@
 'use client'
-import { Cell, Pie, PieChart } from 'recharts'
+import { Bar, BarChart, CartesianGrid, Cell, LabelList, XAxis, YAxis } from 'recharts'
 import {
   ChartContainer,
-  ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart'
+import { CATEGORY_Y_AXIS, CHART_MARGIN, VALUE_X_AXIS } from '@/components/ui/chart-defaults'
 
 export interface StatusDistributionDatum {
   status: string
@@ -17,38 +17,30 @@ export interface StatusDistributionDatum {
 
 interface StatusDistributionChartProps {
   config: ChartConfig
+  /** Already in pipeline order (Saved → Withdrawn). */
   data: StatusDistributionDatum[]
 }
 
 /**
- * Donut of the pipeline by status. The legend is drawn as HTML below the plot
- * (ChartContainer `legend`), so the ring is sized to the space that is left
- * and the two never overlap, however many rows the legend wraps to.
+ * Horizontal bars of the pipeline by status, in pipeline order, each bar in
+ * its stage tone with its count at the end. Replaces a 7-slice donut, whose
+ * slices were hard to compare and needed a legend to decode.
  */
 export function StatusDistributionChart({ config, data }: StatusDistributionChartProps) {
-  const legend = (
-    <ChartLegendContent
-      className="pt-2"
-      payload={data.map((d) => ({ value: d.status, color: d.fill, dataKey: d.status }))}
-    />
-  )
   return (
-    <ChartContainer config={config} className="h-full w-full" legend={legend}>
-      <PieChart>
-        <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-        <Pie
-          data={data}
-          dataKey="count"
-          nameKey="status"
-          innerRadius="55%"
-          outerRadius="90%"
-          paddingAngle={2}
-        >
+    <ChartContainer config={config} className="h-full w-full">
+      <BarChart data={data} layout="vertical" margin={{ ...CHART_MARGIN, right: 28 }}>
+        <CartesianGrid horizontal={false} />
+        <XAxis {...VALUE_X_AXIS} allowDecimals={false} />
+        <YAxis dataKey="label" {...CATEGORY_Y_AXIS} />
+        <ChartTooltip content={<ChartTooltipContent />} />
+        <Bar dataKey="count" radius={[0, 2, 2, 0]}>
           {data.map((entry) => (
             <Cell key={entry.status} fill={entry.fill} />
           ))}
-        </Pie>
-      </PieChart>
+          <LabelList dataKey="count" position="right" fontSize={11} className="fill-foreground tabular-nums" />
+        </Bar>
+      </BarChart>
     </ChartContainer>
   )
 }

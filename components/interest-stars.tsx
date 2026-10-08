@@ -31,16 +31,16 @@ export function InterestStars({
     <div
       className={cn('flex items-center gap-0.5', className)}
       aria-label={ariaLabel ?? `Interest ${value}/5`}
-      role={interactive ? 'radiogroup' : undefined}
+      role={interactive ? 'radiogroup' : 'img'}
     >
       {Array.from({ length: 5 }).map((_, i) => {
         const filled = i < value
         const commonIcon = cn(
           iconSize,
-          filled ? 'fill-warning text-warning' : 'text-muted-foreground/40',
+          filled ? 'fill-warning text-warning' : 'text-muted-foreground',
         )
         if (!interactive) {
-          return <Star key={i} className={commonIcon} />
+          return <Star key={i} className={commonIcon} aria-hidden="true" />
         }
         const next = i + 1
         return (
@@ -53,7 +53,7 @@ export function InterestStars({
             aria-label={`Set interest to ${next}`}
             onClick={() => onChange?.(next === value ? 0 : next)}
             className={cn(
-              'rounded transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50',
+              'inline-grid size-6 place-items-center rounded transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50',
             )}
           >
             <Star className={commonIcon} />

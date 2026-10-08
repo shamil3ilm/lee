@@ -1,3 +1,4 @@
+import { plural } from '@/lib/ui/labels'
 import { AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { RenderedResume } from '@/lib/variants/render'
@@ -9,7 +10,7 @@ export function VariantPreview({ rendered, lengthTarget }: { rendered: RenderedR
       <CardHeader>
         <CardTitle>Preview</CardTitle>
         <CardDescription>
-          About {rendered.estimatedPages} page(s) · target {lengthTarget}
+          About {plural(rendered.estimatedPages, 'page')} · target {lengthTarget}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

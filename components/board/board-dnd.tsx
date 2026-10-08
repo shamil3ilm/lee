@@ -18,6 +18,7 @@ import {
   type KeyboardCoordinateGetter,
   type UniqueIdentifier,
 } from '@dnd-kit/core'
+import { GripVertical } from 'lucide-react'
 import { findItem, type BoardItem } from '@/lib/board/move'
 import { focusRing } from '@/components/ui/focus-ring'
 import { cn } from '@/lib/utils'
@@ -137,7 +138,7 @@ export function BoardDndLayer<C extends string, T extends BoardItem>(props: Boar
       accessibility={{
         screenReaderInstructions: {
           draggable:
-            'To move this card, press Space. Use the arrow keys to pick a column, then press Space again to drop it there, or Escape to cancel. The actions menu also has Move to options.',
+            'To move this card, press Space on its move handle. Use the arrow keys to pick a column, then press Space again to drop it there, or Escape to cancel. The actions menu also has Move to options.',
         },
         announcements: {
           onDragStart: ({ active: a }) => `Picked up ${labelOf(a.id)}.`,
@@ -209,7 +210,11 @@ function DraggableCard<C extends string, T extends BoardItem>({
   column: C
 }) {
   // The DragOverlay follows the pointer; the original stays in place, dimmed.
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: item.id })
+  // Pointer drags start anywhere on the card (listeners on the wrapper);
+  // keyboard drags start only from the handle (the activator node), so the
+  // card is not itself a button and the link and menu inside it stay plain
+  // siblings (no nested interactive controls).
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({ id: item.id })
   const name = props.itemLabel(item)
   const style: React.CSSProperties = { opacity: isDragging ? 0.4 : 1 }
   return (
@@ -217,10 +222,8 @@ function DraggableCard<C extends string, T extends BoardItem>({
       ref={setNodeRef}
       style={style}
       data-board-card={item.id}
-      {...attributes}
       {...listeners}
-      aria-label={name}
-      className={cn('cursor-grab touch-manipulation rounded-lg', focusRing)}
+      className="cursor-grab touch-manipulation rounded-lg"
     >
       <BoardCardFrame
         label={name}
@@ -229,6 +232,22 @@ function DraggableCard<C extends string, T extends BoardItem>({
         columns={props.columns}
         onMoveTo={(to) => props.onMoveTo(item.id, to)}
         actions={props.cardActions?.(item, column)}
+        dragHandle={
+          <button
+            type="button"
+            ref={setActivatorNodeRef}
+            {...attributes}
+            aria-label={`Move ${name}`}
+            className={cn(
+              'grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+              // Shown on keyboard focus only; pointer users drag the whole card.
+              'sr-only focus-visible:not-sr-only',
+              focusRing,
+            )}
+          >
+            <GripVertical className="size-4" aria-hidden="true" />
+          </button>
+        }
       >
         {props.renderCard(item, { column, isOverlay: false })}
       </BoardCardFrame>

@@ -1,11 +1,12 @@
 'use client'
 import dynamic from 'next/dynamic'
-import { PieChart as PieChartIcon } from 'lucide-react'
+import { BarChart3 } from 'lucide-react'
 import type { ChartConfig } from '@/components/ui/chart'
 import { AnalyticsCardShell } from './card-shell'
 import { ChartSkeleton } from './charts/chart-skeleton'
 import type { StatusSlice } from '@/lib/analytics/service'
-import { STATUS_LABELS, STATUS_TONE, type ApplicationStatus } from '@/lib/ui/status'
+import { APPLICATION_STATUSES, STATUS_LABELS, STATUS_TONE, type ApplicationStatus } from '@/lib/ui/status'
+import { orderByDomain } from '@/components/ui/chart-defaults'
 import { toneColor } from '@/lib/ui/tones'
 
 interface StatusDistributionCardProps {
@@ -29,14 +30,13 @@ function labelFor(status: string): string {
 }
 
 /**
- * Donut chart of the current pipeline breakdown — one slice per non-empty
- * status. Chart config is built lazily from the incoming slices so the
- * legend labels & colours track the data exactly.
+ * Horizontal bars of the current pipeline, one per non-empty status, in
+ * pipeline order (Saved → Withdrawn) with the count at the end of each bar.
  */
 export function StatusDistributionCard({ data }: StatusDistributionCardProps) {
   const isEmpty = data.length === 0 || data.every((s) => s.count === 0)
 
-  const config: ChartConfig = {}
+  const config: ChartConfig = { count: { label: 'Applications' } }
   for (const s of data) {
     config[s.status] = {
       label: labelFor(s.status),
@@ -44,7 +44,13 @@ export function StatusDistributionCard({ data }: StatusDistributionCardProps) {
     }
   }
 
-  const enriched = data.map((s) => ({
+  const byStatus = new Map(data.map((s) => [s.status, s] as const))
+  const ordered = orderByDomain(
+    data.filter((s) => s.count > 0).map((s) => s.status),
+    APPLICATION_STATUSES,
+  ).map((status) => byStatus.get(status)!)
+
+  const enriched = ordered.map((s) => ({
     status: s.status,
     count: s.count,
     label: labelFor(s.status),
@@ -54,11 +60,11 @@ export function StatusDistributionCard({ data }: StatusDistributionCardProps) {
   return (
     <AnalyticsCardShell
       title="Status distribution"
-      description="Current pipeline breakdown — one slice per application status, sized by count."
+      description="Applications at each status right now, in pipeline order."
       exportMetric="status-distribution"
       isEmpty={isEmpty}
       emptyMessage="Add applications to see how your pipeline breaks down by status."
-      emptyIcon={PieChartIcon}
+      emptyIcon={BarChart3}
     >
       <StatusDistributionChart config={config} data={enriched} />
     </AnalyticsCardShell>

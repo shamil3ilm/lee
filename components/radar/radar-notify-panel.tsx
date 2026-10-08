@@ -32,7 +32,7 @@ export function RadarNotifyPanel({ mode: initial, discoveryEmailOn }: { mode: Ra
         </CardTitle>
         <CardDescription>
           “Radar: new on your watch terms”. The nav badge always counts unread matches. Manage terms in{' '}
-          <Link href="/radar/watchlist" className="text-primary hover:underline">
+          <Link href="/radar/watchlist" className="text-primary underline underline-offset-2">
             Radar › Watchlist
           </Link>
           .

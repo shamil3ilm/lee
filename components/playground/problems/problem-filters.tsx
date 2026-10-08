@@ -1,19 +1,26 @@
-import Link from 'next/link'
 import { Search } from 'lucide-react'
 import { Toolbar } from '@/components/page-header'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/native-select'
+import { AutoApplyForm } from '@/components/filters/auto-apply-form'
+import { plural } from '@/lib/ui/labels'
 import { PROBLEM_STATUSES, type ProblemFilters } from '@/lib/academy/coding/list'
 import { DIFFICULTIES, DIFFICULTY_LABELS, LANGUAGE_LABELS, ROLES, TOPICS, CODE_LANGUAGES } from '@/lib/academy/problems/constants'
 import { ROLE_LABELS, STATUS_LABELS, TOPIC_LABELS } from './labels'
 
-/** URL-driven filters (a GET form): works without JavaScript. */
-export function ProblemFiltersBar({ filters }: { filters: ProblemFilters }) {
+/** URL-driven filters that apply on change (a GET form without JavaScript). */
+export function ProblemFiltersBar({ filters, total }: { filters: ProblemFilters; total: number }) {
   const select = 'h-8 w-full sm:w-36'
   return (
     <Toolbar label="Filter problems">
-      <form method="get" action="/playground/problems" className="grid w-full grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+      <AutoApplyForm
+        action="/playground/problems"
+        label="Problem filters"
+        status={plural(total, 'problem')}
+        clearHref="/playground/problems"
+        defaults={{ sort: 'default' }}
+        className="grid w-full grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center"
+      >
         <div className="relative col-span-2 sm:w-56">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <Input name="q" defaultValue={filters.q ?? ''} placeholder="Search problems" aria-label="Search problems" className="h-8 pl-8" />
@@ -65,15 +72,7 @@ export function ProblemFiltersBar({ filters }: { filters: ProblemFilters }) {
           <option value="recent">Sort: recently tried</option>
           <option value="title">Sort: title</option>
         </NativeSelect>
-        <div className="col-span-2 flex items-center gap-2">
-          <Button type="submit" size="sm" variant="outline">
-            Apply
-          </Button>
-          <Link href="/playground/problems" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
-            Reset
-          </Link>
-        </div>
-      </form>
+      </AutoApplyForm>
     </Toolbar>
   )
 }

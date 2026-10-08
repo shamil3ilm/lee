@@ -63,7 +63,7 @@ export function RiskBadge({ risk, className }: RiskBadgeProps) {
           <span className={cn('size-1.5 rounded-full', DOT[level])} aria-hidden="true" />
           {label}
           {risk.verdict === 'not_scam' || (risk.allowListed && risk.level === 'likely_scam') ? (
-            <span className="opacity-70">· allowed</span>
+            <span className="font-normal">· allowed</span>
           ) : null}
         </button>
       </DialogTrigger>

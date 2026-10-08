@@ -93,7 +93,7 @@ export function CompanyEditDialog({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="headquartersCountry">Country (ISO-2)</Label>
+              <Label htmlFor="headquartersCountry">Country code (e.g. AE, IN)</Label>
               <Input
                 id="headquartersCountry"
                 name="headquartersCountry"

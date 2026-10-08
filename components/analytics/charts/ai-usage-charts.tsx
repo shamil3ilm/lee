@@ -4,6 +4,8 @@ import { toneColor } from '@/lib/ui/tones'
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import {
   ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
@@ -12,6 +14,7 @@ import type { AIUsageStats } from '@/lib/analytics/service'
 import {
   CATEGORY_AXIS,
   CHART_MARGIN,
+  LEGEND_PROPS,
   TIME_AXIS,
   VALUE_AXIS,
   formatCompactNumber,
@@ -35,6 +38,7 @@ export function SignalCheckChart({ data }: { data: AIUsageStats['signalCheckByKi
         <XAxis dataKey="kind" {...CATEGORY_AXIS} />
         <YAxis {...VALUE_AXIS} allowDecimals={false} tickFormatter={(v: number) => formatNumber(v)} />
         <ChartTooltip content={<ChartTooltipContent />} />
+        <ChartLegend {...LEGEND_PROPS} content={<ChartLegendContent />} />
         <Bar dataKey="proceeded" stackId="s" fill="var(--color-proceeded)" radius={[0, 0, 0, 0]} />
         <Bar dataKey="skipped" stackId="s" fill="var(--color-skipped)" radius={[2, 2, 0, 0]} />
       </BarChart>
@@ -82,6 +86,7 @@ export function DailyTokensChart({ data }: { data: DailyTokensDatum[] }) {
         <ChartTooltip
           content={<ChartTooltipContent valueFormatter={(v) => formatNumber(Number(v))} />}
         />
+        <ChartLegend {...LEGEND_PROPS} content={<ChartLegendContent />} />
         <Bar dataKey="inputTokens" stackId="t" fill="var(--color-inputTokens)" />
         <Bar
           dataKey="outputTokens"

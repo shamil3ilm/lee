@@ -7,6 +7,7 @@ import type { ResumeProfile } from '@/lib/resume/types'
 import { toggleId, toggleOverride, type IdSection } from '@/lib/variants/edit'
 import type { Recipe } from '@/lib/variants/types'
 import { ReadinessBadge } from './variant-items-card'
+import { Checkbox } from '@/components/ui/checkbox'
 
 interface Props {
   profile: ResumeProfile
@@ -17,7 +18,7 @@ interface Props {
 function Check({ checked, label, onChange, disabled }: { checked: boolean; label: React.ReactNode; onChange: (on: boolean) => void; disabled?: boolean }) {
   return (
     <label className="flex items-start gap-2 text-sm">
-      <input type="checkbox" className="mt-1" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
+      <Checkbox className="mt-1" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
       <span className="min-w-0 break-words">{label}</span>
     </label>
   )
@@ -55,7 +56,7 @@ export function VariantListsCard({ profile, recipe, onChange }: Props) {
                     />
                     {!ok && canOverride(s) && recipe.skills.includes(s.id) ? (
                       <label className="flex items-start gap-1.5 pl-6 text-xs text-warning">
-                        <input type="checkbox" className="mt-0.5" checked={overridden} onChange={(e) => onChange(toggleOverride(recipe, s.id, e.target.checked))} />
+                        <Checkbox className="mt-0.5" checked={overridden} onChange={(e) => onChange(toggleOverride(recipe, s.id, e.target.checked))} />
                         Include anyway — {OVERRIDE_WARNING}
                       </label>
                     ) : null}

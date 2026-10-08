@@ -1,7 +1,7 @@
 'use client'
-import { useTransition } from 'react'
 import { Loader2, X } from 'lucide-react'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useUrlFilters } from '@/components/filters/use-url-filters'
+import { plural } from '@/lib/ui/labels'
 import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/ui/native-select'
 import { MoreFilters } from '@/components/discovery/more-filters'
@@ -34,6 +34,8 @@ interface DiscoveryFiltersProps {
   showFiltered?: boolean
   /** Board view: columns are the statuses, so no status picker. */
   hideStatus?: boolean
+  /** Results for the current filters, announced after each change. */
+  resultCount?: number
 }
 
 const JOB_ONLY: ReadonlySet<DiscoveryStatusFilter> = new Set(['quarantined', 'shortlisted', 'filtered'])
@@ -58,28 +60,20 @@ export function DiscoveryFilters({
   scoredOnly = false,
   showFiltered = false,
   hideStatus = false,
+  resultCount,
 }: DiscoveryFiltersProps) {
   const statuses = (Object.keys(STATUS_LABELS) as DiscoveryStatusFilter[]).filter(
     (s) => !JOB_ONLY.has(s) || tab === 'jobs',
   )
-  const router = useRouter()
-  const pathname = usePathname()
-  const params = useSearchParams()
-  const [isPending, startTransition] = useTransition()
+  const { setParams, pending: isPending } = useUrlFilters()
   const jobs = tab === 'jobs'
 
+  // The shared auto-apply filters (replace, page reset); Discovery keeps its
+  // own rules: the tab is always explicit and "New" is the default status.
   const update = (patch: Record<string, string>): void => {
-    const next = new URLSearchParams(params.toString())
-    next.set('tab', tab)
-    // Any filter change starts over at the first page.
-    next.delete('page')
-    for (const [k, v] of Object.entries(patch)) {
-      if (v === '' || (v === 'new' && k === 'status' && !next.has('status'))) next.delete(k)
-      else next.set(k, v)
-    }
-    startTransition(() => {
-      router.push(`${pathname}?${next.toString()}`)
-    })
+    const next: Record<string, string | null> = { tab }
+    for (const [k, v] of Object.entries(patch)) next[k] = v === '' || (k === 'status' && v === 'new') ? null : v
+    setParams(next)
   }
 
   const statusLabel = (s: DiscoveryStatusFilter): string => {
@@ -152,7 +146,12 @@ export function DiscoveryFilters({
           Clear
         </Button>
       ) : null}
-      {isPending ? <Loader2 className="size-4 animate-spin text-muted-foreground" aria-label="Updating" /> : null}
+      {isPending ? <Loader2 className="size-4 animate-spin text-muted-foreground" aria-hidden="true" /> : null}
+      {resultCount !== undefined ? (
+        <p role="status" aria-live="polite" className="sr-only">
+          {isPending ? '' : plural(resultCount, tab === 'jobs' ? 'job' : 'company', tab === 'jobs' ? 'jobs' : 'companies')}
+        </p>
+      ) : null}
     </div>
   )
 }

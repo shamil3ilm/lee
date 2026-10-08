@@ -414,7 +414,7 @@ export function OutreachCard({
                   {busy ? <Loader2 className="size-3 animate-spin" /> : null}
                   {label}
                 </span>
-                <span className="text-[10px] font-normal opacity-70">
+                <span className="text-[10px] font-normal">
                   {existing ? `v${existing.version} drafted` : hint}
                 </span>
               </Button>

@@ -1,3 +1,4 @@
+import { plural } from '@/lib/ui/labels'
 import { requireUserId } from '@/lib/auth/require-session'
 import * as publishQ from '@/lib/db/queries/portfolioPublish'
 import * as variantsQ from '@/lib/db/queries/resumeVariants'
@@ -58,7 +59,7 @@ export default async function PublishPage() {
           <CardDescription>
             {preview.errors.length === 0
               ? 'Passes the portfolio build’s checks.'
-              : `${preview.errors.length} problem(s) the portfolio build would reject — fix them in Résumé.`}
+              : `${plural(preview.errors.length, 'problem')} the portfolio build would reject — fix them in Résumé.`}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">

@@ -71,7 +71,7 @@ export function DefaultsBanner({ families, sparse = false, from }: DefaultsBanne
           {families.map((f) => (
             <label
               key={f.id}
-              className="inline-flex cursor-pointer select-none items-center gap-1 rounded-full border bg-card px-2.5 py-0.5 text-xs has-[:checked]:border-primary has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring"
+              className="inline-flex cursor-pointer select-none items-center gap-1 rounded-full border bg-card px-2.5 py-1 text-xs has-[:checked]:border-primary has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-background"
             >
               <input type="checkbox" className="sr-only" checked={picked.has(f.id)} onChange={() => toggle(f.id)} />
               {f.label}

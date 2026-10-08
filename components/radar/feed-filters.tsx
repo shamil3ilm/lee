@@ -1,17 +1,18 @@
-import { Button } from '@/components/ui/button'
-import { FormActions, FormField } from '@/components/ui/form-field'
+import { AutoApplyForm } from '@/components/filters/auto-apply-form'
+import { Checkbox } from '@/components/ui/checkbox'
+import { FormField } from '@/components/ui/form-field'
 import { NativeSelect } from '@/components/ui/native-select'
 import { SINCE_OPTIONS, type ParsedFeedParams } from '@/lib/radar/filters'
 import { RADAR_KINDS, RADAR_KIND_LABELS, RADAR_SOURCES, RADAR_SOURCE_LABELS } from '@/lib/radar/types'
 
-/** GET filter form for /radar (works without JavaScript). */
-export function FeedFilters({ raw }: { raw: ParsedFeedParams['raw'] }) {
+/** Filters for /radar that apply on change (a GET form without JavaScript). */
+export function FeedFilters({ raw, status }: { raw: ParsedFeedParams['raw']; status?: string }) {
   return (
-    <form
-      method="get"
+    <AutoApplyForm
       action="/radar"
-      role="search"
-      aria-label="Filter the Radar"
+      label="Filter the Radar"
+      status={status}
+      clearHref="/radar"
       className="grid gap-3 sm:grid-cols-3 lg:grid-cols-[repeat(3,minmax(0,12rem))_auto_auto] lg:items-end"
     >
       <FormField htmlFor="radar-source" label="Source">
@@ -45,20 +46,9 @@ export function FeedFilters({ raw }: { raw: ParsedFeedParams['raw'] }) {
       </FormField>
       <fieldset className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm sm:col-span-2 lg:col-span-1 lg:pb-2">
         <legend className="sr-only">Show only</legend>
-        <label className="inline-flex items-center gap-2">
-          <input type="checkbox" name="watched" value="1" defaultChecked={raw.watched} className="size-4 accent-primary" />
-          Watch terms only
-        </label>
-        <label className="inline-flex items-center gap-2">
-          <input type="checkbox" name="saved" value="1" defaultChecked={raw.saved} className="size-4 accent-primary" />
-          Saved
-        </label>
+        <Checkbox name="watched" value="1" defaultChecked={raw.watched} label="Watch terms only" />
+        <Checkbox name="saved" value="1" defaultChecked={raw.saved} label="Saved" />
       </fieldset>
-      <FormActions>
-        <Button type="submit" className="w-full sm:w-auto">
-          Filter
-        </Button>
-      </FormActions>
-    </form>
+    </AutoApplyForm>
   )
 }

@@ -8,6 +8,7 @@ import { NativeSelect } from '@/components/ui/native-select'
 import { CountryPicker } from './country-picker'
 import type { SearchPrefsFormValues } from '@/lib/discovery/relevance/view'
 import { ChoiceChip, PrefsFieldset } from './choice-chip'
+import { Checkbox } from '@/components/ui/checkbox'
 
 interface SectionProps {
   values: SearchPrefsFormValues
@@ -97,11 +98,9 @@ export function TargetSections({ values }: SectionProps) {
 
       <div className="space-y-2 rounded-lg border p-3">
         <label className="flex items-center gap-2 text-sm">
-          <input
+          <Checkbox
             name="relocationIfSponsored"
-            type="checkbox"
             defaultChecked={values.relocationIfSponsored}
-            className="size-4 rounded border-input"
           />
           Open to relocation if the employer sponsors it
         </label>
@@ -118,11 +117,9 @@ export function TargetSections({ values }: SectionProps) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="flex items-center gap-2 text-sm sm:col-span-2">
-          <input
+          <Checkbox
             name="acceptRelocation"
-            type="checkbox"
             defaultChecked={values.acceptRelocation}
-            className="size-4 rounded border-input"
           />
           Open to relocating to other countries
         </label>

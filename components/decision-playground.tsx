@@ -19,6 +19,7 @@ import { EXPENSE_CATEGORIES } from '@/lib/expenses/categories'
 import { cn } from '@/lib/utils'
 import { UsageBadge } from '@/components/ai/usage-badge'
 import type { AiUsage } from '@/lib/ai/usage-types'
+import { Checkbox } from '@/components/ui/checkbox'
 
 type ProviderKind = 'heuristic' | 'groq' | 'laya'
 type DecisionType = 'choice' | 'yesNo' | 'score'
@@ -472,24 +473,21 @@ export function DecisionPlayground({ defaultLayaEndpoint }: DecisionPlaygroundPr
             <div className="text-xs font-medium">Providers to run</div>
             <div className="flex flex-wrap gap-4 text-sm">
               <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={useHeuristic}
                   onChange={(e) => setUseHeuristic(e.target.checked)}
                 />
                 Heuristic
               </label>
               <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={useGroq}
                   onChange={(e) => setUseGroq(e.target.checked)}
                 />
                 Groq
               </label>
               <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={useLaya}
                   onChange={(e) => setUseLaya(e.target.checked)}
                 />

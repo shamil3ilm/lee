@@ -123,3 +123,76 @@ export function formatCompactNumber(v: number): string {
 
 /** Legend placement shared by every chart that shows one. */
 export const LEGEND_PROPS = { verticalAlign: 'bottom', align: 'center' } as const
+
+/**
+ * Statistics (medians, percentiles) need a sample: below this many points a
+ * card says "Not enough data yet" instead of a number.
+ */
+export const MIN_STAT_POINTS = 5
+
+/** True when `n` points are enough to show a median or percentile. */
+export function hasEnoughForStats(n: number): boolean {
+  return Number.isFinite(n) && n >= MIN_STAT_POINTS
+}
+
+/** Below this many points a line shows a dot on every point. */
+export const SHORT_SERIES_POINTS = 6
+
+export interface LineSeriesProps {
+  type: 'linear'
+  strokeWidth: number
+  dot: false | { r: number; strokeWidth: number }
+  activeDot: { r: number }
+}
+
+/**
+ * Line props for a series of `points` values. Lines are never smoothed
+ * (a curve through three points invents values between them); short
+ * series also draw a dot on each point so a reader sees how few there are.
+ */
+export function lineProps(points: number): LineSeriesProps {
+  return {
+    type: 'linear',
+    strokeWidth: 2,
+    dot: points < SHORT_SERIES_POINTS ? { r: 3, strokeWidth: 0 } : false,
+    activeDot: { r: 4 },
+  }
+}
+
+/**
+ * Orders series keys by their domain order (pipeline order for statuses),
+ * so legends, stacks and bars read the same way everywhere instead of
+ * alphabetically. Unknown keys keep their relative order after the known ones.
+ */
+export function orderByDomain<T extends string>(keys: readonly T[], order: readonly string[]): T[] {
+  const rank = new Map(order.map((k, i) => [k, i] as const))
+  return keys
+    .map((k, i) => ({ k, r: rank.get(k) ?? order.length + i }))
+    .sort((a, b) => a.r - b.r)
+    .map((x) => x.k)
+}
+
+/**
+ * Numeric x-axis for horizontal bar charts. The right padding keeps the
+ * last tick ("100K") from being cut at the plot edge.
+ */
+export const VALUE_X_AXIS = {
+  ...AXIS_BASE,
+  type: 'number',
+  padding: { left: 0, right: 16 },
+} as const
+
+interface ChartNotEnoughDataProps {
+  message?: string
+  hint?: string
+}
+
+/** Shown in place of a statistic or chart that doesn't have enough data. */
+export function ChartNotEnoughData({ message = 'Not enough data yet', hint }: ChartNotEnoughDataProps) {
+  return (
+    <div className="flex h-full min-h-16 flex-col items-center justify-center gap-0.5 rounded-md bg-muted px-3 py-4 text-center">
+      <p className="text-xs font-medium text-muted-foreground">{message}</p>
+      {hint ? <p className="text-[11px] text-muted-foreground">{hint}</p> : null}
+    </div>
+  )
+}

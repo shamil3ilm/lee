@@ -42,7 +42,7 @@ export function CompanyStancePicker({ companyId, current }: CompanyStancePickerP
 
   return (
     <Select value={current ?? undefined} disabled={pending} onValueChange={handleChange}>
-      <SelectTrigger className="w-full">
+      <SelectTrigger className="w-full" aria-label="Stance">
         <SelectValue placeholder="Set stance" />
       </SelectTrigger>
       <SelectContent>

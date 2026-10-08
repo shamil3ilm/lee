@@ -7,6 +7,7 @@ import { skipStepAction } from '@/app/(authed)/shortlist/actions'
 import type { PrepareView } from '@/lib/apply/prepare-view'
 import { scoreDelta } from '@/lib/apply/progress'
 import { StepShell, toResult, useStepAction, type StepState } from './step-shell'
+import { Checkbox } from '@/components/ui/checkbox'
 
 interface StepResponse {
   documentId?: string
@@ -108,9 +109,8 @@ export function CoverStep({ view, state }: { view: PrepareView; state: StepState
           <legend className="mb-1 text-xs font-medium text-muted-foreground">Links to include</legend>
           {view.links.map((l) => (
             <label key={l.id} className="flex items-start gap-2 text-sm">
-              <input
-                type="checkbox"
-                className="mt-0.5 size-4 shrink-0 accent-primary"
+              <Checkbox
+                className="mt-0.5"
                 checked={ticked.has(l.id)}
                 onChange={(e) => toggle(l.id, e.target.checked)}
                 disabled={pending}

@@ -21,6 +21,7 @@ import {
   type Region,
   type VariantTemplate,
 } from '@/lib/variants/types'
+import { Checkbox } from '@/components/ui/checkbox'
 
 interface VariantSettingsCardProps {
   name: string
@@ -94,7 +95,7 @@ export function VariantSettingsCard({ name, onName, portfolio, recipe, onChange,
             {sectionRows(recipe).map(({ key, on }, i, rows) => (
               <div key={key} className="flex items-center gap-2 text-sm">
                 <label className="flex flex-1 items-center gap-2">
-                  <input type="checkbox" checked={on} onChange={(e) => onChange(toggleSection(recipe, key, e.target.checked))} />
+                  <Checkbox checked={on} onChange={(e) => onChange(toggleSection(recipe, key, e.target.checked))} />
                   {SECTION_LABELS[key]}
                 </label>
                 {on ? (
@@ -116,8 +117,7 @@ export function VariantSettingsCard({ name, onName, portfolio, recipe, onChange,
               const isLocked = locked.includes(f)
               return (
                 <label key={f} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     disabled={isLocked}
                     checked={recipe.fields[f] && !isLocked}
                     onChange={(e) => set({ fields: { ...recipe.fields, [f]: e.target.checked } })}

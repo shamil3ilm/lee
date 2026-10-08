@@ -42,7 +42,8 @@ async function mouseDrag(page: Page, from: Locator, to: Locator): Promise<void> 
 }
 
 async function keyboardMove(page: Page, target: Locator, steps: number): Promise<void> {
-  await target.focus()
+  // Keyboard drags start from the card's move handle (the card itself is not a button).
+  await target.getByRole('button', { name: /^Move / }).focus()
   await page.keyboard.press('Space')
   // dnd-kit attaches its keyboard listeners on the next tick after lifting;
   // pause briefly so each key lands on an active drag.

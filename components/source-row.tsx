@@ -28,6 +28,7 @@ import { humanizeLabel } from '@/lib/ui/labels'
 import { getSourceKind } from '@/lib/discovery/source-kinds'
 import { joinMeta } from '@/lib/ui/meta'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Switch } from '@/components/ui/switch'
 
 const SourceEditDialog = dynamic(
   () => import('@/components/source-edit-dialog').then((m) => m.SourceEditDialog),
@@ -135,30 +136,12 @@ export function SourceRow({ source }: { source: SourceRowItem }) {
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-            <input
-              type="checkbox"
-              className="sr-only"
-              checked={enabled}
-              onChange={handleToggle}
-              disabled={isPending}
-              aria-label={enabled ? 'Disable source' : 'Enable source'}
-            />
-            <span
-              className={[
-                'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
-                enabled ? 'bg-primary' : 'bg-muted',
-              ].join(' ')}
-            >
-              <span
-                className={[
-                  'inline-block h-4 w-4 transform rounded-full bg-card shadow ring-1 ring-border transition-transform',
-                  enabled ? 'translate-x-4' : 'translate-x-0.5',
-                ].join(' ')}
-              />
-            </span>
-            <span>{enabled ? 'On' : 'Off'}</span>
-          </label>
+          <Switch
+            checked={enabled}
+            onChange={handleToggle}
+            disabled={isPending}
+            aria-label={`Poll ${source.name}`}
+          />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

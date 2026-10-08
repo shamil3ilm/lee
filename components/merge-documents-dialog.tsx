@@ -40,6 +40,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { DocumentSummary as Document } from '@/lib/db/queries/documents'
 import type { AssetMetadata } from '@/lib/db/queries/documentAssets'
+import { Checkbox } from '@/components/ui/checkbox'
 
 interface MergeItem {
   key: string
@@ -349,8 +350,7 @@ export function MergeDocumentsDialog({
                     return (
                       <div key={d.id} className="space-y-1">
                         <label className="flex items-start gap-2 text-sm">
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             className="mt-0.5"
                             checked={docChecked}
                             onChange={(e) => toggleDoc(d, e.target.checked)}
@@ -371,8 +371,7 @@ export function MergeDocumentsDialog({
                                   key={a.id}
                                   className="flex items-center gap-2 text-xs"
                                 >
-                                  <input
-                                    type="checkbox"
+                                  <Checkbox
                                     checked={selectedKeys.has(assetKey)}
                                     onChange={(e) => toggleAsset(a, e.target.checked)}
                                   />

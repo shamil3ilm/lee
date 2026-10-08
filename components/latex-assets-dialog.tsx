@@ -1,4 +1,5 @@
 'use client'
+import { plural } from '@/lib/ui/labels'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { toast } from 'sonner'
@@ -127,7 +128,7 @@ export function LatexAssetsDialog({
       if (res.connect) setNeedsReconnect(true)
       if (res.assets.length > 0) {
         onAssetsChange([...assets, ...res.assets])
-        toast.success(`Attached ${res.assets.length} file(s) from Google Drive`)
+        toast.success(`Attached ${plural(res.assets.length, 'file')} from Google Drive`)
       }
     } catch {
       toast.error('Could not open Google Drive.')

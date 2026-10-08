@@ -1,4 +1,5 @@
 'use client'
+import { plural } from '@/lib/ui/labels'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, Sparkles } from 'lucide-react'
@@ -7,6 +8,7 @@ import { acceptProposalAction, proposeVariantAction } from '@/app/(authed)/setti
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { FilteredProposal } from '@/lib/variants/proposals'
+import { Checkbox } from '@/components/ui/checkbox'
 
 /**
  * AI suggests, the user confirms. The proposal arrives already filtered
@@ -64,24 +66,23 @@ export function VariantProposal({ variantId, dirty }: { variantId: string; dirty
           <div className="space-y-3 text-sm">
             {proposal.headline ? (
               <label className="flex items-start gap-2">
-                <input type="checkbox" className="mt-1" checked={keep.headline} onChange={(e) => setKeep({ ...keep, headline: e.target.checked })} />
+                <Checkbox className="mt-1" checked={keep.headline} onChange={(e) => setKeep({ ...keep, headline: e.target.checked })} />
                 <span className="min-w-0 break-words"><span className="font-medium">Headline:</span> {proposal.headline}</span>
               </label>
             ) : null}
             {proposal.summary ? (
               <label className="flex items-start gap-2">
-                <input type="checkbox" className="mt-1" checked={keep.summary} onChange={(e) => setKeep({ ...keep, summary: e.target.checked })} />
+                <Checkbox className="mt-1" checked={keep.summary} onChange={(e) => setKeep({ ...keep, summary: e.target.checked })} />
                 <span className="min-w-0 break-words"><span className="font-medium">Summary:</span> {proposal.summary}</span>
               </label>
             ) : null}
             <label className="flex items-start gap-2">
-              <input type="checkbox" className="mt-1" checked={keep.selection} onChange={(e) => setKeep({ ...keep, selection: e.target.checked })} />
-              <span>Use the suggested selection ({proposal.selectedIds.length} item(s))</span>
+              <Checkbox className="mt-1" checked={keep.selection} onChange={(e) => setKeep({ ...keep, selection: e.target.checked })} />
+              <span>Use the suggested selection ({plural(proposal.selectedIds.length, 'item')})</span>
             </label>
             {proposal.wordings.map((w, i) => (
               <label key={i} className="flex items-start gap-2">
-                <input
-                  type="checkbox"
+                <Checkbox
                   className="mt-1"
                   checked={wordings.has(i)}
                   onChange={(e) => {

@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { TODO_STATUS_LABELS, TODO_STATUS_TONE } from '@/lib/todos/status'
 import { LocalTime } from '@/components/local-time'
+import { Checkbox } from '@/components/ui/checkbox'
 
 const TodoEditDialog = dynamic(
   () => import('@/components/todo-edit-dialog').then((m) => m.TodoEditDialog),
@@ -88,30 +89,13 @@ export function TodoRow({ todo, applicationLabel, now }: TodoRowProps) {
 
   return (
     <li className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 rounded-md border bg-background px-3 py-2 text-sm shadow-sm">
-      <label
-        className="mt-1 inline-flex cursor-pointer items-center"
+      <Checkbox
+        className="mt-1"
         aria-label={isDone ? 'Mark as open' : 'Mark as done'}
-      >
-        <input
-          type="checkbox"
-          className="peer sr-only"
-          checked={isDone}
-          disabled={pending}
-          onChange={toggle}
-        />
-        <span
-          aria-hidden="true"
-          className={cn(
-            'grid size-4 place-items-center rounded border transition-colors',
-            isDone
-              ? 'border-primary bg-primary text-primary-foreground'
-              : 'border-muted-foreground/40 bg-background hover:border-primary',
-            pending && 'opacity-50',
-          )}
-        >
-          {isDone ? '✓' : null}
-        </span>
-      </label>
+        checked={isDone}
+        disabled={pending}
+        onChange={toggle}
+      />
       <div className="min-w-0">
         <div
           className={cn(

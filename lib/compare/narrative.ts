@@ -4,6 +4,7 @@ import { AISkippedError } from '@/lib/ai/signal'
 import type { AIProvider } from '@/lib/ai/types'
 import * as cmpQ from '@/lib/db/queries/jobComparison'
 import { logger } from '@/lib/logger'
+import { plural } from '@/lib/ui/labels'
 import type { Comparison } from './compare'
 import { compareOne } from './service'
 import { CompareError } from './settings'
@@ -80,7 +81,7 @@ export function checkNarrativeSignal(input: CompareNarrativeInput, hasCurrent: b
   if (input.facts.length < MIN_FACTS) {
     throw new AISkippedError(
       'compare_thin',
-      `Only ${input.facts.length} known fact(s) about this job — too few to write about.`,
+      `Only ${plural(input.facts.length, 'known fact')} about this job — too few to write about.`,
       'Add the posting text, record a review rating or refresh the company first.',
     )
   }

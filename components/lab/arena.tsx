@@ -12,6 +12,7 @@ import { ModelPicker, type PickerProvider } from '@/components/lab/model-picker'
 import { RunResults } from '@/components/lab/run-results'
 import type { ModelRef } from '@/lib/lab/providers/types'
 import type { ResultView, RunView } from '@/lib/lab/views'
+import { Checkbox } from '@/components/ui/checkbox'
 
 interface ArenaProps {
   providers: PickerProvider[]
@@ -236,9 +237,7 @@ export function Arena({ providers }: ArenaProps) {
               </div>
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    className="size-4 accent-primary"
+                  <Checkbox
                     checked={schemaOn}
                     onChange={(e) => setSchemaOn(e.target.checked)}
                   />
@@ -281,9 +280,7 @@ export function Arena({ providers }: ArenaProps) {
                   />
                 </div>
                 <label className="col-span-2 flex items-center gap-2 self-end pb-2 text-sm sm:col-span-1">
-                  <input
-                    type="checkbox"
-                    className="size-4 accent-primary"
+                  <Checkbox
                     checked={blind}
                     onChange={(e) => setBlind(e.target.checked)}
                   />

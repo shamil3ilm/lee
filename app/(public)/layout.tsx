@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Logo } from '@/components/brand/logo'
 import { APP_NAME } from '@/lib/brand'
+import { MAIN_CONTENT_ID } from '@/components/skip-link'
 
 // Public pages (no sign-in): the homepage and privacy policy that Google's
 // OAuth consent screen links to. proxy.ts lists these paths as public.
@@ -22,7 +23,9 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           </nav>
         </div>
       </header>
-      <main className="mx-auto max-w-3xl px-4 py-10">{children}</main>
+      <main id={MAIN_CONTENT_ID} tabIndex={-1} className="mx-auto max-w-3xl px-4 py-10 outline-none">
+        {children}
+      </main>
     </div>
   )
 }

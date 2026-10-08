@@ -1,3 +1,4 @@
+import { plural } from '@/lib/ui/labels'
 import { RADAR_SOURCE_LABELS, type RadarSource } from './types'
 
 /**
@@ -28,6 +29,6 @@ export function describeRadarSummary(s: RadarRunSummary): string {
   if (s.status === 'failed') return `${label}: failed${s.error ? ` (${s.error})` : ''}`
   const parts = [`${s.fetched} found`, `${s.new} new`]
   if (s.matched > 0) parts.push(`${s.matched} on watch terms`)
-  if (s.partialErrors) parts.push(`${s.partialErrors} request(s) failed`)
+  if (s.partialErrors) parts.push(`${plural(s.partialErrors, 'request')} failed`)
   return `${label}: ${parts.join(' · ')}`
 }

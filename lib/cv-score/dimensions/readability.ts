@@ -1,3 +1,4 @@
+import { plural } from '@/lib/ui/labels'
 /**
  * v12.0 — Clarity & readability (feeds the Readability headline score).
  *
@@ -159,7 +160,7 @@ export function scoreReadability(cv: ScorableCv): DimensionResult<ReadabilityDet
     const fi = firstIssue as { text: string; section: string; i: number }
     findings.push(makeFinding('readability', {
       severity: 'minor',
-      message: `${tenseIssues} bullet(s) in past roles use present tense`,
+      message: `${plural(tenseIssues, 'bullet')} in past roles ${tenseIssues === 1 ? 'uses' : 'use'} present tense`,
       location: { section: fi.section, index: fi.i, excerpt: excerpt(fi.text) },
       evidence: bulletsEvidence(cv, tenseIdx),
       suggestion: 'Recruiters read past tense as finished work — past tense for previous roles ("Built", "Led") and present tense only for your current role.',
@@ -172,7 +173,7 @@ export function scoreReadability(cv: ScorableCv): DimensionResult<ReadabilityDet
   if (pronounBullets > 0) {
     findings.push(makeFinding('readability', {
       severity: 'minor',
-      message: `${pronounBullets} bullet(s) use first-person pronouns (I, my, we)`,
+      message: `${plural(pronounBullets, 'bullet')} ${pronounBullets === 1 ? 'uses' : 'use'} first-person pronouns (I, my, we)`,
       evidence: bulletsEvidence(
         cv,
         bullets.map((b, i) => (PRONOUN_RE.test(b.text) ? i : -1)).filter((i) => i >= 0),

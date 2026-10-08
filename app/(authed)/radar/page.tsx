@@ -4,6 +4,7 @@ import { requireUserId } from '@/lib/auth/require-session'
 import * as termsQ from '@/lib/db/queries/radarTerms'
 import { feedHref, parseFeedParams } from '@/lib/radar/filters'
 import { loadFeed } from '@/lib/radar/view'
+import { plural } from '@/lib/ui/labels'
 import { EmptyState } from '@/components/empty-state'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
@@ -28,7 +29,7 @@ export default async function RadarPage({ searchParams }: { searchParams: Promis
         description="New AI models, products, papers and repos from free public sources, grouped into entries. Your watch terms are highlighted; briefs are built only from fetched primary sources."
         actions={<RefreshRadarButton />}
       />
-      <FeedFilters raw={raw} />
+      <FeedFilters raw={raw} status={hasMore ? `${plural(entries.length, 'entry', 'entries')} on this page` : plural(entries.length, 'entry', 'entries')} />
       {entries.length === 0 ? (
         <EmptyState
           icon={Radar}

@@ -51,7 +51,7 @@ function Meter({ d }: { d: QuotaDimension }) {
       <div className="flex items-baseline justify-between gap-2 text-[11px]">
         <span className="text-muted-foreground">
           {DIMENSION_LABEL[d.key]}
-          {d.approximate ? <span className="ml-1 opacity-70">(approx.)</span> : null}
+          {d.approximate ? <span className="ml-1">(approx.)</span> : null}
         </span>
         <span className="tabular-nums">
           {formatNumber(Math.round(d.used))} / {formatNumber(d.limit)}{' '}

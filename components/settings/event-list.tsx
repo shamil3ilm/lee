@@ -29,7 +29,7 @@ export function EventList({ events }: { events: EventView[] }) {
   return (
     <ol className="divide-y rounded-md border" data-testid="event-list">
       {events.map((e) => {
-        const hasContext = Object.keys(e.context).length > 0
+        // The machine event key and scope live in the JSON under Details.
         const json = toJson(e)
         return (
           <li key={e.id} className="space-y-1 p-3" data-testid="event-row" data-level={e.level} data-category={e.category}>
@@ -39,13 +39,12 @@ export function EventList({ events }: { events: EventView[] }) {
               <span>
                 {relativeFromNow(e.createdAt)} · <LocalTime date={e.createdAt} />
               </span>
-              <code className="font-mono">{e.event}</code>
-              {e.global ? <span>· global</span> : null}
+              {e.global ? <span>· App-wide</span> : null}
             </div>
             <p className="break-words text-sm">{e.message}</p>
             <details className="group text-xs">
               <summary className="cursor-pointer select-none text-muted-foreground hover:text-foreground">
-                {hasContext ? 'Details' : 'Raw'}
+                Details
               </summary>
               <div className="mt-2 space-y-2">
                 <pre className="max-h-64 overflow-auto rounded-md bg-muted p-2 font-mono text-[11px] leading-relaxed">

@@ -28,7 +28,7 @@ export function ReasonChips({ reasons, max = 6, className }: { reasons: readonly
         <li key={`${r.kind}-${i}`}>
           <Badge variant={tone(r)} className="max-w-[16rem] gap-1 whitespace-normal text-[11px] font-medium">
             <span className="truncate">{r.label}</span>
-            {r.kind === 'match' ? null : <span className="tabular-nums opacity-80">{signed(r.points)}</span>}
+            {r.kind === 'match' ? null : <span className="font-normal tabular-nums">{signed(r.points)}</span>}
           </Badge>
         </li>
       ))}

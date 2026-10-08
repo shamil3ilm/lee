@@ -1,4 +1,5 @@
 'use client'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -68,14 +69,13 @@ export function ComparePicker({ groups, selected, max }: ComparePickerProps) {
                       )}
                       title={locked ? `You can compare up to ${max} jobs. Untick one to pick this.` : undefined}
                     >
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         name="ids"
                         value={o.key}
                         checked={checked}
                         disabled={locked}
                         onChange={(e) => toggle(o.key, e.target.checked)}
-                        className="mt-1 size-4 shrink-0 accent-primary"
+                        className="mt-0.5"
                       />
                       <span className="min-w-0">
                         <span className="block font-medium">{o.label}</span>

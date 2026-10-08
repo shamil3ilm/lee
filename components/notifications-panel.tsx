@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LocalTime } from '@/components/local-time'
 import { digestSendInstant } from '@/lib/digest/send-time'
+import { Switch } from '@/components/ui/switch'
 
 interface NotificationsPanelProps {
   weeklyDigestEnabled: boolean
@@ -78,11 +79,11 @@ export function NotificationsPanel({
             <AlertTriangle className="mt-0.5 size-4 shrink-0" />
             <div>
               <p className="font-medium">Missing Gmail send permission</p>
-              <p className="mt-0.5 opacity-90">
+              <p className="mt-0.5">
                 Reconnect Google at{' '}
                 <a
                   href="/settings/integrations"
-                  className="underline underline-offset-2 hover:opacity-100"
+                  className="underline underline-offset-2"
                 >
                   Settings → Integrations
                 </a>{' '}
@@ -100,26 +101,12 @@ export function NotificationsPanel({
               from your own Gmail account.
             </div>
           </div>
-          {/* Native checkbox styled as a toggle — avoids adding a shadcn Switch
-              primitive just for one control. Keyboard + screen-reader friendly. */}
-          <label className="relative inline-flex shrink-0 cursor-pointer items-center">
-            <input
-              type="checkbox"
-              className="peer sr-only"
-              checked={enabled}
-              disabled={saving}
-              onChange={(e) => toggle(e.currentTarget.checked)}
-              aria-label="Enable weekly digest"
-            />
-            <span
-              className="h-5 w-9 rounded-full bg-input transition-colors peer-checked:bg-primary peer-disabled:opacity-50"
-              aria-hidden="true"
-            />
-            <span
-              className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-background shadow transition-transform peer-checked:translate-x-4"
-              aria-hidden="true"
-            />
-          </label>
+          <Switch
+            checked={enabled}
+            disabled={saving}
+            onChange={(e) => toggle(e.currentTarget.checked)}
+            aria-label="Enable weekly digest"
+          />
         </div>
 
         <div className="text-xs text-muted-foreground">

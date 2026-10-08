@@ -1,4 +1,5 @@
 'use server'
+import { plural } from '@/lib/ui/labels'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { requireUserId } from '@/lib/auth/require-session'
@@ -34,7 +35,7 @@ export async function runJobsNowAction(): Promise<JobsActionResult> {
     if (r.status === 'throttled') return { error: 'Just ran — try again in a few seconds.' }
     if (r.done === 0 && r.failed === 0) return { success: true, message: 'Nothing was due.' }
     const more = r.remaining === 'more' ? ' More remain; they run on the next drain.' : ''
-    return { success: true, message: `Ran ${r.done + r.failed} job(s): ${r.done} done, ${r.failed} failed.${more}` }
+    return { success: true, message: `Ran ${plural(r.done + r.failed, 'job')}: ${r.done} done, ${r.failed} failed.${more}` }
   } catch (err) {
     logger.error('runJobsNow failed', { err: err instanceof Error ? err.message : String(err) })
     return { error: 'Could not run jobs right now.' }

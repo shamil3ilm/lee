@@ -21,6 +21,7 @@ import { DISMISS_REASONS, DISMISS_REASON_LABELS } from '@/lib/apply/feedback'
 import type { RankReason } from '@/lib/apply/rank'
 import { joinMeta } from '@/lib/ui/meta'
 import { cn } from '@/lib/utils'
+import { Checkbox } from '@/components/ui/checkbox'
 
 export interface ShortlistCardItem {
   discoveryId: string
@@ -86,10 +87,9 @@ export function ShortlistCard({ item, selected, onSelectedChange, busy = false }
       aria-busy={pending || undefined}
     >
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3">
-        <input
+        <Checkbox
           id={checkboxId}
-          type="checkbox"
-          className={cn('mt-1 size-4 shrink-0 rounded border-input accent-primary', focusRing)}
+          className="mt-1"
           checked={selected}
           disabled={disabled}
           onChange={(e) => onSelectedChange(e.target.checked)}

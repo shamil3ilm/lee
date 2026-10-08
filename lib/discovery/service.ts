@@ -257,7 +257,7 @@ async function pollSource(args: {
 }): Promise<{ newJobs: number; newCompanies: number; budgetExhausted: boolean; stats: SourcePollStats }> {
   const { source, deadline } = args
   const adapter = getAdapter(source.kind)
-  if (!adapter) throw new Error(`no adapter registered for kind=${source.kind}`)
+  if (!adapter) throw new Error("lee can't read this kind of source yet.")
   const started = Date.now()
   const items = await adapter.fetch(source.config, { userId: args.userId })
   const scoring: ScoringBudget = { remaining: MAX_SCORED_PER_SOURCE, deadline, exhausted: false }

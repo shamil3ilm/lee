@@ -9,6 +9,7 @@ import { fmtContext } from '@/lib/lab/format'
 import type { KeySource, ModelInfo, ModelRef, ProviderId } from '@/lib/lab/providers/types'
 import { cn } from '@/lib/utils'
 import { ErrorDetails } from '@/components/lab/error-details'
+import { Checkbox } from '@/components/ui/checkbox'
 
 export interface PickerProvider {
   id: ProviderId
@@ -105,9 +106,7 @@ export function ModelPicker({ providers, selected, onChange, max = 6 }: ModelPic
           />
         </div>
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            className="size-4 accent-primary"
+          <Checkbox
             checked={freeOnly}
             onChange={(e) => setFreeOnly(e.target.checked)}
           />
@@ -216,9 +215,7 @@ export function ModelPicker({ providers, selected, onChange, max = 6 }: ModelPic
                               disabled && 'cursor-not-allowed opacity-50',
                             )}
                           >
-                            <input
-                              type="checkbox"
-                              className="size-4 shrink-0 accent-primary"
+                            <Checkbox
                               checked={checked}
                               disabled={disabled}
                               onChange={() => toggle({ provider: p.id, model: m.id })}

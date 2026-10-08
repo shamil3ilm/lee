@@ -1,6 +1,7 @@
 'use client'
 import { SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { NativeSelect } from '@/components/ui/native-select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -92,18 +93,6 @@ export function MoreFilters({ jobs, values, canHideFiltered, sources, count, onC
   )
 }
 
-// Local checkbox markup; the shared Checkbox primitive replaces it.
 function Check({ id, label, checked, onChange }: { id: string; label: string; checked: boolean; onChange: (on: boolean) => void }) {
-  return (
-    <label htmlFor={id} className="flex items-center gap-2 text-sm">
-      <input
-        id={id}
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="size-4 shrink-0 rounded border-input accent-primary"
-      />
-      {label}
-    </label>
-  )
+  return <Checkbox id={id} label={label} checked={checked} onChange={(e) => onChange(e.target.checked)} />
 }

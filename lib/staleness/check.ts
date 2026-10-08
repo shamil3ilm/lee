@@ -534,7 +534,7 @@ async function checkMerged(
       changedFields: changed.length > 0 ? changed : ['merged sources'],
       summary:
         changed.length > 0
-          ? `Source document(s) changed since merge: ${changed.join(', ')}.`
+          ? `Source ${changed.length === 1 ? 'document' : 'documents'} changed since merge: ${changed.join(', ')}.`
           : 'A source document version has changed since merge.',
       currentSnapshot: current,
       previousSnapshot: previous,

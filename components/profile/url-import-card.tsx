@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { applyUrlImportAction, previewUrlImportAction } from '@/app/(authed)/settings/profile/import-actions'
 import type { ImportProposal, ImportSection } from '@/lib/profile/url-import'
+import { Checkbox } from '@/components/ui/checkbox'
 
 const SECTION_LABELS: Record<ImportSection, string> = {
   skills: 'Skills to add',
@@ -109,7 +110,7 @@ export function UrlImportCard() {
               <fieldset key={s} className="rounded-lg border p-3">
                 <legend className="px-1">
                   <label className="flex items-center gap-2 text-sm font-medium">
-                    <input type="checkbox" checked={chosen.has(s)} onChange={() => toggle(s)} className="size-4 rounded border-input" />
+                    <Checkbox checked={chosen.has(s)} onChange={() => toggle(s)} />
                     {SECTION_LABELS[s]}
                   </label>
                 </legend>

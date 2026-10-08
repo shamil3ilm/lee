@@ -176,6 +176,7 @@ export default async function DiscoveriesPage({
         sources={sourceOptions}
         scoredOnly={p.scoredOnly}
         showFiltered={p.showFiltered}
+        resultCount={total}
       />
       {jobs ? (
         <DiscoveryInbox

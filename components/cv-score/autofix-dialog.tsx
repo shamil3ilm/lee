@@ -1,4 +1,5 @@
 'use client'
+import { plural } from '@/lib/ui/labels'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
@@ -12,6 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { applyFix, type AutofixChange, type AutofixPreview } from './client'
+import { Checkbox } from '@/components/ui/checkbox'
 
 interface AutofixDialogProps {
   preview: AutofixPreview | null
@@ -51,7 +53,7 @@ export function AutofixDialog({ preview, onClose, onApplied }: AutofixDialogProp
       toast.error(res.error)
       return
     }
-    toast.success(`Saved master CV v${res.data.version} with ${res.data.applied} change(s).`)
+    toast.success(`Saved master CV v${res.data.version} with ${plural(res.data.applied, 'change')}.`)
     setExcluded(new Set())
     onApplied({ documentId: res.data.documentId, version: res.data.version })
   }
@@ -74,8 +76,7 @@ export function AutofixDialog({ preview, onClose, onApplied }: AutofixDialogProp
               return (
                 <li key={key} className="rounded-md border p-3 text-sm">
                   <label className="flex items-start gap-2">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       className="mt-1"
                       checked={!excluded.has(key)}
                       onChange={() => toggle(key)}

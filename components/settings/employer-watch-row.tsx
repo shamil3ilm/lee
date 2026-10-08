@@ -5,6 +5,7 @@ import { ExternalLink, MailPlus } from 'lucide-react'
 import { toggleSourceEnabled, updateEmployerWatch } from '@/app/(authed)/settings/sources/actions'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { Disclosure } from '@/components/settings/disclosure'
 import type { EmployerWatchRow as Row, WatchStatus } from '@/lib/defaults/watch-status'
 import { howLeeChecks, otherMethods } from '@/lib/defaults/watch-filter'
@@ -76,29 +77,12 @@ export function EmployerWatchRow({ row }: { row: Row }) {
             </Button>
           ) : null}
           {row.sourceId ? (
-            <label className="inline-flex cursor-pointer items-center">
-              <input
-                type="checkbox"
-                className="peer sr-only"
-                checked={row.watching}
-                onChange={toggle}
-                disabled={isPending}
-                aria-label={`${row.watching ? 'Stop watching' : 'Watch'} ${row.name}`}
-              />
-              <span
-                className={[
-                  'relative inline-flex h-5 w-9 items-center rounded-full transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-ring',
-                  row.watching ? 'bg-primary' : 'bg-muted',
-                ].join(' ')}
-              >
-                <span
-                  className={[
-                    'inline-block h-4 w-4 transform rounded-full bg-card shadow ring-1 ring-border transition-transform',
-                    row.watching ? 'translate-x-4' : 'translate-x-0.5',
-                  ].join(' ')}
-                />
-              </span>
-            </label>
+            <Switch
+              checked={row.watching}
+              onChange={toggle}
+              disabled={isPending}
+              aria-label={`Watch ${row.name}`}
+            />
           ) : null}
         </div>
       </div>

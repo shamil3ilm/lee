@@ -4,6 +4,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils'
 import type { NavItem } from './nav-config'
 import { NavBadge, NavBadgeSuffix } from './nav-badges'
+import { LinkPendingHint } from './link-pending'
 
 interface SidebarLinkProps {
   item: NavItem
@@ -29,9 +30,11 @@ export function SidebarLink({ item, active, rail, onNavigate }: SidebarLinkProps
         'group-data-[sidebar=rail]/shell:justify-center group-data-[sidebar=rail]/shell:px-0',
         active
           ? 'bg-accent font-semibold text-accent-foreground shadow-sm'
-          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground has-[[data-pending]]:bg-accent has-[[data-pending]]:text-accent-foreground',
       )}
     >
+      {/* Pending navigation: the item turns active at once, with a bar at its left edge. */}
+      <LinkPendingHint className="left-0 top-1/2 h-4 w-0.5 -translate-y-1/2" />
       <Icon className="size-4 shrink-0" />
       <span className={cn('flex-1 truncate', RAIL_HIDDEN)}>{label}</span>
       {badgeKey ? <NavBadge badgeKey={badgeKey} /> : null}

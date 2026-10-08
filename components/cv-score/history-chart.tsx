@@ -2,7 +2,15 @@
 import { categorical } from '@/lib/ui/chart-palette'
 import { DISPLAY_LOCALE } from '@/lib/ui/date'
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
+import {
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from '@/components/ui/chart'
+import { CHART_MARGIN, LEGEND_PROPS, TIME_AXIS, VALUE_AXIS, lineProps } from '@/components/ui/chart-defaults'
 import { isOutdatedScore, SCORER_VERSION } from '@/lib/cv-score/version'
 import type { HistoryPoint } from './client'
 
@@ -31,15 +39,16 @@ export function HistoryChart({ points }: { points: HistoryPoint[] }) {
   }))
   return (
     <div className="space-y-1.5">
-      <ChartContainer config={config} className="aspect-auto h-48 w-full">
-        <LineChart data={data} margin={{ left: -20, right: 8, top: 8 }}>
+      <ChartContainer config={config} className="aspect-auto h-56 w-full">
+        <LineChart data={data} margin={CHART_MARGIN}>
           <CartesianGrid vertical={false} />
-          <XAxis dataKey="run" tickLine={false} axisLine={false} />
-          <YAxis domain={[0, 100]} tickLine={false} axisLine={false} width={40} />
+          <XAxis dataKey="run" {...TIME_AXIS} />
+          <YAxis domain={[0, 100]} {...VALUE_AXIS} />
           <ChartTooltip content={<ChartTooltipContent />} />
-          <Line type="monotone" dataKey="total" stroke="var(--color-total)" strokeWidth={2} dot />
-          <Line type="monotone" dataKey="ats" stroke="var(--color-ats)" strokeWidth={1.5} dot={false} />
-          <Line type="monotone" dataKey="impact" stroke="var(--color-impact)" strokeWidth={1.5} dot={false} />
+          <ChartLegend {...LEGEND_PROPS} content={<ChartLegendContent />} />
+          <Line dataKey="total" stroke="var(--color-total)" fill="var(--color-total)" {...lineProps(data.length)} />
+          <Line dataKey="ats" stroke="var(--color-ats)" fill="var(--color-ats)" {...lineProps(data.length)} strokeWidth={1.5} />
+          <Line dataKey="impact" stroke="var(--color-impact)" fill="var(--color-impact)" {...lineProps(data.length)} strokeWidth={1.5} />
         </LineChart>
       </ChartContainer>
       {olderRuns.length ? (

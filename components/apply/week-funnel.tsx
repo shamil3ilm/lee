@@ -28,7 +28,7 @@ export function WeekFunnel({ funnel }: { funnel: WeekFunnelData }) {
               <div className="truncate text-[11px] text-muted-foreground">{FUNNEL_LABELS[step]}</div>
               {i < FUNNEL_STEPS.length - 1 ? (
                 <ChevronRight
-                  className="absolute -right-2 top-1.5 size-4 text-muted-foreground/60 max-sm:hidden"
+                  className="absolute -right-2 top-1.5 size-4 text-muted-foreground max-sm:hidden"
                   aria-hidden="true"
                 />
               ) : null}

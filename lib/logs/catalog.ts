@@ -1,3 +1,4 @@
+import { plural } from '@/lib/ui/labels'
 import { MAX_MESSAGE_LENGTH, redactText } from './redact'
 import type { EventCategory, EventLevel } from './types'
 
@@ -60,7 +61,7 @@ export const EVENT_CATALOG: Readonly<Record<string, EventSpec>> = {
     category: 'job',
     persist: true,
     message: (c) =>
-      `Drain ran ${n(c, 'claimed')} job(s): ${n(c, 'done')} done, ${n(c, 'failed') + n(c, 'dead')} failed (${s(c, 'stoppedBy') || 'empty'})`,
+      `Drain ran ${plural(n(c, 'claimed'), 'job')}: ${n(c, 'done')} done, ${n(c, 'failed') + n(c, 'dead')} failed (${s(c, 'stoppedBy') || 'empty'})`,
   },
   queue_job_done: {
     category: 'job',
@@ -74,12 +75,19 @@ export const EVENT_CATALOG: Readonly<Record<string, EventSpec>> = {
     message: (c) => `${s(c, 'jobLabel') || 'Job'} failed (attempt ${n(c, 'attempt')}): ${s(c, 'err')}`,
   },
   source_first_poll_queued: { category: 'source', persist: true, strings: ['source'], message: () => 'First poll queued' },
+  // Error screens (app/error.tsx and friends report here via /api/client-errors)
+  client_render_error: {
+    category: 'app',
+    strings: ['boundary'],
+    message: (c) =>
+      `A page failed to load${s(c, 'route') ? ` (${s(c, 'route')})` : ''}${s(c, 'code') ? `, error code ${s(c, 'code')}` : ''}${s(c, 'err') ? `: ${s(c, 'err')}` : ''}`,
+  },
   // Cron
   cron_schedule: {
     category: 'cron',
     persist: true,
     strings: ['day'],
-    message: (c) => `Scheduled ${n(c, 'enqueued')} job(s) for ${n(c, 'users')} user(s)`,
+    message: (c) => `Scheduled ${plural(n(c, 'enqueued'), 'job')} for ${plural(n(c, 'users'), 'user')}`,
   },
   cron_retention: { category: 'cron', persist: true, message: () => 'Retention ran' },
   cron_reminders: {
@@ -115,7 +123,7 @@ export const EVENT_CATALOG: Readonly<Record<string, EventSpec>> = {
     category: 'source',
     persist: true,
     message: (c) =>
-      `Company reputation refreshed: ${n(c, 'signals')} signal(s)${n(c, 'failedSources') > 0 ? ` · ${n(c, 'failedSources')} source(s) failed` : ''}`,
+      `Company reputation refreshed: ${plural(n(c, 'signals'), 'signal')}${n(c, 'failedSources') > 0 ? ` · ${plural(n(c, 'failedSources'), 'source')} failed` : ''}`,
   },
   reputation_source_failed: {
     category: 'source',
@@ -134,7 +142,7 @@ export const EVENT_CATALOG: Readonly<Record<string, EventSpec>> = {
     persist: true,
     strings: ['source'],
     message: (c) =>
-      `Radar ${s(c, 'source') || 'source'}: ${n(c, 'fetched')} found, ${n(c, 'new')} new, ${n(c, 'matched')} on watch terms${n(c, 'partialErrors') > 0 ? ` · ${n(c, 'partialErrors')} request(s) failed` : ''}`,
+      `Radar ${s(c, 'source') || 'source'}: ${n(c, 'fetched')} found, ${n(c, 'new')} new, ${n(c, 'matched')} on watch terms${n(c, 'partialErrors') > 0 ? ` · ${plural(n(c, 'partialErrors'), 'request')} failed` : ''}`,
   },
   radar_source_failed: {
     category: 'radar',
@@ -150,7 +158,7 @@ export const EVENT_CATALOG: Readonly<Record<string, EventSpec>> = {
   radar_brief_drafted: {
     category: 'radar',
     persist: true,
-    message: (c) => `Radar brief drafted from ${n(c, 'sources')} source(s): ${n(c, 'kept')} cited sentence(s) kept, ${n(c, 'dropped')} dropped`,
+    message: (c) => `Radar brief drafted from ${plural(n(c, 'sources'), 'source')}: ${plural(n(c, 'kept'), 'cited sentence')} kept, ${n(c, 'dropped')} dropped`,
   },
   radar_brief_skipped: {
     category: 'radar',
@@ -159,17 +167,17 @@ export const EVENT_CATALOG: Readonly<Record<string, EventSpec>> = {
   },
   radar_brief_source_failed: {
     category: 'radar',
-    message: (c) => `Radar brief: ${n(c, 'failed')} source(s) could not be fetched (${s(c, 'err')})`,
+    message: (c) => `Radar brief: ${plural(n(c, 'failed'), 'source')} could not be fetched (${s(c, 'err')})`,
   },
   radar_brief_saved: {
     category: 'radar',
     persist: true,
-    message: (c) => `Radar brief saved: ${n(c, 'sentences')} sentence(s) from ${n(c, 'sources')} source(s)`,
+    message: (c) => `Radar brief saved: ${plural(n(c, 'sentences'), 'sentence')} from ${plural(n(c, 'sources'), 'source')}`,
   },
   radar_module_created: {
     category: 'playground',
     persist: true,
-    message: (c) => `Radar brief added to the Playground: ${n(c, 'cards')} card(s)`,
+    message: (c) => `Radar brief added to the Playground: ${plural(n(c, 'cards'), 'card')}`,
   },
   // Gmail / digest / notifications
   gmail_sync_done: {
@@ -190,7 +198,7 @@ export const EVENT_CATALOG: Readonly<Record<string, EventSpec>> = {
   drive_migrate_done: {
     category: 'drive',
     persist: true,
-    message: (c) => `Moved ${n(c, 'migrated')} file(s) to Drive, ${n(c, 'remaining')} left`,
+    message: (c) => `Moved ${plural(n(c, 'migrated'), 'file')} to Drive, ${n(c, 'remaining')} left`,
   },
   // Usage
   usage_snapshot: { category: 'usage', persist: true, message: () => 'Usage snapshot taken' },
@@ -202,13 +210,13 @@ export const EVENT_CATALOG: Readonly<Record<string, EventSpec>> = {
     persist: true,
     strings: ['version'],
     message: (c) =>
-      `Profile published to the portfolio (${s(c, 'version') || 'new version'}, ${n(c, 'sections')} section(s) changed)`,
+      `Profile published to the portfolio (${s(c, 'version') || 'new version'}, ${plural(n(c, 'sections'), 'section')} changed)`,
   },
   profile_publish_conflict: {
     category: 'app',
     persist: true,
     message: (c) =>
-      `Portfolio profile.json changed outside lee (${s(c, 'reason') || 'edited'}): ${n(c, 'sections')} section(s) differ — waiting for your choice`,
+      `Portfolio profile.json changed outside lee (${s(c, 'reason') || 'edited'}): ${plural(n(c, 'sections'), 'section')} ${n(c, 'sections') === 1 ? 'differs' : 'differ'} — waiting for your choice`,
   },
   // Playground (v13 core engine). Context: skill/item ids, formats, numbers.
   // Never answers, profile text or study notes.
@@ -229,18 +237,18 @@ export const EVENT_CATALOG: Readonly<Record<string, EventSpec>> = {
     category: 'playground',
     persist: true,
     message: (c) =>
-      `Placement seeded ${n(c, 'seeds')} skill(s) from the profile; ${n(c, 'studyTargets')} study target(s)`,
+      `Placement seeded ${plural(n(c, 'seeds'), 'skill')} from the profile; ${plural(n(c, 'studyTargets'), 'study target')}`,
   },
   academy_placement_completed: {
     category: 'playground',
     persist: true,
-    message: (c) => `Placement check finished (${n(c, 'items')} item(s))`,
+    message: (c) => `Placement check finished (${plural(n(c, 'items'), 'item')})`,
   },
   academy_plan_generated: {
     category: 'playground',
     persist: true,
     strings: ['reason'],
-    message: (c) => `Daily plan ${s(c, 'reason') || 'generated'}: ${n(c, 'items')} item(s), ${n(c, 'minutes')} min`,
+    message: (c) => `Daily plan ${s(c, 'reason') || 'generated'}: ${plural(n(c, 'items'), 'item')}, ${n(c, 'minutes')} min`,
   },
   academy_achievement_earned: {
     category: 'playground',
@@ -253,20 +261,20 @@ export const EVENT_CATALOG: Readonly<Record<string, EventSpec>> = {
   shortlist_built: {
     category: 'job',
     persist: true,
-    message: (c) => `Shortlist built: ${n(c, 'shortlisted')} of ${n(c, 'candidates')} candidate(s)`,
+    message: (c) => `Shortlist built: ${n(c, 'shortlisted')} of ${plural(n(c, 'candidates'), 'candidate')}`,
   },
   application_prepared: {
     category: 'app',
     persist: true,
     strings: ['applicationId'],
-    message: (c) => `Application prepared: ${n(c, 'done')} step(s) done, ${n(c, 'skipped')} skipped`,
+    message: (c) => `Application prepared: ${plural(n(c, 'done'), 'step')} done, ${n(c, 'skipped')} skipped`,
   },
   marked_applied: {
     category: 'app',
     persist: true,
     strings: ['applicationId'],
     message: (c) =>
-      `Marked applied with ${n(c, 'documents')} document(s)${n(c, 'followupDays') > 0 ? `; follow-up in ${n(c, 'followupDays')} days` : ''}`,
+      `Marked applied with ${plural(n(c, 'documents'), 'document')}${n(c, 'followupDays') > 0 ? `; follow-up in ${n(c, 'followupDays')} days` : ''}`,
   },
   // LaTeX
   latex_compile: {

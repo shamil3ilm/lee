@@ -5,11 +5,18 @@ import {
   CATEGORY_Y_AXIS,
   CHART_MARGIN,
   CHART_MARGIN_LABELLED,
+  MIN_STAT_POINTS,
   VALUE_AXIS,
+  VALUE_X_AXIS,
   formatCategoryTick,
   formatCompactNumber,
+  hasEnoughForStats,
+  lineProps,
+  orderByDomain,
   truncateLabel,
 } from '@/components/ui/chart-defaults'
+import { APPLICATION_STATUSES } from '@/lib/ui/status'
+import { sortByLevel } from '@/components/playground/skill-levels'
 import { formatCostTick } from '@/components/analytics/ai-usage-format'
 
 describe('humanizeLabel', () => {
@@ -76,5 +83,51 @@ describe('formatCostTick', () => {
     expect(formatCostTick(0.00038)).toBe('$0.00038')
     expect(formatCostTick(0.25)).toBe('$0.25')
     expect(formatCostTick(12.4)).toBe('$12')
+  })
+})
+
+describe('chart integrity helpers', () => {
+  it('only allows statistics from MIN_STAT_POINTS points up', () => {
+    expect(MIN_STAT_POINTS).toBe(5)
+    expect(hasEnoughForStats(0)).toBe(false)
+    expect(hasEnoughForStats(1)).toBe(false)
+    expect(hasEnoughForStats(4)).toBe(false)
+    expect(hasEnoughForStats(5)).toBe(true)
+    expect(hasEnoughForStats(Number.NaN)).toBe(false)
+  })
+
+  it('never smooths lines and dots short series', () => {
+    expect(lineProps(3)).toMatchObject({ type: 'linear', dot: { r: 3 } })
+    expect(lineProps(5).dot).not.toBe(false)
+    expect(lineProps(6)).toMatchObject({ type: 'linear', dot: false })
+    expect(lineProps(30).type).toBe('linear')
+  })
+
+  it('orders series by domain order, unknown keys last in their own order', () => {
+    expect(orderByDomain(['offer', 'applied', 'zeta', 'saved', 'alpha'], APPLICATION_STATUSES)).toEqual([
+      'saved',
+      'applied',
+      'offer',
+      'zeta',
+      'alpha',
+    ])
+    expect(orderByDomain([], APPLICATION_STATUSES)).toEqual([])
+  })
+
+  it('pads the horizontal value axis so the last tick is not clipped', () => {
+    expect(VALUE_X_AXIS.type).toBe('number')
+    expect(VALUE_X_AXIS.padding.right).toBeGreaterThanOrEqual(16)
+  })
+})
+
+describe('sortByLevel (skill levels)', () => {
+  it('puts the strongest domain first and unassessed domains last', () => {
+    const sorted = sortByLevel([
+      { domainId: 'a', domain: 'A', level: 0 },
+      { domainId: 'b', domain: 'B', level: 2.5 },
+      { domainId: 'c', domain: 'C', level: 4 },
+      { domainId: 'd', domain: 'D', level: 0 },
+    ])
+    expect(sorted.map((p) => p.domainId)).toEqual(['c', 'b', 'a', 'd'])
   })
 })

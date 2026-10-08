@@ -11,10 +11,10 @@ export function ErrorDetails({ detail }: ErrorDetailsProps) {
   if (!detail) return null
   return (
     <details className="mt-2 text-[11px]">
-      <summary className="cursor-pointer select-none font-medium opacity-80 hover:opacity-100">
+      <summary className="cursor-pointer select-none font-medium underline-offset-2 hover:underline">
         Details
       </summary>
-      <p className="mt-1 break-words font-mono opacity-80">{detail}</p>
+      <p className="mt-1 break-words font-mono">{detail}</p>
     </details>
   )
 }

@@ -199,7 +199,7 @@ export function AIUsageCard({ data, className }: AIUsageCardProps) {
                       <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
                         {formatRating(r.ratingAvg)}
                         {r.ratingCount > 0 ? (
-                          <span className="ml-1 text-[10px] opacity-60">
+                          <span className="ml-1 text-[10px] font-normal text-muted-foreground">
                             ({r.ratingCount})
                           </span>
                         ) : null}
@@ -259,7 +259,7 @@ export function AIUsageCard({ data, className }: AIUsageCardProps) {
                               >
                                 {formatRating(r.ratingAvg)}
                                 {r.ratingCount > 0 ? (
-                                  <span className="ml-1 text-[10px] opacity-60">
+                                  <span className="ml-1 text-[10px] font-normal text-muted-foreground">
                                     ({r.ratingCount})
                                   </span>
                                 ) : null}

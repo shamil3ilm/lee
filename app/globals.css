@@ -293,8 +293,9 @@ body {
 
 /* One focus ring everywhere: 2px ring colour, offset by the surface.
  * Components opt in with `focus-visible:ring-2 ...` (see buttonVariants);
- * this rule covers plain links and anything that forgot to. */
-:where(a, summary, [tabindex]):focus-visible {
+ * this zero-specificity rule covers plain links, hand-built buttons and
+ * anything else that forgot to (a component's own ring still wins). */
+:where(a, summary, button, select, [tabindex], [role='button'], [role='tab'], [role='switch'], [role='menuitem']):focus-visible {
   outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
   border-radius: calc(var(--radius) - 6px);
@@ -348,6 +349,32 @@ body {
 @keyframes lee-indeterminate {
   from { transform: translateX(-100%); }
   to { transform: translateX(300%); }
+}
+/* Navigation pending (components/nav/navigation-progress.tsx): the bar
+ * waits ~120ms (fast navigations never flash), then creeps towards 85%
+ * until the new URL commits, then fills and fades. */
+@keyframes lee-nav-progress {
+  0% { transform: scaleX(0); opacity: 1; }
+  15% { transform: scaleX(0.35); opacity: 1; }
+  100% { transform: scaleX(0.85); opacity: 1; }
+}
+.lee-nav-progress {
+  animation: lee-nav-progress 8s cubic-bezier(0.1, 0.6, 0.3, 1) both;
+}
+.lee-nav-progress-done {
+  transform: scaleX(1);
+  opacity: 0;
+  transition: transform 150ms ease-out, opacity 200ms ease 150ms;
+}
+/* Per-link pending marker (components/nav/link-pending.tsx). */
+@keyframes lee-link-hint-in {
+  to { opacity: 1; }
+}
+.lee-link-hint {
+  opacity: 0;
+}
+.lee-link-hint[data-pending] {
+  animation: lee-link-hint-in 150ms ease 100ms forwards;
 }
 /* Optional dark PDF: invert the page, keep hues roughly right. */
 .lee-pdf-dark canvas {
