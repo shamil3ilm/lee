@@ -58,8 +58,9 @@ function renderCard(d: DiscoveryBoardItem): React.ReactNode {
     <>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="font-medium leading-tight">{d.companyName}</div>
-          <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{d.title}</div>
+          {/* Role first, company as meta: the same order as the list rows. */}
+          <div className="line-clamp-2 font-medium leading-tight">{d.title}</div>
+          <div className="mt-0.5 truncate text-xs text-muted-foreground">{d.companyName}</div>
         </div>
         {/* A card with an application link renders inside <a>: no nested button there. */}
         <MatchBadge

@@ -27,29 +27,48 @@ const DETAIL: MatchDetail = {
 afterEach(cleanup)
 
 describe('MatchBadge', () => {
-  it('shows Match and AI with the colour band', () => {
+  it('shows one Fit number (the blend of Match and AI) with the colour band', () => {
     render(createElement(MatchBadge, { match: 72, ai: 80, detail: DETAIL, interactive: false }))
     const badge = screen.getByTestId('match-badge')
-    expect(badge.textContent).toBe('Match 72 · AI 80')
-    expect(badge.getAttribute('data-band')).toBe('good')
+    expect(badge.textContent).toBe('Fit 76')
+    expect(badge.getAttribute('data-band')).toBe('strong')
   })
 
-  it('opens "Why this score" with components, signed points and missing must-haves', async () => {
+  it('marks a title-only score as approximate and low confidence', () => {
+    render(createElement(MatchBadge, { match: 45, ai: null, detail: { ...DETAIL, confidence: 'title_only' }, interactive: false }))
+    const badge = screen.getByTestId('match-badge')
+    expect(badge.textContent).toBe('Fit ~45')
+    expect(badge.getAttribute('data-band')).toBe('low')
+  })
+
+  it('opens "Why this score" with the breakdown, components, signed points and missing must-haves', async () => {
     render(createElement(MatchBadge, { match: 72, ai: null, detail: DETAIL }))
-    fireEvent.click(screen.getByRole('button', { name: /Why this score/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Fit 72\. Why this score/ }))
     const why = await screen.findByTestId('match-why')
-    expect(why.textContent).toContain('Match 72/100 · Good match')
+    expect(why.textContent).toContain('Fit 72/100 · Good fit')
+    expect(screen.getByRole('list', { name: 'Fit breakdown' }).textContent).toMatch(/Match.*72/)
     expect(why.textContent).toContain('Region: Saudi Arabia')
     expect(why.textContent).toContain('-5')
     expect(screen.getByTestId('match-missing').textContent).toBe('Missing: Kubernetes (required)')
   })
 
-  it('explains the blend when both scores exist, and filtered rows', () => {
-    render(createElement(MatchWhy, { match: 72, ai: 81, detail: DETAIL }))
-    expect(screen.getByTestId('match-why').textContent).toContain('Ranked by the mean of both: 77.')
+  it('documents the formula, and explains filtered rows', () => {
+    render(createElement(MatchWhy, { match: 72, ai: 81, detail: DETAIL, benefits: 64 }))
+    const why = screen.getByTestId('match-why')
+    expect(why.textContent).toContain('Fit 77/100')
+    const breakdown = screen.getByRole('list', { name: 'Fit breakdown' }).textContent
+    expect(breakdown).toMatch(/Match.*72/)
+    expect(breakdown).toMatch(/AI.*81/)
+    expect(breakdown).toMatch(/Benefits.*64/)
+    expect(screen.getByTestId('fit-formula').textContent).toContain('Fit = (Match + AI) ÷ 2')
     cleanup()
     render(createElement(MatchWhy, { match: 40, ai: null, detail: null, filtered: true }))
     expect(screen.getByTestId('match-why').textContent).toContain('Filtered postings are not AI-scored')
+  })
+
+  it('renders extra reasons inside the popover', () => {
+    render(createElement(MatchWhy, { match: 72, ai: null, detail: null, extra: createElement('p', null, 'Posted yesterday') }))
+    expect(screen.getByTestId('match-why').textContent).toContain('Posted yesterday')
   })
 })
 

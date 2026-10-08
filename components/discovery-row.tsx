@@ -117,34 +117,52 @@ function scoreLabel(score: number | null, prefix: string): string {
 }
 
 
-/** Filter reason and soft-rule chips under a job row. */
+/**
+ * Chips that stay on the row: why a posting was filtered out, and neutral
+ * facts ("Relocation offered"). Ranking reasons (rank lower / boosts) live
+ * in the "Why this score" popover with the rest of the score.
+ */
 function RelevanceChips({ item }: { item: DiscoveryRowJob }) {
-  const n = item.notes ?? {}
-  const hasAny = Boolean(item.filterReason && item.status === 'filtered') || (n.penalties?.length ?? 0) + (n.boosts?.length ?? 0) + (n.infos?.length ?? 0) > 0
-  if (!hasAny) return null
+  const infos = item.notes?.infos ?? []
+  const filtered = item.status === 'filtered' && Boolean(item.filterReason)
+  if (!filtered && infos.length === 0) return null
   return (
     <div className="mt-1.5 flex flex-wrap items-center gap-1.5" data-testid="relevance-chips">
-      {item.status === 'filtered' && item.filterReason ? (
+      {filtered ? (
         <Badge variant="warning" title="Why this posting was filtered out">
           <Filter className="mr-1 size-3" aria-hidden="true" />
           {item.filterReason}
         </Badge>
       ) : null}
-      {(n.penalties ?? []).map((p) => (
-        <Badge key={`p-${p}`} variant="warning" title="Ranked lower by your search preferences">
-          lower priority: {p}
-        </Badge>
-      ))}
-      {(n.boosts ?? []).map((b) => (
-        <Badge key={`b-${b}`} variant="success">
-          + {b}
-        </Badge>
-      ))}
-      {(n.infos ?? []).map((i) => (
+      {infos.map((i) => (
         <Badge key={`i-${i}`} variant="outline">
           {i}
         </Badge>
       ))}
+    </div>
+  )
+}
+
+/** "Ranked lower: Senior title" / "Ranked higher: Laravel" inside the popover. */
+function RankingNotes({ notes }: { notes: DiscoveryRowJob['notes'] }) {
+  const penalties = notes?.penalties ?? []
+  const boosts = notes?.boosts ?? []
+  if (penalties.length === 0 && boosts.length === 0) return null
+  return (
+    <div data-testid="ranking-notes">
+      <p className="text-xs font-medium">Your search preferences</p>
+      <ul className="mt-1 space-y-0.5 text-xs" aria-label="Ranking notes">
+        {penalties.map((p) => (
+          <li key={`p-${p}`}>
+            <span className="font-medium text-warning">Ranked lower:</span> {p}
+          </li>
+        ))}
+        {boosts.map((b) => (
+          <li key={`b-${b}`}>
+            <span className="font-medium text-success">Ranked higher:</span> {b}
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }
@@ -231,16 +249,16 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
               </p>
             ) : null}
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-              {item.risk ? <RiskBadge risk={item.risk} /> : null}
               <MatchBadge
                 match={item.fitScore ?? null}
                 ai={item.matchScore}
                 detail={item.fitDetail ?? null}
                 filtered={isFiltered}
+                benefits={item.benefitsScore}
+                extra={<RankingNotes notes={item.notes} />}
               />
-              <Badge variant={scoreVariant(item.benefitsScore)}>
-                {scoreLabel(item.benefitsScore, 'Benefits')}
-              </Badge>
+              {/* Scam Shield speaks up only when it has something to say. */}
+              {item.risk && item.risk.level !== 'safe' ? <RiskBadge risk={item.risk} /> : null}
               <Badge variant="neutral">{item.sourceName}</Badge>
               {workModeLabel(n.remoteType) ? (
                 <Badge variant="slate">{workModeLabel(n.remoteType)}</Badge>
@@ -276,7 +294,7 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
             ) : null}
             {isActionable ? (
               <>
-                <Button size="sm" onClick={handleSave} disabled={isPending}>
+                <Button size="sm" variant="outline" onClick={handleSave} disabled={isPending}>
                   Save
                 </Button>
                 <Button
@@ -391,7 +409,7 @@ export function CompanyDiscoveryRow({ item }: { item: DiscoveryRowCompany }) {
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               <Badge variant={scoreVariant(item.matchScore)}>
-                {scoreLabel(item.matchScore, 'Match')}
+                {scoreLabel(item.matchScore, 'Fit')}
               </Badge>
               {n.size ? <Badge variant="slate">{n.size}</Badge> : null}
               {n.stage ? <Badge variant="violet">{n.stage.replace(/_/g, ' ')}</Badge> : null}

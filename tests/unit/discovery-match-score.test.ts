@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { UserProfile } from '@/lib/db/queries/profile'
-import { blendScores, scoreBand, scoreText } from '@/lib/discovery/match/blend'
+import { blendScores, fitText, scoreBand, scoreText } from '@/lib/discovery/match/blend'
 import { matchKey } from '@/lib/discovery/match/key'
 import { matchProfileFrom, resumeYears } from '@/lib/discovery/match/profile'
 import { computeMatch } from '@/lib/discovery/match/score'
@@ -148,6 +148,16 @@ describe('blend and bands', () => {
     expect(scoreText(72, null)).toBe('Match 72')
     expect(scoreText(null, null)).toBe('Not scored')
     expect([scoreBand(90), scoreBand(60), scoreBand(40), scoreBand(10)]).toEqual(['strong', 'good', 'fair', 'weak'])
+  })
+
+  it('shows one Fit number: the blend, approximate when it rests on the title only', () => {
+    expect(fitText(72, 80)).toBe('Fit 76')
+    expect(fitText(72, null)).toBe('Fit 72')
+    expect(fitText(null, 91)).toBe('Fit 91')
+    expect(fitText(45, null, { titleOnly: true })).toBe('Fit ~45')
+    // An AI score makes a title-only Match moot: the blend is exact enough.
+    expect(fitText(45, 60, { titleOnly: true })).toBe('Fit 53')
+    expect(fitText(null, null)).toBe('Not scored')
   })
 })
 

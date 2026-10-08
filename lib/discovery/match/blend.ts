@@ -25,11 +25,14 @@ export function blendScores(match: number | null, ai: number | null): number | n
 export type ScoreBand = 'strong' | 'good' | 'fair' | 'weak'
 
 export const BAND_LABELS: Readonly<Record<ScoreBand, string>> = {
-  strong: 'Strong match',
-  good: 'Good match',
-  fair: 'Fair match',
-  weak: 'Weak match',
+  strong: 'Strong fit',
+  good: 'Good fit',
+  fair: 'Fair fit',
+  weak: 'Weak fit',
 }
+
+/** The formula as shown in "Why this score" (keep in step with blendScores). */
+export const FIT_FORMULA = 'Fit = (Match + AI) ÷ 2 when both exist; otherwise whichever one there is.'
 
 /** Colour bands: 75+ strong · 55–74 good · 35–54 fair · below 35 weak. */
 export function scoreBand(score: number): ScoreBand {
@@ -39,7 +42,17 @@ export function scoreBand(score: number): ScoreBand {
   return 'weak'
 }
 
-/** "Match 72 · AI 80", "Match 72", "AI 80" or "Not scored". */
+/**
+ * The one number on every card: "Fit 76" (the blend), "Fit ~45" when it
+ * rests on the job title alone (no AI score to refine it), or "Not scored".
+ */
+export function fitText(match: number | null, ai: number | null, opts: { titleOnly?: boolean } = {}): string {
+  const fit = blendScores(match, ai)
+  if (fit === null) return 'Not scored'
+  return opts.titleOnly && ai === null ? `Fit ~${fit}` : `Fit ${fit}`
+}
+
+/** "Match 72 · AI 80", "Match 72", "AI 80" or "Not scored" (the breakdown, inside the popover). */
 export function scoreText(match: number | null, ai: number | null): string {
   const parts = [match !== null ? `Match ${match}` : null, ai !== null ? `AI ${ai}` : null].filter(Boolean)
   return parts.length > 0 ? parts.join(' · ') : 'Not scored'
