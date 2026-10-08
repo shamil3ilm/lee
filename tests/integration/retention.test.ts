@@ -65,7 +65,12 @@ describe('tombstoneDismissedDiscoveries', () => {
   it('keeps old dismissed rows as slim tombstones and drops their risk rows', async () => {
     const u = await makeUser()
     const src = await makeSource(u.id)
-    const heavy = { raw: { big: 'z'.repeat(4_000) }, matchReasoning: { summary: 'r'.repeat(500) } }
+    const heavy = {
+      raw: { big: 'z'.repeat(4_000) },
+      matchReasoning: { summary: 'r'.repeat(500) },
+      bestCv: { v: 'b1', best: { variantId: 'v', name: 'GCC', fit: 70 } },
+      bestCvKey: 'b1:k',
+    }
     const oldDismissed = await makeDiscovery(u.id, src.id, {
       ...heavy,
       normalized: heavyJob(1),
@@ -98,6 +103,8 @@ describe('tombstoneDismissedDiscoveries', () => {
       raw: {},
       normalized: { kind: 'job', title: 'Engineer 1', companyName: 'Acme' },
       matchReasoning: null,
+      bestCv: null,
+      bestCvKey: null,
     })
     expect(tomb!.updatedAt.getTime()).toBe(daysAgo(31).getTime())
     expect(tomb!.createdAt.getTime()).toBe(oldDismissed.createdAt.getTime())

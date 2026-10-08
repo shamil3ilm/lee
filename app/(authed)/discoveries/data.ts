@@ -8,6 +8,7 @@ import { matchStale, rescoreMatches } from '@/lib/discovery/match/service'
 import { queueMatchRescore } from '@/lib/discovery/match/enqueue'
 import { parsePageSize } from '@/lib/discovery/pager'
 import { toMatchDetail } from '@/lib/discovery/match/detail'
+import { ensureBestCv } from '@/lib/cv-fit/service'
 import type {
   DiscoveryRegionFilter,
   DiscoverySort,
@@ -122,12 +123,16 @@ export async function loadJobs(userId: string, p: DiscoveryParams): Promise<Jobs
     statuses: p.status === 'new' && p.showFiltered ? ['new', 'filtered'] : undefined,
     quarantine: quarantineView ? 'only' : 'exclude',
   }
-  const [rows, total, quarantinedCount, filteredCount] = await Promise.all([
+  const [listed, total, quarantinedCount, filteredCount] = await Promise.all([
     discoveriesQ.list(userId, { ...opts, sort: p.sort, limit: p.size, offset: (p.page - 1) * p.size }),
     discoveriesQ.countList(userId, opts),
     discoveriesQ.countQuarantined(userId),
     discoveriesQ.countList(userId, { ...sharedFilters(p), status: 'filtered', quarantine: 'exclude' }),
   ])
+  // Best CV of the rows on this page, filled on read when stale (bounded to
+  // the page; the queued backfill handles the rest).
+  const fresh = await safely('best_cv_view', () => ensureBestCv(userId, listed.filter((r) => r.status !== 'filtered' && r.status !== 'dismissed').map((r) => r.id)))
+  const rows = fresh && fresh.size > 0 ? listed.map((r) => (fresh.has(r.id) ? { ...r, bestCv: fresh.get(r.id) ?? null } : r)) : listed
   const risks = await riskQ.mapForTargets(userId, 'discovery', rows.map((d) => d.id))
   return { rows, total, risks, quarantinedCount, filteredCount }
 }

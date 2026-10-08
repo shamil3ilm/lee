@@ -8,6 +8,7 @@ import type { PrepareView } from '@/lib/apply/prepare-view'
 import { scoreDelta } from '@/lib/apply/progress'
 import { StepShell, toResult, useStepAction, type StepState } from './step-shell'
 import { Checkbox } from '@/components/ui/checkbox'
+import { TailorPanel } from '@/components/cv-fit/tailor/tailor-panel'
 
 interface StepResponse {
   documentId?: string
@@ -62,11 +63,13 @@ export function TailorStep({ view, state }: { view: PrepareView; state: StepStat
     ) : state === 'skipped' ? (
       'Skipped.'
     ) : (
-      'Rewrites the chosen résumé for this posting. Facts stay locked to your profile.'
+      'Tailor the chosen résumé to this posting: accept the changes you want and save a tailored copy. Facts stay locked to your profile.'
     )
   return (
     <StepShell n={2} title="Tailored CV" state={state} summary={summary} testId="prepare-step-tailor">
-      <div className="flex flex-wrap gap-2">
+      {view.tailor && state !== 'skipped' ? <TailorPanel view={view.tailor} /> : null}
+      <div className="flex flex-wrap items-center gap-2">
+        {view.tailor ? <span className="text-xs text-muted-foreground">Or draft a full rewrite:</span> : null}
         <Button
           size="sm"
           variant={state === 'current' ? 'default' : 'outline'}

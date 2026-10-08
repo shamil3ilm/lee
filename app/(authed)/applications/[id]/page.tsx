@@ -40,6 +40,13 @@ import { readProfileLinks, suggestLinksForJob } from '@/lib/profile/links'
 import { getProfile } from '@/lib/profile/service'
 import { ApplicationVariantCard } from '@/components/variants/application-variant-card'
 import { variantSummaries } from '@/lib/variants/service'
+import { bestCvForApplication } from '@/lib/cv-fit/service'
+import { photoViewForApplication } from '@/lib/cv-fit/photo/service'
+import { loadTailorView } from '@/lib/cv-fit/tailor/service'
+import { coverageOf } from '@/lib/cv-fit/tailor/checklist'
+import { TailorPanel } from '@/components/cv-fit/tailor/tailor-panel'
+import { CollapsibleSection } from '@/components/collapsible-section'
+import { Scissors } from 'lucide-react'
 import { jobSignals, suggestVariant } from '@/lib/variants/suggest'
 import * as prepsQ from '@/lib/db/queries/applicationPreps'
 import { loadComparisonCard } from '@/lib/compare/card-data'
@@ -120,6 +127,18 @@ export default async function ApplicationDetail({
     jobSignals({ title: app.job.title, location: app.job.location, remoteType: app.job.remoteType, descriptionMd: app.job.descriptionMd }),
   )
   const chosenVariant = variants.find((v) => v.id === app.resumeVariantId)
+  // Best CV, photo advice and "Tailor to this JD" (lib/cv-fit): deterministic,
+  // DB-only; a failure only hides that card.
+  const cvFitFailed = (what: string) => (err: unknown) => {
+    logger.warn(`${what}_failed`, { err: err instanceof Error ? err.message : String(err) })
+    return null
+  }
+  const [bestCv, photoView, tailorView] = await Promise.all([
+    variants.length > 0 ? bestCvForApplication(userId, app).catch(cvFitFailed('application_best_cv')) : Promise.resolve(null),
+    photoViewForApplication(userId, app).catch(cvFitFailed('application_photo')),
+    loadTailorView(userId, app.id).catch(cvFitFailed('application_tailor')),
+  ])
+  const tailorCoverage = tailorView ? coverageOf(tailorView.checklist, 'inCv') : null
   // Profile links suggested for this job's drafts (the user confirms them).
   const linkSuggestions = suggestLinksForJob(readProfileLinks((await getProfile(userId))?.links), {
     title: app.job.title,
@@ -205,6 +224,7 @@ export default async function ApplicationDetail({
     { id: 'timeline', label: 'Timeline' },
     { id: 'outreach', label: 'Outreach' },
     { id: 'prep', label: 'Prep' },
+    ...(tailorView ? [{ id: 'tailor', label: 'Tailor' }] : []),
     ...(compareCard ? [{ id: 'compare', label: 'Compare' }] : []),
     { id: 'documents', label: 'Documents' },
   ]
@@ -299,6 +319,19 @@ export default async function ApplicationDetail({
             <PrepPackCard applicationId={app.id} stages={stages} prepDocs={prepDocs} usage={docUsage} />
           </section>
 
+          {tailorView ? (
+            <CollapsibleSection
+              id="tailor"
+              className={SECTION_ANCHOR}
+              title="Tailor to this JD"
+              icon={<Scissors className="size-4" aria-hidden="true" />}
+              summary={tailorCoverage ? `Must-haves on this CV: ${tailorCoverage.met} met · ${tailorCoverage.partial} partial · ${tailorCoverage.missing} missing` : undefined}
+              defaultOpen={false}
+            >
+              <TailorPanel view={tailorView} />
+            </CollapsibleSection>
+          ) : null}
+
           {compareCard ? (
             <section id="compare" aria-label="Compare" className={SECTION_ANCHOR}>
               {/* ~3k px on phones: folded there like the other secondary cards. */}
@@ -334,6 +367,8 @@ export default async function ApplicationDetail({
               variants={variants}
               suggestion={variantSuggestion}
               current={chosenVariant && app.resumeVariantVersion ? { id: chosenVariant.id, name: chosenVariant.name, version: app.resumeVariantVersion } : null}
+              bestCv={bestCv}
+              photo={photoView ? { advice: photoView.advice.advice, reasons: photoView.advice.reasons, action: photoView.action } : null}
             />
           </PhoneFold>
 

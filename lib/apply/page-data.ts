@@ -3,6 +3,8 @@ import * as feedbackQ from '@/lib/db/queries/discoveryFeedback'
 import { searchPrefsFromProfile } from '@/lib/discovery/relevance/prefs'
 import { repairMojibake } from '@/lib/discovery/relevance/text'
 import { toMatchDetail } from '@/lib/discovery/match/detail'
+import { ensureBestCv } from '@/lib/cv-fit/service'
+import { toBestCv, type BestCv } from '@/lib/cv-fit/types'
 import type { MatchDetail } from '@/lib/discovery/match/types'
 import type { ShortlistRow } from '@/lib/db/queries/shortlist'
 import { prefSuggestions, type PrefSuggestion } from './feedback'
@@ -35,6 +37,8 @@ export interface ShortlistEntryView {
   matchScore: number | null
   fitScore: number | null
   fitDetail: MatchDetail | null
+  /** Best CV for this posting (lib/cv-fit). */
+  bestCv: BestCv | null
 }
 
 export interface ShortlistPageData {
@@ -62,7 +66,21 @@ function toView(r: ShortlistRow): ShortlistEntryView {
     matchScore: r.matchScore,
     fitScore: r.fitScore,
     fitDetail: toMatchDetail(r.fitDetail),
+    bestCv: toBestCv(r.bestCv),
     vsCurrent: null,
+  }
+}
+
+/** Fill stale best CVs of the open picks on read (≤ the shortlist size); a failure keeps the stored ones. */
+async function withBestCv(userId: string, entries: ShortlistEntryView[], now: Date): Promise<ShortlistEntryView[]> {
+  const open = entries.filter((e) => e.state === 'open').map((e) => e.discoveryId)
+  try {
+    const fresh = await ensureBestCv(userId, open, now)
+    if (fresh.size === 0) return entries
+    return entries.map((e) => (fresh.has(e.discoveryId) ? { ...e, bestCv: fresh.get(e.discoveryId) ?? null } : e))
+  } catch (err) {
+    logger.warn('shortlist_best_cv_failed', { err: err instanceof Error ? err.message : String(err) })
+    return entries
   }
 }
 
@@ -86,7 +104,7 @@ export async function loadShortlistPage(userId: string, now: Date = new Date()):
     profileQ.get(userId),
     feedbackQ.listSince(userId, since),
   ])
-  const entries = await withChips(userId, view.entries.map(toView), now)
+  const entries = await withBestCv(userId, await withChips(userId, view.entries.map(toView), now), now)
   return {
     day: view.day,
     today: view.today,

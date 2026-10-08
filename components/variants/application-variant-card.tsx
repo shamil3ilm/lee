@@ -9,18 +9,24 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { NativeSelect } from '@/components/ui/native-select'
 import type { VariantSuggestion, VariantSummary } from '@/lib/variants/suggest'
+import type { BestCv } from '@/lib/cv-fit/types'
+import { BestCvLine } from '@/components/cv-fit/best-cv-line'
+import { PhotoAdvice, type PhotoAdviceData } from '@/components/cv-fit/photo-advice'
 
 interface ApplicationVariantCardProps {
   applicationId: string
   variants: VariantSummary[]
   suggestion: VariantSuggestion
   current: { id: string; name: string; version: number } | null
+  /** Best CV for this job (lib/cv-fit), when variants exist. */
+  bestCv?: BestCv | null
+  photo?: PhotoAdviceData | null
 }
 
 /** Which résumé variant this application uses; tailored CVs start from it. */
-export function ApplicationVariantCard({ applicationId, variants, suggestion, current }: ApplicationVariantCardProps) {
+export function ApplicationVariantCard({ applicationId, variants, suggestion, current, bestCv = null, photo = null }: ApplicationVariantCardProps) {
   const router = useRouter()
-  const [selected, setSelected] = useState(current?.id ?? suggestion.variant?.id ?? '')
+  const [selected, setSelected] = useState(current?.id ?? bestCv?.best.variantId ?? suggestion.variant?.id ?? '')
   const [pending, start] = useTransition()
   const use = (variantId: string | null): void =>
     start(async () => {
@@ -49,7 +55,11 @@ export function ApplicationVariantCard({ applicationId, variants, suggestion, cu
             'Tailored CVs start from your master profile.'
           )}
         </p>
-        {suggestion.variant && suggestion.variant.id !== current?.id ? (
+        {variants.length > 0 ? (
+          <BestCvLine bestCv={bestCv} target={{ kind: 'application', id: applicationId }} currentVariantId={current?.id ?? null} />
+        ) : null}
+        {photo ? <PhotoAdvice applicationId={applicationId} data={photo} /> : null}
+        {!bestCv && suggestion.variant && suggestion.variant.id !== current?.id ? (
           <p>
             Suggested: <span className="font-medium">{suggestion.variant.name}</span>
             <span className="block text-xs text-muted-foreground">{suggestion.reason}</span>

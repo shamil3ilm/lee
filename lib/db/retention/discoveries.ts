@@ -48,7 +48,8 @@ export async function expireStaleDiscoveries(now: Date = new Date(), opts: Opts 
 /**
  * Tombstone job + company discoveries the user dismissed more than `days`
  * ago: `raw` becomes `{}`, `normalized` is cut down to kind/title/company
- * name, and `match_reasoning` is nulled. Status and dates (including
+ * name, and `match_reasoning` and the best CV (`best_cv`, lib/cv-fit) are
+ * nulled. Status and dates (including
  * updated_at) are left untouched. Their Scam Shield rows are deleted
  * (job_risk_assessments has no FK to discoveries — `target_id` is
  * polymorphic — so that delete is explicit).
@@ -84,10 +85,11 @@ export async function tombstoneDismissedDiscoveries(now: Date = new Date(), opts
       todo as (
         select s.id, s.normalized from slim s join discoveries d on d.id = s.id
         where d.raw <> '{}'::jsonb or d.normalized <> s.normalized or d.match_reasoning is not null
+          or d.best_cv is not null
         limit ${limit}
       )
       update discoveries d
-      set raw = '{}'::jsonb, normalized = todo.normalized, match_reasoning = null
+      set raw = '{}'::jsonb, normalized = todo.normalized, match_reasoning = null, best_cv = null, best_cv_key = null
       from todo where d.id = todo.id
     `)
     return affected(res)

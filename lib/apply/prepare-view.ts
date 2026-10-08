@@ -8,6 +8,11 @@ import { readProfileLinks, suggestLinksForJob } from '@/lib/profile/links'
 import { variantSummaries } from '@/lib/variants/service'
 import { jobSignals, suggestVariant } from '@/lib/variants/suggest'
 import { getUserTimeZone } from '@/lib/settings/timezone'
+import { bestCvForApplication } from '@/lib/cv-fit/service'
+import type { BestCv } from '@/lib/cv-fit/types'
+import { photoViewForApplication, type PhotoView } from '@/lib/cv-fit/photo/service'
+import { loadTailorView, type TailorView } from '@/lib/cv-fit/tailor/service'
+import { logger } from '@/lib/logger'
 import { buildChecklist, type ApplyChecklist } from './checklist'
 import { localDay } from './dates'
 import type { PrepProgress } from './progress'
@@ -31,16 +36,34 @@ export interface PrepareView {
   appliedDay: string | null
   followupDueAt: string | null
   followupStatus: string | null
+  /** Best CV for this job (lib/cv-fit); null without variants. */
+  bestCv: BestCv | null
+  photo: Pick<PhotoView, 'advice' | 'action'> | null
+  /** "Tailor to this JD" (step 2); null when it could not be built. */
+  tailor: TailorView | null
+}
+
+/** A failing extra must not take the whole page down: log and show the rest. */
+async function soft<T>(what: string, run: () => Promise<T>): Promise<T | null> {
+  try {
+    return await run()
+  } catch (err) {
+    logger.warn(`${what}_failed`, { err: err instanceof Error ? err.message : String(err) })
+    return null
+  }
 }
 
 export async function loadPrepareView(userId: string, applicationId: string, now: Date = new Date()): Promise<PrepareView | null> {
   const app = await appsQ.getById(userId, applicationId)
   if (!app) return null
-  const [prep, variants, profile, tz] = await Promise.all([
+  const [prep, variants, profile, tz, bestCv, photo, tailor] = await Promise.all([
     prepsQ.get(userId, applicationId),
     variantSummaries(userId),
     profileQ.get(userId),
     getUserTimeZone(userId),
+    soft('prepare_best_cv', () => bestCvForApplication(userId, app, now)),
+    soft('prepare_photo', () => photoViewForApplication(userId, app)),
+    soft('prepare_tailor', () => loadTailorView(userId, applicationId)),
   ])
   const progress = prep?.progress ?? {}
   const suggestion = suggestVariant(
@@ -73,5 +96,8 @@ export async function loadPrepareView(userId: string, applicationId: string, now
     appliedDay: prep?.appliedAt ? localDay(prep.appliedAt, tz) : app.appliedAt ? localDay(app.appliedAt, tz) : null,
     followupDueAt: prep?.followupDueAt?.toISOString() ?? null,
     followupStatus: prep?.followupStatus ?? null,
+    bestCv,
+    photo: photo ? { advice: photo.advice, action: photo.action } : null,
+    tailor,
   }
 }

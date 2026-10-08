@@ -17,6 +17,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ComparisonCard } from '@/components/compare/comparison-card'
 import { MatchBadge } from '@/components/discovery/match-badge'
 import { toMatchDetail } from '@/lib/discovery/match/detail'
+import { ensureBestCv } from '@/lib/cv-fit/service'
+import { toBestCv, type BestCv } from '@/lib/cv-fit/types'
+import { BestCvLine } from '@/components/cv-fit/best-cv-line'
 
 /** The comparison card runs ~3k px on phones: jump past it to the description. */
 const SECTIONS: readonly SectionLink[] = [
@@ -41,6 +44,15 @@ export default async function DiscoveryDetail({ params }: { params: Promise<{ id
     logger.warn('compare_card_failed', { err: err instanceof Error ? err.name : 'unknown' })
     return { comparison: null, hasCurrent: false, saved: null, citations: {} }
   })
+  // Best CV for this posting (lib/cv-fit), refreshed on read when stale.
+  const inPlay = row.status === 'new' || row.status === 'shortlisted' || row.status === 'saved'
+  const fresh = inPlay
+    ? await ensureBestCv(userId, [row.id]).catch((err: unknown) => {
+        logger.warn('discovery_best_cv_failed', { err: err instanceof Error ? err.name : 'unknown' })
+        return new Map<string, BestCv | null>()
+      })
+    : new Map<string, BestCv | null>()
+  const bestCv = fresh.has(row.id) ? (fresh.get(row.id) ?? null) : toBestCv(row.bestCv)
   const title = repairMojibake(job.title ?? 'Untitled')
   const company = job.companyName ? repairMojibake(job.companyName) : null
 
@@ -78,6 +90,13 @@ export default async function DiscoveryDetail({ params }: { params: Promise<{ id
             >
               Source <ExternalLink className="size-3" aria-hidden="true" />
             </a>
+          ) : null}
+          {inPlay ? (
+            <BestCvLine
+              className="basis-full border-t pt-3"
+              bestCv={bestCv}
+              target={row.savedApplicationId ? { kind: 'application', id: row.savedApplicationId } : { kind: 'discovery', id: row.id }}
+            />
           ) : null}
         </CardContent>
       </Card>

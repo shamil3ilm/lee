@@ -24,6 +24,7 @@ import { relevanceStale } from '@/lib/discovery/relevance/service'
 import { DiscoveryOverflowMenu } from '@/components/discovery/reset-menu'
 import { repairMojibake } from '@/lib/discovery/relevance/text'
 import { toMatchDetail } from '@/lib/discovery/match/detail'
+import { toBestCv } from '@/lib/cv-fit/types'
 import { jdTarget } from '@/lib/discovery/match/jd-fetch'
 import { cn } from '@/lib/utils'
 import { BoardViewToggle } from '@/components/board/view-toggle'
@@ -211,6 +212,7 @@ function toJobRows(jobs: JobsData, sourceNameById: Map<string, string>): Discove
       benefitsScore: d.benefitsScore,
       fitScore: d.fitScore,
       fitDetail: toMatchDetail(d.fitDetail),
+      bestCv: toBestCv(d.bestCv),
       jdFetchable: jdTarget(d.applyUrl) !== null,
       createdAt: d.createdAt.toISOString(),
       sourceName,

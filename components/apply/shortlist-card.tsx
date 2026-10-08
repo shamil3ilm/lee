@@ -16,6 +16,8 @@ import { ShortlistReasons } from '@/components/apply/shortlist-reasons'
 import { VsCurrentChip } from '@/components/compare/vs-current-chip'
 import { MatchBadge } from '@/components/discovery/match-badge'
 import type { MatchDetail } from '@/lib/discovery/match/types'
+import type { BestCv } from '@/lib/cv-fit/types'
+import { BestCvLine } from '@/components/cv-fit/best-cv-line'
 import { laterAction, notForMeAction, prepareAction } from '@/app/(authed)/shortlist/actions'
 import { DISMISS_REASONS, DISMISS_REASON_LABELS } from '@/lib/apply/feedback'
 import type { RankReason } from '@/lib/apply/rank'
@@ -38,6 +40,8 @@ export interface ShortlistCardItem {
   matchScore?: number | null
   fitScore?: number | null
   fitDetail?: MatchDetail | null
+  /** Best CV for this posting (lib/cv-fit). */
+  bestCv?: BestCv | null
 }
 
 interface ShortlistCardProps {
@@ -106,22 +110,35 @@ export function ShortlistCard({ item, selected, onSelectedChange, busy = false }
           match={item.fitScore ?? null}
           ai={item.matchScore ?? null}
           detail={item.fitDetail ?? null}
-          extra={<ShortlistReasons rank={item.rank} score={item.score} reasons={item.reasons} />}
+          extra={
+            <>
+              {item.bestCv ? (
+                <div className="border-t pt-2">
+                  <BestCvLine bestCv={item.bestCv} target={{ kind: 'discovery', id: item.discoveryId }} />
+                </div>
+              ) : null}
+              <ShortlistReasons rank={item.rank} score={item.score} reasons={item.reasons} />
+            </>
+          }
         />
       </div>
 
       {item.vsCurrent ? <VsCurrentChip text={item.vsCurrent} href={`/discoveries/${item.discoveryId}`} className="mt-2" /> : null}
 
-      <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
-        <FileText className="size-3.5 shrink-0" aria-hidden="true" />
-        {item.variantName ? (
-          <span className="min-w-0 truncate">
-            Suggested résumé: <span className="font-medium text-foreground">{item.variantName}</span>
-          </span>
-        ) : (
-          <span>No matching résumé variant yet; the master profile is used.</span>
-        )}
-      </p>
+      {item.bestCv ? (
+        <BestCvLine className="mt-3" bestCv={item.bestCv} target={{ kind: 'discovery', id: item.discoveryId }} showReasons={false} />
+      ) : (
+        <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <FileText className="size-3.5 shrink-0" aria-hidden="true" />
+          {item.variantName ? (
+            <span className="min-w-0 truncate">
+              Suggested résumé: <span className="font-medium text-foreground">{item.variantName}</span>
+            </span>
+          ) : (
+            <span>No matching résumé variant yet; the master profile is used.</span>
+          )}
+        </p>
+      )}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Button size="sm" onClick={prepare} disabled={disabled}>

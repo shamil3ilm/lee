@@ -1,3 +1,4 @@
+import type { PhotoVerdict } from './labels'
 import { applyChannel, type ChannelInput } from './channel'
 import { photoCountry, type CountryInput } from './country'
 import { employerKind, type EmployerInput } from './employer'
@@ -22,13 +23,7 @@ import { employerKind, type EmployerInput } from './employer'
  *   posting   an equal-opportunity statement −3
  */
 
-export type PhotoVerdict = 'recommended' | 'optional' | 'avoid'
-
-export const PHOTO_LABELS: Readonly<Record<PhotoVerdict, string>> = {
-  recommended: 'Recommended',
-  optional: 'Optional',
-  avoid: 'Avoid',
-}
+export { PHOTO_LABELS, type PhotoVerdict } from './labels'
 
 export interface PhotoFactor {
   key: 'posting' | 'country' | 'employer' | 'channel'

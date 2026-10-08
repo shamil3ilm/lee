@@ -3,8 +3,8 @@ import * as variantsQ from '@/lib/db/queries/resumeVariants'
 import type { ApplicationWithJob } from '@/lib/db/queries/applications'
 import { rowToJob } from '@/lib/discovery/match/service'
 import type { MatchJob } from '@/lib/discovery/match/types'
-import { getResumeProfile } from '@/lib/resume/service'
-import type { ResumeProfile } from '@/lib/resume/types'
+import { readStoredProfile } from '@/lib/resume/service'
+import { emptyResumeProfile, type ResumeProfile } from '@/lib/resume/types'
 import { recipeSchema, isRegion } from '@/lib/variants/types'
 import { logger } from '@/lib/logger'
 import { bestFor, fitContext, type FitContext, type VariantForFit } from './context'
@@ -40,7 +40,8 @@ export interface FitSource {
 
 export async function loadFitSource(userId: string, opts: { profile?: ResumeProfile } = {}): Promise<FitSource> {
   const [profile, variants] = await Promise.all([
-    opts.profile ? Promise.resolve(opts.profile) : getResumeProfile(userId).then((r) => r.profile),
+    // Read-only: never migrates a legacy CV on a read path (a variant implies a stored profile).
+    opts.profile ? Promise.resolve(opts.profile) : readStoredProfile(userId).then((p) => p ?? emptyResumeProfile()),
     loadVariantsForFit(userId),
   ])
   return { profile, variants, key: bestCvKey(profile, variants) }

@@ -215,6 +215,8 @@ export interface DiscoveryListItem {
   /** Deterministic Match Score and its explanation (MatchDetail). */
   fitScore: number | null
   fitDetail: unknown
+  /** Best CV for this posting (lib/cv-fit, BestCv). */
+  bestCv: unknown
   scoredByCallId: string | null
   savedApplicationId: string | null
   createdAt: Date
@@ -242,6 +244,7 @@ const LIST_COLUMNS = {
   matchReasoning: discoveries.matchReasoning,
   fitScore: discoveries.fitScore,
   fitDetail: discoveries.fitDetail,
+  bestCv: discoveries.bestCv,
   // v18 — id only; the usage badge loads the call lazily when expanded.
   scoredByCallId: discoveries.scoredByCallId,
   savedApplicationId: discoveries.savedApplicationId,

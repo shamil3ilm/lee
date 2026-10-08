@@ -74,6 +74,9 @@ export interface ShortlistRow {
   fitScore: number | null
   fitDetail: unknown
   savedApplicationId: string | null
+  /** Best CV for this posting (lib/cv-fit) and its key. */
+  bestCv: unknown
+  bestCvKey: string | null
 }
 
 const n = (key: string) => sql<string | null>`${discoveries.normalized}->>${key}`
@@ -98,6 +101,8 @@ export async function listForDay(userId: string, day: string, client: DbClient =
       fitScore: discoveries.fitScore,
       fitDetail: discoveries.fitDetail,
       savedApplicationId: discoveries.savedApplicationId,
+      bestCv: discoveries.bestCv,
+      bestCvKey: discoveries.bestCvKey,
     })
     .from(shortlistEntries)
     .innerJoin(discoveries, eq(discoveries.id, shortlistEntries.discoveryId))
