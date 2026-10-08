@@ -30,7 +30,8 @@ export const TARGET_REGIONS: readonly TargetRegion[] = [
       'dubai', 'dubayy', 'dxb', 'abu dhabi', 'abudhabi', 'abu-dhabi', 'sharjah', 'ajman',
       'ras al khaimah', 'ras al-khaimah', 'rak', 'fujairah', 'umm al quwain', 'al ain',
       'jebel ali', 'difc', 'dmcc', 'dubai internet city', 'dubai silicon oasis', 'jlt',
-      'masdar', 'khalifa city', 'mussafah', 'business bay', 'dubai media city',
+      'masdar', 'khalifa city', 'mussafah', 'business bay', 'dubai media city', 'mbz city',
+      'mohammed bin zayed city', 'abu zabi',
       'دبي', 'أبوظبي', 'أبو ظبي', 'ابوظبي', 'الشارقة', 'عجمان', 'الإمارات', 'الامارات',
       'الإمارات العربية المتحدة', 'العين', 'رأس الخيمة', 'الفجيرة', 'أم القيوين',
     ],
@@ -235,6 +236,13 @@ const FOREIGN_PLACES: readonly ForeignPlace[] = [
 const LOCATION_CODES: ReadonlyArray<{ re: RegExp; region?: RegionCode; foreign?: string }> = [
   { re: /(?<![A-Za-z])(?:UAE|U\.A\.E\.?|AE)(?![A-Za-z])/, region: 'AE' },
   { re: /(?<![A-Za-z])KSA(?![A-Za-z])/, region: 'SA' },
+  // ISO 3166 alpha-3 codes, as Workday / Oracle backends write them.
+  { re: /(?<![A-Za-z])ARE(?![A-Za-z])/, region: 'AE' },
+  { re: /(?<![A-Za-z])SAU(?![A-Za-z])/, region: 'SA' },
+  { re: /(?<![A-Za-z])QAT(?![A-Za-z])/, region: 'QA' },
+  { re: /(?<![A-Za-z])KWT(?![A-Za-z])/, region: 'KW' },
+  { re: /(?<![A-Za-z])BHR(?![A-Za-z])/, region: 'BH' },
+  { re: /(?<![A-Za-z])OMN(?![A-Za-z])/, region: 'OM' },
   { re: /(?<![A-Za-z])(?:QA|KW|BH|OM)(?![A-Za-z])/ },
   { re: /(?<![A-Za-z])(?:US|USA|U\.S\.A?\.?)(?![A-Za-z])/, foreign: 'US' },
   { re: /(?<![A-Za-z])UK(?![A-Za-z])/, foreign: 'GB' },
@@ -242,6 +250,14 @@ const LOCATION_CODES: ReadonlyArray<{ re: RegExp; region?: RegionCode; foreign?:
   { re: /(?<![A-Za-z])(?:EST|PST|CST|MST|EDT|PDT|ET|PT)(?![A-Za-z])/, foreign: 'US' },
 ]
 const GULF_CODE_TOKEN: Readonly<Record<string, RegionCode>> = { QA: 'QA', KW: 'KW', BH: 'BH', OM: 'OM' }
+
+/**
+ * A bare ISO-2 "SA" (SuccessFactors: "Riyadh, SA", or just "SA") is Saudi
+ * Arabia — unless the text names South Africa, which some boards also
+ * abbreviate "SA".
+ */
+const SAUDI_ISO2 = /(?<![A-Za-z])SA(?![A-Za-z])/
+const SOUTH_AFRICA = /south africa|johannesburg|cape town|durban|pretoria/
 
 /** UTC/GMT offsets from +3 to +5:30 sit on Gulf and Indian working hours. */
 const GULF_INDIA_TZ = /(?:utc|gmt)\s*\+\s*0?(?:3|4|5)(?::?(?:00|30))?(?![\d])|\b(?:gst|gulf standard time|ist|india standard time)\b/
@@ -317,6 +333,7 @@ export function scanPlaces(raw: string | null | undefined, opts: { trustCodes?: 
 }
 
 function addLocationCodes(raw: string, scan: PlaceScan): void {
+  if (SAUDI_ISO2.test(raw) && !SOUTH_AFRICA.test(normalizeForMatch(raw))) scan.regions.add('SA')
   for (const c of LOCATION_CODES) {
     const m = c.re.exec(raw)
     if (!m) continue
