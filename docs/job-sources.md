@@ -145,3 +145,132 @@ See Settings › Sources › "Job alerts by email" for the per-site setup
 steps. Parsers live in `lib/email-alerts/`; their test fixtures in
 `tests/fixtures/email-alerts/` are **synthetic** (hand-written from the
 sites' documented or observable formats), not real emails.
+
+### What still needs a real alert email to confirm
+
+The parsers handle the synthetic layouts in `tests/fixtures/email-alerts/`
+and `tests/fixtures/email-alerts/gcc/` (Arabic cards and location lines,
+"Experience: / Salary: / Nationality:" lines, Glassdoor "3d" / "30d+"
+chips, click-tracker links, plain-text parts). Not yet confirmed against a
+real message (forward one, anonymised, when a parser misses jobs):
+
+| Site | Unconfirmed |
+|---|---|
+| Bayt | the single-job URL shape (`/en/<country>/jobs/<slug>-<id>/`), the click-tracker host, the Arabic alert layout |
+| NaukriGulf | the card markup and which labelled lines it uses |
+| GulfTalent | the card markup; whether the text part repeats each job |
+| Glassdoor | the card markup and the `jl` / `jobListingId` link forms in GCC alerts |
+| LinkedIn (Arabic UI), Indeed AE | Arabic location lines (only English layouts were seen in public samples) |
+| Employer alerts (Emirates Group, Qatar Airways, Etihad, flydubai, Masdar) | sender domains and formats are unknown, so lee does not read them yet; the watch list links to the sign-up |
+
+## GCC portal audit (2026-10-08)
+
+Every GCC default, run through lee's own adapters against the live
+endpoints (default countries GCC + India). "Count" = postings returned;
+GCC = located in the GCC by `parseGccLocation`; city = a canonical city
+found; text = description over 40 characters; dated = posting date.
+
+| Source | Status | Count (GCC / city) | Text · dated · remote/hybrid | Issues fixed | Checked |
+|---|---|---|---|---|---|
+| Careem (Greenhouse) | OK | 16 (8 / 8) | 16 · 16 · 0/0 | escaped HTML stored raw → plain text; `first_published` as the date; company name | 2026-10-08 |
+| Tamara (Greenhouse) | OK | 31 (21 / 21) | 31 · 31 · 0/0 | as Careem | 2026-10-08 |
+| HALA (Greenhouse) | OK | 8 (8 / 8) | 8 · 8 · 0/0 | as Careem | 2026-10-08 |
+| Tabby (Pinpoint) | OK | 58 (36 / 36) | 58 · 0 · 13/4 | descriptions were dropped (0 → 58); pay when shown; the feed has no posting date | 2026-10-08 |
+| Dubizzle Group (Workable) | OK | 48 (44 / 44) | 48 · 48 · 0/0 | widget read with `details=false`, so no descriptions (0 → 48) | 2026-10-08 |
+| Salla · Foodics · Lucidya · Mozn (Workable) | OK | 31 · 27 · 45 · 17 (31 · 23 · 27 · 12 GCC) | all with text and dates; remote 3 · 1 · 24 · 5 | as Dubizzle | 2026-10-08 |
+| Ziina · Lean (Ashby) | OK | 15 · 3 (all GCC) | all with text and dates | none needed | 2026-10-08 |
+| Unifonic (Recruitee) | OK | 34 (6 / 6) | 34 · 34 · 16/0 | description and requirements were dropped | 2026-10-08 |
+| Emirates NBD (Oracle) | OK | 23 (23 / 7) | 21 · 23 · 0/0 | teaser only → full text from the detail endpoint (20 newest per poll); On-site mapped | 2026-10-08 |
+| FAB · Mashreq · e& · du · DP World · Dubai Holding (Oracle) | OK | 110 · 202 · 8 · 12 · 140 · 38 | text 29 · 48 · 8 · 12 · 117 · 22 (detail cap 20 per poll) | as Emirates NBD; many locations are country-only | 2026-10-08 |
+| ADCB (SuccessFactors) | OK | 30 (30 / 30) | 30 · 0 · — | the feed's full description was ignored; the feed has no posting date (expiry only) | 2026-10-08 |
+| Al-Futtaim (SuccessFactors) | OK | 199 (199 / 123) | 199 · 0 · — | bare "SA" / "QA" locations read as countries; pipe-style titles give the city | 2026-10-08 |
+| stc (SuccessFactors) | OK, empty | 0 | — | the careers site itself lists no openings | 2026-10-08 |
+| G42 · Majid Al Futtaim (Phenom) | OK | 42 · 137 (all GCC) | teaser (~330 chars) · dated | empty locations fall back to the country | 2026-10-08 |
+| ADNOC (Phenom) | **Fixed** | 0 → 66 (66 / 66) | 66 · 66 · 0/0 | the site locale `country: "us"` was read as the search country and dropped every posting | 2026-10-08 |
+| Salesforce · Visa (Workday) | OK | 100 · 100 (15 · 22 GCC) | 25 per poll · 100 · 0/2 | no descriptions → detail JSON (text, exact date, ISO country, time type) for 25 per poll | 2026-10-08 |
+| Chalhoub (Teamtailor RSS) | **Fixed** | 100 (75 / 73) | 100 · 100 · 0/3 | every location was empty (Teamtailor `tt:locations` unread); remote status; employer name | 2026-10-08 |
+| Email alerts (Bayt, NaukriGulf, GulfTalent, LinkedIn / Indeed AE, Glassdoor) | Synthetic only | — | — | Arabic lines, labelled lines, age chips, more Gulf cities; see above | 2026-10-08 |
+
+Location parsing (`lib/discovery/relevance/location.ts`) now reads Workday
+"AE - Dubai, United Arab Emirates", SuccessFactors "Riyadh, SA" and bare
+"SA", ISO-3 codes (ARE, SAU, QAT, KWT, BHR, OMN), Workable "Riyadh,
+Riyadh Province, Saudi Arabia", Arabic names and double-encoded Arabic.
+Relevance rules version r3.
+
+Remote boards: Remotive, Working Nomads and We Work Remotely stored no
+description, and Himalayas / Jobicy only a one-line excerpt, so "US only",
+"relocation package" or a UTC window never reached the gate. All five now
+keep the full text (Himalayas adds its timezone window, e.g. "UTC+5:30").
+
+### New sources from the 2026-10-08 search (defaults v3)
+
+| Source | Method | Count | Robots / terms | Default |
+|---|---|---|---|---|
+| ENOC · SABIC · Saudia · OQ | SuccessFactors `sitemal.xml` | 4 · 0 · 6 · 2 | robots disallow `/services/` etc., not the feed | on (employer watch list) |
+| AD Ports · Emaar (CX_1001) · Bapco Energies | Oracle ORC | 9 · 2 · 1 | no robots.txt on the hosts | on (employer watch list) |
+| Qashio | Teamtailor RSS | 16 | robots allow `/jobs.rss` (only `aihitdata` is blocked) | off |
+| Mrsool | Workable `mrsool-3` | 14 | apply.workable.com robots allow all | off |
+| Thndr | Ashby | 10 (Riyadh and Cairo) | public posting API | off |
+
+Probed and not added: Kitopi (its Lever board returns 404), Rewaa (Lever,
+0 jobs), Property Finder, Huspy, Sarwa, Alaan, Wio, Bayzat, NymCard (no
+public board found, or an empty account), Tamatem and Jeeny (mostly
+non-engineering).
+
+### Remote and relocation boards (2026-10-08)
+
+| Board | Feed / API | Robots / terms | Decision |
+|---|---|---|---|
+| JustRemote | none | robots allow listings; no feed | not added (HTML only) |
+| Remote.co | none reachable | site did not answer | not added |
+| EU Remote Jobs | feed redirects to HTML | robots disallow search parameters | not added (HTML only) |
+| Remote Rocketship | authenticated REST API | paid plans only | not added (zero-cost rule) |
+| Arc | none public | robots allow pages | not added (HTML only) |
+| Relocate.me | none | robots allow pages | not added (HTML only) |
+| Landing.jobs | `/api/` | robots disallow `/api/` and `/jobs/search` | not added |
+
+## Employer watch list (2026-10-08)
+
+GCC government, semi-government and major employers lee keeps watching
+(`lib/defaults/watch-employers.ts`, Settings › Sources › "GCC employer
+watch list"). Methods: **polled** (an adapter), **alerts** (the
+employer's own job alerts), **AI** (daily AI web search), **weekly** (a
+watch link with a "Checked" button, due again after 7 days). None is
+nationals-only.
+
+| Employer | Country | Backend | Method | Verified | Date |
+|---|---|---|---|---|---|
+| Emirates Group | AE | Avature | alerts · AI · weekly | no public feed | 2026-10-08 |
+| Etihad Airways | AE | SmartRecruiters | alerts · AI · weekly | API disallowed by robots.txt | 2026-10-08 |
+| flydubai | AE | iCIMS | alerts · AI · weekly | robots `Disallow: /` | 2026-10-08 |
+| Dubai Airports | AE | custom | AI · weekly | no feed | 2026-10-08 |
+| DEWA | AE | custom | AI · weekly | 403 to automated clients | 2026-10-08 |
+| SEWA | AE | custom | AI · weekly | no feed | 2026-10-08 |
+| ADNOC | AE | Phenom | polled | 66 jobs | 2026-10-08 |
+| ENOC | AE | SuccessFactors | polled | 4 jobs | 2026-10-08 |
+| TAQA | AE | custom | AI · weekly | no feed | 2026-10-08 |
+| Masdar | AE | SmartRecruiters | alerts · AI · weekly | API disallowed by robots.txt | 2026-10-08 |
+| ADNEC Group | AE | unknown | AI · weekly | careers page 404 | 2026-10-08 |
+| du · e& | AE | Oracle ORC | polled | 12 · 8 jobs | 2026-10-08 |
+| Emirates NBD · DP World | AE | Oracle ORC | polled | 23 · 140 jobs | 2026-10-08 |
+| AD Ports Group · Emaar | AE | Oracle ORC | polled | 9 · 2 jobs | 2026-10-08 |
+| RTA Dubai | AE | custom | AI · weekly | no feed | 2026-10-08 |
+| Mubadala · ADQ | AE | custom / unknown | AI · weekly | no feed; ADQ page 404 | 2026-10-08 |
+| Emirates Post | AE | custom | AI · weekly | 403 | 2026-10-08 |
+| Dubai Careers (Dubai Government) | AE | custom | AI · weekly | mixed portal; nationals-only postings are skipped | 2026-10-08 |
+| Qatar Airways | QA | Taleo + Avature | alerts · AI · weekly | no public feed | 2026-10-08 |
+| QatarEnergy | QA | custom | AI · weekly | careers behind a login | 2026-10-08 |
+| Ooredoo · QNB | QA | SniperHire | AI · weekly | HTML only | 2026-10-08 |
+| Aramco | SA | SuccessFactors | AI · weekly | refuses automated clients; not bypassed | 2026-10-08 |
+| SABIC · stc · Saudia | SA | SuccessFactors | polled | 0 · 0 · 6 jobs | 2026-10-08 |
+| NEOM · Ma'aden · Saudi National Bank · PIF | SA | custom / unknown | AI · weekly | no feed; PIF 403 | 2026-10-08 |
+| Kuwait Oil Company · KNPC | KW | custom | AI · weekly | no feed; most KOC hires are nationals | 2026-10-08 |
+| Zain · NBK | KW | custom | AI · weekly | no feed | 2026-10-08 |
+| Bapco Energies | BH | Oracle ORC | polled | 1 job | 2026-10-08 |
+| Beyon (Batelco) | BH | custom | AI · weekly | no feed | 2026-10-08 |
+| OQ | OM | SuccessFactors | polled | 2 jobs | 2026-10-08 |
+| Omantel · Oman Air | OM | custom | AI · weekly | Omantel needs a Microsoft sign-in | 2026-10-08 |
+
+Excluded, nationals only (never added as sources or watch links): Jadarat
+(Saudi Arabia), Kawader (Qatar), Kuwait Civil Service Commission, the UAE
+federal government portal (FAHR) and Abu Dhabi government jobs.
