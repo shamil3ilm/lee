@@ -54,7 +54,7 @@ test('watch a term, see matches, open an entry and build a grounded brief', asyn
   // (Other journeys may have queued content cards too, so the review page's
   // order is not fixed; the integration test checks the card is due.)
   await brief.getByRole('button', { name: 'Learn this' }).click()
-  await expect(page.getByText(/Added \d+ card\(s\) to your Playground reviews/)).toBeVisible()
+  await expect(page.getByText(/Added \d+ cards? to your Playground reviews/)).toBeVisible()
   await expect(brief.getByRole('link', { name: 'Review cards' })).toBeVisible()
 
   // Marking the entry read clears it from the "new" count.
