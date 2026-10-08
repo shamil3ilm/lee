@@ -18,6 +18,16 @@ import { scheduleDailyJobs } from '@/lib/queue/scheduler'
 import { drain } from '@/lib/queue/drain'
 import { recordDueReminders } from '@/lib/reminders/service'
 import { takeUsageSnapshot } from '@/lib/usage/snapshot'
+import { pruneRadarWhatsNew } from '@/lib/db/retention/radar-new'
+import * as newQ from '@/lib/db/queries/radarNew'
+import { adoptWhatsNew } from '@/lib/radar/new/adopt'
+import { runWhatsNewSource } from '@/lib/radar/new/run'
+import { scheduleWhatsNew } from '@/lib/radar/new/schedule'
+import { NEW_SOURCES } from '@/lib/radar/new/types'
+import { loadWhatsNew, rankedSince } from '@/lib/radar/new/view'
+import { NO_WAIT } from '@/lib/reputation/rate-limit'
+import { fixtureFetch } from '@/tests/fixtures/reputation/fetch'
+import { newRoutes } from '@/tests/fixtures/radar/new/fetch'
 
 type Check = readonly [name: string, run: () => Promise<unknown>]
 
@@ -37,6 +47,8 @@ async function main(): Promise<void> {
   await makeApplication(user.id, job.id, { status: 'applied' })
   const id = user.id
   const now = new Date()
+  // The What's new fixtures are dated around this day.
+  const fixtureNow = new Date('2026-10-08T09:00:00Z')
 
   const checks: readonly Check[] = [
     ['analytics.sourceFunnel', () => analytics.sourceFunnel(id)],
@@ -58,6 +70,30 @@ async function main(): Promise<void> {
     ['recordDueReminders', () => recordDueReminders(now)],
     ['drain', () => drain({ budgetMs: 20_000 })],
     ['takeUsageSnapshot', () => takeUsageSnapshot(now)],
+    ['radarNew.schedule', () => scheduleWhatsNew(now)],
+    // What's new: the shared fetch + store (offline fixtures), per-user ranking, digest, adoption and retention.
+    ...NEW_SOURCES.filter((s) => s !== 'feeds').map(
+      (source): Check => [
+        `radarNew.run.${source}`,
+        async () => {
+          const r = await runWhatsNewSource(source, { fetchImpl: fixtureFetch(newRoutes()), limiter: NO_WAIT, now: fixtureNow, projects: ['laravel', 'nextjs'] })
+          if (r.status !== 'polled') throw new Error(r.error ?? 'not polled')
+        },
+      ],
+    ),
+    ['radarNew.loadWhatsNew', () => loadWhatsNew(id, { category: null, group: null, openOnly: false, relevantOnly: false, period: 'month' }, 0, fixtureNow)],
+    ['radarNew.loadWhatsNew.category', () => loadWhatsNew(id, { category: 'model', group: 'llm', openOnly: true, relevantOnly: true, period: 'week' }, 0, fixtureNow)],
+    // The digest's read (whatsNewSectionsFor swallows errors, so call what it calls).
+    ['radarNew.digest', () => rankedSince(id, new Date(fixtureNow.getTime() - 7 * 86_400_000), fixtureNow)],
+    [
+      'radarNew.adopt',
+      async () => {
+        const [entry] = await newQ.listCandidates({ sinceDays: 30 }, fixtureNow)
+        if (!entry) throw new Error('no shared entries stored')
+        await adoptWhatsNew(id, entry.id, { save: true, now: fixtureNow })
+      },
+    ],
+    ['radarNew.retention', () => pruneRadarWhatsNew(new Date(fixtureNow.getTime() + 90 * 86_400_000))],
   ]
 
   const failures: string[] = []
