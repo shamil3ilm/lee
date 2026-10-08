@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useId, useState, useSyncExternalStore } from 'react'
+import { isValidElement, useEffect, useId, useState, useSyncExternalStore } from 'react'
 import { ChevronDown, type LucideIcon } from 'lucide-react'
 import { focusRing } from '@/components/ui/focus-ring'
 import { BELOW_MD_QUERY, useMediaQuery } from '@/lib/ui/media'
@@ -9,7 +9,11 @@ interface CollapsibleSectionProps {
   /** Anchor id for in-page links (`SectionNav`). */
   id?: string
   title: string
-  icon?: LucideIcon
+  /**
+   * A Lucide icon component (from client components) or a rendered icon
+   * element (from server components, which cannot pass functions).
+   */
+  icon?: LucideIcon | React.ReactElement
   /** Count chip after the title (e.g. number of sources). */
   count?: number
   /** One line under the title that stays visible while collapsed ("3 on · 1 failing"). */
@@ -83,7 +87,13 @@ export function CollapsibleSection({
           />
           <span className="min-w-0 flex-1">
             <span id={`${bodyId}-title`} className="flex items-center gap-2 text-sm font-semibold leading-snug">
-              {Icon ? <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" /> : null}
+              {isValidElement(Icon) ? (
+                <span className="shrink-0 text-muted-foreground [&>svg]:size-4" aria-hidden="true">
+                  {Icon}
+                </span>
+              ) : Icon ? (
+                <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              ) : null}
               <span className="min-w-0">{title}</span>
               {typeof count === 'number' ? (
                 <span className="rounded-md bg-secondary px-1.5 text-[11px] font-medium tabular-nums text-secondary-foreground">

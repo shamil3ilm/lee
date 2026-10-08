@@ -136,7 +136,7 @@ export default async function SourcesSettingsPage({
       />
       <SectionNav sections={sections} />
 
-      <CollapsibleSection id="your-sources" title="Your sources" icon={Rss} count={rows.length} summary={sourcesSummary(rows)}>
+      <CollapsibleSection id="your-sources" title="Your sources" icon={<Rss />} count={rows.length} summary={sourcesSummary(rows)}>
         {rows.length === 0 ? (
           <div className="space-y-4">
             <EmptyState
@@ -161,7 +161,7 @@ export default async function SourcesSettingsPage({
       <CollapsibleSection
         id="email-alerts"
         title="Job alerts by email"
-        icon={Mail}
+        icon={<Mail />}
         count={alertStats.filter((s) => s.alerts > 0).length}
         summary={emailAlertsSummary(alertStatViews, alertSourceView)}
         defaultOpen={false}
@@ -172,7 +172,7 @@ export default async function SourcesSettingsPage({
       <CollapsibleSection
         id="google-alerts"
         title="Google Alerts"
-        icon={Bell}
+        icon={<Bell />}
         count={googleAlerts.queries.length}
         summary={
           ga
@@ -188,7 +188,7 @@ export default async function SourcesSettingsPage({
         <CollapsibleSection
           id="employer-watch"
           title="GCC employer watch"
-          icon={Building2}
+          icon={<Building2 />}
           count={employerRows.length}
           summary={watchSummary(employerRows)}
           defaultOpen={false}
@@ -201,7 +201,7 @@ export default async function SourcesSettingsPage({
         <CollapsibleSection
           id="watch-list"
           title="Check these yourself"
-          icon={Eye}
+          icon={<Eye />}
           count={watch.length}
           summary="Sites lee can't read; open them now and then"
           defaultOpen={false}

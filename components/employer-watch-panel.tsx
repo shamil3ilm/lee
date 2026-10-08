@@ -36,7 +36,9 @@ export function EmployerWatchPanel({ rows, openCountries = [] }: EmployerWatchPa
   const narrowed = text.trim() !== '' || filter !== 'all' || country !== ''
 
   if (rows.length === 0) return null
-  const isOpen = (c: string): boolean => toggled[c] ?? (narrowed || openCountries.includes(c))
+  // With no regions set, the first country starts open so the list never looks empty.
+  const isOpen = (c: string): boolean =>
+    toggled[c] ?? (narrowed || openCountries.includes(c) || (openCountries.length === 0 && c === countries[0]))
 
   return (
     <div className="space-y-3">
