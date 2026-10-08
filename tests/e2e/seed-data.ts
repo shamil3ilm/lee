@@ -314,6 +314,22 @@ const JD_PAYOUTS = [
   'How have you handled a failed payout end to end?',
 ].join('\n')
 
+// Compare with my current job (tests/e2e/compare.spec.ts): a synthetic GCC
+// posting with pay and the usual benefits. Dismissed, so it stays out of the
+// inbox and the shortlist other journeys read.
+export const JD_GCC = [
+  'Build our e-invoicing platform for the UAE and Saudi Arabia (ZATCA, Fatoora).',
+  '',
+  'Salary: AED 20,000 - 24,000 per month, tax free.',
+  '',
+  '- Employment visa and medical insurance for you and your family',
+  '- Housing allowance and an annual air ticket home',
+  '- 30 days annual leave and end-of-service gratuity',
+  '- Mentorship from our staff engineers',
+].join('\n')
+
+export const COMPARE_DISCOVERY_TITLE = 'Senior Backend Engineer, E-invoicing'
+
 export const DISCOVERIES: SeedDiscovery[] = [
   { status: 'new', score: 91, benefits: 72, job: { title: 'Senior Backend Engineer, Ledger', companyName: 'Juspay', companyDomain: 'juspay.example', location: 'Bengaluru, IN', remoteType: 'hybrid', employmentType: 'fulltime', descriptionMd: JD_BACKEND, applyUrl: 'https://juspay.example/jobs/ledger', techStack: ['Go', 'PostgreSQL', 'Kafka'], salary: { min: 4_500_000, max: 6_000_000, currency: 'INR' } }, reasoning: { summary: 'Strong match: ledger + Go + Kafka.', strengths: ['Ledger migration experience', 'Go and Kafka in production'], red_flags: [], stack_overlap: ['Go', 'PostgreSQL', 'Kafka'], stack_gaps: [] } },
   { status: 'new', score: 78, benefits: 60, job: { title: 'Platform Engineer (Kubernetes)', companyName: 'CRED', companyDomain: 'cred.example', location: 'Bengaluru, IN', remoteType: 'onsite', employmentType: 'fulltime', descriptionMd: 'Run our Kubernetes platform on AWS.', applyUrl: 'https://cred.example/jobs/platform', techStack: ['Kubernetes', 'AWS', 'Terraform'] }, reasoning: { summary: 'Good platform overlap.', strengths: ['Kubernetes', 'AWS'], red_flags: ['Onsite five days a week'], stack_overlap: ['Kubernetes', 'AWS'], stack_gaps: ['Istio'] } },
@@ -323,7 +339,28 @@ export const DISCOVERIES: SeedDiscovery[] = [
   // Apply faster (tests/e2e/apply-faster.spec.ts) prepares this one; no other journey touches it.
   { status: 'new', score: 88, benefits: 64, job: { title: 'Backend Engineer, Payouts', companyName: 'Paylane', companyDomain: 'paylane.example', location: 'Remote', remoteType: 'remote', employmentType: 'fulltime', descriptionMd: JD_PAYOUTS, applyUrl: 'https://boards.greenhouse.io/paylane/jobs/42', techStack: ['Go', 'PostgreSQL'] }, reasoning: { summary: 'Payouts in Go: strong overlap.', strengths: ['Payments background'], red_flags: [], stack_overlap: ['Go', 'PostgreSQL'], stack_gaps: [] } },
   { status: 'dismissed', score: 30, benefits: 20, job: { title: 'Frontend Engineer', companyName: 'Meesho', location: 'Bengaluru, IN', remoteType: 'hybrid', employmentType: 'fulltime', descriptionMd: 'React.', applyUrl: 'https://meesho.example/jobs/fe', techStack: ['React'] }, reasoning: { summary: 'Frontend role.' } },
+  { status: 'dismissed', score: 76, benefits: 70, job: { title: COMPARE_DISCOVERY_TITLE, companyName: 'Dunefold Labs', companyDomain: 'dunefold.example', location: 'Dubai, AE', remoteType: 'onsite', employmentType: 'fulltime', descriptionMd: JD_GCC, applyUrl: 'https://dunefold.example/jobs/einvoicing', techStack: ['Go', 'PostgreSQL', 'Kafka'] }, reasoning: { summary: 'E-invoicing in Go.' } },
 ]
+
+/** A synthetic current job so the comparison card renders (the compare journey edits it). */
+export const CURRENT_JOB = {
+  employer: 'Synthetic Systems Pvt Ltd',
+  title: 'Software Engineer',
+  location: 'Kochi',
+  place: 'IN',
+  workMode: 'hybrid',
+  startDate: '2024-03',
+  monthlyGross: 120_000,
+  currency: 'INR',
+  benefits: { health: 'self', bonus: false, pfGratuity: true, leaveDays: 21, wfh: true },
+  ratings: { growth: 2, techStack: 3, manager: 3, workLife: 4, security: 4, culture: 3 },
+  wantMore: ['growth', 'pay'],
+}
+
+export const COMPARE_ASSUMPTIONS = {
+  fx: { rates: { INR: 83 }, updatedAt: '2026-10-01', source: 'manual' },
+  places: { IN: { taxRate: 15, housing: 20_000, living: 25_000 }, AE: { housing: 5_000, living: 3_000 } },
+}
 
 export const COMPANY_DISCOVERIES = [
   { score: 82, company: { name: 'Setu', domain: 'setu.example', description: 'Financial APIs for India.', industry: ['fintech'], size: '51-200', stage: 'series-a', hqCountry: 'IN', hqCity: 'Bengaluru', techStack: ['Go', 'PostgreSQL'] }, reasoning: { summary: 'Fintech APIs, Go stack.' } },
