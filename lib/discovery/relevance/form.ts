@@ -11,7 +11,8 @@ import {
 import { isRegionCode, REGION_CODES } from './places'
 import { isRemoteScope } from './prefs'
 import { ROLE_FAMILY_IDS } from './roles'
-import { SENIORITY_LEVELS } from './seniority'
+import { SENIORITY_LABELS, SENIORITY_LEVELS } from './seniority'
+import { isWorkMode } from './work-mode'
 
 /**
  * Search-preferences form → profile patch. Validates every field against
@@ -117,9 +118,17 @@ export function searchPrefsPatch(fd: FormData, existing: UserProfile | null, now
   const others = isoList(csv(fd, 'otherCountries')).filter((c) => !isRegionCode(c))
   const remote = fd.get('remoteScope')
   const countries = [...REGION_CODES.filter((c) => regions.includes(c)), ...others]
+  const levels = SENIORITY_LEVELS.filter((l) => all(fd, 'seniority').includes(l))
+  const top = levels[levels.length - 1]
+  const workMode = fd.get('remotePref')
   return {
     roleTypes: [...families, ...csv(fd, 'customRoles', 10)],
-    seniorityLevels: SENIORITY_LEVELS.filter((l) => all(fd, 'seniority').includes(l)),
+    seniorityLevels: levels,
+    // One place to edit seniority and work mode (Settings › Search): the
+    // free-text profile seniority is derived from the highest level picked,
+    // so source queries and AI prompts that read it stay in step.
+    seniority: top ? SENIORITY_LABELS[top] : null,
+    remotePref: isWorkMode(workMode) ? workMode : 'any',
     locationPrefs: mergeLocationPrefs(existing?.locationPrefs, countries) as NewUserProfile['locationPrefs'],
     remoteScope: isRemoteScope(remote) ? remote : 'worldwide',
     acceptRelocation: fd.get('acceptRelocation') === 'on',

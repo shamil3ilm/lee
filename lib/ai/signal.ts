@@ -118,7 +118,7 @@ export function checkOutreachSignal(
       ok: false,
       code: 'outreach_no_sender_name',
       message: 'Your CV has no name yet — outreach would be unsigned.',
-      fixHint: 'Set your name on Settings › Profile › Résumé before drafting outreach.',
+      fixHint: 'Set your name on Settings › Résumé before drafting outreach.',
     }
   }
   const jobCheck = requireJobAndCompany(app)
@@ -355,7 +355,7 @@ function requireMaster(master: MasterCV | null | undefined): SignalResult {
       ok: false,
       code: 'no_master_cv',
       message: 'No master CV yet — cannot generate a grounded document.',
-      fixHint: 'Populate your CV at Settings › Profile › Résumé first.',
+      fixHint: 'Populate your CV at Settings › Résumé first.',
     }
   }
   if (!master.experience || master.experience.length === 0) {
@@ -363,7 +363,7 @@ function requireMaster(master: MasterCV | null | undefined): SignalResult {
       ok: false,
       code: 'master_no_experience',
       message: 'Your master CV has no experience entries — output would be empty.',
-      fixHint: 'Add at least one experience entry on Settings › Profile › Résumé.',
+      fixHint: 'Add at least one experience entry on Settings › Résumé.',
     }
   }
   return { ok: true }

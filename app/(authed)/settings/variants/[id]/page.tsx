@@ -32,7 +32,7 @@ export default async function VariantPage({ params }: { params: Promise<{ id: st
   return (
     <div className="space-y-6">
       <Breadcrumbs
-        items={[{ label: 'Variants', href: '/settings/profile/variants' }, { label: loaded.variant.name }]}
+        items={[{ label: 'Variants', href: '/settings/variants' }, { label: loaded.variant.name }]}
       />
       <PageHeader
         title={loaded.variant.name}

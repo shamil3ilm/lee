@@ -1,5 +1,6 @@
 'use client'
 import { useMemo, useState, useTransition } from 'react'
+import Link from 'next/link'
 import { toast } from 'sonner'
 import { saveProfileAction } from '@/app/(authed)/settings/profile/actions'
 import type { UserProfile } from '@/lib/db/queries/profile'
@@ -16,6 +17,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Card, CardContent } from '@/components/ui/card'
+import { NativeSelect } from '@/components/ui/native-select'
+import { currencyOptions } from '@/lib/ui/currencies'
 import {
   DEFAULT_TIMEZONE,
   detectBrowserTimezone,
@@ -25,8 +28,6 @@ import {
 interface ProfileFormProps {
   profile: UserProfile | null
 }
-
-const REMOTE_OPTIONS = ['any', 'remote', 'hybrid', 'onsite'] as const
 
 // Target roles, locations, relocation and include/exclude keywords live in
 // the Search preferences card (components/search-prefs), not here.
@@ -87,7 +88,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
           <TabsList className="w-max">
             <TabsTrigger value="basics">Basics</TabsTrigger>
             <TabsTrigger value="skills">Skills</TabsTrigger>
-            <TabsTrigger value="preferences">Preferences</TabsTrigger>
+            <TabsTrigger value="preferences">Weights</TabsTrigger>
             <TabsTrigger value="narrative">Narrative</TabsTrigger>
           </TabsList>
         </div>
@@ -98,33 +99,12 @@ export function ProfileForm({ profile }: ProfileFormProps) {
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Headline" name="headline" defaultValue={profile?.headline ?? ''} />
                 <Field
-                  label="Seniority"
-                  name="seniority"
-                  defaultValue={profile?.seniority ?? ''}
-                  placeholder="senior, staff, principal…"
-                />
-                <Field
                   label="Years experience"
                   name="yearsExperience"
                   type="number"
                   min={0}
                   defaultValue={profile?.yearsExperience ?? ''}
                 />
-                <div className="space-y-1.5">
-                  <Label htmlFor="remotePref">Remote preference</Label>
-                  <Select name="remotePref" defaultValue={profile?.remotePref ?? 'any'}>
-                    <SelectTrigger id="remotePref">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {REMOTE_OPTIONS.map((o) => (
-                        <SelectItem key={o} value={o} className="capitalize">
-                          {o}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
                 <Field
                   label="Comp floor (annual)"
                   name="compFloorAnnual"
@@ -132,13 +112,24 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                   min={0}
                   defaultValue={profile?.compFloorAnnual ?? ''}
                 />
-                <Field
-                  label="Comp currency (ISO-3)"
-                  name="compCurrency"
-                  defaultValue={profile?.compCurrency ?? ''}
-                  placeholder="INR, USD, AED…"
-                  maxLength={3}
-                />
+                <div className="space-y-1.5">
+                  <Label htmlFor="compCurrency">Comp currency</Label>
+                  <NativeSelect id="compCurrency" name="compCurrency" defaultValue={profile?.compCurrency ?? ''}>
+                    <option value="">Not set</option>
+                    {currencyOptions(profile?.compCurrency).map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                </div>
+                <p className="text-xs text-muted-foreground sm:col-span-2">
+                  Seniority and work mode are set once, in{' '}
+                  <Link href="/settings/search" className="text-primary underline underline-offset-2">
+                    Settings › Search
+                  </Link>
+                  .
+                </p>
                 <div className="space-y-1.5 sm:col-span-2">
                   <div className="flex items-center justify-between gap-2">
                     <Label htmlFor="timezone">Timezone</Label>
@@ -246,7 +237,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
         </TabsContent>
       </Tabs>
 
-      <div className="flex justify-end">
+      <div className="sticky bottom-0 z-10 -mx-1 flex justify-end border-t bg-background/95 px-1 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <Button type="submit" disabled={pending}>
           {pending ? 'Saving…' : 'Save profile'}
         </Button>

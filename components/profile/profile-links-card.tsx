@@ -36,7 +36,7 @@ export function ProfileLinksCard({ initial }: { initial: ProfileLink[] }) {
     })
 
   return (
-    <Card id="profile-links">
+    <Card id="profile-links" className="scroll-mt-28">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Link2 className="size-4 text-muted-foreground" aria-hidden="true" />

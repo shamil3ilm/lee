@@ -61,7 +61,7 @@ export function PayDetails({ c }: { c: Comparison }) {
           ) : p.missingFx ? (
             <p className="text-muted-foreground">
               Add a {p.missingFx} rate in{' '}
-              <Link href="/settings/profile/current-job#assumptions" className="underline underline-offset-2">
+              <Link href="/settings/current-job#assumptions" className="underline underline-offset-2">
                 your FX table
               </Link>{' '}
               to convert it.

@@ -4,7 +4,7 @@ import { roleFamilyLabel } from '@/lib/discovery/relevance/roles'
  * "Not for me" feedback. Pure: the reasons, the keys a dismissal is stored
  * under, and how stored feedback feeds back into ranking and into
  * suggestions for the relevance preferences (which the user confirms in
- * Settings › Profile › Search, never applied automatically).
+ * Settings › Search, never applied automatically).
  *
  * A dismissal feeds the existing relevance signals three ways:
  *   1. the discovery moves to Dismissed and its scoring call gets the
@@ -93,7 +93,7 @@ export interface PrefSuggestion {
   href: string
 }
 
-const SEARCH_PREFS_HREF = '/settings/profile#search-preferences'
+const SEARCH_PREFS_HREF = '/settings/search#search-preferences'
 
 /** Preference changes the user may want, from repeated reasons. Never applied automatically. */
 export function prefSuggestions(rows: readonly FeedbackRow[], targetFamilies: readonly string[]): PrefSuggestion[] {

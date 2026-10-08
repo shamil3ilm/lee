@@ -51,7 +51,7 @@ export function StudyCard({ study, unmapped, suggestions }: StudyCardProps) {
                 <Lightbulb className="mt-0.5 size-3.5 shrink-0" aria-hidden />
                 <span className="min-w-0 break-words">
                   {s.message}{' '}
-                  <Link href="/settings/profile/study" className="font-medium underline underline-offset-4">
+                  <Link href="/settings/study" className="font-medium underline underline-offset-4">
                     Open study list
                   </Link>
                 </span>
@@ -65,7 +65,7 @@ export function StudyCard({ study, unmapped, suggestions }: StudyCardProps) {
             title="Nothing on your study list"
             description="Mark profile items as AI-assisted or learning to practise them here."
             action={
-              <Link href="/settings/profile/study" className="text-xs font-medium text-primary underline-offset-4 hover:underline">
+              <Link href="/settings/study" className="text-xs font-medium text-primary underline-offset-4 hover:underline">
                 Open study list
               </Link>
             }

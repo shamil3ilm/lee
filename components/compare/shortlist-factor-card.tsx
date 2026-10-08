@@ -4,7 +4,7 @@ import { ListChecks } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { focusRing } from '@/components/ui/focus-ring'
-import { setFactorShortlistAction } from '@/app/(authed)/settings/profile/current-job/actions'
+import { setFactorShortlistAction } from '@/app/(authed)/settings/current-job/actions'
 import { cn } from '@/lib/utils'
 
 /** Optional: let the comparison nudge the daily shortlist (off by default). */

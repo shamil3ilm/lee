@@ -1,7 +1,7 @@
 import type { Depth, Highlight, ProjectItem, ResumeProfile } from './types'
 
 /**
- * Settings › Profile › Study list: every ai_assisted / learning project,
+ * Settings › Study list: every ai_assisted / learning project,
  * highlight and skill, with notes, a target date and the readiness flags.
  * Marking an item ready flips `interviewReady` (and with it `domainReady`).
  */

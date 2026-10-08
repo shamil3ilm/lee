@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Loader2, Trash2, Upload } from 'lucide-react'
 import { toast } from 'sonner'
-import { publishVariantAction, unpublishVariantAction } from '@/app/(authed)/settings/profile/publish/actions'
+import { publishVariantAction, unpublishVariantAction } from '@/app/(authed)/settings/publish/actions'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -74,7 +74,7 @@ function Row({ row, ready }: { row: VariantPublishRow; ready: boolean }) {
   return (
     <li className="space-y-2 rounded-md border p-3" data-testid={`variant-publish-${row.slug}`}>
       <div className="flex flex-wrap items-center gap-2">
-        <Link href={`/settings/profile/variants/${row.id}`} className="font-medium hover:underline">
+        <Link href={`/settings/variants/${row.id}`} className="font-medium hover:underline">
           {row.name}
         </Link>
         <code className="text-xs text-muted-foreground">{file}</code>
@@ -165,7 +165,7 @@ export function VariantPublishList({ rows, ready }: { rows: VariantPublishRow[];
         {rows.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No variant is set to publish. Turn it on in a{' '}
-            <Link href="/settings/profile/variants" className="text-primary hover:underline">
+            <Link href="/settings/variants" className="text-primary hover:underline">
               variant
             </Link>
             .

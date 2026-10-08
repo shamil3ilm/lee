@@ -91,7 +91,7 @@ export const SERVICE_SECRETS: readonly ServiceSecretInfo[] = [
     envKey: 'GITHUB_PORTFOLIO_TOKEN',
     keyUrl: 'https://github.com/settings/personal-access-tokens/new',
     testable: true,
-    managedIn: '/settings/profile/publish',
+    managedIn: '/settings/publish',
   },
   {
     id: 'github_search',

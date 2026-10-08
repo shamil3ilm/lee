@@ -2,9 +2,8 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Bell, Copy, ExternalLink } from 'lucide-react'
+import { Copy, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { saveGoogleAlertsAction } from '@/app/(authed)/settings/sources/google-alerts-actions'
 
@@ -14,7 +13,7 @@ interface GoogleAlertsPanelProps {
 }
 
 /**
- * Settings › Sources › Google Alerts: setup steps, suggested queries built
+ * Settings › Sources › Google Alerts (the section body): setup steps, suggested queries built
  * from the search preferences and watched employers (copy buttons), and the
  * optional RSS feed URL.
  */
@@ -38,18 +37,11 @@ export function GoogleAlertsPanel({ queries, source }: GoogleAlertsPanelProps) {
     })
 
   return (
-    <Card id="google-alerts" data-testid="google-alerts-panel">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Bell className="size-4 text-muted-foreground" aria-hidden="true" />
-          Google Alerts
-        </CardTitle>
-        <CardDescription>
-          Google emails you new pages that match a search. lee reads those alerts in your Gmail (verified as sent by Google), or
-          the alert’s RSS feed, and adds each job link to Discovery.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4 text-sm">
+    <div data-testid="google-alerts-panel" className="space-y-4 text-sm">
+      <p className="text-xs text-muted-foreground">
+        Google emails you new pages that match a search. lee reads those alerts in your Gmail (verified as sent by Google), or
+        the alert’s RSS feed, and adds each job link to Discovery.
+      </p>
         <ol className="list-decimal space-y-1 pl-5">
           <li>
             Open{' '}
@@ -99,7 +91,6 @@ export function GoogleAlertsPanel({ queries, source }: GoogleAlertsPanelProps) {
             The feed is read at most once a day.
           </p>
         </div>
-      </CardContent>
-    </Card>
+    </div>
   )
 }

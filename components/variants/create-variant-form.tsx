@@ -3,7 +3,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, Plus } from 'lucide-react'
 import { toast } from 'sonner'
-import { createVariantAction } from '@/app/(authed)/settings/profile/variants/actions'
+import { createVariantAction } from '@/app/(authed)/settings/variants/actions'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { FormActions, FormField } from '@/components/ui/form-field'
@@ -31,7 +31,7 @@ export function CreateVariantForm({ families, initialRegion = 'gcc', initialFami
         return
       }
       toast.success('Variant created')
-      router.push(`/settings/profile/variants/${r.id}`)
+      router.push(`/settings/variants/${r.id}`)
     })
   return (
     <Card>
@@ -76,7 +76,7 @@ export function CreateVariantForm({ families, initialRegion = 'gcc', initialFami
           </FormActions>
         </div>
         {families.length === 0 ? (
-          <p className="mt-3 text-xs text-muted-foreground">Accept role families in Settings › Profile › Preferences to get role presets.</p>
+          <p className="mt-3 text-xs text-muted-foreground">Accept role families in Settings › Search to get role presets.</p>
         ) : null}
       </CardContent>
     </Card>

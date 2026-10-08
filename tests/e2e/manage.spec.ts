@@ -93,7 +93,11 @@ test('source: edit name and board slug', async ({ page }) => {
 test('sources: job alerts by email panel shows every alert site with setup steps', async ({ page }) => {
   await page.goto('/settings/sources')
   const panel = page.locator('section#email-alerts')
-  await expect(panel.getByRole('heading', { name: 'Job alerts by email' })).toBeVisible()
+  // Folded to a one-line summary until opened.
+  const toggle = panel.getByRole('button', { name: /Job alerts by email/ })
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  await toggle.click()
+  await expect(panel.getByRole('heading', { name: /Job alerts by email/ })).toBeVisible()
   const senders = panel.getByRole('list', { name: 'Alert senders' })
   for (const site of ['LinkedIn', 'Indeed', 'Naukri', 'NaukriGulf', 'Bayt', 'GulfTalent', 'Glassdoor']) {
     await expect(senders.getByText(site, { exact: true })).toBeVisible()

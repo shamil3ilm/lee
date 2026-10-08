@@ -17,7 +17,7 @@ import { resolveServiceSecret } from '@/lib/settings/secrets'
 
 type Result<T = object> = ({ success: true } & T) | { error: string }
 
-const PATH = '/settings/profile/publish'
+const PATH = '/settings/publish'
 
 function fail(what: string, err: unknown): { error: string } {
   if (err instanceof GitHubError || err instanceof ResumeValidationError || err instanceof VariantError) return { error: err.message }
@@ -115,7 +115,7 @@ export async function resolveConflictAction(input: unknown): Promise<Result<{ ou
     if (!parsed.success) return { error: 'Invalid choice.' }
     const outcome = await publishProfile(userId, { resolution: { repoSha: parsed.data.repoSha, choices: parseChoices(parsed.data.choices) } })
     revalidatePath(PATH)
-    revalidatePath('/settings/profile/resume')
+    revalidatePath('/settings/resume')
     return { success: true, outcome }
   } catch (err) {
     return fail('resolvePublishConflict', err)
@@ -127,7 +127,7 @@ const overwriteSchema = z.object({ overwriteSha: z.string().regex(/^[0-9a-f]{40}
 
 function revalidateVariant(variantId: string): void {
   revalidatePath(PATH)
-  revalidatePath(`/settings/profile/variants/${variantId}`)
+  revalidatePath(`/settings/variants/${variantId}`)
 }
 
 /** Publish one variant as variants/<slug>.json; `overwrite` confirms replacing a hand-edited file. */

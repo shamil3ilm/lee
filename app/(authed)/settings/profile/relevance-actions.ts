@@ -21,7 +21,7 @@ const keySchema = z.string().trim().min(1).max(80)
 
 function refresh(): void {
   revalidatePath('/discoveries')
-  revalidatePath('/settings/profile')
+  revalidatePath('/settings/search')
 }
 
 export async function relevanceProgressAction(): Promise<ProgressResult> {

@@ -1,5 +1,5 @@
 'use client'
-import { useId, useState } from 'react'
+import { useEffect, useId, useState, useSyncExternalStore } from 'react'
 import { ChevronDown, type LucideIcon } from 'lucide-react'
 import { focusRing } from '@/components/ui/focus-ring'
 import { BELOW_MD_QUERY, useMediaQuery } from '@/lib/ui/media'
@@ -48,12 +48,24 @@ export function CollapsibleSection({
   const mobile = useMediaQuery(BELOW_MD_QUERY)
   // null = "the default for this viewport" until the user toggles.
   const [choice, setChoice] = useState<boolean | null>(null)
-  const open = choice ?? (collapseOnMobile && mobile ? false : defaultOpen)
-  const cssDefault = choice === null && collapseOnMobile && defaultOpen
+  // A deep link or an in-page link to this section (`#id`) opens it.
+  const hash = useSyncExternalStore(subscribeHash, readHash, () => '')
+  const targeted = id !== undefined && hash === `#${id}`
+  useEffect(() => {
+    if (!id) return
+    const onHash = (): void => {
+      if (window.location.hash === `#${id}`) setChoice(true)
+    }
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [id])
+  const open = choice ?? (targeted ? true : collapseOnMobile && mobile ? false : defaultOpen)
+  const cssDefault = choice === null && !targeted && collapseOnMobile && defaultOpen
 
   return (
     <section id={id} aria-labelledby={`${bodyId}-title`} className={cn('scroll-mt-28 rounded-xl border bg-card text-card-foreground', className)}>
       <div className="flex items-start gap-2 p-4">
+        <h2 className="m-0 flex min-w-0 flex-1">
         <button
           type="button"
           aria-expanded={open}
@@ -82,15 +94,26 @@ export function CollapsibleSection({
             {summary ? <span className="mt-0.5 block text-xs text-muted-foreground">{summary}</span> : null}
           </span>
         </button>
+        </h2>
         {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
       </div>
       <div
         id={bodyId}
         className={cn('px-4 pb-4', cssDefault ? 'max-md:hidden' : !open && 'hidden')}
+        data-state={open ? 'open' : 'closed'}
         suppressHydrationWarning
       >
         {children}
       </div>
     </section>
   )
+}
+
+function subscribeHash(onChange: () => void): () => void {
+  window.addEventListener('hashchange', onChange)
+  return () => window.removeEventListener('hashchange', onChange)
+}
+
+function readHash(): string {
+  return window.location.hash
 }

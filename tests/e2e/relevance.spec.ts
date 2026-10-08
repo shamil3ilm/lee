@@ -19,7 +19,7 @@ test('search preferences filter Discovery, with reasons and "Show anyway"', asyn
   await expect(page.locator('[data-slot="card"]').filter({ hasText: 'Senior Backend Engineer, Ledger' })).toBeVisible()
 
   // Save preferences: backend / full-stack, junior + mid, default GCC + India.
-  await page.goto('/settings/profile')
+  await page.goto('/settings/search')
   const form = page.getByRole('form', { name: 'Search preferences' })
   // check(), not click(): the seeded profile already targets Backend.
   for (const name of ['Backend', 'Full-stack', 'Junior', 'Mid-level']) {
@@ -58,7 +58,7 @@ test('search preferences filter Discovery, with reasons and "Show anyway"', asyn
   await expect(page.getByRole('combobox', { name: 'Rows per page' }).first()).toHaveValue('25')
 
   // Clean up: turn filtering off, everything returns to the inbox.
-  await page.goto('/settings/profile')
+  await page.goto('/settings/search')
   await page.getByRole('button', { name: 'Turn off filtering' }).click()
   await expectToast(page, 'Filtering turned off')
   await page.goto('/discoveries?status=filtered')

@@ -1,4 +1,4 @@
-import { Rss } from 'lucide-react'
+import { Bell, Building2, Eye, Mail, Rss } from 'lucide-react'
 import { requireUserId } from '@/lib/auth/require-session'
 import * as sourcesQ from '@/lib/db/queries/sources'
 import * as emailAlertsQ from '@/lib/db/queries/emailAlerts'
@@ -7,21 +7,21 @@ import { PageHeader } from '@/components/page-header'
 import { AddSourceDialog } from '@/components/add-source-dialog'
 import { SourceRow, type SourceRowItem } from '@/components/source-row'
 import { EmptyState } from '@/components/empty-state'
-import { EmailAlertsPanel } from '@/components/email-alerts-panel'
+import { EmailAlertsPanel, emailAlertsSummary } from '@/components/email-alerts-panel'
 import { WatchListPanel, type WatchItem } from '@/components/watch-list-panel'
 import { GoogleAlertsPanel } from '@/components/google-alerts-panel'
 import { googleAlertsPanelData } from '@/lib/google-alerts/panel-data'
 import { getProfile } from '@/lib/profile/service'
 import { EmployerWatchPanel } from '@/components/employer-watch-panel'
 import { employerWatchRows } from '@/lib/defaults/watch-status'
+import { watchSummary } from '@/lib/defaults/watch-filter'
 import { lastSeenBySource } from '@/lib/defaults/watch-last-seen'
+import { searchPrefsFromProfile } from '@/lib/discovery/relevance/prefs'
+import { CollapsibleSection } from '@/components/collapsible-section'
+import { SectionNav } from '@/components/section-nav'
+import { ReturnLink } from '@/components/settings/return-link'
 import { PopularStarters } from './popular-starters'
 import { describePollStats, readSourceLastResult } from '@/lib/discovery/poll-stats'
-
-function lastResultLine(raw: unknown): string | null {
-  const r = readSourceLastResult(raw)
-  return r ? describePollStats(r) : null
-}
 
 export const dynamic = 'force-dynamic'
 
@@ -30,6 +30,11 @@ interface SourceConfig {
   url?: string
   reason?: string
   [k: string]: unknown
+}
+
+function lastResultLine(raw: unknown): string | null {
+  const r = readSourceLastResult(raw)
+  return r ? describePollStats(r) : null
 }
 
 function configSummary(kind: string, config: SourceConfig): string {
@@ -45,12 +50,28 @@ function configValue(config: SourceConfig): string {
   return ''
 }
 
-export default async function SourcesSettingsPage(): Promise<React.ReactElement> {
+/** "12 on · 1 off · 1 failing". */
+function sourcesSummary(rows: readonly SourceRowItem[]): string {
+  if (rows.length === 0) return 'None yet'
+  const on = rows.filter((r) => r.enabled).length
+  const failing = rows.filter((r) => r.enabled && r.lastError).length
+  const parts = [`${on} on`]
+  if (rows.length > on) parts.push(`${rows.length - on} off`)
+  if (failing > 0) parts.push(`${failing} failing`)
+  return parts.join(' · ')
+}
+
+export default async function SourcesSettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}): Promise<React.ReactElement> {
   const userId = await requireUserId()
-  const [sources, alertStats, profile] = await Promise.all([
+  const [sources, alertStats, profile, sp] = await Promise.all([
     sourcesQ.list(userId),
     emailAlertsQ.summaryBySite(userId),
     getProfile(userId),
+    searchParams,
   ])
   const googleAlerts = googleAlertsPanelData(profile, sources)
 
@@ -60,7 +81,7 @@ export default async function SourcesSettingsPage(): Promise<React.ReactElement>
     polled.map((s) => s.id),
   )
   const employerRows = employerWatchRows(sources, lastSeen)
-  // Employer links live in the employer watch list, not in "Check these yourself".
+  // Employer links live in the employer watch list, not in "Check yourself".
   const employerSourceIds = new Set(employerRows.map((r) => r.sourceId).filter(Boolean))
   const watch: WatchItem[] = sources
     .filter((s) => s.kind === 'watch' && !employerSourceIds.has(s.id))
@@ -84,6 +105,9 @@ export default async function SourcesSettingsPage(): Promise<React.ReactElement>
   }))
 
   const alertSource = sources.find((s) => s.kind === 'email_alert')
+  const alertSourceView = alertSource ? { enabled: alertSource.enabled, lastError: alertSource.lastError } : null
+  const alertStatViews = alertStats.map((s) => ({ ...s, lastAlertAt: s.lastAlertAt ? s.lastAlertAt.toISOString() : null }))
+  const ga = googleAlerts.source
   // Providers whose terms ask for a visible credit (Himalayas, Adzuna …).
   const credits = [
     ...new Map(
@@ -94,42 +118,97 @@ export default async function SourcesSettingsPage(): Promise<React.ReactElement>
     ).values(),
   ]
 
+  const sections = [
+    { id: 'your-sources', label: 'Your sources' },
+    { id: 'email-alerts', label: 'Job alerts' },
+    { id: 'google-alerts', label: 'Google Alerts' },
+    ...(employerRows.length > 0 ? [{ id: 'employer-watch', label: 'Employer watch' }] : []),
+    ...(watch.length > 0 ? [{ id: 'watch-list', label: 'Check yourself' }] : []),
+  ]
+
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-4xl space-y-4">
+      <ReturnLink from={sp.from} />
       <PageHeader
         title="Sources"
-        description="Where discoveries come from. Each source is polled on the daily discovery cycle."
+        description="Where discoveries come from. Each source is checked on the daily discovery cycle."
         actions={<AddSourceDialog />}
       />
+      <SectionNav sections={sections} />
 
-      {rows.length === 0 ? (
-        <>
-          <EmptyState
-            icon={Rss}
-            title="No sources yet"
-            description="Add a source to start seeing scored jobs and companies in Discovery."
-          />
-          <PopularStarters />
-        </>
-      ) : (
-        <div className="space-y-2">
-          {rows.map((r) => (
-            // Keyed on `enabled` too so an edit that flips it remounts the
-            // row's optimistic toggle state from fresh props.
-            <SourceRow key={`${r.id}-${r.enabled}`} source={r} />
-          ))}
-        </div>
-      )}
+      <CollapsibleSection id="your-sources" title="Your sources" icon={Rss} count={rows.length} summary={sourcesSummary(rows)}>
+        {rows.length === 0 ? (
+          <div className="space-y-4">
+            <EmptyState
+              size="sm"
+              icon={Rss}
+              title="No sources yet"
+              description="Add a source to start seeing scored jobs and companies in Discovery."
+            />
+            <PopularStarters />
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {rows.map((r) => (
+              // Keyed on `enabled` too so an edit that flips it remounts the
+              // row's optimistic toggle state from fresh props.
+              <SourceRow key={`${r.id}-${r.enabled}`} source={r} />
+            ))}
+          </div>
+        )}
+      </CollapsibleSection>
 
-      <EmailAlertsPanel
-        stats={alertStats.map((s) => ({ ...s, lastAlertAt: s.lastAlertAt ? s.lastAlertAt.toISOString() : null }))}
-        source={alertSource ? { enabled: alertSource.enabled, lastError: alertSource.lastError } : null}
-      />
+      <CollapsibleSection
+        id="email-alerts"
+        title="Job alerts by email"
+        icon={Mail}
+        count={alertStats.filter((s) => s.alerts > 0).length}
+        summary={emailAlertsSummary(alertStatViews, alertSourceView)}
+        defaultOpen={false}
+      >
+        <EmailAlertsPanel stats={alertStatViews} source={alertSourceView} />
+      </CollapsibleSection>
 
-      <GoogleAlertsPanel queries={googleAlerts.queries} source={googleAlerts.source} />
-      <EmployerWatchPanel rows={employerRows} />
+      <CollapsibleSection
+        id="google-alerts"
+        title="Google Alerts"
+        icon={Bell}
+        count={googleAlerts.queries.length}
+        summary={
+          ga
+            ? `${ga.enabled ? 'On' : 'Paused'} · reading alert emails${ga.rssUrl ? ' and the RSS feed' : ''}${ga.lastError ? ' · last read failed' : ''}`
+            : `Not set up · ${googleAlerts.queries.length} suggested ${googleAlerts.queries.length === 1 ? 'query' : 'queries'}`
+        }
+        defaultOpen={false}
+      >
+        <GoogleAlertsPanel queries={googleAlerts.queries} source={googleAlerts.source} />
+      </CollapsibleSection>
 
-      <WatchListPanel items={watch} />
+      {employerRows.length > 0 ? (
+        <CollapsibleSection
+          id="employer-watch"
+          title="GCC employer watch"
+          icon={Building2}
+          count={employerRows.length}
+          summary={watchSummary(employerRows)}
+          defaultOpen={false}
+        >
+          <EmployerWatchPanel rows={employerRows} openCountries={searchPrefsFromProfile(profile).regions} />
+        </CollapsibleSection>
+      ) : null}
+
+      {watch.length > 0 ? (
+        <CollapsibleSection
+          id="watch-list"
+          title="Check these yourself"
+          icon={Eye}
+          count={watch.length}
+          summary="Sites lee can't read; open them now and then"
+          defaultOpen={false}
+        >
+          <WatchListPanel items={watch} />
+        </CollapsibleSection>
+      ) : null}
 
       {credits.length > 0 ? (
         <p className="text-xs text-muted-foreground">

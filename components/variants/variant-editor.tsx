@@ -3,7 +3,7 @@ import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Archive, Loader2, Save } from 'lucide-react'
 import { toast } from 'sonner'
-import { archiveVariantAction, saveVariantAction } from '@/app/(authed)/settings/profile/variants/actions'
+import { archiveVariantAction, saveVariantAction } from '@/app/(authed)/settings/variants/actions'
 import { Button } from '@/components/ui/button'
 import type { ResumeProfile } from '@/lib/resume/types'
 import { toPlainText } from '@/lib/variants/export'
@@ -61,7 +61,7 @@ export function VariantEditor({ variantId, version, initialName, initialPublish,
     start(async () => {
       const r = await archiveVariantAction(variantId)
       if ('error' in r) toast.error(r.error)
-      else router.push('/settings/profile/variants')
+      else router.push('/settings/variants')
     })
 
   return (

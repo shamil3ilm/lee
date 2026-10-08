@@ -13,7 +13,7 @@ test('Discovery and Shortlist show the defaults banner while preferences are uns
     await expect(banner).toContainText('Filtering is using defaults from your profile.')
     await expect(banner.getByRole('link', { name: 'Review your search preferences.' })).toHaveAttribute(
       'href',
-      '/settings/profile#search-preferences',
+      '/settings/search#search-preferences',
     )
     await expect(banner.getByRole('button', { name: 'Confirm' })).toBeVisible()
   }

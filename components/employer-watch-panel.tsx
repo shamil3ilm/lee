@@ -1,172 +1,120 @@
 'use client'
-import { useTransition } from 'react'
-import { toast } from 'sonner'
-import { Building2, ExternalLink, MailPlus } from 'lucide-react'
-import { toggleSourceEnabled, updateEmployerWatch } from '@/app/(authed)/settings/sources/actions'
-import { Badge, type BadgeProps } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
-import type { EmployerWatchRow, WatchStatus } from '@/lib/defaults/watch-status'
-import type { WatchMethod } from '@/lib/defaults/watch-employers'
-import { shortDate } from '@/lib/ui/date'
+import { useMemo, useState } from 'react'
+import { ChevronDown, Search } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { NativeSelect } from '@/components/ui/native-select'
+import { focusRing } from '@/components/ui/focus-ring'
+import { EmployerWatchRow } from '@/components/settings/employer-watch-row'
+import type { EmployerWatchRow as Row } from '@/lib/defaults/watch-status'
+import {
+  COUNTRY_NAMES,
+  filterWatchRows,
+  WATCH_FILTER_LABELS,
+  WATCH_FILTERS,
+  type WatchFilter,
+} from '@/lib/defaults/watch-filter'
+import { cn } from '@/lib/utils'
 
-const COUNTRY: Readonly<Record<string, string>> = {
-  AE: 'United Arab Emirates', SA: 'Saudi Arabia', QA: 'Qatar', KW: 'Kuwait', BH: 'Bahrain', OM: 'Oman',
-}
-
-const METHOD_LABEL: Readonly<Record<WatchMethod, string>> = {
-  adapter: 'Polled daily',
-  alert: 'Job alerts',
-  ai_search: 'AI search',
-  manual: 'Check weekly',
-}
-
-const STATUS: Readonly<Record<WatchStatus, { label: string; variant: BadgeProps['variant'] }>> = {
-  polling: { label: 'Polling', variant: 'success' },
-  waiting: { label: 'First poll pending', variant: 'info' },
-  error: { label: 'Poll failed', variant: 'danger' },
-  off: { label: 'Off', variant: 'neutral' },
-  check_due: { label: 'Check due', variant: 'warning' },
-  checked: { label: 'Checked', variant: 'success' },
-  not_added: { label: 'Not added', variant: 'outline' },
-}
-
-function lastSeenLine(row: EmployerWatchRow): string {
-  if (row.polled) return row.lastSeenAt ? `Last opening ${shortDate(row.lastSeenAt)}` : 'No openings seen yet'
-  return row.lastCheckedAt ? `Checked ${shortDate(row.lastCheckedAt)}` : 'Not checked yet'
-}
-
-function EmployerRow({ row }: { row: EmployerWatchRow }) {
-  const [isPending, startTransition] = useTransition()
-  const status = STATUS[row.status]
-
-  const run = (fn: () => Promise<{ success: true } | { error: string }>, done: string): void => {
-    startTransition(async () => {
-      const r = await fn()
-      if ('success' in r) toast.success(done)
-      else toast.error(r.error)
-    })
-  }
-
-  const toggle = (): void => {
-    if (!row.sourceId) return
-    const id = row.sourceId
-    const next = !row.watching
-    run(
-      () => (row.polled ? toggleSourceEnabled(id, next) : updateEmployerWatch(id, { watching: next })),
-      next ? `Watching ${row.name}` : `Stopped watching ${row.name}`,
-    )
-  }
-
-  return (
-    <li className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-start" data-testid="employer-watch-row">
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <a
-            href={row.careersUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 font-medium text-primary underline-offset-2 hover:underline"
-          >
-            {row.name} <ExternalLink className="size-3" aria-hidden="true" />
-          </a>
-          <Badge variant={status.variant}>{status.label}</Badge>
-          <Badge variant="outline">{row.backend}</Badge>
-          {row.methods.map((m) => (
-            <Badge key={m} variant="neutral">
-              {METHOD_LABEL[m]}
-            </Badge>
-          ))}
-        </div>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          {lastSeenLine(row)} · {row.note}
-        </p>
-      </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-1.5">
-        {row.alertSignupUrl ? (
-          <Button asChild size="sm" variant="ghost" className="h-8">
-            <a href={row.alertSignupUrl} target="_blank" rel="noopener noreferrer">
-              <MailPlus className="size-4" aria-hidden="true" /> Alerts
-            </a>
-          </Button>
-        ) : null}
-        {!row.polled && row.sourceId && row.watching ? (
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8"
-            disabled={isPending}
-            onClick={() => run(() => updateEmployerWatch(row.sourceId!, { checked: true }), `Marked ${row.name} as checked`)}
-          >
-            Checked
-          </Button>
-        ) : null}
-        <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-          <input
-            type="checkbox"
-            className="peer sr-only"
-            checked={row.watching}
-            onChange={toggle}
-            disabled={isPending || !row.sourceId}
-            aria-label={`${row.watching ? 'Stop watching' : 'Watch'} ${row.name}`}
-          />
-          <span
-            className={[
-              'relative inline-flex h-5 w-9 items-center rounded-full transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-ring',
-              row.watching ? 'bg-primary' : 'bg-muted',
-            ].join(' ')}
-          >
-            <span
-              className={[
-                'inline-block h-4 w-4 transform rounded-full bg-card shadow ring-1 ring-border transition-transform',
-                row.watching ? 'translate-x-4' : 'translate-x-0.5',
-              ].join(' ')}
-            />
-          </span>
-          <span>{row.watching ? 'On' : 'Off'}</span>
-        </label>
-      </div>
-    </li>
-  )
+interface EmployerWatchPanelProps {
+  rows: Row[]
+  /** Countries open by default (the user's regions); the rest start folded. */
+  openCountries?: readonly string[]
 }
 
 /**
- * Settings › Sources › GCC employer watch list: government, semi-government
- * and major Gulf employers, each with how lee watches it (polled careers
- * site, job alerts, AI search, or a weekly look) and where that stands.
+ * Settings › Sources › Employer watch: government, semi-government and
+ * major Gulf employers with how lee checks each and where that stands.
+ * Searchable and filterable; grouped by country, each group foldable.
  */
-export function EmployerWatchPanel({ rows }: { rows: EmployerWatchRow[] }) {
+export function EmployerWatchPanel({ rows, openCountries = [] }: EmployerWatchPanelProps) {
+  const [text, setText] = useState('')
+  const [filter, setFilter] = useState<WatchFilter>('all')
+  const [country, setCountry] = useState('')
+  const [toggled, setToggled] = useState<Record<string, boolean>>({})
+  const countries = useMemo(() => [...new Set(rows.map((r) => r.country))], [rows])
+  const shown = filterWatchRows(rows, { text, filter, country })
+  const narrowed = text.trim() !== '' || filter !== 'all' || country !== ''
+
   if (rows.length === 0) return null
-  const countries = [...new Set(rows.map((r) => r.country))]
+  const isOpen = (c: string): boolean => toggled[c] ?? (narrowed || openCountries.includes(c))
+
   return (
-    <section id="employer-watch" aria-labelledby="employer-watch-title" className="scroll-mt-20">
-      <Card>
-        <CardHeader>
-          <h2 id="employer-watch-title" className="flex items-center gap-2 text-base font-semibold leading-none tracking-tight">
-            <Building2 className="size-4 text-primary" aria-hidden="true" />
-            GCC employer watch list
-          </h2>
-          <CardDescription>
-            Government, semi-government and major Gulf employers. Where a careers site has a public feed, lee polls
-            it daily; otherwise set up the employer&apos;s job alerts, let AI search look, or open the site weekly and
-            mark it checked. Nationals-only openings are skipped.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Where a careers site has a public feed, lee reads it daily; otherwise set up the employer&apos;s job alerts, let AI
+        search look, or open the site weekly and mark it checked. Nationals-only openings are skipped.
+      </p>
+      <div role="group" aria-label="Filter employers" className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-0 flex-1 sm:max-w-xs">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input
+            type="search"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Search employers or countries"
+            aria-label="Search employers"
+            className="h-8 pl-8"
+          />
+        </div>
+        <NativeSelect
+          aria-label="Show"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value as WatchFilter)}
+          className="h-8 w-36"
+        >
+          {WATCH_FILTERS.map((f) => (
+            <option key={f} value={f}>
+              {WATCH_FILTER_LABELS[f]}
+            </option>
+          ))}
+        </NativeSelect>
+        <NativeSelect aria-label="Country" value={country} onChange={(e) => setCountry(e.target.value)} className="h-8 w-44">
+          <option value="">All countries</option>
           {countries.map((c) => (
+            <option key={c} value={c}>
+              {COUNTRY_NAMES[c] ?? c}
+            </option>
+          ))}
+        </NativeSelect>
+      </div>
+      <p role="status" aria-live="polite" className="sr-only">
+        {shown.length} {shown.length === 1 ? 'employer' : 'employers'} shown
+      </p>
+      {shown.length === 0 ? (
+        <p className="rounded-md border border-dashed p-3 text-center text-sm text-muted-foreground">No employers match.</p>
+      ) : (
+        countries.map((c) => {
+          const group = shown.filter((r) => r.country === c)
+          if (group.length === 0) return null
+          const open = isOpen(c)
+          const listId = `employer-watch-${c}`
+          return (
             <div key={c}>
-              <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{COUNTRY[c] ?? c}</h3>
-              <ul className="divide-y rounded-md border text-sm">
-                {rows
-                  .filter((r) => r.country === c)
-                  .map((r) => (
-                    <EmployerRow key={r.key} row={r} />
-                  ))}
+              <button
+                type="button"
+                aria-expanded={open}
+                aria-controls={listId}
+                onClick={() => setToggled((t) => ({ ...t, [c]: !open }))}
+                className={cn(
+                  'mb-1.5 flex w-full items-center gap-1.5 rounded-md text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground',
+                  focusRing,
+                )}
+              >
+                <ChevronDown className={cn('size-3.5 transition-transform', !open && '-rotate-90')} aria-hidden="true" />
+                {COUNTRY_NAMES[c] ?? c}
+                <span className="font-normal normal-case tracking-normal">
+                  · {group.filter((r) => r.watching).length} of {group.length} watched
+                </span>
+              </button>
+              <ul id={listId} hidden={!open} className="divide-y rounded-md border text-sm">
+                {group.map((r) => (
+                  <EmployerWatchRow key={r.key} row={r} />
+                ))}
               </ul>
             </div>
-          ))}
-        </CardContent>
-      </Card>
-    </section>
+          )
+        })
+      )}
+    </div>
   )
 }
