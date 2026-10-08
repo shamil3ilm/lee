@@ -142,14 +142,14 @@ function acceptedCodes(prefs: SearchPrefs): Set<string> {
   return new Set<string>([...prefs.regions, ...prefs.otherCountries])
 }
 
-function hitsAccepted(places: PlaceScan, accepted: Set<string>): boolean {
+export function hitsAccepted(places: PlaceScan, accepted: ReadonlySet<string>): boolean {
   for (const c of places.regions) if (accepted.has(c)) return true
   for (const c of places.covered) if (accepted.has(c)) return true
   for (const c of places.foreign) if (accepted.has(c)) return true
   return false
 }
 
-function firstForeign(places: PlaceScan): string {
+export function firstForeign(places: PlaceScan): string {
   const code = [...places.foreign][0]
   if (code) return foreignLabel(code, places.foreignNames.get(code))
   const region = [...places.regions][0] as RegionCode | undefined
@@ -219,16 +219,23 @@ function seniorityReason(
   return null
 }
 
-export function evaluateRelevance(job: GateInput, prefs: SearchPrefs): GateResult {
-  const remote = isRemotePosting(job)
-  // Anywhere in the title, only target regions count ("Laravel Developer
-  // Dubai"); foreign and broad places only in the title's place segments,
-  // so "Global Payments Engineer" is not read as "worldwide".
+/**
+ * Places a posting is located in: its location field, plus the title.
+ * Anywhere in the title, only target regions count ("Laravel Developer
+ * Dubai"); foreign and broad places only in the title's place segments,
+ * so "Global Payments Engineer" is not read as "worldwide".
+ */
+export function postingPlaces(job: Pick<GateInput, 'title' | 'location'>): PlaceScan {
   const titleTargets: PlaceScan = { ...emptyScan(), regions: scanPlaces(job.title).regions }
-  const located = mergeScans(
+  return mergeScans(
     scanPlaces(job.location, { trustCodes: true }),
     mergeScans(titleTargets, scanPlaces(titlePlaceText(job.title), { trustCodes: true })),
   )
+}
+
+export function evaluateRelevance(job: GateInput, prefs: SearchPrefs): GateResult {
+  const remote = isRemotePosting(job)
+  const located = postingPlaces(job)
   const restricted = remote ? scanRestrictions(job.descriptionMd) : emptyScan()
   const role = classifyRole({ title: job.title, description: job.descriptionMd, techStack: job.techStack })
   const seniority = detectSeniority(job.title)
