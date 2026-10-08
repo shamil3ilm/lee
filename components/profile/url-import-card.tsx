@@ -76,7 +76,7 @@ export function UrlImportCard() {
     })
 
   return (
-    <Card id="url-import">
+    <Card id="url-import" className="scroll-mt-28">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Globe className="size-4 text-muted-foreground" aria-hidden="true" />

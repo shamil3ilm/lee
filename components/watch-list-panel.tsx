@@ -1,10 +1,9 @@
 'use client'
 import { useTransition } from 'react'
 import { toast } from 'sonner'
-import { Eye, ExternalLink, Trash2 } from 'lucide-react'
+import { ExternalLink, Trash2 } from 'lucide-react'
 import { removeSource } from '@/app/(authed)/settings/sources/actions'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 
 export interface WatchItem {
   id: string
@@ -31,20 +30,12 @@ export function WatchListPanel({ items }: { items: WatchItem[] }) {
   }
 
   return (
-    <section id="watch-list" aria-labelledby="watch-list-title" className="scroll-mt-20">
-      <Card>
-        <CardHeader>
-          <h2 id="watch-list-title" className="flex items-center gap-2 text-base font-semibold leading-none tracking-tight">
-            <Eye className="size-4 text-primary" />
-            Check these yourself
-          </h2>
-          <CardDescription>
-            lee doesn&apos;t fetch these sites — their terms or robots.txt don&apos;t allow automated
-            access, or there&apos;s no public feed. Open them now and then; where the site sends job
-            alerts, set one up and lee picks the jobs up from your email.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        lee doesn&apos;t fetch these sites: their terms or robots.txt don&apos;t allow automated access, or there&apos;s no
+        public feed. Open them now and then; where the site sends job alerts, set one up and lee picks the jobs up from your
+        email.
+      </p>
           <ul className="divide-y rounded-md border text-sm">
             {items.map((item) => (
               <li key={item.id} className="flex items-start gap-3 px-3 py-2">
@@ -73,8 +64,6 @@ export function WatchListPanel({ items }: { items: WatchItem[] }) {
               </li>
             ))}
           </ul>
-        </CardContent>
-      </Card>
-    </section>
+    </div>
   )
 }

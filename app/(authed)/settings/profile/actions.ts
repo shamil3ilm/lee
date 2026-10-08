@@ -62,10 +62,12 @@ export async function saveProfileAction(formData: FormData): Promise<ActionResul
     headline: scalars.headline || null,
     summaryMd: scalars.summaryMd || null,
     careerNarrativeMd: scalars.careerNarrativeMd || null,
-    seniority: scalars.seniority || null,
+    // Seniority and work mode are edited in Settings › Search (one place);
+    // only an explicit value from an older client overwrites them here.
+    ...(scalars.seniority !== undefined ? { seniority: scalars.seniority || null } : {}),
     yearsExperience:
       typeof scalars.yearsExperience === 'number' ? scalars.yearsExperience : null,
-    remotePref: scalars.remotePref || 'any',
+    ...(scalars.remotePref !== undefined ? { remotePref: scalars.remotePref || 'any' } : {}),
     compFloorAnnual:
       typeof scalars.compFloorAnnual === 'number' ? scalars.compFloorAnnual : null,
     compCurrency: scalars.compCurrency || null,

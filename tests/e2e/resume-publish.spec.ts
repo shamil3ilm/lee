@@ -44,7 +44,7 @@ async function syntheticPng(page: Page): Promise<Buffer> {
 
 test('edit the master profile, build a variant, preview it and publish to the portfolio', async ({ page }) => {
   // 1. Résumé: the legacy master CV arrives as the master profile.
-  await page.goto('/settings/profile/resume')
+  await page.goto('/settings/resume')
   await expect(page.getByRole('heading', { name: 'Résumé', level: 1 })).toBeVisible()
   await expect(page.locator('#basics-name')).toHaveValue('Asha Menon')
   await page.locator('#basics-url').fill('https://asha.example.dev')
@@ -65,7 +65,7 @@ test('edit the master profile, build a variant, preview it and publish to the po
   await expectToast(page, /Profile saved/)
 
   // 2. Variant: GCC × Backend, preview, pick the wording, save a version.
-  await page.goto('/settings/profile/variants')
+  await page.goto('/settings/variants')
   await page.getByLabel('Region').selectOption('gcc')
   // Role presets come from accepted role families; other specs may have
   // cleared them, so use Backend when offered and General otherwise.
@@ -73,7 +73,7 @@ test('edit the master profile, build a variant, preview it and publish to the po
   const offered = await role.locator('option').evaluateAll((os) => os.map((o) => (o as HTMLOptionElement).value))
   await role.selectOption(offered.includes('backend') ? 'backend' : '')
   await page.getByRole('button', { name: 'Create variant' }).click()
-  await page.waitForURL(/\/settings\/profile\/variants\/[0-9a-f-]{36}$/)
+  await page.waitForURL(/\/settings\/variants\/[0-9a-f-]{36}$/)
   const variantUrl = page.url()
   const preview = page.getByTestId('variant-preview')
   await expect(preview.getByRole('heading', { name: 'Asha Menon' })).toBeVisible()
@@ -114,7 +114,7 @@ test('edit the master profile, build a variant, preview it and publish to the po
   await expect(page.locator('.cm-content')).toContainText('\documentclass[10pt, letterpaper]{article}')
 
   // 3. Publish: repository, token (checked against the stub), preview, publish.
-  await page.goto('/settings/profile/publish')
+  await page.goto('/settings/publish')
   const repo = page.getByRole('form', { name: 'Portfolio repository' })
   await repo.getByLabel(/Repository/).fill('example-asha/portfolio')
   await repo.getByRole('button', { name: 'Save' }).click()
@@ -153,12 +153,12 @@ test('edit the master profile, build a variant, preview it and publish to the po
   file = await stubFile(page)
   expect(file.commits).toBe(1)
   // …and the hand edit is now a lee fact, so the next publish keeps it.
-  await page.goto('/settings/profile/resume')
+  await page.goto('/settings/resume')
   await expect(page.locator('#basics-label')).toHaveValue('Backend Engineer (edited on GitHub)')
   await page.locator('#basics-label').fill('Payments Backend Engineer')
   await page.getByRole('button', { name: 'Save profile' }).first().click()
   await expectToast(page, /Profile saved/)
-  await page.goto('/settings/profile/publish')
+  await page.goto('/settings/publish')
   await page.getByRole('button', { name: 'Publish', exact: true }).click()
   await expectToast(page, 'Published 1.0.1')
   file = await stubFile(page)
@@ -166,7 +166,7 @@ test('edit the master profile, build a variant, preview it and publish to the po
   expect(file.text).toContain('"label": "Payments Backend Engineer"')
 
   // 5. Photo: uploaded on Résumé (cropped in the browser), private, used by the GCC variant.
-  await page.goto('/settings/profile/resume')
+  await page.goto('/settings/resume')
   await page.getByTestId('photo-input').setInputFiles({ name: 'synthetic.png', mimeType: 'image/png', buffer: await syntheticPng(page) })
   await expectToast(page, 'Photo saved')
   await expect(page.getByTestId('profile-photo')).toBeVisible()
@@ -186,7 +186,7 @@ test('edit the master profile, build a variant, preview it and publish to the po
   await page.getByRole('button', { name: 'Save variant' }).click()
   await expectToast(page, /Saved/)
 
-  await page.goto('/settings/profile/publish')
+  await page.goto('/settings/publish')
   const row = page.getByTestId('variant-publish-gcc-backend')
   await row.getByRole('button', { name: 'Publish', exact: true }).click()
   await expectToast(page, /Published .* \(1\.0\.0\)/)
@@ -205,7 +205,7 @@ test('edit the master profile, build a variant, preview it and publish to the po
   await expect(page.getByLabel('Page address')).toBeDisabled()
 
   // 7. Unpublish asks first, then deletes the file through the contents API.
-  await page.goto('/settings/profile/publish')
+  await page.goto('/settings/publish')
   await row.getByRole('button', { name: 'Unpublish' }).click()
   await expect(page.getByRole('dialog')).toContainText('deletes variants/gcc-backend.json')
   await page.getByRole('dialog').getByRole('button', { name: 'Unpublish' }).click()
@@ -216,9 +216,9 @@ test('edit the master profile, build a variant, preview it and publish to the po
 })
 
 test('Make PDF reports a compile-service outage with Try again, then makes the PDF', async ({ page }) => {
-  await page.goto('/settings/profile/variants')
+  await page.goto('/settings/variants')
   await page.getByRole('link', { name: /India · Backend/ }).first().click()
-  await page.waitForURL(/\/settings\/profile\/variants\/[0-9a-f-]{36}$/)
+  await page.waitForURL(/\/settings\/variants\/[0-9a-f-]{36}$/)
   try {
     await setLatexMode(page, 'down')
     await page.getByRole('button', { name: 'Make PDF' }).click()

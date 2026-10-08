@@ -10,7 +10,7 @@ import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
-import { clearCurrentJobAction, saveCurrentJobAction } from '@/app/(authed)/settings/profile/current-job/actions'
+import { clearCurrentJobAction, saveCurrentJobAction } from '@/app/(authed)/settings/current-job/actions'
 import { fromForm, toForm, type CurrentJobForm as FormState } from '@/lib/compare/form'
 import { COMPARE_CURRENCIES, PLACE_LABELS, PLACES, WORK_MODES, type CurrentJob, type Place } from '@/lib/compare/types'
 import { workModeLabel } from '@/lib/ui/labels'
@@ -22,7 +22,7 @@ interface CurrentJobFormProps {
   prefill: { employer: string; title: string } | null
 }
 
-/** Settings › Profile › Current job. Private: never published, never logged. */
+/** Settings › Current job. Private: never published, never logged. */
 export function CurrentJobForm({ initial, prefill }: CurrentJobFormProps) {
   const router = useRouter()
   const [form, setForm] = useState<FormState>(() => toForm(initial, prefill))
@@ -158,7 +158,7 @@ export function CurrentJobForm({ initial, prefill }: CurrentJobFormProps) {
           <RatingsSection form={form} set={set} />
           <WantMoreSection form={form} set={set} />
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="sticky bottom-0 z-10 -mx-6 flex flex-wrap items-center gap-2 rounded-b-xl border-t bg-card px-6 py-3">
             <Button type="submit" disabled={pending}>
               Save current job
             </Button>

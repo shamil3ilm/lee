@@ -30,7 +30,7 @@ export default async function VariantsPage({ searchParams }: { searchParams: Pro
             <li key={v.id}>
               <Card className="h-full">
                 <CardContent className="space-y-2 pt-5">
-                  <Link href={`/settings/profile/variants/${v.id}`} className="block break-words font-medium hover:underline">
+                  <Link href={`/settings/variants/${v.id}`} className="block break-words font-medium hover:underline">
                     {v.name}
                   </Link>
                   <div className="flex flex-wrap items-center gap-1.5">

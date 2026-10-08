@@ -4,7 +4,8 @@ import { test, expect } from '@playwright/test'
 // copy buttons, and a guard on the RSS link. Read-only (nothing is saved).
 
 test('Google Alerts panel suggests queries and validates the feed link', async ({ page }) => {
-  await page.goto('/settings/sources')
+  // A deep link to the section opens it (it starts folded).
+  await page.goto('/settings/sources#google-alerts')
   const panel = page.getByTestId('google-alerts-panel')
   await expect(panel).toBeVisible()
   await expect(panel.getByRole('link', { name: /google\.com\/alerts/ })).toHaveAttribute('href', 'https://www.google.com/alerts')

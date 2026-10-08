@@ -32,7 +32,7 @@ function report(result: SearchPrefsResult, verb: string): void {
 }
 
 /**
- * Settings › Profile › Search preferences. Saving re-gates Discovery right
+ * Settings › Search. Saving re-gates Discovery right
  * away (bounded), with the remainder queued.
  */
 export function SearchPrefsForm({ values }: SearchPrefsFormProps) {
@@ -67,7 +67,11 @@ export function SearchPrefsForm({ values }: SearchPrefsFormProps) {
           <LanguagesSection values={values} />
           <NoticeSection values={values} />
           <LearnedTitles titles={values.learnedTitles} />
-          <div className="flex flex-wrap items-center justify-end gap-2 border-t pt-4">
+          {/* One Save for the whole form, kept in reach on a long page. */}
+          <div
+            data-testid="search-prefs-actions"
+            className="sticky bottom-0 z-10 -mx-6 flex flex-wrap items-center justify-end gap-2 rounded-b-xl border-t bg-card px-6 py-3"
+          >
             {progress ? <span className="mr-auto"><RecheckProgress key={`${progress.total}-${progress.filtered}`} start={progress} /></span> : null}
             {values.saved ? (
               <Button type="button" variant="ghost" onClick={onClear} disabled={pending}>

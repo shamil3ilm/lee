@@ -10,7 +10,7 @@ import { DEPTHS, DATE_PATTERN, type ResumeProfile } from '@/lib/resume/types'
 export type SaveResumeResult = { success: true; profile: ResumeProfile; snapshot: boolean } | { error: string; problems?: string[] }
 
 function revalidate(): void {
-  revalidatePath('/settings/profile', 'layout')
+  revalidatePath('/settings', 'layout')
   revalidatePath('/documents')
 }
 

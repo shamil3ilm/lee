@@ -22,7 +22,7 @@ export type SearchPrefsResult =
 const INLINE_BUDGET_MS = 4_000
 
 function revalidate(): void {
-  revalidatePath('/settings/profile')
+  revalidatePath('/settings/search')
   revalidatePath('/discoveries')
   revalidatePath('/')
 }

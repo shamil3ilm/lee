@@ -2,7 +2,7 @@
 import { useState, useTransition } from 'react'
 import { Loader2, Save } from 'lucide-react'
 import { toast } from 'sonner'
-import { saveResumeAction } from '@/app/(authed)/settings/profile/resume/actions'
+import { saveResumeAction } from '@/app/(authed)/settings/resume/actions'
 import { Button } from '@/components/ui/button'
 import type { ResumeProfile } from '@/lib/resume/types'
 import { BasicsCard } from './basics-card'
@@ -11,6 +11,7 @@ import { PortfolioCard } from './portfolio-card'
 import { ProjectsCard } from './projects-card'
 import { SkillsCard } from './skills-card'
 import { WorkCard } from './work-card'
+import { SECTION_ANCHOR } from '@/components/section-nav'
 
 interface ResumeEditorProps {
   initial: ResumeProfile
@@ -18,7 +19,7 @@ interface ResumeEditorProps {
 }
 
 /**
- * Settings › Profile › Résumé: the master profile, lee's one source of
+ * Settings › Résumé: the master profile, lee's one source of
  * résumé facts. One Save writes the whole profile (validated and
  * fact-locked on the server) and refreshes the derived master CV.
  */
@@ -47,8 +48,13 @@ export function ResumeEditor({ initial, stored }: ResumeEditorProps) {
       toast.success(r.snapshot ? 'Profile saved — master CV updated' : 'Profile saved')
     })
 
+  // One Save for the whole profile, stuck to the bottom of the viewport
+  // while the (long) editor is on screen.
   const saveBar = (
-    <div className="flex flex-wrap items-center justify-end gap-3">
+    <div
+      data-testid="resume-save-bar"
+      className="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center justify-end gap-3 border-t bg-background/95 px-1 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80"
+    >
       {dirty ? <span className="text-xs text-muted-foreground">Unsaved changes</span> : null}
       <Button type="button" onClick={save} disabled={pending}>
         {pending ? <Loader2 className="animate-spin" /> : <Save />}
@@ -64,7 +70,6 @@ export function ResumeEditor({ initial, stored }: ResumeEditorProps) {
           Started from your settings. Review it and save to create your master profile.
         </p>
       ) : null}
-      {saveBar}
       {problems.length > 0 ? (
         <ul role="alert" className="list-disc space-y-1 rounded-md border border-destructive/40 p-3 pl-7 text-sm text-destructive">
           {problems.map((p) => (
@@ -72,14 +77,26 @@ export function ResumeEditor({ initial, stored }: ResumeEditorProps) {
           ))}
         </ul>
       ) : null}
-      <BasicsCard value={profile.basics} onChange={(v) => update('basics', v)} />
-      <WorkCard value={profile.work} onChange={(v) => update('work', v)} />
-      <ProjectsCard value={profile.projects} onChange={(v) => update('projects', v)} />
-      <SkillsCard value={profile.skills} onChange={(v) => update('skills', v)} />
-      <EducationCard value={profile.education} onChange={(v) => update('education', v)} />
-      <LanguagesCard value={profile.languages} onChange={(v) => update('languages', v)} />
-      <CertificatesCard value={profile.certificates} onChange={(v) => update('certificates', v)} />
-      <PortfolioCard value={profile.portfolio} work={profile.work} onChange={(v) => update('portfolio', v)} />
+      <div id="resume-basics" className={SECTION_ANCHOR}>
+        <BasicsCard value={profile.basics} onChange={(v) => update('basics', v)} />
+      </div>
+      <div id="resume-work" className={SECTION_ANCHOR}>
+        <WorkCard value={profile.work} onChange={(v) => update('work', v)} />
+      </div>
+      <div id="resume-projects" className={SECTION_ANCHOR}>
+        <ProjectsCard value={profile.projects} onChange={(v) => update('projects', v)} />
+      </div>
+      <div id="resume-skills" className={SECTION_ANCHOR}>
+        <SkillsCard value={profile.skills} onChange={(v) => update('skills', v)} />
+      </div>
+      <div id="resume-education" className={`${SECTION_ANCHOR} space-y-6`}>
+        <EducationCard value={profile.education} onChange={(v) => update('education', v)} />
+        <LanguagesCard value={profile.languages} onChange={(v) => update('languages', v)} />
+        <CertificatesCard value={profile.certificates} onChange={(v) => update('certificates', v)} />
+      </div>
+      <div id="resume-portfolio" className={SECTION_ANCHOR}>
+        <PortfolioCard value={profile.portfolio} work={profile.work} onChange={(v) => update('portfolio', v)} />
+      </div>
       {saveBar}
     </div>
   )

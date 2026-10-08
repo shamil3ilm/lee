@@ -7,7 +7,7 @@ import { FLOATING_CURRENCIES, type CompareCurrency, type FloatingCurrency, type 
  * Currency conversion for the comparison. GCC currencies convert through
  * their US-dollar pegs (lib/discovery/relevance/pay.ts, central-bank
  * figures); INR, EUR and GBP float, so they convert only through the
- * user's own FX table (Settings › Profile › Current job), never a guess.
+ * user's own FX table (Settings › Current job), never a guess.
  * KWD is pegged to an undisclosed basket, so its rate is an estimate.
  */
 

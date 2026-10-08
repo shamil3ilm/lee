@@ -202,7 +202,7 @@ export function DocumentsCard({
     } else if (kind === 'cover_letter') {
       await generate('cover_letter', doc.id)
     } else {
-      toast.error('Master CV is regenerated from Settings › Profile › Résumé.')
+      toast.error('Master CV is regenerated from Settings › Résumé.')
     }
   }
 

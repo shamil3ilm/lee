@@ -11,7 +11,7 @@ export const runtime = 'nodejs'
 export const maxDuration = 30
 
 /**
- * The profile photo (Settings › Profile › Résumé). Private: served only to
+ * The profile photo (Settings › Résumé). Private: served only to
  * its owner, never published. Stored through the document-asset store
  * (Drive when connected, else Postgres) — see lib/resume/photo-store.ts.
  *

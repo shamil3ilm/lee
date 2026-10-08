@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { chooseVariantAction } from '@/app/(authed)/settings/profile/variants/actions'
+import { chooseVariantAction } from '@/app/(authed)/settings/variants/actions'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { NativeSelect } from '@/components/ui/native-select'
@@ -32,8 +32,8 @@ export function ApplicationVariantCard({ applicationId, variants, suggestion, cu
       }
     })
   const createHref = suggestion.create
-    ? `/settings/profile/variants?region=${suggestion.create.region}${suggestion.create.roleFamily ? `&family=${suggestion.create.roleFamily}` : ''}`
-    : '/settings/profile/variants'
+    ? `/settings/variants?region=${suggestion.create.region}${suggestion.create.roleFamily ? `&family=${suggestion.create.roleFamily}` : ''}`
+    : '/settings/variants'
   return (
     <Card data-testid="application-variant">
       <CardHeader>

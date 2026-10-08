@@ -3,7 +3,7 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { unpublishVariantAction } from '@/app/(authed)/settings/profile/publish/actions'
+import { unpublishVariantAction } from '@/app/(authed)/settings/publish/actions'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Input } from '@/components/ui/input'
@@ -71,7 +71,7 @@ export function VariantPortfolioField({ variantId, state, publish, slug, name = 
           <span className="block text-xs text-muted-foreground">
             Off by default. When on, Publish writes its public fields as variants/{effective}.json and your portfolio shows it as a
             tailored résumé page (not indexed by search engines).{' '}
-            <Link href="/settings/profile/publish" className="text-primary hover:underline">
+            <Link href="/settings/publish" className="text-primary hover:underline">
               Publish page
             </Link>
           </span>
