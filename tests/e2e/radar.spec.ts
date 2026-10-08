@@ -51,13 +51,13 @@ test('watch a term, see matches, open an entry and build a grounded brief', asyn
   await expect(brief).toContainText('Confirmed by you on')
 
   // Learn this: the brief becomes Playground review cards.
+  // (Other journeys may have queued content cards too, so the review page's
+  // order is not fixed; the integration test checks the card is due.)
   await brief.getByRole('button', { name: 'Learn this' }).click()
+  await expect(page.getByText(/Added \d+ card\(s\) to your Playground reviews/)).toBeVisible()
   await expect(brief.getByRole('link', { name: 'Review cards' })).toBeVisible()
-  await page.goto('/playground/review')
-  await expect(page.getByText('AI Radar').first()).toBeVisible()
 
   // Marking the entry read clears it from the "new" count.
-  await page.goBack()
   await page.getByRole('button', { name: /Mark .* as read/ }).click()
   await expect(page.getByRole('button', { name: /Mark .* as new/ })).toBeVisible()
 })
