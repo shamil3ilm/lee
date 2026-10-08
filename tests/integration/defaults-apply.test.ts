@@ -4,6 +4,7 @@ import { db } from '@/lib/db/client'
 import { companies, sources, userDefaults } from '@/lib/db/schema'
 import { applyDefaults } from '@/lib/defaults/apply'
 import { DEFAULT_SOURCES, DEFAULTS_VERSION, sourceIdentity, type DefaultSource } from '@/lib/defaults/catalog'
+import * as radarTermsQ from '@/lib/db/queries/radarTerms'
 import { makeFreshUser as makeUser, makeSource } from '@/tests/factories'
 
 async function sourcesOf(userId: string) {
@@ -88,7 +89,7 @@ describe('applyDefaults', () => {
     // A v1 default the user removed stays removed after the upgrade.
     await db.delete(sources).where(and(eq(sources.userId, u.id), eq(sources.kind, 'remoteok')))
 
-    const r = await applyDefaults(u.id)
+    const r = await applyDefaults(u.id, { version: 2 })
     const v2 = DEFAULT_SOURCES.filter((d) => d.since === 2)
     expect(r.version).toBe(2)
     expect(r.addedSources).toBe(v2.length)
@@ -97,6 +98,26 @@ describe('applyDefaults', () => {
     expect(rows.find((s) => s.kind === 'email_alert')?.enabled).toBe(true)
     // Sites lee may not fetch arrive as watch links, switched off.
     expect(rows.filter((s) => s.kind === 'watch').every((s) => !s.enabled)).toBe(true)
+  })
+
+  it('v3: adds the starter radar watch terms once; a removed term is never re-added', async () => {
+    const u = await makeUser()
+    await applyDefaults(u.id, { version: 2 })
+    // Synthetic terms stand in for the catalog's.
+    const watchTerms = [
+      { term: 'Zorb', aliases: ['ZRB'], kind: 'entity' as const, since: 3 },
+      { term: 'Quill Runner', aliases: [], kind: 'term' as const, since: 3 },
+    ]
+    const r = await applyDefaults(u.id, { version: 3, watchTerms })
+    expect(r.addedWatchTerms).toBe(2)
+    const terms = await radarTermsQ.list(u.id)
+    expect(terms.map((t) => [t.term, t.aliases, t.kind])).toEqual([
+      ['Zorb', ['ZRB'], 'entity'],
+      ['Quill Runner', [], 'term'],
+    ])
+    await radarTermsQ.remove(u.id, terms[0]!.id)
+    expect((await applyDefaults(u.id, { version: 3, watchTerms })).addedWatchTerms).toBe(0)
+    expect((await radarTermsQ.list(u.id)).map((t) => t.term)).toEqual(['Quill Runner'])
   })
 
   it('v2 catalog: unique keys and identities, few enabled, GCC companies recorded', () => {

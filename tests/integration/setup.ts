@@ -8,6 +8,10 @@ import { clearThrottleCache } from '@/lib/usage/throttle'
 // App-level tables to truncate between tests. Ordered from child to parent
 // (though CASCADE handles the rest). Keep in sync with lib/db/schema.ts.
 const TABLES = [
+  'radar_briefs',
+  'radar_items',
+  'radar_entries',
+  'radar_watch_terms',
   'shortlist_entries',
   'discovery_feedback',
   'application_preps',

@@ -15,6 +15,8 @@ import { contentStems } from '@/lib/cv-score/text'
 import { replacementVerb, weakOpenerOf } from '@/lib/cv-score/dimensions/impact'
 import type { CallMeta } from './log'
 import type { ReputationSummaryInput, ReputationSummaryResult } from './prompts/reputation-summary'
+import type { RadarBriefInput, RadarBriefResult } from './prompts/radar-brief'
+import { pseudoRadarBrief } from './fixtures-radar'
 import type { ScoreJobContext } from './prompts/score-job'
 import type { SuggestRolesInput, SuggestRolesResult } from './prompts/suggest-roles'
 import type { NormalizedCompany, NormalizedJob } from '@/lib/discovery/adapters/types'
@@ -78,6 +80,7 @@ export class FixtureAIProvider implements AIProvider {
       summarizeReputation?: (input: ReputationSummaryInput) => ReputationSummaryResult
       suggestRoles?: (input: SuggestRolesInput) => SuggestRolesResult
       proposeResumeVariant?: (input: ResumeVariantInput) => ResumeVariantResult
+      writeRadarBrief?: (input: RadarBriefInput) => RadarBriefResult
     } = {},
   ) {}
 
@@ -257,6 +260,11 @@ export class FixtureAIProvider implements AIProvider {
     await this.emitLoggedCallId('suggest_roles', meta)
     if (this.fixtures.suggestRoles) return this.fixtures.suggestRoles(input)
     return { suggestions: [] }
+  }
+  async writeRadarBrief(input: RadarBriefInput, meta?: CallMeta): Promise<RadarBriefResult> {
+    await this.emitLoggedCallId('radar_brief', meta)
+    if (this.fixtures.writeRadarBrief) return this.fixtures.writeRadarBrief(input)
+    return pseudoRadarBrief(input)
   }
   async summarizeReputation(
     input: ReputationSummaryInput,

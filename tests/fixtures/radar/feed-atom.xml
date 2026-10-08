@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Example Tech Blog</title>
+<entry><title type="text">Serving Zorb at scale</title><link rel="alternate" type="text/html" href="https://dev.example.com/blog/serving-zorb/"/><id>https://dev.example.com/?p=77</id><published>2026-10-06T09:00:00Z</published><updated>2026-10-06T10:00:00Z</updated><summary type="html">How we serve &lt;b&gt;Zorb&lt;/b&gt;.</summary></entry>
+</feed>

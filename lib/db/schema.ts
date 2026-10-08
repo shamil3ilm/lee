@@ -426,6 +426,11 @@ export const userProfile = pgTable('user_profile', {
   shortlistSize: smallint('shortlist_size').notNull().default(5),
   followupDays: smallint('followup_days').notNull().default(7),
   shortlistInEmails: boolean('shortlist_in_emails').notNull().default(true),
+  // AI Radar (lib/radar/settings.ts): how new watch-term matches reach the
+  // user — 'instant' | 'daily' | 'weekly' | 'off' (Settings › Notifications);
+  // and the radar sources the user switched off (Radar › Sources).
+  radarNotify: text('radar_notify').notNull().default('weekly'),
+  radarSourcesOff: text('radar_sources_off').array().notNull().default([]),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
@@ -1586,3 +1591,5 @@ export const retentionSettings = pgTable('retention_settings', {
 export * from './schema-academy'
 // Apply faster: daily shortlist, dismiss feedback, prepare progress.
 export * from './schema-apply'
+// v16 AI Radar: items, entries, watch terms, briefs.
+export * from './schema-radar'

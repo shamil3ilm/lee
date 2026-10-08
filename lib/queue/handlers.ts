@@ -15,6 +15,8 @@ import { enqueueRelevanceJob } from '@/lib/discovery/relevance/enqueue'
 import { takeUsageSnapshot } from '@/lib/usage/snapshot'
 import { buildShortlistForUser } from '@/lib/apply/shortlist'
 import { isThrottled } from '@/lib/usage/throttle'
+import { runRadarSource } from '@/lib/radar/run'
+import { RADAR_SOURCES } from '@/lib/radar/types'
 import { JOB_TYPES } from './job-types'
 import { createRegistry, defineHandler, type HandlerRegistry } from './registry'
 import type { DigestSkipReason, DiscoverySourceSummary } from './run-summary'
@@ -298,6 +300,35 @@ const shortlist = defineHandler({
   },
 })
 
+/**
+ * One AI Radar source for one user (lib/radar/run.ts). The daily run is
+ * non-essential (skipped under the free-tier throttle); Radar › Refresh now
+ * runs regardless. A failing source is recorded in the summary, not
+ * retried: the next day's run tries again.
+ */
+const radarSource = defineHandler({
+  type: JOB_TYPES.radarSource,
+  scope: 'user',
+  payload: z.object({ source: z.enum(RADAR_SOURCES), trigger: z.enum(['daily', 'manual']).default('daily') }),
+  // GitHub at 6.5 s per search and GDELT at 6 s per term are the slow ones.
+  timeoutMs: 120_000,
+  minBudgetMs: 30_000,
+  async run({ job, payload, deadline }): Promise<JobResult> {
+    if (payload.trigger === 'daily' && (await isThrottled('pause_nonessential'))) {
+      return {
+        metrics: { radar_paused_by_usage: 1 },
+        summary: { kind: 'radar-source', source: payload.source, status: 'paused', fetched: 0, new: 0, matched: 0 },
+      }
+    }
+    const s = await runRadarSource(userId(job), payload.source, { deadline: Math.min(deadline, Date.now() + 100_000) })
+    return {
+      metrics: { radar_items_new: s.new, radar_items_matched: s.matched, radar_source_failed: s.status === 'failed' ? 1 : 0 },
+      warnings: s.status === 'failed' && s.error ? [`radar ${payload.source}: ${s.error}`] : [],
+      summary: s,
+    }
+  },
+})
+
 export const appHandlers = [
   reminders,
   followups,
@@ -310,6 +341,7 @@ export const appHandlers = [
   usageSnapshot,
   companyReputation,
   shortlist,
+  radarSource,
 ] as const
 
 export const appRegistry: HandlerRegistry = createRegistry(appHandlers)

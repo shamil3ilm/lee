@@ -38,6 +38,7 @@ export const E2E_ENV: Readonly<Record<string, string>> = {
   NEON_API_KEY: '',
   ADZUNA_KEY: '',
   GITHUB_TOKEN: '',
+  HF_TOKEN: '',
   GITHUB_PORTFOLIO_TOKEN: '',
   GITHUB_API_URL: E2E_GITHUB_STUB_URL,
   // Server-side compiles (PDF route, Make PDF, Drive export) never leave the machine.

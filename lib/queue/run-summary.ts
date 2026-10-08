@@ -1,3 +1,5 @@
+import { describeRadarSummary, type RadarRunSummary } from '@/lib/radar/summary'
+
 /**
  * Typed run summaries: what one background job did, stored on its
  * queue_jobs row (`result.summary`) and shown in Settings › Background jobs.
@@ -37,8 +39,11 @@ export type DiscoveryEmailSummary =
 
 export type ShortlistSummary = { kind: 'shortlist'; candidates: number; shortlisted: number }
 
+export type { RadarRunSummary } from '@/lib/radar/summary'
+
 export type JobSummary =
   | DiscoverySourceSummary
+  | RadarRunSummary
   | ShortlistSummary
   | GmailSyncSummary
   | DigestSummary
@@ -89,6 +94,7 @@ export function capSummary(summary: JobSummary | undefined | null): JobSummary |
   const s = { ...summary } as JobSummary
   if (s.kind === 'discovery-source') s.source = s.source.slice(0, MAX_LABEL)
   if (s.kind === 'usage-snapshot') s.throttles = s.throttles.slice(0, 10).map((t) => t.slice(0, 40))
+  if (s.kind === 'radar-source' && s.error) s.error = s.error.slice(0, 160)
   return jsonBytes(s) > SUMMARY_BUDGET_BYTES ? null : s
 }
 
@@ -159,6 +165,8 @@ export function describeSummary(summary: JobSummary | null | undefined): string 
       if (summary.reason === 'no_google_account') return 'Not sent: no Google account'
       if (summary.reason === 'disabled') return 'Not sent: email alerts are off'
       return 'Nothing new to send'
+    case 'radar-source':
+      return describeRadarSummary(summary)
     default:
       return ''
   }

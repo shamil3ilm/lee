@@ -1,0 +1,13 @@
+{
+  "hn": {"hits":[
+    {"objectID":"9001","title":"Show HN: Zorb runs on a laptop","url":"https://github.com/acme-lab/zorb","points":42,"num_comments":7,"created_at":"2026-10-05T11:14:11Z","created_at_i":1791198851},
+    {"objectID":"9002","title":"Unrelated story about Zorbax","url":"https://example.com/zorbax","points":1,"created_at":"2026-10-05T11:00:00Z"},
+    {"objectID":"9003","title":"Ask HN: does zorb work offline?","url":null,"story_text":"<p>I tried zorb &amp; others</p>","created_at":"2026-10-04T11:00:00Z"}
+  ]},
+  "gdelt": {"articles":[
+    {"url":"https://news.example.com/zorb-launch","title":"Acme Lab launches Zorb model","seendate":"20261005T120000Z","domain":"news.example.com"},
+    {"url":"https://copy.example.net/zorb-launch","title":"Acme Lab launches Zorb model","seendate":"20261005T130000Z","domain":"copy.example.net"},
+    {"url":"https://news.example.com/other","title":"Zorbax stock rises","seendate":"20261005T120000Z","domain":"news.example.com"},
+    {"url":"http://insecure.example.com/zorb","title":"Zorb again","seendate":"20261005T120000Z"}
+  ]}
+}

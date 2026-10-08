@@ -25,6 +25,8 @@ import {
 import { todoIsActiveSql } from '@/lib/db/queries/todos'
 import { usageWarningsForUser, type UsageWarning } from '@/lib/usage/alerts'
 import { shortlistForEmail, type EmailShortlistItem } from '@/lib/apply/email'
+import { radarLinesFor } from '@/lib/radar/notify'
+import type { DigestLine } from '@/lib/radar/digest'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -85,6 +87,8 @@ export interface PipelineSnapshot {
   // Apply faster — the latest shortlist's open picks, when the user keeps
   // "Include the shortlist in emails" on (lib/apply/email.ts).
   shortlist?: EmailShortlistItem[]
+  // AI Radar — "new on your watch terms" when the radar mode is weekly.
+  radar?: DigestLine[]
 }
 
 // ---------------------------------------------------------------------------
@@ -364,6 +368,7 @@ export async function gatherPipelineSnapshot(
   })
 
   const shortlist = await shortlistForEmail(userId, now)
+  const radar = await radarLinesFor(userId, 'weekly_digest', { now })
 
   return {
     userId,
@@ -380,6 +385,7 @@ export async function gatherPipelineSnapshot(
     completedStagesThisWeek,
     usageWarnings,
     shortlist,
+    radar,
   }
 }
 
@@ -410,6 +416,7 @@ function digestFingerprint(snap: PipelineSnapshot): string {
     stale: snap.staleApplications.length,
     todos: snap.upcomingTodos.length,
     completed: snap.completedStagesThisWeek.length,
+    radar: snap.radar?.length ?? 0,
   })
 }
 

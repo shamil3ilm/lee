@@ -22,6 +22,7 @@ export const USER_STEP_IDS = [
   'academyHistory',
   'applyHistory',
   'codingSubmissions',
+  'radarItems',
 ] as const
 
 export const GLOBAL_STEP_IDS = [
@@ -66,6 +67,7 @@ export const STEP_LABELS: Readonly<Record<RetentionStepId, string>> = {
   academyHistory: 'Old Playground attempts and plans compacted (scores and history kept)',
   applyHistory: 'Old daily shortlists and “Not for me” feedback deleted',
   codingSubmissions: 'Old coding submission code past the last 20 per problem deleted (best and latest kept)',
+  radarItems: 'AI Radar items older than 30 days deleted (watched, saved and briefed entries kept)',
   queueJobs: 'Finished background jobs deleted',
   orphanAiCallLogs: 'AI call logs of deleted users deleted',
   expiredAuth: 'Expired sign-in records deleted',

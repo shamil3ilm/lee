@@ -38,7 +38,29 @@ export interface DefaultSource {
 }
 
 /** Bump when adding defaults; users below it get only the newer ones. */
-export const DEFAULTS_VERSION = 2
+export const DEFAULTS_VERSION = 3
+
+export interface DefaultWatchTerm {
+  term: string
+  aliases: readonly string[]
+  kind: 'term' | 'entity'
+  /** DEFAULTS_VERSION that introduced it (as for sources). */
+  since: number
+}
+
+/**
+ * The owner's starter AI Radar watch terms (Radar › Watchlist), asked for
+ * on 2026-10-08: recent AI products and models to get regular updates on.
+ * They are data, never assumptions: lee states nothing about them beyond
+ * what the fetched sources say. Like the starter sources, they are added
+ * once and can be edited or removed; a removed term is never re-added.
+ */
+export const DEFAULT_WATCH_TERMS: readonly DefaultWatchTerm[] = [
+  { term: 'Jev', aliases: [], kind: 'entity', since: 3 },
+  { term: 'Laya', aliases: [], kind: 'entity', since: 3 },
+  { term: 'ChatGPT Dots', aliases: [], kind: 'entity', since: 3 },
+  { term: 'Meta Muse', aliases: [], kind: 'entity', since: 3 },
+]
 
 export const DEFAULT_SOURCES: readonly DefaultSource[] = [
   // Broad, all-jobs sources

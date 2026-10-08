@@ -19,6 +19,7 @@ import type {
 import type { InterviewStage } from '@/lib/db/queries/stages'
 import type { CallMeta } from './log'
 import type { ReputationSummaryInput, ReputationSummaryResult } from './prompts/reputation-summary'
+import type { RadarBriefInput, RadarBriefResult } from './prompts/radar-brief'
 import type { ScoreJobContext } from './prompts/score-job'
 import type { SharedLink } from './prompts/shared-links'
 import type { SuggestRolesInput, SuggestRolesResult } from './prompts/suggest-roles'
@@ -197,6 +198,9 @@ export interface AIProvider {
   // Résumé variants — proposals only; lib/variants/proposals.ts filters them
   // (readiness + fact lock) and the user confirms before anything is saved.
   proposeResumeVariant(input: ResumeVariantInput, meta?: CallMeta): Promise<ResumeVariantResult>
+  // AI Radar — grounded brief draft; the caller drops every sentence whose
+  // quote is not verbatim in its fetched source, and the user confirms.
+  writeRadarBrief(input: RadarBriefInput, meta?: CallMeta): Promise<RadarBriefResult>
 }
 
 export const latexCVResultSchema = z.object({ source: z.string().min(1) })

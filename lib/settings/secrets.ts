@@ -84,7 +84,11 @@ export async function checkServiceKey(
   const url =
     id === 'firecrawl'
       ? 'https://api.firecrawl.dev/v1/team/credit-usage'
-      : `${(opts.layaEndpoint || DEFAULT_LAYA_ENDPOINT).replace(/\/$/, '')}/config`
+      : id === 'github_search'
+        ? 'https://api.github.com/rate_limit'
+        : id === 'huggingface'
+          ? 'https://huggingface.co/api/whoami-v2'
+          : `${(opts.layaEndpoint || DEFAULT_LAYA_ENDPOINT).replace(/\/$/, '')}/config`
   const label = getServiceSecretInfo(id).label
   // The Laya endpoint is user-supplied: only public https hosts may be
   // called (no localhost / private / link-local IPs), and redirects are not

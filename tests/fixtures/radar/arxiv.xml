@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<feed xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns="http://www.w3.org/2005/Atom">
+  <id>https://arxiv.org/api/x</id>
+  <title>arXiv Query</title>
+  <entry>
+    <id>http://arxiv.org/abs/2601.00001v2</id>
+    <title>Zorb: A Small
+      Fast Model</title>
+    <summary>We present Zorb, a compact model for fast decisions.</summary>
+    <published>2026-10-01T17:59:41Z</published>
+    <link href="https://arxiv.org/abs/2601.00001v2" rel="alternate" type="text/html"/>
+    <arxiv:comment>Code: https://github.com/acme-lab/zorb.</arxiv:comment>
+    <arxiv:primary_category term="cs.CL"/>
+    <author><name>A. Author</name></author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2601.00002v1</id>
+    <title>Second paper</title>
+    <summary>Another abstract.</summary>
+    <published>2026-10-01T17:58:00Z</published>
+  </entry>
+</feed>
