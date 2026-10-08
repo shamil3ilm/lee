@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { queueJobs, radarBriefs, radarEntries, radarItems, radarNewEntries, radarNewItems } from '@/lib/db/schema'
@@ -45,6 +45,13 @@ function repo(name: string, over: Partial<NewItemInput> = {}): NewItemInput {
     ...over,
   }
 }
+
+// The shared What's new tables are not in the global per-test TRUNCATE (each
+// truncate leaves relation files behind and slows the size-measurement test);
+// only this file writes them, so it empties them itself.
+beforeEach(async () => {
+  await db.delete(radarNewEntries)
+})
 
 async function entries() {
   return db.select().from(radarNewEntries)
