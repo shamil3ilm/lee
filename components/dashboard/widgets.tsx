@@ -8,9 +8,8 @@ import { accounts, activities } from '@/lib/db/schema'
 import { mapForTargets } from '@/lib/db/queries/riskAssessments'
 import { toRiskView } from '@/lib/scam/view'
 import { getProfile } from '@/lib/profile/service'
-import { getJourneyCounts, getNextBestAction, getSetupChecklist } from '@/lib/journey/service'
+import { getJourneyCounts, getNextBestAction } from '@/lib/journey/service'
 import { buildFunnelCounts } from '@/lib/dashboard/funnel'
-import { Kanban, type KanbanCard } from '@/components/kanban'
 import {
   NeedsAttention,
   type AttentionItem,
@@ -21,13 +20,10 @@ import { FreshDiscoveries, type FreshDiscoveryItem } from '@/components/fresh-di
 import { toMatchDetail } from '@/lib/discovery/match/detail'
 import { FunnelWidget } from '@/components/funnel-widget'
 import { SyncStatus } from '@/components/sync-status'
-import { SetupChecklist } from '@/components/setup-checklist'
 import { NextBestAction } from '@/components/next-best-action'
 import { JourneyStrip } from '@/components/journey-strip'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DueFollowups } from '@/components/apply/due-followups'
-import { WeekFunnel } from '@/components/apply/week-funnel'
-import { weekFunnel } from '@/lib/apply/funnel'
 import { dueFollowups } from '@/lib/apply/followups'
 import * as prepsQ from '@/lib/db/queries/applicationPreps'
 import {
@@ -74,10 +70,6 @@ function attentionRows(rows: Row[], now: number): Row[] {
     )
     .sort((a, b) => a.nextActionAt!.getTime() - b.nextActionAt!.getTime())
     .slice(0, 10)
-}
-
-export async function SetupChecklistWidget({ userId }: Pick<WidgetProps, 'userId'>) {
-  return <SetupChecklist checklist={await getSetupChecklist(userId)} />
 }
 
 export async function NextBestActionWidget({ userId, now }: WidgetProps) {
@@ -165,63 +157,44 @@ export async function ThisWeekWidget({ userId, now }: WidgetProps) {
   )
 }
 
-/** Apply faster: the week's funnel and the follow-ups due from "Mark applied". */
-export async function ApplyFasterWidget({ userId, now }: WidgetProps) {
-  const [funnel, due] = await Promise.all([weekFunnel(userId, new Date(now)), dueFollowups(userId, new Date(now))])
+/** Follow-ups due from "Mark applied" (renders nothing when none are due). */
+export async function DueFollowupsWidget({ userId, now }: WidgetProps) {
+  const due = await dueFollowups(userId, new Date(now))
   return (
-    <>
-      <DueFollowups
-        items={due.map((d) => ({
-          applicationId: d.applicationId,
-          jobTitle: d.jobTitle,
-          companyName: d.companyName,
-          dueAt: d.dueAt.toISOString(),
-        }))}
-      />
-      <WeekFunnel funnel={funnel} />
-    </>
+    <DueFollowups
+      items={due.map((d) => ({
+        applicationId: d.applicationId,
+        jobTitle: d.jobTitle,
+        companyName: d.companyName,
+        dueAt: d.dueAt.toISOString(),
+      }))}
+    />
   )
 }
 
+/**
+ * Pipeline on Home: the stage-conversion funnel only. The board itself lives
+ * on Applications (the count strip above links there), so it is not drawn
+ * twice.
+ */
 export async function PipelineWidget({ userId }: Pick<WidgetProps, 'userId'>) {
   const rows = await loadApplications(userId)
-  const grouped: Record<ApplicationStatus, KanbanCard[]> = {
-    saved: [],
-    applied: [],
-    screen: [],
-    interview: [],
-    offer: [],
-    rejected: [],
-    withdrawn: [],
+  const counts: Record<ApplicationStatus, number> = {
+    saved: 0,
+    applied: 0,
+    screen: 0,
+    interview: 0,
+    offer: 0,
+    rejected: 0,
+    withdrawn: 0,
   }
   for (const r of rows) {
     const status = (APPLICATION_STATUSES as readonly string[]).includes(r.status)
       ? (r.status as ApplicationStatus)
       : 'saved'
-    grouped[status].push({
-      id: r.id,
-      title: r.job.title,
-      companyName: r.job.company?.name ?? null,
-      interestLevel: r.interestLevel ?? null,
-      nextActionAt: r.nextActionAt ? r.nextActionAt.toISOString() : null,
-    })
+    counts[status] += 1
   }
-  const columns = APPLICATION_STATUSES.map((status) => ({ status, cards: grouped[status] }))
-  const funnelCounts = buildFunnelCounts({
-    saved: grouped.saved.length,
-    applied: grouped.applied.length,
-    screen: grouped.screen.length,
-    interview: grouped.interview.length,
-    offer: grouped.offer.length,
-    rejected: grouped.rejected.length,
-    withdrawn: grouped.withdrawn.length,
-  })
-  return (
-    <>
-      <Kanban columns={columns} />
-      <FunnelWidget counts={funnelCounts} />
-    </>
-  )
+  return <FunnelWidget counts={buildFunnelCounts(counts)} />
 }
 
 export async function SignalsWidget({ userId, now }: WidgetProps) {
@@ -265,15 +238,19 @@ export async function SignalsWidget({ userId, now }: WidgetProps) {
     }
   })
   const grantedScopes = googleAccount?.scope?.split(' ').filter(Boolean) ?? []
+  const connected = grantedScopes.includes(GMAIL_SCOPE)
   return (
     <>
       <FreshDiscoveries items={fresh} />
-      <SyncStatus
-        connected={grantedScopes.includes(GMAIL_SCOPE)}
-        syncedGmailAt={profile?.syncedGmailAt?.toISOString() ?? null}
-        emailsToday={emailCountRow[0]?.c ?? 0}
-        needsFollowUp={attentionRows(rows, now).length}
-      />
+      {/* Not connected: the warning sits at the top of Home instead. */}
+      {connected ? (
+        <SyncStatus
+          connected
+          syncedGmailAt={profile?.syncedGmailAt?.toISOString() ?? null}
+          emailsToday={emailCountRow[0]?.c ?? 0}
+          needsFollowUp={attentionRows(rows, now).length}
+        />
+      ) : null}
     </>
   )
 }
