@@ -4,8 +4,8 @@ lee compiles LaTeX documents (the editor, résumé variants and merged PDFs) thr
 
 | Order | Service | What it is |
 |---|---|---|
-| 1 | **latexonline.cc** (`services/latexonline.ts`) | Primary. Free, no key. Takes a ustar tarball (`tar.ts`). It runs **LaTeX 2017-01-01** with a trimmed TeX Live. |
-| 2 | **YtoTech LaTeX-on-HTTP** (`services/ytotech.ts`) | Fallback. `latex.ytotech.com`, full **TeX Live 2026**. Takes JSON: the main file inline and assets in base64. |
+| 1 | **latexonline.cc** (`services/latexonline.ts`) | Primary. Free, no key. Takes a ustar tarball (`tar.ts`), folders included. It runs **LaTeX 2017-01-01** with a trimmed TeX Live. |
+| 2 | **YtoTech LaTeX-on-HTTP** (`services/ytotech.ts`) | Fallback. `latex.ytotech.com`, full **TeX Live 2026**. Takes JSON: the main file inline and assets in base64, each with a `path` that may include folders. |
 | 3 | Bundled stand-ins (`shims.ts`) | Used last. A `.sty` injected into the tarball when no full TeX Live answered. |
 
 ## Automatic fallback (`fallback.ts`)
@@ -30,6 +30,17 @@ The response says which service compiled it (`x-lee-compile-service`) and why (`
 **Endpoints.** `LATEX_ONLINE_URL` and `LATEX_YTOTECH_URL` (server env, optional) replace the two service URLs. Only the e2e run sets them, to `tests/e2e/latex-stub.mjs`, so server-side compiles in e2e never leave the machine. The stub can answer a PDF, a LaTeX error, 503 or nothing at all (`POST /__test/mode`).
 
 **When a service is down.** The PDF route answers 503 with `Retry-After: 30` when the failure was the service's (5xx, 429 or a timeout), and 422 when the document failed. A compile the browser abandons answers 499 internally and starts no further attempt.
+
+## Folders and bibliographies (probed 2026-10-08)
+
+A four-file project (main.tex, `sections/intro.tex`, `figures/logo.png`, refs.bib, with `\graphicspath{{figures/}}`, `\input{sections/intro}`, `\includegraphics{logo}` and `\includegraphics{figures/logo.png}`) was sent to both services as lee sends it: a ustar tarball whose entry names carry the folder (`sections/intro.tex`, no directory entries) to latexonline.cc, and YtoTech resources with `path: "sections/intro.tex"`. Both returned a PDF with the included text, the image and the bibliography. So asset names may be folder paths (`lib/latex/project/paths.ts`): at most 100 bytes (ustar's name field, and Drive's 124-byte appProperty) and 8 levels, each segment `[A-Za-z0-9._ -]`, no `.`/`..`. A name that is both a file and a folder is refused before the compile.
+
+| Bibliography | latexonline.cc | YtoTech |
+|---|---|---|
+| `\bibliographystyle{plain}` + `\bibliography{refs}` (BibTeX) | ✓ references resolved | ✓ |
+| `\usepackage[backend=biber]{biblatex}` + `\printbibliography` (biber) | ✗ PDF produced, but citations stay "[knuth]" and no bibliography (biber is not run) | ✓ |
+
+A project import therefore preselects Full TeX Live (YtoTech) for a biber project ([latex-editor.md](latex-editor.md)).
 
 ## Hints for a missing package (`hints.ts`, `missing.ts`)
 

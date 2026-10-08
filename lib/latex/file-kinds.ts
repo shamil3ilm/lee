@@ -1,5 +1,6 @@
 // File kinds in a LaTeX project: main.tex is the document's source, every
-// other file is a document asset bundled flat next to it at compile time.
+// other file is a document asset bundled next to it (at its folder path) at
+// compile time.
 
 export type ProjectFileKind = 'tex' | 'bib' | 'sty' | 'cls' | 'text' | 'image' | 'pdf' | 'other'
 

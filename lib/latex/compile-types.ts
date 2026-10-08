@@ -12,7 +12,7 @@ export type CompileResult =
   | { ok: false; status: number; log: string; service?: CompileBackend; notes?: string[] }
 
 export interface CompileAsset {
-  /** Filename as it will be referenced from the .tex source. */
+  /** Path as it will be referenced from the .tex source ('logo.png', 'figures/logo.png'). */
   filename: string
   mimeType: string
   bytes: Buffer
@@ -21,9 +21,9 @@ export interface CompileAsset {
 export interface CompileOptions {
   source: string
   /**
-   * Optional assets packed alongside main.tex. Everything lands in the same
-   * working directory, so `\includegraphics{name}` resolves without a
-   * subdirectory prefix.
+   * Optional assets packed alongside main.tex, each at its path from the
+   * working directory (main.tex's folder), so `\includegraphics{name}` and
+   * `\input{sections/intro}` resolve as in Overleaf.
    */
   assets?: readonly CompileAsset[]
   /** Service + engine; defaults to auto + pdflatex. */
