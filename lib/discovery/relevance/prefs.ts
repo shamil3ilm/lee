@@ -15,7 +15,7 @@ import { findTerms, normalizeForMatch } from './text'
  * Bump when the gate's rules or alias lists change in a way that should
  * re-evaluate stored discoveries (the key changes → rows are re-gated).
  */
-export const RELEVANCE_RULES_VERSION = 'r1'
+export const RELEVANCE_RULES_VERSION = 'r2'
 
 export type RemoteScope = 'worldwide' | 'regions' | 'none'
 export const REMOTE_SCOPES: readonly RemoteScope[] = ['worldwide', 'regions', 'none']
