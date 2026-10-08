@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import type { CodingSubmitResult } from '@/lib/academy/coding/submit'
 import type { PublicProblem } from '@/lib/academy/problems/public'
 import { RunResultView, SubmitResultView, type RunView } from './result-view'
+import { Checkbox } from '@/components/ui/checkbox'
 
 export type ConsoleTab = 'testcase' | 'result'
 
@@ -39,7 +40,7 @@ export function ConsolePanel(p: ConsolePanelProps) {
             {p.useCustom ? ' and your custom input' : ''}. Ctrl+Enter runs, Ctrl+Shift+Enter submits.
           </p>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" className="accent-primary" checked={p.useCustom} onChange={(e) => p.onUseCustom(e.target.checked)} />
+            <Checkbox checked={p.useCustom} onChange={(e) => p.onUseCustom(e.target.checked)} />
             Also run a custom input
           </label>
           {p.useCustom ? (

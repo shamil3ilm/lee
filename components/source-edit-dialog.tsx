@@ -14,6 +14,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { getSourceKind, sourceKindNeeds } from '@/lib/discovery/source-kinds'
+import { Checkbox } from '@/components/ui/checkbox'
 
 export interface SourceEditFields {
   id: string
@@ -92,11 +93,9 @@ export function SourceEditDialog({ source, open, onOpenChange }: SourceEditDialo
             </div>
           ) : null}
           <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
+            <Checkbox
               name="enabled"
               defaultChecked={source.enabled}
-              className="size-4 rounded border-input"
             />
             Poll this source on the discovery cycle
           </label>

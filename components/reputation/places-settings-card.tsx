@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { savePlacesSettingsAction } from '@/app/(authed)/settings/integrations/reputation-actions'
+import { Checkbox } from '@/components/ui/checkbox'
 
 interface Props {
   enabled: boolean
@@ -51,7 +52,7 @@ export function PlacesSettingsCard({ enabled, cap, hardCap, usedThisMonth, hasKe
           elsewhere, also set a quota in Google Cloud Console.
         </p>
         <label className="flex items-center gap-2">
-          <input type="checkbox" checked={on} onChange={(e) => setOn(e.target.checked)} />
+          <Checkbox checked={on} onChange={(e) => setOn(e.target.checked)} />
           Enable Google Places lookups
         </label>
         <div className="flex items-end gap-2">

@@ -29,6 +29,7 @@ import {
   type AppOption,
   type CvDocOption,
 } from './source-picker'
+import { Checkbox } from '@/components/ui/checkbox'
 
 interface ScorePanelProps {
   documents: CvDocOption[]
@@ -124,8 +125,7 @@ export function ScorePanel({ documents, applications, initialDocumentId, initial
               <div className="space-y-2">
                 <FileDrop file={file} onFile={setFile} />
                 <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={saveToDrive}
                     onChange={(e) => setSaveToDrive(e.target.checked)}
                     data-testid="cv-save-to-drive"

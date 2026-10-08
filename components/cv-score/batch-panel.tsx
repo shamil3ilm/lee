@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import type { ComponentHeadlineKey } from '@/lib/cv-score/types'
 import { batch, HEADLINE_ORDER, HEADLINE_SHORT, scoreTone, type BatchResult } from './client'
+import { Checkbox } from '@/components/ui/checkbox'
 
 type SortKey = 'total' | ComponentHeadlineKey
 
@@ -59,7 +60,7 @@ export function BatchPanel() {
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-1.5 text-xs">
-              <input type="checkbox" checked={includeAi} onChange={(e) => setIncludeAi(e.target.checked)} />
+              <Checkbox checked={includeAi} onChange={(e) => setIncludeAi(e.target.checked)} />
               Include AI requirement check (slower)
             </label>
             <Button onClick={() => void run()} disabled={busy}>

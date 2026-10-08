@@ -5,6 +5,7 @@ import { NativeSelect } from '@/components/ui/native-select'
 import { DEPTH_LABELS } from '@/lib/resume/readiness'
 import { DEPTHS, type Depth, type Visibility } from '@/lib/resume/types'
 import { cn } from '@/lib/utils'
+import { Checkbox } from '@/components/ui/checkbox'
 
 /** Immutable list helpers. */
 export function replaceAt<T>(list: readonly T[], i: number, next: T): T[] {
@@ -90,16 +91,14 @@ export function ReadinessControls({ value, onChange, label, compact = false }: R
       {value.depth !== 'own' ? (
         <>
           <label className="inline-flex items-center gap-1.5">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={value.domainReady}
               onChange={(e) => onChange({ domainReady: e.target.checked, ...(e.target.checked ? {} : { interviewReady: false }) })}
             />
             Own the design / domain
           </label>
           <label className="inline-flex items-center gap-1.5">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={value.interviewReady}
               onChange={(e) => onChange({ interviewReady: e.target.checked, ...(e.target.checked ? { domainReady: true } : {}) })}
             />

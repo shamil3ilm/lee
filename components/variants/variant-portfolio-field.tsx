@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Input } from '@/components/ui/input'
 import { slugify, variantPageUrl } from '@/lib/portfolio/variant-paths'
+import { Checkbox } from '@/components/ui/checkbox'
 
 export interface VariantPortfolioState {
   /** Saved slug ('' = none yet). */
@@ -60,8 +61,7 @@ export function VariantPortfolioField({ variantId, state, publish, slug, name = 
   return (
     <div className="space-y-2 rounded-md border p-3">
       <label className="flex items-start gap-2 text-sm">
-        <input
-          type="checkbox"
+        <Checkbox
           className="mt-1"
           checked={publish}
           onChange={(e) => (!e.target.checked && state.published ? setConfirm(true) : onPublish(e.target.checked))}

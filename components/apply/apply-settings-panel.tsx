@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/native-select'
 import { saveApplySettingsAction } from '@/app/(authed)/shortlist/actions'
 import { FOLLOWUP_DAYS, SHORTLIST_SIZE, type ApplySettings } from '@/lib/apply/settings'
+import { Checkbox } from '@/components/ui/checkbox'
 
 const SIZES = Array.from({ length: SHORTLIST_SIZE.max - SHORTLIST_SIZE.min + 1 }, (_, i) => SHORTLIST_SIZE.min + i)
 
@@ -74,9 +75,8 @@ export function ApplySettingsPanel({ initial }: { initial: ApplySettings }) {
           </FormActions>
         </div>
         <label className="flex items-start gap-2 text-sm">
-          <input
-            type="checkbox"
-            className="mt-0.5 size-4 shrink-0 accent-primary"
+          <Checkbox
+            className="mt-0.5"
             checked={inEmails}
             onChange={(e) => setInEmails(e.target.checked)}
             disabled={saving}

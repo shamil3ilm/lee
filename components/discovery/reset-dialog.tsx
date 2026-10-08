@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { resetDiscoveriesAction } from '@/app/(authed)/discoveries/reset-actions'
+import { Checkbox } from '@/components/ui/checkbox'
 
 export interface ResetSource {
   id: string
@@ -28,7 +29,7 @@ interface ResetDialogProps {
 function Check({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <label className="flex items-start gap-2 text-sm">
-      <input type="checkbox" className="mt-0.5 size-4 rounded border-input accent-primary" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <Checkbox className="mt-0.5" checked={checked} onChange={(e) => onChange(e.target.checked)} />
       <span>
         {label}
         {hint ? <span className="block text-xs text-muted-foreground">{hint}</span> : null}

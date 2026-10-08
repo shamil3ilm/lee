@@ -6,6 +6,7 @@ import { saveChecklistAction, skipStepAction } from '@/app/(authed)/shortlist/ac
 import type { ChecklistItem } from '@/lib/apply/checklist'
 import type { PrepareView } from '@/lib/apply/prepare-view'
 import { StepShell, toResult, useStepAction, type StepState } from './step-shell'
+import { Checkbox } from '@/components/ui/checkbox'
 
 function Item({
   item,
@@ -20,10 +21,9 @@ function Item({
 }) {
   return (
     <li className="flex items-start gap-2 text-sm">
-      <input
+      <Checkbox
         id={`check-${item.id}`}
-        type="checkbox"
-        className="mt-0.5 size-4 shrink-0 accent-primary"
+        className="mt-0.5"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         disabled={disabled}

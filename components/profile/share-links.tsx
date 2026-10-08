@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Link2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { LinkSuggestion } from '@/lib/profile/links'
+import { Checkbox } from '@/components/ui/checkbox'
 
 interface SharedLinksState {
   suggestions: LinkSuggestion[]
@@ -55,11 +56,10 @@ export function ShareLinksCard() {
       <CardContent className="space-y-2">
         {suggestions.map(({ link, reason }) => (
           <label key={link.id} className="flex items-start gap-2 text-sm">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={selected.includes(link.id)}
               onChange={() => toggle(link.id)}
-              className="mt-0.5 size-4 rounded border-input"
+              className="mt-0.5"
             />
             <span className="min-w-0">
               <span className="font-medium">{link.label}</span>

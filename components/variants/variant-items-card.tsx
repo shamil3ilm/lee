@@ -9,6 +9,7 @@ import { canOverride, isDomainWording, OVERRIDE_WARNING, presentation } from '@/
 import type { Highlight, ResumeProfile } from '@/lib/resume/types'
 import { moveHighlight, moveItem, setWording, toggleHighlight, toggleItem, toggleOverride, type PickSection } from '@/lib/variants/edit'
 import type { ItemPick, Recipe } from '@/lib/variants/types'
+import { Checkbox } from '@/components/ui/checkbox'
 
 interface Readiness {
   depth: 'own' | 'ai_assisted' | 'learning'
@@ -35,7 +36,7 @@ function OverrideToggle({ item, recipe, onChange, label }: OverrideProps) {
   const on = recipe.overrides.includes(item.id)
   return (
     <label className="flex items-start gap-1.5 text-xs text-warning">
-      <input type="checkbox" className="mt-0.5" checked={on} onChange={(e) => onChange(toggleOverride(recipe, item.id, e.target.checked))} aria-label={`Include ${label} anyway`} />
+      <Checkbox className="mt-0.5" checked={on} onChange={(e) => onChange(toggleOverride(recipe, item.id, e.target.checked))} aria-label={`Include ${label} anyway`} />
       <span>Include anyway — {OVERRIDE_WARNING}</span>
     </label>
   )
@@ -73,8 +74,7 @@ function HighlightRows({ section, itemId, owner, highlights, pick, recipe, onCha
         return (
           <li key={h.id} className="space-y-1.5 rounded-md border p-2">
             <div className="flex items-start gap-2">
-              <input
-                type="checkbox"
+              <Checkbox
                 className="mt-1"
                 checked={on}
                 aria-label={`Include: ${h.text.slice(0, 60)}`}
@@ -139,7 +139,7 @@ export function VariantItemsCard({ profile, recipe, onChange }: VariantItemsCard
         <section key={item.id} aria-label={item.name} className="space-y-2 rounded-lg border p-3">
           <div className="flex flex-wrap items-center gap-2">
             <label className="flex min-w-0 flex-1 items-center gap-2 text-sm font-medium">
-              <input type="checkbox" checked={Boolean(pick)} onChange={(e) => onChange(toggleItem(recipe, profile, section, item.id, e.target.checked))} />
+              <Checkbox checked={Boolean(pick)} onChange={(e) => onChange(toggleItem(recipe, profile, section, item.id, e.target.checked))} />
               <span className="break-words">{label}</span>
             </label>
             {projectReadiness ? <ReadinessBadge item={projectReadiness} /> : null}

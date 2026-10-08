@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LocalTime } from '@/components/local-time'
+import { Switch } from '@/components/ui/switch'
 
 interface DiscoveryNotificationsPanelProps {
   emailEnabled: boolean
@@ -143,11 +144,11 @@ export function DiscoveryNotificationsPanel({
             <AlertTriangle className="mt-0.5 size-4 shrink-0" />
             <div>
               <p className="font-medium">Missing Gmail send permission</p>
-              <p className="mt-0.5 opacity-90">
+              <p className="mt-0.5">
                 Reconnect Google at{' '}
                 <a
                   href="/settings/integrations"
-                  className="underline underline-offset-2 hover:opacity-100"
+                  className="underline underline-offset-2"
                 >
                   Settings → Integrations
                 </a>{' '}
@@ -164,24 +165,12 @@ export function DiscoveryNotificationsPanel({
               Compact summary from your own Gmail after each discovery cycle.
             </div>
           </div>
-          <label className="relative inline-flex shrink-0 cursor-pointer items-center">
-            <input
-              type="checkbox"
-              className="peer sr-only"
-              checked={emailEnabled}
-              disabled={savingEmail}
-              onChange={(e) => toggleEmail(e.currentTarget.checked)}
-              aria-label="Enable discovery email"
-            />
-            <span
-              className="h-5 w-9 rounded-full bg-input transition-colors peer-checked:bg-primary peer-disabled:opacity-50"
-              aria-hidden="true"
-            />
-            <span
-              className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-background shadow transition-transform peer-checked:translate-x-4"
-              aria-hidden="true"
-            />
-          </label>
+          <Switch
+            checked={emailEnabled}
+            disabled={savingEmail}
+            onChange={(e) => toggleEmail(e.currentTarget.checked)}
+            aria-label="Enable discovery email"
+          />
         </div>
 
         <div className="flex items-center justify-between gap-4 rounded-md border p-3">
@@ -192,24 +181,12 @@ export function DiscoveryNotificationsPanel({
               notification permission (grant below).
             </div>
           </div>
-          <label className="relative inline-flex shrink-0 cursor-pointer items-center">
-            <input
-              type="checkbox"
-              className="peer sr-only"
-              checked={browserEnabled}
-              disabled={savingBrowser}
-              onChange={(e) => toggleBrowser(e.currentTarget.checked)}
-              aria-label="Enable discovery browser notifications"
-            />
-            <span
-              className="h-5 w-9 rounded-full bg-input transition-colors peer-checked:bg-primary peer-disabled:opacity-50"
-              aria-hidden="true"
-            />
-            <span
-              className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-background shadow transition-transform peer-checked:translate-x-4"
-              aria-hidden="true"
-            />
-          </label>
+          <Switch
+            checked={browserEnabled}
+            disabled={savingBrowser}
+            onChange={(e) => toggleBrowser(e.currentTarget.checked)}
+            aria-label="Enable discovery browser notifications"
+          />
         </div>
 
         <div className="space-y-2 rounded-md border p-3">

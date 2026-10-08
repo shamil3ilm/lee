@@ -35,6 +35,7 @@ import type { RiskView } from '@/lib/scam/view'
 import type { MatchDetail } from '@/lib/discovery/match/types'
 import { MatchBadge } from '@/components/discovery/match-badge'
 import { JdPaste } from '@/components/discovery/jd-paste'
+import { Checkbox } from '@/components/ui/checkbox'
 
 /**
  * Only the fields a job row renders — the page never ships the full
@@ -204,7 +205,7 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
   }
 
   return (
-    <Card className={isFiltered ? 'overflow-hidden opacity-80' : 'overflow-hidden'} data-status={item.status}>
+    <Card className={isFiltered ? 'overflow-hidden border-dashed bg-muted/50' : 'overflow-hidden'} data-status={item.status}>
       <CardContent className="p-3">
         {/*
           Mobile: content stacks (checkbox + meta on top, actions row below)
@@ -214,12 +215,11 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
           <div className="flex min-w-0 flex-1 items-start gap-3">
           {(isActionable || isFiltered) && onToggleSelect ? (
-            <input
-              type="checkbox"
+            <Checkbox
               checked={selected ?? false}
               onChange={onToggleSelect}
               aria-label={`Select ${n.title}`}
-              className="mt-1 size-4 shrink-0 rounded border-input"
+              className="mt-1"
             />
           ) : null}
           <div className="min-w-0 flex-1">

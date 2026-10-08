@@ -1,5 +1,6 @@
 import { BRIEF_SECTIONS, BRIEF_SECTION_LABELS, SOURCE_KIND_LABELS, type BriefSections, type BriefSource } from '@/lib/radar/brief/types'
 import { cn } from '@/lib/utils'
+import { Checkbox } from '@/components/ui/checkbox'
 
 /**
  * The brief's sections; every sentence links to the source it is quoted
@@ -32,11 +33,10 @@ export function BriefSectionsView({
               const src = byId.get(s.source)
               const dropped = removed?.has(key) ?? false
               return (
-                <li key={key} className={cn('flex min-w-0 items-start gap-2', dropped && 'opacity-50')}>
+                <li key={key} className={cn('flex min-w-0 items-start gap-2', dropped && 'text-muted-foreground line-through')}>
                   {onToggle ? (
-                    <input
-                      type="checkbox"
-                      className="mt-1 size-4 shrink-0 accent-primary"
+                    <Checkbox
+                      className="mt-1"
                       checked={!dropped}
                       onChange={() => onToggle(key)}
                       aria-label={`Keep: ${s.text}`}

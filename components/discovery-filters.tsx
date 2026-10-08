@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
 
 export type DiscoverySort = 'combined' | 'match' | 'benefits' | 'posted'
 export type DiscoveryStatusFilter =
@@ -241,12 +242,10 @@ function Toggle({
 }) {
   return (
     <label htmlFor={id} className="inline-flex items-center gap-2 text-sm">
-      <input
+      <Checkbox
         id={id}
-        type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="size-4 rounded border-input accent-primary"
       />
       {label}
     </label>

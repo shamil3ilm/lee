@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CompareTable } from '@/components/compare/compare-table'
 import { joinMeta } from '@/lib/ui/meta'
+import { Checkbox } from '@/components/ui/checkbox'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,7 +53,7 @@ function PickerGroup({ title, options, selected }: { title: string; options: Pic
         {options.map((o) => (
           <li key={o.key}>
             <label className="flex cursor-pointer items-start gap-3 px-3 py-2 text-sm hover:bg-accent">
-              <input type="checkbox" name="ids" value={o.key} defaultChecked={selected.includes(o.key)} className="mt-1 size-4 accent-primary" />
+              <Checkbox name="ids" value={o.key} defaultChecked={selected.includes(o.key)} className="mt-1" />
               <span className="min-w-0">
                 <span className="block font-medium">{o.label}</span>
                 {o.meta ? <span className="block truncate text-xs text-muted-foreground">{o.meta}</span> : null}

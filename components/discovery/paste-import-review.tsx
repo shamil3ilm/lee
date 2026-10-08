@@ -2,6 +2,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import type { OpeningCandidate } from '@/lib/discovery/manual-import/types'
+import { Checkbox } from '@/components/ui/checkbox'
 
 /**
  * Review list for "Add from text or link": one row per opening found, the
@@ -39,9 +40,8 @@ function Row({ row, onChange }: RowProps) {
   return (
     <li className="space-y-2 rounded-lg border bg-card p-3" data-testid="paste-import-row">
       <div className="flex items-start gap-3">
-        <input
-          type="checkbox"
-          className="mt-2 size-4 shrink-0 rounded border-input"
+        <Checkbox
+          className="mt-2"
           checked={row.picked && importable}
           disabled={!importable}
           onChange={(e) => onChange({ picked: e.target.checked })}

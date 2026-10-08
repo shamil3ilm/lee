@@ -3,9 +3,8 @@ import { useState, useTransition } from 'react'
 import { ListChecks } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { focusRing } from '@/components/ui/focus-ring'
+import { Checkbox } from '@/components/ui/checkbox'
 import { setFactorShortlistAction } from '@/app/(authed)/settings/profile/current-job/actions'
-import { cn } from '@/lib/utils'
 
 /** Optional: let the comparison nudge the daily shortlist (off by default). */
 export function ShortlistFactorCard({ initial, hasCurrent }: { initial: boolean; hasCurrent: boolean }) {
@@ -34,9 +33,7 @@ export function ShortlistFactorCard({ initial, hasCurrent }: { initial: boolean;
       </CardHeader>
       <CardContent>
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            className={cn('size-4 rounded border-input accent-primary', focusRing)}
+          <Checkbox
             checked={on}
             disabled={pending || !hasCurrent}
             onChange={(e) => toggle(e.target.checked)}
