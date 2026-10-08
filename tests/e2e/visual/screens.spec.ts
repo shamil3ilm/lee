@@ -96,6 +96,10 @@ const TARGETS: Target[] = [
   { name: 'settings-storage', path: '/settings/storage' },
   { name: 'settings-scam-shield', path: '/settings/scam-shield' },
   { name: 'analytics-performance', path: '/analytics/performance' },
+  { name: 'settings-cv', path: '/settings/cv' },
+  { name: 'discoveries-filtered', path: '/discoveries?status=filtered' },
+  { name: 'contacts-empty-search', path: '/contacts?q=zzzzzz-no-match' },
+  { name: 'not-found', path: '/this-page-does-not-exist' },
   { name: 'documents-merge', path: '/documents/merge' },
 ]
 

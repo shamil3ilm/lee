@@ -228,6 +228,11 @@ widths (hand-tuned negative margins are what clipped y-axis labels):
 | `CATEGORY_Y_AXIS` | Category y-axis for horizontal bars (vendors): every row labelled, auto width. |
 | `LEGEND_PROPS` | Legend below the plot, centred. |
 | `formatCompactNumber` | `1200` → `1.2k` for count axes. |
+| `VALUE_X_AXIS` | Numeric x-axis for horizontal bars, with 16px right padding so the last tick ("100K") is never clipped. |
+| `lineProps(n)` | Spread on every `<Line>`: always `type="linear"`, with a dot on each point below `SHORT_SERIES_POINTS` (6). |
+| `hasEnoughForStats(n)` / `MIN_STAT_POINTS` | `false` below 5 points: show no median, percentile or average. |
+| `orderByDomain(keys, order)` | Series, stacks and legends in domain order (e.g. `APPLICATION_STATUSES`), never alphabetical. |
+| `ChartNotEnoughData` | "Not enough data yet" panel on the muted surface, with an optional hint ("3 outcomes so far. A median needs 5."). |
 
 `ChartContainer` wraps the chart in a responsive container that fills its
 parent (give the parent a fixed height, e.g. the analytics card's `h-56`).
@@ -259,6 +264,20 @@ Tooltips and legends humanise keys that have no `config` label.
 </ChartContainer>
 ```
 
+### Chart choice rules
+
+- No radar chart beyond 6 axes and no pie or donut beyond 5 slices: use
+  sorted horizontal bars (`CATEGORY_Y_AXIS` plus `VALUE_X_AXIS`, value
+  labels at the end of each bar).
+- Lines are never smoothed: spread `lineProps(points.length)`.
+- No median, percentile or other statistic below 5 data points
+  (`hasEnoughForStats`); show `ChartNotEnoughData` or "Not enough … yet"
+  with the count so far.
+- Every chart with more than one series has a legend
+  (`<ChartLegend {...LEGEND_PROPS} content={<ChartLegendContent />} />`).
+- Series, stacks and legends follow domain order (`orderByDomain`).
+- Sparklines need at least 3 points; chart dates go through `shortDay`.
+
 Non-chart analytics cards (lists, heatmaps) pass `body="content"` to
 `AnalyticsCardShell` so they grow to their natural height instead of being
 cut off at the card edge.
@@ -271,6 +290,8 @@ cut off at the card edge.
 | `Card` | `rounded-xl`, `data-slot="card"`. One topic per card; title `text-sm font-semibold`. |
 | `Badge` | Status uses tone variants (`success`, `warning`, `danger`, `info`, `neutral`, stage names). Tags use `outline` or `secondary`. The legacy colour names are aliases; don't use them in new code. |
 | `Input`, `Textarea`, `Select` | Card-coloured field, `border-input`, shared focus ring. Always paired with a `Label`. |
+| `Checkbox` | Selection and opt-ins. Never a native unstyled `<input type="checkbox">`. See "Checkbox and Switch" below. |
+| `Switch` | An "enabled" setting that applies at once. No "On"/"Off" text beside it. |
 | `Tabs` | Muted track, active tab on the card surface. Route-backed tabs use `RouteTabs`. |
 | `Dialog`, `Sheet` | Navy-tinted overlay, card surface, `rounded-xl` dialogs. Destructive confirmations use `ConfirmDialog`. |
 | `Table` | `components/ui/table.tsx`; the wrapper scrolls horizontally on phones so pages never scroll sideways. |
@@ -335,6 +356,77 @@ long option text truncates instead of being clipped. Keep the Radix
 </NativeSelect>
 ```
 
+**`Checkbox` and `Switch`** (`components/ui/checkbox.tsx`,
+`components/ui/switch.tsx`). Both are styled native inputs (a transparent
+`<input type="checkbox">` over a token-drawn box or track), so they submit
+with GET and server-action forms (`name`, `value`, `defaultChecked`),
+render from server components, and keep `getByRole('checkbox')` /
+`getByRole('switch')`. The box is 16px and the track 36×20, both
+`shrink-0` so a long title never squashes them, and the input overhangs
+them to a 24px hit area (WCAG 2.5.8). Off states are outlined in
+`muted-foreground` (6.74:1 light, 7.74:1 dark on `card`), on states fill
+with `primary`; focus shows the shared ring on the box or track.
+
+- **Checkbox** for selecting rows and for opt-ins inside a form that has
+  its own Save. **Switch** for an "enabled" state that takes effect
+  immediately (notifications, a source, Scam Shield); never add "On"/"Off"
+  text next to a Switch, the control says it.
+- Pass `label` (and optional `description`, linked by
+  `aria-describedby`) to render the control and its text as one clickable
+  row. Without `label`, give it an `aria-label` or wrap it in your own
+  `<label>`; `className` then positions the box (e.g. `mt-0.5` beside a
+  multi-line block).
+
+```tsx
+<Checkbox name="remote" defaultChecked={prefs.remote} label="Remote only" description="Hide on-site roles." />
+<Checkbox checked={selected} onChange={(e) => toggle(e.currentTarget.checked)} aria-label={`Select ${row.title}`} />
+<Switch checked={enabled} onChange={(e) => save(e.currentTarget.checked)} label="Send the weekly digest"
+  description="Mondays, from your own Gmail." />
+```
+
+**Filters: `AutoApplyForm` and `useUrlFilters`** (`components/filters/`).
+URL-driven filters apply on change; there is no Filter or Apply button.
+Selects, checkboxes and radios apply immediately, text and search inputs
+after a 300 ms pause, and Enter applies at once. The query string is the
+state (server pages read `searchParams`), a change resets `page`, and
+`router.replace` keeps Back from stepping through each keystroke. Pass the
+result count as `status` (it is announced in a polite live region after
+each change) and `clearHref` to offer "Clear" while a filter is set.
+Without JavaScript the form is a plain GET form with an Apply button.
+
+```tsx
+<AutoApplyForm action="/settings/logs" label="Filter logs" status={plural(rows.length, 'event')}
+  clearHref="/settings/logs" defaults={{ range: '7d' }} className="grid gap-3 sm:grid-cols-3">
+  <FormField htmlFor="logs-level" label="Level">
+    <NativeSelect id="logs-level" name="level" defaultValue={filters.level ?? ''}>…</NativeSelect>
+  </FormField>
+</AutoApplyForm>
+
+// Client filter components with controlled fields:
+const { searchParams, setParams, pending } = useUrlFilters()
+<NativeSelect value={searchParams.get('sort') ?? 'combined'} onChange={(e) => setParams({ sort: e.target.value })} />
+<Input defaultValue={searchParams.get('q') ?? ''} onChange={(e) => setParams({ q: e.target.value }, { debounce: true })} />
+```
+
+**Error and 404 screens** (`components/errors/`). `app/not-found.tsx`
+(unmatched URLs), `app/(authed)/not-found.tsx` (`notFound()` inside the
+shell), `app/error.tsx`, `app/(authed)/error.tsx` and `app/global-error.tsx`
+all render `StatusView`: the brand illustration, one sentence, and a way
+back ("Go home", "Go back" or "Try again"; signed in, also Search, the main
+sections and Settings › Logs). Never show the raw error: the boundary
+reports it to `/api/client-errors` (server errors are already logged with
+their digest by `instrumentation.ts`) and shows only the digest as an
+error code. `global-error` renders its own document, so it imports the
+tokens and applies the saved theme itself.
+
+**Navigation feedback.** The shell shows a 2px `primary` bar at the top of
+the viewport while a link's route is loading (`NavigationProgress`, only
+after 120ms so prefetched navigations never flash) and sets `aria-busy` on
+`<main>`. Sidebar items turn active as soon as they are clicked
+(`LinkPendingHint`, built on `useLinkStatus`). Route segments keep their
+`loading.tsx` skeletons (`PageSkeleton`: `list`, `cards`, `form`,
+`detail`).
+
 **`Card` and `CardTitle`** (`components/ui/card.tsx`). `CardTitle` is
 `text-sm font-semibold leading-snug`; don't restyle it per card. Put an icon
 before it in a `flex items-center gap-2` row and a count `Badge` or ghost
@@ -391,6 +483,11 @@ dependency; use it instead of `whitespace-pre-wrap` on raw Markdown.
   `metaParts` (`lib/ui/meta.ts`) from the parts that are present, so a
   missing value never leaves a stray leading "·" or "— ·". Render the line
   as one run of text so a wrapped line never starts with "·".
+- **Counts:** `plural(n, 'item')` (`lib/ui/labels.ts`) gives "1 item",
+  "3 items"; never "item(s)".
+- **No machine words:** no ATS vendor names as labels (keep them in a
+  tooltip), no raw event keys, ids or `key=value` text; those belong in a
+  "Details" disclosure.
 - **Times:** always in the user's timezone (Settings › Profile) and US style.
   Use `<LocalTime date={d} />` (`components/local-time.tsx`) from server or
   client components; `format` is `datetime` ("Sep 27, 2:30 PM"),
@@ -407,8 +504,34 @@ dependency; use it instead of `whitespace-pre-wrap` on raw Markdown.
 ### Focus
 
 One indicator everywhere: `focusRing` from `components/ui/focus-ring.ts`
-(`ring-2 ring-ring ring-offset-2 ring-offset-background`). Plain links and
-`[tabindex]` elements get an equivalent outline from `globals.css`.
+(`ring-2 ring-ring ring-offset-2 ring-offset-background`). Plain links,
+hand-built buttons, selects, tabs, switches and `[tabindex]` elements get
+an equivalent outline from a zero-specificity rule in `globals.css`, so a
+component's own ring always wins.
+
+### Accessibility baseline
+
+- **Skip link.** The root layout renders `SkipLink` ("Skip to content") as
+  the first Tab stop; every layout's `<main>` has `id="main"`
+  (`MAIN_CONTENT_ID`) and `tabIndex={-1}`.
+- **No opacity on text.** Never de-emphasise text with `opacity-*`; it
+  drops tone and muted text below 4.5:1 where the token test can't see it.
+  Use `text-muted-foreground` or `font-normal`.
+  `tests/unit/no-text-opacity.test.ts` fails on a bare `opacity-N` outside
+  a short allow-list (icons and disabled or busy controls).
+- **Targets.** Every pointer target is at least 24×24 px (WCAG 2.5.8):
+  icon buttons `size-6` or larger (`size="icon"` is 36px), `Checkbox` and
+  `Switch` overhang to 24px, pager links are 32px. Inline text links in a
+  sentence are exempt.
+- **Links are not toggles.** A link that shows the current view uses
+  `aria-current="page"`, never `aria-pressed` (`BoardViewToggle`,
+  `RouteTabs`).
+- **No nested controls.** A card is never itself a button around links
+  or menus: board cards are a plain container with the title link, the
+  "..." menu and (for the keyboard) the move handle as siblings.
+- **Gate.** `tests/e2e/a11y.spec.ts` runs axe-core (WCAG 2.2 A/AA) on the
+  main routes in light and dark, and the target-size rule at 390px; any
+  serious or critical violation fails CI.
 
 ### Motion
 
@@ -426,8 +549,8 @@ declares its columns (`id`, `title`, `tone`, optional `wipLimit`, `hint`,
   after hydration. Never import `@dnd-kit` outside `board-dnd.tsx`.
 - Moves are optimistic, roll back on failure with a friendly toast, and are
   announced in a polite live region.
-- Keyboard: focus a card, Space to lift, arrow keys to change column,
-  Space to drop, Escape to cancel. Every card's "..." menu offers
+- Keyboard: Tab to a card's move handle (it appears on focus), Space to
+  lift, arrow keys to change column, Space to drop, Escape to cancel. Every card's "..." menu offers
   "Move to" as the non-drag alternative.
 - Columns collapse (remembered per board and column) and show a soft WIP
   hint when over their limit.
@@ -442,8 +565,8 @@ declares its columns (`id`, `title`, `tone`, optional `wipLimit`, `hint`,
 - Use the same tone for the same meaning on every page (a rejected
   application is `stage-rejected` in its badge, board column and chart).
 - Use `EmptyState`, `PageHeader`, `Toolbar`, `FormField`, `NativeSelect`,
-  `RouteTabs`, `MarkdownText`, `LocalTime` and the chart defaults rather than
-  hand-built equivalents.
+  `Checkbox`, `Switch`, `AutoApplyForm`, `RouteTabs`, `MarkdownText`,
+  `LocalTime` and the chart defaults rather than hand-built equivalents.
 - Run `pnpm test` after changing a token: the contrast test is the gate.
 
 **Don't**
