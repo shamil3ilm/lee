@@ -33,20 +33,35 @@ export const DEBRIEF_LOOKBACK_MS = 14 * 24 * HOUR_MS
 // Setup checklist
 // ---------------------------------------------------------------------------
 
-export type SetupItemKey = 'profile' | 'master_cv' | 'cv_score' | 'source' | 'google' | 'application'
+export type SetupItemKey =
+  | 'search_prefs'
+  | 'profile'
+  | 'source'
+  | 'job_alerts'
+  | 'master_cv'
+  | 'cv_score'
+  | 'google'
+  | 'application'
 
 export interface SetupItem {
   key: SetupItemKey
   label: string
   done: boolean
   href: string
+  /** One of the four guided first-run steps on Home (the rest are "also"). */
+  guided: boolean
 }
 
 export interface SetupChecklist {
   items: SetupItem[]
   completed: number
   total: number
+  /** 80% done: Home folds the panel into a "Setup" link. */
+  retired: boolean
 }
+
+/** Share of setup done at which Home stops showing the setup panel. */
+export const SETUP_RETIRE_AT = 0.8
 
 async function exists(query: Promise<unknown[]>): Promise<boolean> {
   const rows = await query
@@ -54,10 +69,10 @@ async function exists(query: Promise<unknown[]>): Promise<boolean> {
 }
 
 export async function getSetupChecklist(userId: string): Promise<SetupChecklist> {
-  const [profile, hasMasterCv, hasCvScore, hasSource, google, hasApplication] = await Promise.all([
+  const [profile, hasMasterCv, hasCvScore, sourceRows, google, hasApplication] = await Promise.all([
     db.query.userProfile.findFirst({
       where: eq(userProfile.userId, userId),
-      columns: { skills: true, headline: true },
+      columns: { skills: true, headline: true, searchPrefsSavedAt: true },
     }),
     exists(
       db
@@ -67,7 +82,10 @@ export async function getSetupChecklist(userId: string): Promise<SetupChecklist>
         .limit(1),
     ),
     cvScoresQ.hasAny(userId),
-    exists(db.select({ id: sources.id }).from(sources).where(eq(sources.userId, userId)).limit(1)),
+    db
+      .select({ kind: sources.kind, enabled: sources.enabled })
+      .from(sources)
+      .where(eq(sources.userId, userId)),
     db.query.accounts.findFirst({
       where: and(eq(accounts.userId, userId), eq(accounts.provider, 'google')),
       columns: { scope: true },
@@ -84,21 +102,22 @@ export async function getSetupChecklist(userId: string): Promise<SetupChecklist>
   const profileImported =
     !!profile && (profile.skills.length > 0 || (profile.headline ?? '').trim() !== '')
   const googleConnected = (google?.scope ?? '').split(' ').includes(GMAIL_READ_SCOPE)
+  const hasSource = sourceRows.some((r) => r.kind !== 'email_alert')
+  const alertsOn = sourceRows.some((r) => r.kind === 'email_alert' && r.enabled)
 
   const items: SetupItem[] = [
-    { key: 'profile', label: 'Import your profile', done: profileImported, href: '/settings/profile' },
-    { key: 'master_cv', label: 'Save your master CV', done: hasMasterCv, href: '/settings/profile/resume' },
-    { key: 'cv_score', label: 'Score your CV', done: hasCvScore, href: '/cv-score' },
-    { key: 'source', label: 'Add a discovery source', done: hasSource, href: '/settings/sources' },
-    { key: 'google', label: 'Connect Google', done: googleConnected, href: '/settings/integrations' },
-    {
-      key: 'application',
-      label: 'Track your first application',
-      done: hasApplication,
-      href: '/applications/new',
-    },
+    // The guided first-run path: what to look for, who you are, where to look.
+    { key: 'search_prefs', label: 'Say what you’re looking for', done: !!profile?.searchPrefsSavedAt, href: '/settings/search', guided: true },
+    { key: 'profile', label: 'Import your CV', done: profileImported, href: '/settings/profile#cv-import', guided: true },
+    { key: 'source', label: 'Pick your job sources', done: hasSource, href: '/settings/sources', guided: true },
+    { key: 'job_alerts', label: 'Read job alerts from email', done: alertsOn, href: '/settings/sources#email-alerts', guided: true },
+    { key: 'master_cv', label: 'Save your master CV', done: hasMasterCv, href: '/settings/resume', guided: false },
+    { key: 'cv_score', label: 'Score your CV', done: hasCvScore, href: '/cv-score', guided: false },
+    { key: 'google', label: 'Connect Google', done: googleConnected, href: '/settings/integrations', guided: false },
+    { key: 'application', label: 'Track your first application', done: hasApplication, href: '/applications/new', guided: false },
   ]
-  return { items, completed: items.filter((i) => i.done).length, total: items.length }
+  const completed = items.filter((i) => i.done).length
+  return { items, completed, total: items.length, retired: completed / items.length >= SETUP_RETIRE_AT }
 }
 
 // ---------------------------------------------------------------------------

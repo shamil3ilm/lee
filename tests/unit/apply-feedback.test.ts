@@ -50,6 +50,6 @@ describe('dismiss-reason feedback', () => {
     const s = prefSuggestions(rows, ['frontend', 'backend'])
     expect(s.map((x) => x.id)).toEqual(['role:frontend', 'pay'])
     expect(s[0]?.text).toContain('Remove Frontend from your target roles?')
-    expect(s.every((x) => x.href === '/settings/profile#search-preferences')).toBe(true)
+    expect(s.every((x) => x.href === '/settings/search?from=%2Fshortlist')).toBe(true)
   })
 })

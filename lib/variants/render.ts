@@ -239,7 +239,7 @@ function regionWarnings(ctx: Ctx, hasPhoto: boolean | undefined): void {
     }
   }
   if (fieldOn(recipe, 'photo') && hasPhoto === false) {
-    ctx.warnings.push({ kind: 'region', message: 'Photo is on, but no profile photo is uploaded (Settings › Profile › Résumé).' })
+    ctx.warnings.push({ kind: 'region', message: 'Photo is on, but no profile photo is uploaded (Settings › Résumé).' })
   }
 }
 

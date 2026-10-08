@@ -40,7 +40,7 @@ const dateField = z.union([z.literal(''), z.string().regex(DATE_PATTERN)]).defau
  *                   AI-assisted; such an item may only be phrased as
  *                   design or domain work (lib/resume/readiness.ts)
  * `interviewReady` implies `domainReady`. The study fields back
- * Settings › Profile › Study list.
+ * Settings › Study list.
  */
 export const DEPTHS = ['own', 'ai_assisted', 'learning'] as const
 export type Depth = (typeof DEPTHS)[number]

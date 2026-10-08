@@ -12,7 +12,7 @@ async function expectToast(page: Page, text: string | RegExp): Promise<void> {
 }
 
 test('current job → comparison card on a discovery → side by side for two jobs', async ({ page }) => {
-  await page.goto('/settings/profile/current-job')
+  await page.goto('/settings/current-job')
   await expect(page.getByRole('heading', { level: 1, name: 'Current job' })).toBeVisible()
   await page.getByLabel('Employer', { exact: true }).fill('Synthetic Systems Pvt Ltd')
   await page.getByLabel('Title', { exact: true }).fill('Software Engineer')
@@ -46,7 +46,10 @@ test('current job → comparison card on a discovery → side by side for two jo
   await card.getByRole('link', { name: 'Side by side' }).click()
   await expect(page).toHaveURL(/\/compare\?ids=d%3A[0-9a-f-]{36}$/)
   await expect(page.getByTestId('compare-row')).toHaveCount(1)
+  await expect(page.getByTestId('compare-baseline')).toContainText('Current job: Software Engineer, Synthetic Systems Pvt Ltd')
+  await expect(page.getByTestId('compare-count')).toHaveText('1 of 3 selected')
   await page.getByRole('checkbox', { name: new RegExp(APP_TITLE) }).check()
+  await expect(page.getByTestId('compare-count')).toHaveText('2 of 3 selected')
   await page.getByRole('button', { name: 'Compare', exact: true }).click()
   await expect(page.getByTestId('compare-row')).toHaveCount(2)
   await expect(page.getByRole('table')).toContainText('Current job')

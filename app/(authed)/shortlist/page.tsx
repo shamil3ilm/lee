@@ -16,6 +16,8 @@ import { loadAiModePrompts } from '@/lib/discovery/ai-mode/load'
 import { getProfile } from '@/lib/profile/service'
 import { defaultsBannerFamilies } from '@/lib/discovery/relevance/view'
 import { DefaultsBanner } from '@/components/discovery/defaults-banner'
+import { WeekFunnel } from '@/components/apply/week-funnel'
+import { weekFunnel } from '@/lib/apply/funnel'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -33,18 +35,26 @@ const STATE_BADGE: Record<Exclude<ShortlistEntryView['state'], 'open'>, { label:
  */
 export default async function ShortlistPage() {
   const userId = await requireUserId()
-  const [data, profile] = await Promise.all([loadShortlistPage(userId), getProfile(userId)])
+  const [data, profile, funnel] = await Promise.all([
+    loadShortlistPage(userId),
+    getProfile(userId),
+    // This week's apply funnel lives here, next to the work it measures.
+    weekFunnel(userId, new Date()),
+  ])
   const bannerFamilies = defaultsBannerFamilies(profile)
   const promptSet = data.open.length === 0 ? await loadAiModePrompts(userId) : null
+  // Counts come from the same lists the page renders (audit F5).
+  const handled = data.acted.length > 0 ? ` · ${data.acted.length} handled` : ''
   const subtitle = data.day
     ? data.today
-      ? `Today's top ${data.size} new roles, ranked by fit. Prepare, park for later, or pass.`
+      ? `${data.open.length} to review${handled}, ranked by Fit. Prepare, park for later, or pass.`
       : `From ${shortDay(data.day)}. Today's list is built after the morning discovery run, or refresh now.`
     : 'Your top new roles each day, ranked by fit, once discovery has found some.'
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
+        className="mb-0"
         title="Shortlist"
         description={subtitle}
         actions={
@@ -60,7 +70,7 @@ export default async function ShortlistPage() {
         }
       />
 
-      {bannerFamilies ? <DefaultsBanner families={bannerFamilies} /> : null}
+      {bannerFamilies ? <DefaultsBanner families={bannerFamilies} from="/shortlist" /> : null}
 
       {data.open.length === 0 ? (
         <EmptyState
@@ -140,6 +150,7 @@ export default async function ShortlistPage() {
           </ul>
         </section>
       ) : null}
+      <WeekFunnel funnel={funnel} />
     </div>
   )
 }

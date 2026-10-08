@@ -1,6 +1,6 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { variantDocumentAction } from '@/app/(authed)/settings/profile/variants/actions'
+import { variantDocumentAction } from '@/app/(authed)/settings/variants/actions'
 import { fetchVariantPdf, PDF_MESSAGES } from '@/lib/variants/pdf-client'
 
 /**

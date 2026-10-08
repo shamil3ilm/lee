@@ -12,7 +12,7 @@ import type {
   DiscoveryRegionFilter,
   DiscoverySort,
   DiscoveryStatusFilter,
-} from '@/components/discovery-filters'
+} from '@/lib/discovery/filter-options'
 import type { DiscoveryBoardColumn, DiscoveryBoardItem } from '@/components/discoveries-board'
 
 /** Parsed, validated Discovery query string. */

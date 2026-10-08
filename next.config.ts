@@ -50,6 +50,14 @@ const nextConfig: NextConfig = {
       // Provider keys moved to Settings › AI; match before the catch-all.
       { source: '/lab/providers', destination: '/settings/ai', permanent: true },
       { source: '/lab/:path*', destination: '/playground/models/:path*', permanent: true },
+      // Oct 2026 settings IA: the Profile sub-tabs became first-level
+      // Settings pages (max two tab levels). Old bookmarks keep working.
+      { source: '/settings/cv', destination: '/settings/resume', permanent: true },
+      { source: '/settings/profile/resume', destination: '/settings/resume', permanent: true },
+      { source: '/settings/profile/current-job', destination: '/settings/current-job', permanent: true },
+      { source: '/settings/profile/publish', destination: '/settings/publish', permanent: true },
+      { source: '/settings/profile/study', destination: '/settings/study', permanent: true },
+      { source: '/settings/profile/variants/:path*', destination: '/settings/variants/:path*', permanent: true },
     ];
   },
   // v13 phase 13.1 — the Playground's code runners are Web Workers whose

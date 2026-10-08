@@ -73,7 +73,7 @@ export function RoleSuggestions({ result }: RoleSuggestionsProps) {
         {result.sparse ? (
           <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
             Your profile is sparse, so suggestions are limited. Complete{' '}
-            <Link href="/settings/profile" className="underline underline-offset-2">Settings › Profile</Link> or import a CV or LinkedIn export
+            <Link href="/settings/profile#cv-import" className="underline underline-offset-2">Settings › Profile</Link> or import a CV or LinkedIn export
             into your profile, then check back.
           </p>
         ) : null}

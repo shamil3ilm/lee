@@ -93,7 +93,7 @@ export interface PrefSuggestion {
   href: string
 }
 
-const SEARCH_PREFS_HREF = '/settings/profile#search-preferences'
+const SEARCH_PREFS_HREF = '/settings/search?from=%2Fshortlist'
 
 /** Preference changes the user may want, from repeated reasons. Never applied automatically. */
 export function prefSuggestions(rows: readonly FeedbackRow[], targetFamilies: readonly string[]): PrefSuggestion[] {

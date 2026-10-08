@@ -60,6 +60,8 @@ export interface SearchPrefsFormValues {
   regions: string[]
   otherCountries: string
   remoteScope: RemoteScope
+  /** Preferred work mode (profile.remotePref). */
+  remotePref: string
   acceptRelocation: boolean
   willingToRelocateTo: string
   relocationIfSponsored: boolean
@@ -91,6 +93,7 @@ export function searchPrefsFormValues(profile: UserProfile | null): SearchPrefsF
     regions: !p.active && p.regions.length === 0 ? [...REGION_CODES] : p.regions,
     otherCountries: p.otherCountries.filter((c) => !(profile?.willingToRelocateTo ?? []).includes(c)).join(', '),
     remoteScope: p.remoteScope,
+    remotePref: profile?.remotePref ?? 'any',
     acceptRelocation: profile?.acceptRelocation ?? false,
     willingToRelocateTo: (profile?.willingToRelocateTo ?? []).join(', '),
     relocationIfSponsored: p.extra.relocationIfSponsored,

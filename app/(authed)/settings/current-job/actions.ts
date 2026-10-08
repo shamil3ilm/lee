@@ -15,7 +15,7 @@ function fail(what: string, err: unknown, fallback: string): { error: string } {
 }
 
 function revalidate(): void {
-  revalidatePath('/settings/profile/current-job')
+  revalidatePath('/settings/current-job')
   revalidatePath('/compare')
 }
 

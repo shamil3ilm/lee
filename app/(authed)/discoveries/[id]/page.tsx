@@ -10,10 +10,20 @@ import { logger } from '@/lib/logger'
 import { workModeLabel, humanizeLabel } from '@/lib/ui/labels'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { PageHeader } from '@/components/page-header'
+import { SECTION_ANCHOR, SectionNav, type SectionLink } from '@/components/section-nav'
 import { MarkdownText } from '@/components/markdown-text'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ComparisonCard } from '@/components/compare/comparison-card'
+import { MatchBadge } from '@/components/discovery/match-badge'
+import { toMatchDetail } from '@/lib/discovery/match/detail'
+
+/** The comparison card runs ~3k px on phones: jump past it to the description. */
+const SECTIONS: readonly SectionLink[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'comparison', label: 'Comparison' },
+  { id: 'job-description', label: 'Job description' },
+]
 
 export const dynamic = 'force-dynamic'
 
@@ -41,7 +51,8 @@ export default async function DiscoveryDetail({ params }: { params: Promise<{ id
         items={[{ label: 'Find' }, { label: 'Discovery', href: '/discoveries' }, { label: company ? `${company} — ${title}` : title }]}
       />
       <PageHeader title={title} description={company ?? undefined} />
-      <Card>
+      <SectionNav sections={SECTIONS} />
+      <Card id="overview" className={SECTION_ANCHOR}>
         <CardContent className="flex flex-wrap items-center gap-x-4 gap-y-2 py-4 text-sm">
           <Badge variant="outline">{humanizeLabel(row.status)}</Badge>
           {job.location ? (
@@ -51,7 +62,13 @@ export default async function DiscoveryDetail({ params }: { params: Promise<{ id
             </span>
           ) : null}
           {workModeLabel(job.remoteType) ? <Badge variant="outline">{workModeLabel(job.remoteType)}</Badge> : null}
-          {row.matchScore !== null ? <Badge variant="info">{row.matchScore}% AI match</Badge> : null}
+          <MatchBadge
+            match={row.fitScore ?? null}
+            ai={row.matchScore}
+            detail={toMatchDetail(row.fitDetail)}
+            benefits={row.benefitsScore ?? null}
+            filtered={row.status === 'filtered'}
+          />
           {job.applyUrl ? (
             <a
               href={job.applyUrl}
@@ -65,10 +82,10 @@ export default async function DiscoveryDetail({ params }: { params: Promise<{ id
         </CardContent>
       </Card>
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
-        <div className="min-w-0 xl:col-span-3">
+        <div id="comparison" className={`${SECTION_ANCHOR} min-w-0 xl:col-span-3`}>
           <ComparisonCard comparison={card.comparison} hasCurrent={card.hasCurrent} saved={card.saved} citations={card.citations} />
         </div>
-        <div className="min-w-0 xl:col-span-2">
+        <div id="job-description" className={`${SECTION_ANCHOR} min-w-0 xl:col-span-2`}>
           <Card>
             <CardHeader>
               <CardTitle>Job description</CardTitle>

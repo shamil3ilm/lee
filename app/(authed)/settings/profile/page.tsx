@@ -3,33 +3,49 @@ import { getProfile } from '@/lib/profile/service'
 import { PageHeader } from '@/components/page-header'
 import { ProfileForm } from '@/components/profile-form'
 import { ProfileImport } from '@/components/profile-import'
-import { SearchPrefsForm } from '@/components/search-prefs/search-prefs-form'
-import { RoleSuggestions } from '@/components/search-prefs/role-suggestions'
-import { loadRoleSuggestions } from '@/lib/discovery/relevance/service'
-import { searchPrefsFormValues } from '@/lib/discovery/relevance/view'
 import { APP_NAME } from '@/lib/brand'
 import { ProfileLinksCard } from '@/components/profile/profile-links-card'
 import { UrlImportCard } from '@/components/profile/url-import-card'
 import { readProfileLinks } from '@/lib/profile/links'
+import { SectionNav, SECTION_ANCHOR } from '@/components/section-nav'
+import { ReturnLink } from '@/components/settings/return-link'
 
 export const dynamic = 'force-dynamic'
 
-export default async function ProfileSettingsPage() {
+const SECTIONS = [
+  { id: 'cv-import', label: 'Import CV' },
+  { id: 'url-import', label: 'Import from a link' },
+  { id: 'profile-links', label: 'Links' },
+  { id: 'profile-details', label: 'Details' },
+]
+
+/**
+ * Settings › Profile: who you are (imports, links, basics, skills,
+ * narrative). What you are looking for lives in Settings › Search.
+ */
+export default async function ProfileSettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   const userId = await requireUserId()
-  const profile = await getProfile(userId)
-  const suggestions = await loadRoleSuggestions(userId, profile)
+  const [profile, sp] = await Promise.all([getProfile(userId), searchParams])
   return (
     <div className="mx-auto max-w-4xl space-y-6">
+      <ReturnLink from={sp.from} />
       <PageHeader
         title="Profile"
-        description={`What ${APP_NAME} knows about you — used to tailor matching, discovery, and CV generation.`}
+        description={`What ${APP_NAME} knows about you, used for matching, CV generation and outreach. What you're looking for is under Search.`}
       />
-      <ProfileImport />
+      <SectionNav sections={SECTIONS} />
+      <div id="cv-import" className={SECTION_ANCHOR}>
+        <ProfileImport />
+      </div>
       <UrlImportCard />
-      <SearchPrefsForm values={searchPrefsFormValues(profile)} />
-      <RoleSuggestions result={suggestions} />
       <ProfileLinksCard initial={readProfileLinks(profile?.links)} />
-      <ProfileForm profile={profile} />
+      <div id="profile-details" className={SECTION_ANCHOR}>
+        <ProfileForm profile={profile} />
+      </div>
     </div>
   )
 }

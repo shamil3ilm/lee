@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation'
-import { Building2, ExternalLink, MapPin } from 'lucide-react'
 import { requireUserId } from '@/lib/auth/require-session'
 import * as appsQ from '@/lib/db/queries/applications'
 import * as actQ from '@/lib/db/queries/activities'
@@ -15,7 +14,6 @@ import { ApplicationActions } from '@/components/application-actions'
 import { ApplicationContactsCard } from '@/components/application-contacts-card'
 import { pickScoringDocument, toCvFitView, toDocScoreMap } from '@/lib/cv-score/fit'
 import { CvFitCard } from '@/components/cv-score/cv-fit-card'
-import { RiskBadge } from '@/components/scam/risk-badge'
 import { ensureJobAssessment, safely } from '@/lib/scam/service'
 import { toRiskView } from '@/lib/scam/view'
 import { StatusPicker } from '@/components/status-picker'
@@ -24,17 +22,19 @@ import { DocumentsCard } from '@/components/documents-card'
 import { OutreachCard } from '@/components/outreach-card'
 import { PrepPackCard } from '@/components/prep-pack-card'
 import { TodosCard } from '@/components/todos-card'
-import { LazyStagesBoard } from '@/components/board/lazy'
 import { PageHeader } from '@/components/page-header'
-import { MarkdownText } from '@/components/markdown-text'
+import { ApplicationSummaryCard } from '@/components/application/summary-card'
+import { SECTION_ANCHOR, SectionNav, type SectionLink } from '@/components/section-nav'
+import { JobOverviewCards } from '@/components/application/job-overview'
+import { PhoneFold } from '@/components/application/phone-fold'
+import { StagesView } from '@/components/application/stages-view'
+import { cn } from '@/lib/utils'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { Timeline } from '@/components/timeline'
 import { mergeTimeline, type TimelineActivity, type TimelineStage } from '@/lib/ui/timeline'
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { STATUS_BADGE, STATUS_LABELS, type ApplicationStatus } from '@/lib/ui/status'
+import type { ApplicationStatus } from '@/lib/ui/status'
 import { APPLICATION_STATUSES } from '@/lib/ui/status'
-import { workModeLabel } from '@/lib/ui/labels'
 import { ShareLinksCard, ShareLinksProvider } from '@/components/profile/share-links'
 import { readProfileLinks, suggestLinksForJob } from '@/lib/profile/links'
 import { getProfile } from '@/lib/profile/service'
@@ -59,35 +59,6 @@ function narrowStatus(s: string): ApplicationStatus {
   return (APPLICATION_STATUSES as readonly string[]).includes(s)
     ? (s as ApplicationStatus)
     : 'saved'
-}
-
-function formatSalary(
-  min: number | null,
-  max: number | null,
-  ccy: string | null,
-): string | null {
-  if (min === null && max === null) return null
-  const c = ccy ?? ''
-  if (min !== null && max !== null) return `${c} ${min.toLocaleString()} – ${max.toLocaleString()}`.trim()
-  if (min !== null) return `${c} ${min.toLocaleString()}+`.trim()
-  return `${c} up to ${(max ?? 0).toLocaleString()}`.trim()
-}
-
-interface ParsedMeta {
-  seniority?: string | null
-  tech_stack?: string[] | null
-  responsibilities?: string[] | null
-  requirements?: string[] | null
-}
-
-function asParsedMeta(v: unknown): ParsedMeta {
-  if (typeof v !== 'object' || v === null) return {}
-  return v as ParsedMeta
-}
-
-function asBenefits(v: unknown): Record<string, unknown> {
-  if (typeof v !== 'object' || v === null) return {}
-  return v as Record<string, unknown>
 }
 
 export default async function ApplicationDetail({
@@ -187,9 +158,6 @@ export default async function ApplicationDetail({
   }
 
   const status = narrowStatus(app.status)
-  const meta = asParsedMeta(app.job.parsedMeta)
-  const benefits = asBenefits(app.job.benefits)
-  const salary = formatSalary(app.job.salaryMin, app.job.salaryMax, app.job.salaryCurrency)
 
   const timelineItems = mergeTimeline(
     activities.map(
@@ -221,6 +189,25 @@ export default async function ApplicationDetail({
       }),
     ),
   )
+
+  const stageBoardItems = stages.map((s) => ({
+    id: s.id,
+    version: s.updatedAt.toISOString(),
+    kind: s.kind,
+    title: s.title,
+    status: s.status,
+    scheduledAt: s.scheduledAt ? s.scheduledAt.toISOString() : null,
+    meetingUrl: s.meetingUrl,
+  }))
+  // DOM order, which is also the reading order on phones (one column).
+  const sections: SectionLink[] = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'timeline', label: 'Timeline' },
+    { id: 'outreach', label: 'Outreach' },
+    { id: 'prep', label: 'Prep' },
+    ...(compareCard ? [{ id: 'compare', label: 'Compare' }] : []),
+    { id: 'documents', label: 'Documents' },
+  ]
 
   return (
     <div className="space-y-6">
@@ -273,183 +260,66 @@ export default async function ApplicationDetail({
         }
       />
 
-      <Card>
-        <CardContent className="flex flex-wrap items-center gap-x-4 gap-y-2 py-4 text-sm">
-          <Badge variant={STATUS_BADGE[status]}>{STATUS_LABELS[status]}</Badge>
-          {risk ? <RiskBadge risk={risk} /> : null}
-          {app.job.company ? (
-            <span className="flex items-center gap-1.5 text-muted-foreground">
-              <Building2 className="size-3.5" />
-              {app.job.company.name}
-            </span>
-          ) : null}
-          {app.job.location ? (
-            <span className="flex items-center gap-1.5 text-muted-foreground">
-              <MapPin className="size-3.5" />
-              {app.job.location}
-            </span>
-          ) : null}
-          {workModeLabel(app.job.remoteType) ? (
-            <Badge variant="outline">{workModeLabel(app.job.remoteType)}</Badge>
-          ) : null}
-          {app.job.employmentType ? (
-            <Badge variant="outline">
-              {employmentLabel(app.job.employmentType)}
-            </Badge>
-          ) : null}
-          {salary ? <span className="font-medium">{salary}</span> : null}
-          {app.job.sourceUrl ? (
-            <a
-              href={app.job.sourceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-            >
-              Source <ExternalLink className="size-3" />
-            </a>
-          ) : null}
-        </CardContent>
-      </Card>
+      <SectionNav sections={sections} />
+
+      <ApplicationSummaryCard id="overview" className={SECTION_ANCHOR} status={status} risk={risk} job={app.job} />
 
       <ShareLinksProvider suggestions={linkSuggestions}>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="min-w-0 space-y-6 lg:col-span-2">
-          {stages.length > 0 ? (
+          <JobOverviewCards descriptionMd={app.job.descriptionMd} parsedMeta={app.job.parsedMeta} benefits={app.job.benefits} />
+
+          <section id="timeline" aria-label="Timeline" className={cn(SECTION_ANCHOR, 'space-y-6')}>
             <Card>
               <CardHeader className="flex-row items-center justify-between space-y-0">
-                <CardTitle>Interview stages</CardTitle>
-                <span className="text-xs text-muted-foreground">
-                  {stages.length} {stages.length === 1 ? 'stage' : 'stages'}
-                </span>
+                <CardTitle>Timeline</CardTitle>
+                <AddStageDialog applicationId={app.id} />
               </CardHeader>
               <CardContent>
-                <LazyStagesBoard
-                  stages={stages.map((s) => ({
-                    id: s.id,
-                    version: s.updatedAt.toISOString(),
-                    kind: s.kind,
-                    title: s.title,
-                    status: s.status,
-                    scheduledAt: s.scheduledAt ? s.scheduledAt.toISOString() : null,
-                    meetingUrl: s.meetingUrl,
-                  }))}
-                />
+                <StagesView stages={stageBoardItems}>
+                  <Timeline items={timelineItems} />
+                </StagesView>
               </CardContent>
             </Card>
-          ) : null}
-
-          {app.job.descriptionMd ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Job description</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <MarkdownText source={app.job.descriptionMd} />
-              </CardContent>
-            </Card>
-          ) : null}
-
-          {meta.responsibilities?.length || meta.requirements?.length || meta.tech_stack?.length ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 text-sm">
-                {meta.requirements && meta.requirements.length > 0 ? (
-                  <MetaList label="Requirements" items={meta.requirements} />
-                ) : null}
-                {meta.responsibilities && meta.responsibilities.length > 0 ? (
-                  <MetaList label="Responsibilities" items={meta.responsibilities} />
-                ) : null}
-                {meta.tech_stack && meta.tech_stack.length > 0 ? (
-                  <div>
-                    <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Tech stack
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {meta.tech_stack.map((t) => (
-                        <Badge key={t} variant="secondary" className="text-xs">
-                          {t}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-              </CardContent>
-            </Card>
-          ) : null}
-
-          {Object.keys(benefits).length > 0 ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Benefits</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-                  {Object.entries(benefits).map(([k, v]) => (
-                    <div key={k} className="flex items-center justify-between border-b pb-2">
-                      <dt className="text-muted-foreground capitalize">{k.replace(/_/g, ' ')}</dt>
-                      <dd className="font-medium">{formatBenefit(v)}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </CardContent>
-            </Card>
-          ) : null}
-
-          {compareCard ? (
-            <ComparisonCard
-              comparison={compareCard.comparison}
-              hasCurrent={compareCard.hasCurrent}
-              saved={compareCard.saved}
-              citations={compareCard.citations}
-            />
-          ) : null}
+            <TodosCard applicationId={app.id} todos={todos} now={now} />
+          </section>
 
           {/* Outreach and prep are working tools with tabs and long titles:
               they get the wide column, the rail keeps the compact cards. */}
-          <OutreachCard
-            applicationId={app.id}
-            outreachDocs={outreachDocs}
-            appliedAt={app.appliedAt ? app.appliedAt.toISOString() : null}
-            usage={docUsage}
-          />
+          <section id="outreach" aria-label="Outreach" className={SECTION_ANCHOR}>
+            <OutreachCard
+              applicationId={app.id}
+              outreachDocs={outreachDocs}
+              appliedAt={app.appliedAt ? app.appliedAt.toISOString() : null}
+              usage={docUsage}
+            />
+          </section>
 
-          <PrepPackCard
-            applicationId={app.id}
-            stages={stages}
-            prepDocs={prepDocs}
-            usage={docUsage}
-          />
+          <section id="prep" aria-label="Prep" className={SECTION_ANCHOR}>
+            <PrepPackCard applicationId={app.id} stages={stages} prepDocs={prepDocs} usage={docUsage} />
+          </section>
+
+          {compareCard ? (
+            <section id="compare" aria-label="Compare" className={SECTION_ANCHOR}>
+              {/* ~3k px on phones: folded there like the other secondary cards. */}
+              <PhoneFold label="Compare with your current job">
+                <ComparisonCard
+                  comparison={compareCard.comparison}
+                  hasCurrent={compareCard.hasCurrent}
+                  saved={compareCard.saved}
+                  citations={compareCard.citations}
+                />
+              </PhoneFold>
+            </section>
+          ) : null}
         </div>
 
-        <div className="min-w-0 space-y-6">
-          <Card>
-            <CardHeader className="flex-row items-center justify-between space-y-0">
-              <CardTitle>Timeline</CardTitle>
-              <AddStageDialog applicationId={app.id} />
-            </CardHeader>
-            <CardContent>
-              <Timeline items={timelineItems} />
-            </CardContent>
-          </Card>
-
-          <TodosCard applicationId={app.id} todos={todos} now={now} />
-
+        <section id="documents" aria-label="Documents" className={cn(SECTION_ANCHOR, 'min-w-0 space-y-6')}>
           <CvFitCard
             applicationId={app.id}
             fit={cvFit}
             scoringDocument={scoringDoc ? { id: scoringDoc.id, title: scoringDoc.title } : null}
           />
-
-          <ApplicationVariantCard
-            applicationId={app.id}
-            variants={variants}
-            suggestion={variantSuggestion}
-            current={chosenVariant && app.resumeVariantVersion ? { id: chosenVariant.id, name: chosenVariant.name, version: app.resumeVariantVersion } : null}
-          />
-
-          <ShareLinksCard />
 
           <DocumentsCard
             applicationId={app.id}
@@ -458,12 +328,27 @@ export default async function ApplicationDetail({
             usage={docUsage}
           />
 
-          <ApplicationContactsCard
-            applicationId={app.id}
-            linked={contacts.map((c) => ({ id: c.id, name: c.name, email: c.email, role: c.role }))}
-            options={contactOptions}
-          />
-        </div>
+          <PhoneFold label="Résumé variant">
+            <ApplicationVariantCard
+              applicationId={app.id}
+              variants={variants}
+              suggestion={variantSuggestion}
+              current={chosenVariant && app.resumeVariantVersion ? { id: chosenVariant.id, name: chosenVariant.name, version: app.resumeVariantVersion } : null}
+            />
+          </PhoneFold>
+
+          <PhoneFold label="Links to share">
+            <ShareLinksCard />
+          </PhoneFold>
+
+          <PhoneFold label="Contacts">
+            <ApplicationContactsCard
+              applicationId={app.id}
+              linked={contacts.map((c) => ({ id: c.id, name: c.name, email: c.email, role: c.role }))}
+              options={contactOptions}
+            />
+          </PhoneFold>
+        </section>
       </div>
       </ShareLinksProvider>
 
@@ -488,46 +373,10 @@ function withoutContent<T extends { content: unknown }>(doc: T): Omit<T, 'conten
   return rest
 }
 
-const EMPLOYMENT_LABELS: Record<string, string> = {
-  fulltime: 'Full-time',
-  full_time: 'Full-time',
-  parttime: 'Part-time',
-  part_time: 'Part-time',
-  contract: 'Contract',
-  internship: 'Internship',
-  temporary: 'Temporary',
-}
-
-function employmentLabel(value: string): string {
-  return EMPLOYMENT_LABELS[value.toLowerCase()] ?? value.replace(/_/g, ' ')
-}
-
 function hostLabel(url: string): string | null {
   try {
     return new URL(url).hostname.replace(/^www\./, '')
   } catch {
     return null
   }
-}
-
-function MetaList({ label, items }: { label: string; items: string[] }) {
-  return (
-    <div>
-      <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
-      </div>
-      <ul className="list-inside list-disc space-y-1 text-sm">
-        {items.map((r, i) => (
-          <li key={i}>{r}</li>
-        ))}
-      </ul>
-    </div>
-  )
-}
-
-function formatBenefit(v: unknown): string {
-  if (typeof v === 'boolean') return v ? 'Yes' : 'No'
-  if (v === null || v === undefined) return '—'
-  if (typeof v === 'string' || typeof v === 'number') return String(v)
-  return JSON.stringify(v)
 }

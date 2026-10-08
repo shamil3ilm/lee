@@ -76,7 +76,7 @@ export function sanitizeNarrative(raw: CompareNarrativeResult, input: CompareNar
 
 export function checkNarrativeSignal(input: CompareNarrativeInput, hasCurrent: boolean): void {
   if (!hasCurrent) {
-    throw new AISkippedError('compare_no_current_job', 'Add your current job first.', 'Settings › Profile › Current job.')
+    throw new AISkippedError('compare_no_current_job', 'Add your current job first.', 'Settings › Current job.')
   }
   if (input.facts.length < MIN_FACTS) {
     throw new AISkippedError(

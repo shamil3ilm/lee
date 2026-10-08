@@ -20,7 +20,7 @@ async function errorOf(res: Response): Promise<string> {
 }
 
 /**
- * Settings › Profile › Résumé: the profile photo used by variant PDFs whose
+ * Settings › Résumé: the profile photo used by variant PDFs whose
  * Photo toggle is on. Private — never published to the portfolio.
  */
 export function PhotoCard({ photoVersion }: PhotoCardProps) {

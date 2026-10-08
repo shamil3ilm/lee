@@ -2,7 +2,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ROLE_FAMILIES } from '@/lib/discovery/relevance/roles'
 import { SENIORITY_LABELS, SENIORITY_LEVELS } from '@/lib/discovery/relevance/seniority'
-import { TARGET_REGIONS } from '@/lib/discovery/relevance/places'
+import { REGION_CODES, TARGET_REGIONS } from '@/lib/discovery/relevance/places'
+import { WORK_MODE_LABELS, WORK_MODES } from '@/lib/discovery/relevance/work-mode'
+import { NativeSelect } from '@/components/ui/native-select'
+import { CountryPicker } from './country-picker'
 import type { SearchPrefsFormValues } from '@/lib/discovery/relevance/view'
 import { ChoiceChip, PrefsFieldset } from './choice-chip'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -65,12 +68,24 @@ export function TargetSections({ values }: SectionProps) {
           />
         ))}
       </PrefsFieldset>
-      <TextField
+      <CountryPicker
         name="otherCountries"
-        label="Other countries (codes, comma separated)"
+        label="Other countries"
         defaultValue={values.otherCountries}
-        placeholder="e.g. SG, DE"
+        exclude={REGION_CODES}
       />
+
+      <div className="space-y-1.5">
+        <Label htmlFor="sp-remotePref">Preferred work mode</Label>
+        <NativeSelect id="sp-remotePref" name="remotePref" defaultValue={values.remotePref} className="w-full sm:w-64">
+          {WORK_MODES.map((m) => (
+            <option key={m} value={m}>
+              {WORK_MODE_LABELS[m]}
+            </option>
+          ))}
+        </NativeSelect>
+        <p className="text-xs text-muted-foreground">Ranks postings in your preferred mode a little higher; never filters.</p>
+      </div>
 
       <PrefsFieldset legend="Remote roles">
         <ChoiceChip type="radio" name="remoteScope" value="worldwide" label="Remote worldwide, workable from where I live" defaultChecked={values.remoteScope === 'worldwide'} />
@@ -92,11 +107,11 @@ export function TargetSections({ values }: SectionProps) {
         <p className="text-xs text-muted-foreground">
           A posting outside your regions passes when it offers relocation or visa sponsorship, with a “Relocation offered” chip.
         </p>
-        <TextField
+        <CountryPicker
           name="relocationCountries"
-          label="Only these countries (codes; empty means any)"
+          label="Only these countries"
+          help="Leave empty for any country."
           defaultValue={values.relocationCountries}
-          placeholder="e.g. DE, NL, GB"
         />
       </div>
 
@@ -108,11 +123,10 @@ export function TargetSections({ values }: SectionProps) {
           />
           Open to relocating to other countries
         </label>
-        <TextField
+        <CountryPicker
           name="willingToRelocateTo"
-          label="Relocation countries (codes)"
+          label="Relocation countries"
           defaultValue={values.willingToRelocateTo}
-          placeholder="e.g. SG"
         />
         <TextField
           name="keywords"

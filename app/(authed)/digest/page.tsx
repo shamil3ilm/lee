@@ -1,28 +1,18 @@
 import Link from 'next/link'
 import { Activity as ActivityIcon, CalendarClock } from 'lucide-react'
 import { requireUserId } from '@/lib/auth/require-session'
-import { getUpcomingActions, getRecentActivity } from '@/lib/digest/service'
+import { getUpcomingActions, getUpcomingStages, getRecentActivity } from '@/lib/digest/service'
+import { buildDueActions } from '@/lib/digest/actions'
 import { PageHeader } from '@/components/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { relativeFromNow } from '@/lib/ui/date'
-import {
-  APPLICATION_STATUSES,
-  STATUS_BADGE,
-  STATUS_LABELS,
-  type ApplicationStatus,
-} from '@/lib/ui/status'
+import { STATUS_BADGE, STATUS_LABELS } from '@/lib/ui/status'
 import { LocalTime } from '@/components/local-time'
 import { describeActivity, type ActivityDescription } from '@/lib/digest/activity-label'
 import { joinMeta } from '@/lib/ui/meta'
 
 export const dynamic = 'force-dynamic'
-
-function narrow(s: string): ApplicationStatus {
-  return (APPLICATION_STATUSES as readonly string[]).includes(s)
-    ? (s as ApplicationStatus)
-    : 'saved'
-}
 
 /** "Applied → Interview" with status badges, or a short phrase for other kinds. */
 function ActivityChange({ description }: { description: ActivityDescription }) {
@@ -50,10 +40,22 @@ function ActivityChange({ description }: { description: ActivityDescription }) {
 
 export default async function DigestPage() {
   const userId = await requireUserId()
-  const [upcoming, recent] = await Promise.all([
+  const [upcoming, stages, recent] = await Promise.all([
     getUpcomingActions(userId, 7),
+    getUpcomingStages(userId, 7),
     getRecentActivity(userId, 7),
   ])
+  const due = buildDueActions(
+    upcoming.map((a) => ({
+      applicationId: a.id,
+      status: a.status,
+      nextActionAt: a.nextActionAt,
+      companyName: a.job.company?.name ?? null,
+      jobTitle: a.job.title,
+    })),
+    stages,
+    new Date(),
+  )
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -68,44 +70,39 @@ export default async function DigestPage() {
             <CalendarClock className="size-4 text-muted-foreground" />
             <CardTitle>Actions due (7 days)</CardTitle>
           </div>
-          <Badge variant="secondary">{upcoming.length}</Badge>
+          <Badge variant="secondary">{due.length}</Badge>
         </CardHeader>
         <CardContent className="pt-0">
-          {upcoming.length === 0 ? (
+          {due.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">Nothing scheduled.</p>
           ) : (
-            <ul className="divide-y">
-              {upcoming.map((a) => {
-                const status = narrow(a.status)
-                return (
-                  <li key={a.id}>
-                    <Link
-                      href={`/applications/${a.id}`}
-                      className="flex items-center justify-between gap-3 py-2 hover:bg-accent/40 sm:px-2"
-                    >
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-medium">
-                          {a.job.company?.name ?? 'Unknown'}
-                        </div>
-                        <div className="truncate text-xs text-muted-foreground">
-                          {a.job.title}
-                        </div>
+            <ul className="divide-y" data-testid="digest-actions">
+              {due.map((a) => (
+                <li key={a.key}>
+                  <Link
+                    href={`/applications/${a.applicationId}`}
+                    className="flex items-start justify-between gap-3 py-2 hover:bg-accent/40 sm:px-2"
+                  >
+                    <div className="min-w-0">
+                      <div className="text-sm">
+                        <span className="font-medium">{a.action}</span>
+                        <span className="text-muted-foreground"> · </span>
+                        {a.overdue ? (
+                          <span className="font-medium text-danger">overdue</span>
+                        ) : (
+                          <LocalTime date={a.at} format={a.kind === 'stage' ? 'datetime' : 'date'} />
+                        )}
                       </div>
-                      <div className="hidden text-right text-xs text-muted-foreground sm:block">
-                        {a.nextActionAt ? (
-                          <>
-                            <div className="font-medium text-foreground">
-                              {relativeFromNow(a.nextActionAt)}
-                            </div>
-                            <div><LocalTime date={a.nextActionAt} /></div>
-                          </>
-                        ) : null}
+                      <div className="truncate text-xs text-muted-foreground">
+                        {joinMeta([a.companyName ?? 'Unknown company', a.jobTitle])}
                       </div>
-                      <Badge variant={STATUS_BADGE[status]}>{STATUS_LABELS[status]}</Badge>
-                    </Link>
-                  </li>
-                )
-              })}
+                    </div>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {a.overdue ? <LocalTime date={a.at} format="date" /> : relativeFromNow(a.at)}
+                    </span>
+                  </Link>
+                </li>
+              ))}
             </ul>
           )}
         </CardContent>

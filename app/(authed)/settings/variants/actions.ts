@@ -25,9 +25,9 @@ function fail(what: string, err: unknown): { error: string } {
 }
 
 function revalidate(id?: string): void {
-  revalidatePath('/settings/profile/variants')
-  revalidatePath('/settings/profile/publish')
-  if (id) revalidatePath(`/settings/profile/variants/${id}`)
+  revalidatePath('/settings/variants')
+  revalidatePath('/settings/publish')
+  if (id) revalidatePath(`/settings/variants/${id}`)
 }
 
 const createSchema = z.object({

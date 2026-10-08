@@ -2,7 +2,7 @@
 import { useState, useTransition } from 'react'
 import { CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { patchStudyAction } from '@/app/(authed)/settings/profile/resume/actions'
+import { patchStudyAction } from '@/app/(authed)/settings/resume/actions'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'

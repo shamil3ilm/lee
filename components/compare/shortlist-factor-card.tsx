@@ -4,7 +4,7 @@ import { ListChecks } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
-import { setFactorShortlistAction } from '@/app/(authed)/settings/profile/current-job/actions'
+import { setFactorShortlistAction } from '@/app/(authed)/settings/current-job/actions'
 
 /** Optional: let the comparison nudge the daily shortlist (off by default). */
 export function ShortlistFactorCard({ initial, hasCurrent }: { initial: boolean; hasCurrent: boolean }) {

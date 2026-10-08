@@ -12,14 +12,15 @@ async function expectToast(page: Page, text: string | RegExp): Promise<void> {
 test('search preferences filter Discovery, with reasons and "Show anyway"', async ({ page }) => {
   // No preferences yet: nothing filtered, and a prompt to set them.
   await page.goto('/discoveries')
-  await expect(page.getByRole('heading', { name: /what you’re looking for/i })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Set preferences' })).toBeVisible()
+  // One compact notice: filtering on defaults, with a link to set preferences.
+  await expect(page.getByTestId('notice-area')).toHaveAttribute('data-notice', 'defaults')
+  await expect(page.getByTestId('defaults-banner').getByRole('link', { name: 'Set preferences' })).toBeVisible()
   const top = page.getByTestId('pager-top')
   await expect(top).toContainText(/^1–\d+ of \d+/)
   await expect(page.locator('[data-slot="card"]').filter({ hasText: 'Senior Backend Engineer, Ledger' })).toBeVisible()
 
   // Save preferences: backend / full-stack, junior + mid, default GCC + India.
-  await page.goto('/settings/profile')
+  await page.goto('/settings/search')
   const form = page.getByRole('form', { name: 'Search preferences' })
   // check(), not click(): the seeded profile already targets Backend.
   for (const name of ['Backend', 'Full-stack', 'Junior', 'Mid-level']) {
@@ -36,7 +37,10 @@ test('search preferences filter Discovery, with reasons and "Show anyway"', asyn
   await expect(page.getByRole('heading', { name: 'What you’re looking for' })).toBeVisible()
   const senior = page.locator('[data-slot="card"]').filter({ hasText: 'Senior Backend Engineer, Ledger' })
   await expect(senior).toBeVisible()
-  await expect(senior.getByTestId('relevance-chips')).toContainText('Senior title')
+  // The "ranked lower" reason sits in the score popover.
+  await senior.getByRole('button', { name: /Why this score/ }).click()
+  await expect(page.getByTestId('ranking-notes')).toContainText('Senior title')
+  await page.keyboard.press('Escape')
 
   // Filtered out, with the reason; "Show anyway" brings it back.
   await page.goto('/discoveries?status=filtered')
@@ -45,7 +49,7 @@ test('search preferences filter Discovery, with reasons and "Show anyway"', asyn
   await expect(row.getByTestId('relevance-chips')).toContainText('contract / freelance')
   // Filtered rows still show their Match Score.
   // (Its seeded JD is short, so the score is flagged "title only".)
-  await expect(row.getByTestId('match-badge')).toContainText(/Match ~?\d+/)
+  await expect(row.getByTestId('match-badge')).toContainText(/Fit ~?\d+/)
   await row.getByRole('button', { name: 'Show anyway' }).click()
   await expectToast(page, 'Moved to your inbox')
   await page.goto('/discoveries')
@@ -58,7 +62,7 @@ test('search preferences filter Discovery, with reasons and "Show anyway"', asyn
   await expect(page.getByRole('combobox', { name: 'Rows per page' }).first()).toHaveValue('25')
 
   // Clean up: turn filtering off, everything returns to the inbox.
-  await page.goto('/settings/profile')
+  await page.goto('/settings/search')
   await page.getByRole('button', { name: 'Turn off filtering' }).click()
   await expectToast(page, 'Filtering turned off')
   await page.goto('/discoveries?status=filtered')

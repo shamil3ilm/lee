@@ -1,6 +1,6 @@
 import { and, eq, gte, lte, isNotNull, desc } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
-import { applications, activities, companies, jobs } from '@/lib/db/schema'
+import { applications, activities, companies, interviewStages, jobs } from '@/lib/db/schema'
 import type { Application } from '@/lib/db/queries/applications'
 import type { Job } from '@/lib/db/queries/jobs'
 import type { Company } from '@/lib/db/queries/companies'
@@ -42,6 +42,48 @@ export async function getUpcomingActions(
     orderBy: (a, { asc }) => asc(a.nextActionAt),
   })
   return rows as UpcomingAction[]
+}
+
+export interface UpcomingStage {
+  applicationId: string
+  kind: string
+  title: string | null
+  scheduledAt: Date
+  companyName: string | null
+  jobTitle: string | null
+}
+
+/** Interview stages still scheduled between now and N days out, soonest first. */
+export async function getUpcomingStages(
+  userId: string,
+  withinDays = 7,
+  client: DbClient = db,
+): Promise<UpcomingStage[]> {
+  const now = new Date()
+  const horizon = new Date(now.getTime() + withinDays * DAY_MS)
+  const rows = await client
+    .select({
+      applicationId: interviewStages.applicationId,
+      kind: interviewStages.kind,
+      title: interviewStages.title,
+      scheduledAt: interviewStages.scheduledAt,
+      companyName: companies.name,
+      jobTitle: jobs.title,
+    })
+    .from(interviewStages)
+    .innerJoin(applications, eq(applications.id, interviewStages.applicationId))
+    .innerJoin(jobs, eq(jobs.id, applications.jobId))
+    .leftJoin(companies, eq(companies.id, jobs.companyId))
+    .where(
+      and(
+        eq(interviewStages.userId, userId),
+        eq(interviewStages.status, 'scheduled'),
+        gte(interviewStages.scheduledAt, now),
+        lte(interviewStages.scheduledAt, horizon),
+      ),
+    )
+    .orderBy(interviewStages.scheduledAt)
+  return rows.flatMap((r) => (r.scheduledAt ? [{ ...r, scheduledAt: r.scheduledAt }] : []))
 }
 
 /**

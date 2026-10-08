@@ -1,26 +1,21 @@
 'use client'
-import { useTransition } from 'react'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { Label } from '@/components/ui/label'
+import { Loader2, X } from 'lucide-react'
+import { useUrlFilters } from '@/components/filters/use-url-filters'
+import { plural } from '@/lib/ui/labels'
+import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/ui/native-select'
+import { MoreFilters } from '@/components/discovery/more-filters'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Checkbox } from '@/components/ui/checkbox'
+  activeMoreFilters,
+  REGION_LABELS,
+  SORT_LABELS,
+  STATUS_LABELS,
+  type DiscoveryRegionFilter,
+  type DiscoverySort,
+  type DiscoveryStatusFilter,
+} from '@/lib/discovery/filter-options'
 
-export type DiscoverySort = 'combined' | 'match' | 'benefits' | 'posted'
-export type DiscoveryStatusFilter =
-  | 'new'
-  | 'shortlisted'
-  | 'saved'
-  | 'dismissed'
-  | 'filtered'
-  | 'quarantined'
-export type DiscoveryRegionFilter = 'all' | 'ae' | 'gcc' | 'in' | 'remote'
+export type { DiscoveryRegionFilter, DiscoverySort, DiscoveryStatusFilter } from '@/lib/discovery/filter-options'
 
 interface DiscoveryFiltersProps {
   tab: 'jobs' | 'companies'
@@ -39,39 +34,18 @@ interface DiscoveryFiltersProps {
   showFiltered?: boolean
   /** Board view: columns are the statuses, so no status picker. */
   hideStatus?: boolean
-}
-
-const STATUS_LABELS: Record<DiscoveryStatusFilter, string> = {
-  new: 'New',
-  shortlisted: 'Shortlisted',
-  saved: 'Saved',
-  dismissed: 'Dismissed',
-  filtered: 'Filtered out',
-  quarantined: 'Quarantined',
+  /** Results for the current filters, announced after each change. */
+  resultCount?: number
 }
 
 const JOB_ONLY: ReadonlySet<DiscoveryStatusFilter> = new Set(['quarantined', 'shortlisted', 'filtered'])
 
-const SORT_LABELS: Record<DiscoverySort, string> = {
-  combined: 'Combined (match + benefits)',
-  match: 'Best match',
-  benefits: 'Benefits score',
-  posted: 'Recently posted',
-}
-
-const REGION_LABELS: Record<DiscoveryRegionFilter, string> = {
-  all: 'All regions',
-  ae: 'UAE',
-  gcc: 'GCC',
-  in: 'India',
-  remote: 'Remote',
-}
-
 /**
- * URL-driven filters for the discovery inbox. Updating any field pushes the
- * new query string; the server component re-renders with the fresh list.
- * Using URL state (not React state) means filters survive refresh, are
- * shareable, and let the RSC do all the DB work.
+ * Discovery's filter toolbar: the primary filters inline (Status, Region,
+ * Sort), the rest under "More filters", everything applied on change. URL
+ * state, so filters survive refresh, are shareable and the server does the
+ * work. (A local implementation of the auto-apply filter pattern; the
+ * shared toolbar primitive replaces it later.)
  */
 export function DiscoveryFilters({
   tab,
@@ -86,30 +60,20 @@ export function DiscoveryFilters({
   scoredOnly = false,
   showFiltered = false,
   hideStatus = false,
+  resultCount,
 }: DiscoveryFiltersProps) {
   const statuses = (Object.keys(STATUS_LABELS) as DiscoveryStatusFilter[]).filter(
     (s) => !JOB_ONLY.has(s) || tab === 'jobs',
   )
-  const router = useRouter()
-  const pathname = usePathname()
-  const params = useSearchParams()
-  const [isPending, startTransition] = useTransition()
+  const { setParams, pending: isPending } = useUrlFilters()
+  const jobs = tab === 'jobs'
 
+  // The shared auto-apply filters (replace, page reset); Discovery keeps its
+  // own rules: the tab is always explicit and "New" is the default status.
   const update = (patch: Record<string, string>): void => {
-    const next = new URLSearchParams(params.toString())
-    next.set('tab', tab)
-    // Any filter change starts over at the first page.
-    next.delete('page')
-    for (const [k, v] of Object.entries(patch)) {
-      if (v === '' || (v === 'new' && k === 'status' && !next.has('status'))) {
-        next.delete(k)
-      } else {
-        next.set(k, v)
-      }
-    }
-    startTransition(() => {
-      router.push(`${pathname}?${next.toString()}`)
-    })
+    const next: Record<string, string | null> = { tab }
+    for (const [k, v] of Object.entries(patch)) next[k] = v === '' || (k === 'status' && v === 'new') ? null : v
+    setParams(next)
   }
 
   const statusLabel = (s: DiscoveryStatusFilter): string => {
@@ -118,136 +82,76 @@ export function DiscoveryFilters({
     return STATUS_LABELS[s]
   }
 
+  const more = { minScore, sourceId, scoredOnly, showFiltered: showFiltered && status === 'new' }
+  const moreCount = activeMoreFilters(more)
+  const anyActive = moreCount > 0 || (jobs && region !== 'all') || (!hideStatus && status !== 'new')
+
   return (
     <div
-      className="mb-3 flex flex-wrap items-end gap-3 rounded-lg border bg-card/40 p-3"
+      role="group"
+      aria-label="Filter discoveries"
+      className="flex flex-wrap items-center gap-2"
       data-pending={isPending || undefined}
+      data-testid="discovery-filters"
     >
-      <div className={hideStatus ? 'hidden' : 'w-full space-y-1.5 sm:w-auto'}>
-        <Label htmlFor="disc-status" className="text-xs">Status</Label>
-        <Select value={status} onValueChange={(v) => update({ status: v })}>
-          <SelectTrigger id="disc-status" className="h-8 w-full sm:w-[170px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {statuses.map((s) => (
-              <SelectItem key={s} value={s}>
-                {statusLabel(s)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {tab === 'jobs' ? (
+      {hideStatus ? null : (
+        <NativeSelect aria-label="Status" value={status} onChange={(e) => update({ status: e.target.value })} className="h-8 w-[11rem]">
+          {statuses.map((s) => (
+            <option key={s} value={s}>
+              {statusLabel(s)}
+            </option>
+          ))}
+        </NativeSelect>
+      )}
+      {jobs ? (
         <>
-          <div className="w-[calc(50%-0.375rem)] space-y-1.5 sm:w-auto">
-            <Label htmlFor="disc-region" className="text-xs">Region</Label>
-            <Select value={region} onValueChange={(v) => update({ region: v === 'all' ? '' : v })}>
-              <SelectTrigger id="disc-region" className="h-8 w-full sm:w-[140px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(REGION_LABELS) as DiscoveryRegionFilter[]).map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {REGION_LABELS[r]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="w-[calc(50%-0.375rem)] space-y-1.5 sm:w-auto">
-            <Label htmlFor="disc-source" className="text-xs">Source</Label>
-            <Select value={sourceId || 'all'} onValueChange={(v) => update({ source: v === 'all' ? '' : v })}>
-              <SelectTrigger id="disc-source" className="h-8 w-full sm:w-[170px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All sources</SelectItem>
-                {sources.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="w-full space-y-1.5 sm:w-[240px]">
-            <Label htmlFor="disc-sort" className="text-xs">Sort</Label>
-            <NativeSelect
-              id="disc-sort"
-              value={sort}
-              onChange={(e) => update({ sort: e.target.value })}
-              className="h-8"
-            >
-              {(Object.keys(SORT_LABELS) as DiscoverySort[]).map((s) => (
-                <option key={s} value={s}>
-                  {SORT_LABELS[s]}
-                </option>
-              ))}
-            </NativeSelect>
-          </div>
+          <NativeSelect
+            aria-label="Region"
+            value={region}
+            onChange={(e) => update({ region: e.target.value === 'all' ? '' : e.target.value })}
+            className="h-8 w-[8.5rem]"
+          >
+            {(Object.keys(REGION_LABELS) as DiscoveryRegionFilter[]).map((r) => (
+              <option key={r} value={r}>
+                {REGION_LABELS[r]}
+              </option>
+            ))}
+          </NativeSelect>
+          <NativeSelect aria-label="Sort" value={sort} onChange={(e) => update({ sort: e.target.value })} className="h-8 w-[13.5rem] max-sm:w-[11rem]">
+            {(Object.keys(SORT_LABELS) as DiscoverySort[]).map((s) => (
+              <option key={s} value={s}>
+                {SORT_LABELS[s]}
+              </option>
+            ))}
+          </NativeSelect>
         </>
       ) : null}
-
-      <div className="w-full flex-1 space-y-1.5 sm:min-w-[180px]">
-        <Label htmlFor="disc-min" className="flex items-center justify-between text-xs">
-          <span>Min match score</span>
-          <span className="tabular-nums text-muted-foreground">{minScore}</span>
-        </Label>
-        <input
-          id="disc-min"
-          type="range"
-          min={0}
-          max={100}
-          step={5}
-          value={minScore}
-          onChange={(e) => update({ minScore: e.target.value })}
-          className="w-full accent-primary"
-        />
-      </div>
-
-      {tab === 'jobs' ? (
-        <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 sm:w-auto sm:pb-1">
-          <Toggle
-            id="disc-scored"
-            label="AI-scored only"
-            checked={scoredOnly}
-            onChange={(on) => update({ scored: on ? '1' : '' })}
-          />
-          {status === 'new' && !hideStatus ? (
-            <Toggle
-              id="disc-hide-filtered"
-              label="Hide filtered"
-              checked={!showFiltered}
-              onChange={(on) => update({ filtered: on ? '' : 'show' })}
-            />
-          ) : null}
-        </div>
+      <MoreFilters
+        jobs={jobs}
+        values={more}
+        canHideFiltered={jobs && status === 'new' && !hideStatus}
+        sources={sources}
+        count={moreCount}
+        onChange={update}
+      />
+      {anyActive ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-8 px-2 text-xs"
+          onClick={() => update({ status: '', region: '', source: '', minScore: '', scored: '', filtered: '' })}
+        >
+          <X className="size-3.5" aria-hidden="true" />
+          Clear
+        </Button>
+      ) : null}
+      {isPending ? <Loader2 className="size-4 animate-spin text-muted-foreground" aria-hidden="true" /> : null}
+      {resultCount !== undefined ? (
+        <p role="status" aria-live="polite" className="sr-only">
+          {isPending ? '' : plural(resultCount, tab === 'jobs' ? 'job' : 'company', tab === 'jobs' ? 'jobs' : 'companies')}
+        </p>
       ) : null}
     </div>
-  )
-}
-
-function Toggle({
-  id,
-  label,
-  checked,
-  onChange,
-}: {
-  id: string
-  label: string
-  checked: boolean
-  onChange: (on: boolean) => void
-}) {
-  return (
-    <label htmlFor={id} className="inline-flex items-center gap-2 text-sm">
-      <Checkbox
-        id={id}
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-      />
-      {label}
-    </label>
   )
 }

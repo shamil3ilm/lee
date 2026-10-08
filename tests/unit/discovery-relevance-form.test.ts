@@ -82,6 +82,26 @@ describe('search preferences form', () => {
     })
   })
 
+  it('saves the preferred work mode and derives the profile seniority from the levels', () => {
+    const patch = searchPrefsPatch(
+      fd([
+        ['seniority', 'junior'],
+        ['seniority', 'mid'],
+        ['remotePref', 'hybrid'],
+      ]),
+      null,
+    )
+    expect(patch.remotePref).toBe('hybrid')
+    // The highest picked level, as words the AI prompts and source queries read.
+    expect(patch.seniority).toBe('Mid-level')
+  })
+
+  it('falls back to "any" work mode and no seniority for unknown or missing values', () => {
+    const patch = searchPrefsPatch(fd([['remotePref', 'moon']]), null)
+    expect(patch.remotePref).toBe('any')
+    expect(patch.seniority).toBeNull()
+  })
+
   it('keeps cities and priority of countries the user already had', () => {
     const merged = mergeLocationPrefs([{ country: 'IN', region: 'Kerala', cities: ['Kochi'], priority: 1 }, { country: 'US' }], ['IN', 'AE'])
     expect(merged).toEqual([

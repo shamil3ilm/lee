@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, inArray, isNotNull, isNull, lt, or, sql, type SQL } from 'drizzle-orm'
+import { and, count, desc, eq, gte, inArray, isNotNull, lt, sql, type SQL } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import { discoveries } from '@/lib/db/schema'
@@ -304,7 +304,9 @@ function listWhere(userId: string, opts: ListOpts): SQL {
   }
   if (opts.scoredOnly) conds.push(isNotNull(discoveries.matchScore))
   if (typeof opts.minScore === 'number' && opts.minScore > 0) {
-    conds.push(or(gte(discoveries.fitScore, opts.minScore), isNull(discoveries.fitScore))!)
+    // The same number as the Fit badge (Match / AI blend); unscored rows stay.
+    const fit = blendedSql()
+    conds.push(sql`(${fit} >= ${opts.minScore} or ${fit} is null)`)
   }
   if (opts.sourceIds && opts.sourceIds.length > 0) {
     conds.push(inArray(discoveries.sourceId, opts.sourceIds))

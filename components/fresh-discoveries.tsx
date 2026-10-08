@@ -87,10 +87,10 @@ function FreshRow({ item }: { item: FreshDiscoveryItem }) {
     <li className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 py-2 text-sm">
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-1.5">
-          <span className="truncate font-medium">{item.companyName}</span>
-          {item.risk ? <RiskBadge risk={item.risk} className="shrink-0" /> : null}
+          <span className="truncate font-medium">{item.title}</span>
+          {item.risk && item.risk.level !== 'safe' ? <RiskBadge risk={item.risk} className="shrink-0" /> : null}
         </div>
-        <div className="line-clamp-2 text-xs text-muted-foreground">{item.title}</div>
+        <div className="truncate text-xs text-muted-foreground">{item.companyName}</div>
       </div>
       <MatchBadge match={item.fitScore ?? null} ai={item.matchScore} detail={item.fitDetail ?? null} />
       <div className="flex items-center gap-1">

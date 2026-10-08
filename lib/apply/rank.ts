@@ -17,7 +17,7 @@ import type { FeedbackAdjust } from './feedback'
  *   freshness   +10 ≤ 1 day, +7 ≤ 3, +4 ≤ 7, +1 ≤ 14 days old
  *   Scam Shield −5 at "caution"; quarantined postings are never eligible
  *   feedback    −15 a company you passed on, −8 a role / region passed on twice
- *   vs current  OPTIONAL (Settings › Profile › Current job, off by default):
+ *   vs current  OPTIONAL (Settings › Current job, off by default):
  *               (weighted total − current job's total) / 5, −8…+8
  *
  * Eligibility (before ranking): passed the relevance gate (or "Show

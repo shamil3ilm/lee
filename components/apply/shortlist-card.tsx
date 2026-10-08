@@ -3,7 +3,6 @@ import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { ChevronDown, Clock, ExternalLink, FileText, Loader2, Wand2 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -13,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { focusRing } from '@/components/ui/focus-ring'
-import { ReasonChips } from '@/components/apply/reason-chips'
+import { ShortlistReasons } from '@/components/apply/shortlist-reasons'
 import { VsCurrentChip } from '@/components/compare/vs-current-chip'
 import { MatchBadge } from '@/components/discovery/match-badge'
 import type { MatchDetail } from '@/lib/discovery/match/types'
@@ -98,18 +97,18 @@ export function ShortlistCard({ item, selected, onSelectedChange, busy = false }
         />
         <div className="min-w-0 space-y-1">
           <label htmlFor={checkboxId} className="block cursor-pointer text-sm font-semibold leading-snug">
-            <span className="mr-1.5 text-muted-foreground tabular-nums">{item.rank}.</span>
+            <span className="mr-1.5 text-muted-foreground tabular-nums">#{item.rank}</span>
             {item.title}
           </label>
           <p className="truncate text-xs text-muted-foreground">{joinMeta([item.companyName, item.location])}</p>
-          <MatchBadge match={item.fitScore ?? null} ai={item.matchScore ?? null} detail={item.fitDetail ?? null} />
         </div>
-        <Badge variant="info" className="tabular-nums" title="Composite shortlist score (0–100)">
-          {item.score}
-        </Badge>
+        <MatchBadge
+          match={item.fitScore ?? null}
+          ai={item.matchScore ?? null}
+          detail={item.fitDetail ?? null}
+          extra={<ShortlistReasons rank={item.rank} score={item.score} reasons={item.reasons} />}
+        />
       </div>
-
-      <ReasonChips reasons={item.reasons} className="mt-3" />
 
       {item.vsCurrent ? <VsCurrentChip text={item.vsCurrent} href={`/discoveries/${item.discoveryId}`} className="mt-2" /> : null}
 

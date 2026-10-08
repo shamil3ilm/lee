@@ -7,7 +7,7 @@ import {
   savePortfolioTokenAction,
   savePublishConfigAction,
   testPortfolioTokenAction,
-} from '@/app/(authed)/settings/profile/publish/actions'
+} from '@/app/(authed)/settings/publish/actions'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'

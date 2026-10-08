@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { fetchRatesAction, saveAssumptionsAction } from '@/app/(authed)/settings/profile/current-job/actions'
+import { fetchRatesAction, saveAssumptionsAction } from '@/app/(authed)/settings/current-job/actions'
 import { parseAmount } from '@/lib/compare/form'
 import { rateLine } from '@/lib/compare/fx'
 import {

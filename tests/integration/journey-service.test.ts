@@ -44,13 +44,19 @@ describe('getSetupChecklist', () => {
   it('reports every item as not done for a fresh user', async () => {
     const u = await makeUser()
     const res = await getSetupChecklist(u.id)
-    expect(res.total).toBe(6)
+    expect(res.total).toBe(8)
     expect(res.completed).toBe(0)
-    expect(res.items.map((i) => i.key)).toEqual([
+    expect(res.retired).toBe(false)
+    // The four guided first-run steps come first, in order.
+    expect(res.items.filter((i) => i.guided).map((i) => i.key)).toEqual([
+      'search_prefs',
       'profile',
+      'source',
+      'job_alerts',
+    ])
+    expect(res.items.filter((i) => !i.guided).map((i) => i.key)).toEqual([
       'master_cv',
       'cv_score',
-      'source',
       'google',
       'application',
     ])
@@ -72,11 +78,41 @@ describe('getSetupChecklist', () => {
       scorerVersion: 'test',
     })
     await makeSource(u.id)
+    await makeSource(u.id, { kind: 'email_alert', name: 'Job alerts by email', config: {} })
+    await saveProfile(u.id, { searchPrefsSavedAt: new Date() })
     await connectGoogle(u.id, `openid email ${GMAIL_READ_SCOPE}`)
     await makeApp(u.id)
     const res = await getSetupChecklist(u.id)
-    expect(res.completed).toBe(6)
+    expect(res.completed).toBe(8)
     expect(res.items.every((i) => i.done)).toBe(true)
+    expect(res.retired).toBe(true)
+  })
+
+  it('retires the panel at 80% (7 of 8), and a disabled alert source does not count', async () => {
+    const u = await makeUser()
+    await saveProfile(u.id, { skills: ['go'], searchPrefsSavedAt: new Date() })
+    const cv = await documentsQ.create(u.id, { kind: 'master_cv', title: 'CV', content: {} })
+    await cvScoresQ.create(u.id, {
+      documentId: cv.id,
+      sourceKind: 'master_cv',
+      overall: 72,
+      grade: 'C',
+      scores: {},
+      dimensions: {},
+      findings: [],
+      scorerVersion: 'test',
+    })
+    await makeSource(u.id)
+    await makeSource(u.id, { kind: 'email_alert', name: 'Job alerts by email', config: {}, enabled: false })
+    await connectGoogle(u.id, `openid email ${GMAIL_READ_SCOPE}`)
+    let res = await getSetupChecklist(u.id)
+    expect(res.items.find((i) => i.key === 'job_alerts')?.done).toBe(false)
+    expect(res.completed).toBe(6)
+    expect(res.retired).toBe(false)
+    await makeApp(u.id)
+    res = await getSetupChecklist(u.id)
+    expect(res.completed).toBe(7)
+    expect(res.retired).toBe(true)
   })
 
   it('accepts a headline alone as an imported profile', async () => {
