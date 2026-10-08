@@ -359,6 +359,9 @@ export const userProfile = pgTable('user_profile', {
   // Match key (lib/discovery/match/key.ts) every discovery row was last
   // scored with; differs from the current key → the match backfill runs.
   matchAppliedKey: text('match_applied_key'),
+  // Titles lee learned from the user (lib/discovery/relevance/learned.ts):
+  // { "<normalised title>": { related, family, at } }.
+  learnedTitles: jsonb('learned_titles').notNull().default({}),
   yearsExperience: integer('years_experience'),
   employmentTypes: text('employment_types').array().notNull().default([]),
   remotePref: text('remote_pref').notNull().default('any'),

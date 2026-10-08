@@ -12,12 +12,14 @@ import { isSeniorityLevel, SENIORITY_LEVELS, type SeniorityLevel } from './senio
 import { findTerms, normalizeForMatch } from './text'
 import { readyEvidence } from '../match/evidence'
 import { strengthsFrom } from '../match/strengths'
+import { parseLearnedTitles, type LearnedTitles } from './learned'
+import { familiesFromEvidence } from './roles'
 
 /**
  * Bump when the gate's rules or alias lists change in a way that should
  * re-evaluate stored discoveries (the key changes → rows are re-gated).
  */
-export const RELEVANCE_RULES_VERSION = 'r3'
+export const RELEVANCE_RULES_VERSION = 'r4'
 
 export type RemoteScope = 'worldwide' | 'regions' | 'none'
 export const REMOTE_SCOPES: readonly RemoteScope[] = ['worldwide', 'regions', 'none']
@@ -34,7 +36,11 @@ export function isRemoteScope(v: unknown): v is RemoteScope {
  * hard/soft modes, work authorisation, pay floors, languages).
  */
 export interface SearchPrefs {
-  /** False until the user saves search preferences: filter nothing. */
+  /**
+   * False until the user saves search preferences. Until then only the
+   * domain rule (and learned titles) apply, with provisional target
+   * families from the profile's ready evidence.
+   */
   active: boolean
   roleFamilies: string[]
   /** Role types that match no family, matched literally against titles. */
@@ -54,6 +60,11 @@ export interface SearchPrefs {
    * a seniority stretch in one of them costs half.
    */
   strengths: string[]
+  /** Canonical READY skills (lib/discovery/match/evidence), for the domain rule's overlap check. */
+  readySkills: string[]
+  /** Families inferred from ready evidence, used while no role families are chosen. */
+  provisionalFamilies: string[]
+  learnedTitles: LearnedTitles
 }
 
 export const EMPTY_PREFS: SearchPrefs = {
@@ -69,6 +80,14 @@ export const EMPTY_PREFS: SearchPrefs = {
   extra: EMPTY_DISCOVERY_PREFS,
   infraExperience: false,
   strengths: [],
+  readySkills: [],
+  provisionalFamilies: [],
+  learnedTitles: {},
+}
+
+/** The families the gate targets: the chosen ones, else the provisional ones. */
+export function targetFamilies(prefs: Pick<SearchPrefs, 'roleFamilies' | 'provisionalFamilies'>): string[] {
+  return prefs.roleFamilies.length > 0 ? prefs.roleFamilies : prefs.provisionalFamilies
 }
 
 function clean(list: readonly string[] | null | undefined): string[] {
@@ -106,7 +125,7 @@ type PrefsSource = Pick<
   | 'dealbreakers'
   | 'searchPrefsSavedAt'
 > &
-  Partial<Pick<UserProfile, 'discoveryPrefs' | 'skills' | 'stackWeights' | 'resume'>>
+  Partial<Pick<UserProfile, 'discoveryPrefs' | 'skills' | 'stackWeights' | 'resume' | 'learnedTitles'>>
 
 const INFRA = ['docker', 'kubernetes', 'k8s', 'terraform', 'helm', 'aws', 'gcp', 'google cloud', 'azure', 'ecs', 'eks']
 
@@ -119,9 +138,14 @@ function hasInfra(profile: PrefsSource): boolean {
   return findTerms(text, INFRA).length > 0 && findTerms(text, SKILL_GROUPS.devops).length > 0
 }
 
-function strengthsOf(profile: PrefsSource): string[] {
+function evidencePrefs(profile: PrefsSource): Pick<SearchPrefs, 'strengths' | 'readySkills' | 'provisionalFamilies'> {
   const e = readyEvidence(profile)
-  return strengthsFrom(e.skills, e.domains)
+  const skills = [...e.skills].sort()
+  return {
+    strengths: strengthsFrom(e.skills, e.domains),
+    readySkills: skills,
+    provisionalFamilies: familiesFromEvidence(normalizeForMatch(skills.join(' | '))),
+  }
 }
 
 export function searchPrefsFromProfile(profile: PrefsSource | null | undefined): SearchPrefs {
@@ -154,7 +178,8 @@ export function searchPrefsFromProfile(profile: PrefsSource | null | undefined):
     exclude: clean(profile.dealbreakers),
     extra: parseDiscoveryPrefs(profile.discoveryPrefs),
     infraExperience: hasInfra(profile),
-    strengths: strengthsOf(profile),
+    ...evidencePrefs(profile),
+    learnedTitles: parseLearnedTitles(profile.learnedTitles),
   }
 }
 
@@ -175,8 +200,20 @@ function fnv1a(s: string): string {
  * and not part of the key.
  */
 export function relevanceKey(prefs: SearchPrefs): string {
-  if (!prefs.active) return `${RELEVANCE_RULES_VERSION}:off`
   const x = prefs.extra
+  const learned = Object.entries(prefs.learnedTitles)
+    .map(([k, v]) => `${k}:${v.related ? 1 : 0}:${v.family ?? ''}`)
+    .sort()
+  if (!prefs.active) {
+    // Unsaved preferences: only the domain rule runs, on provisional targets.
+    const provisional = JSON.stringify([
+      ruleMode(x, 'domain'),
+      targetFamilies(prefs).slice().sort(),
+      prefs.readySkills,
+      learned,
+    ])
+    return `${RELEVANCE_RULES_VERSION}:p:${fnv1a(provisional)}`
+  }
   const canonical = JSON.stringify([
     [...prefs.roleFamilies].sort(),
     prefs.customRoles.map((r) => r.toLowerCase()).sort(),
@@ -195,6 +232,9 @@ export function relevanceKey(prefs: SearchPrefs): string {
     x.relocationIfSponsored,
     [...x.relocationCountries].sort(),
     [...prefs.strengths].sort(),
+    prefs.readySkills,
+    prefs.provisionalFamilies,
+    learned,
   ])
   return `${RELEVANCE_RULES_VERSION}:${fnv1a(canonical)}`
 }

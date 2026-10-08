@@ -1,5 +1,5 @@
 {
-  "id": "439097c3-2977-4d7a-88eb-b653b4b76b59",
+  "id": "c26c4ff4-d4d4-4aa7-a416-064c51f04a05",
   "prevId": "2d08fec7-7841-4c1e-8a80-2b96cdfab727",
   "version": "7",
   "dialect": "postgresql",
@@ -5763,6 +5763,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "learned_titles": {
+          "name": "learned_titles",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
         },
         "years_experience": {
           "name": "years_experience",

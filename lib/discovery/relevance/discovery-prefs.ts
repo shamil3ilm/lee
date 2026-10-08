@@ -17,10 +17,11 @@ export type RuleMode = (typeof RULE_MODES)[number]
  * Pay is not a rule: a posting below the user's range is always kept and only
  * ranked lower (never filtered), so it has no hard/soft/off switch.
  */
-export const EXCLUSION_RULES = ['sales', 'contract', 'shifts', 'support', 'visa', 'language', 'seniority'] as const
+export const EXCLUSION_RULES = ['domain', 'sales', 'contract', 'shifts', 'support', 'visa', 'language', 'seniority'] as const
 export type ExclusionRule = (typeof EXCLUSION_RULES)[number]
 
 export const RULE_LABELS: Readonly<Record<ExclusionRule, string>> = {
+  domain: 'Unrelated fields (marketing, HR, legal… with no overlap with my skills)',
   sales: 'Sales-heavy / pre-sales roles',
   contract: 'Contract / freelance only',
   shifts: 'Night / rotational shifts',
@@ -34,6 +35,9 @@ export const RULE_LABELS: Readonly<Record<ExclusionRule, string>> = {
  * Defaults for a developer job-seeker; the user changes each per rule.
  *   visa       nationals-only openings are skipped ("UAE nationals
  *              preferred" stays a soft penalty either way);
+ *   domain     filter postings with positive evidence of an unrelated field
+ *              and little overlap with your ready skills (also before
+ *              search preferences are saved); weak evidence is a chip;
  *   seniority  soft: a Senior / Lead / Staff title or a years ask only
  *              ranks lower (offset by a strong ready match); Principal,
  *              Director, Head of, VP and 10+ yr Architect roles are still
@@ -41,6 +45,7 @@ export const RULE_LABELS: Readonly<Record<ExclusionRule, string>> = {
  *              levels; "off" ignores seniority.
  */
 export const DEFAULT_RULE_MODES: Readonly<Record<ExclusionRule, RuleMode>> = {
+  domain: 'hard',
   sales: 'hard',
   contract: 'hard',
   shifts: 'soft',

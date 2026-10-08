@@ -1,7 +1,8 @@
 import { ruleMode } from './discovery-prefs'
 import { locationOutcome } from './location-rule'
 import { emptyScan, GCC_CODES, mergeScans, scanPlaces, type PlaceScan } from './places'
-import type { SearchPrefs } from './prefs'
+import { targetFamilies, type SearchPrefs } from './prefs'
+import { domainOutcome, type DomainOutcome } from './domain-rule'
 import { classifyRole, roleFamilyLabel } from './roles'
 import { detectSeniority, detectYearsRequired, type SeniorityLevel } from './seniority'
 import { isArchitectTitle, seniorityOutcome } from './seniority-rule'
@@ -16,8 +17,9 @@ import { strengthIn } from '../match/strengths'
  * "seniority: Director", "location: US-only", "role: not engineering".
  *
  * Asymmetric by design: the gate drops a posting only on positive evidence
- * (a senior title, a named foreign place, a non-engineering title). Missing
- * or unrecognised information always passes.
+ * (a named foreign place, a recognised other family, an unrelated field in
+ * the JD). Missing or unrecognised information always passes; the domain
+ * rule runs even before search preferences are saved.
  */
 
 export interface GateInput {
@@ -51,6 +53,8 @@ export interface GateResult {
   infos: string[]
   /** Ranking nudge from penalties and boosts. */
   rankAdjust: number
+  /** Family the JD reads as (domain rule), for learning on "Show anyway". */
+  inferredFamily: string | null
 }
 
 /** Description window scanned for remote-eligibility phrases and keywords. */
@@ -130,18 +134,31 @@ function regionTags(places: PlaceScan, remote: boolean): RegionTag[] {
 
 export { acceptedCodes, firstForeign, hitsAccepted } from './location-rule'
 
-function roleReason(prefs: SearchPrefs, title: string, families: string[], engineering: boolean, generic: boolean): string | null {
+/**
+ * A recognised tech family outside the targets ("role: Frontend"). Never on
+ * an unknown title or a non-tech posting (the domain rule judges those), and
+ * never when the JD reads as a target family (the domain rule's
+ * "new title" / "learned" label).
+ */
+function roleReason(
+  prefs: SearchPrefs,
+  title: string,
+  families: string[],
+  engineering: boolean,
+  generic: boolean,
+  domain: DomainOutcome,
+): string | null {
   const targets = prefs.roleFamilies
   if (targets.length === 0 && prefs.customRoles.length === 0) return null
   const normTitle = normalizeForMatch(title)
   if (prefs.customRoles.some((r) => findTerms(normTitle, [r]).length > 0)) return null
   if (families.some((f) => targets.includes(f))) return null
+  if (domain.family && targets.includes(domain.family) && domain.info) return null
   // A generic software title with no stack evidence gets the benefit of the
   // doubt when the user targets core development roles.
   const core = ['backend', 'fullstack', 'frontend']
   if (generic && families.length === 0 && targets.some((t) => core.includes(t))) return null
-  if (!engineering) return 'role: not engineering'
-  if (families.length === 0) return 'role: not a target role'
+  if (!engineering || families.length === 0) return null
   return `role: ${roleFamilyLabel(families[0]!)}`
 }
 
@@ -167,15 +184,48 @@ export function evaluateRelevance(job: GateInput, prefs: SearchPrefs): GateResul
   const seniority = detectSeniority(job.title)
   const yearsRequired = detectYearsRequired(job.descriptionMd)
   const regions = regionTags(mergeScans(located, restricted), remote)
-  const base = { regions, seniority, yearsRequired, families: role.families, engineering: role.engineering, remote }
-  if (!prefs.active) return { pass: true, reasons: [], penalties: [], boosts: [], infos: [], rankAdjust: 0, ...base }
+  const domain = domainOutcome({
+    title: job.title,
+    description: job.descriptionMd,
+    techStack: job.techStack,
+    engineering: role.engineering,
+    titleFamilies: classifyRole({ title: job.title }).families,
+    mode: ruleMode(prefs.extra, 'domain'),
+    targets: targetFamilies(prefs),
+    readySkills: prefs.readySkills,
+    learned: prefs.learnedTitles,
+  })
+  const base = {
+    regions,
+    seniority,
+    yearsRequired,
+    families: role.families,
+    engineering: role.engineering,
+    remote,
+    inferredFamily: domain.family,
+  }
+  const domainInfos = domain.info ? [domain.info] : []
+  if (!prefs.active) {
+    // Unsaved preferences: only the domain rule, on provisional targets.
+    const penalties = domain.penalty ? [domain.penalty] : []
+    return {
+      pass: domain.hard === null,
+      reasons: domain.hard ? [domain.hard] : [],
+      penalties,
+      boosts: [],
+      infos: domainInfos,
+      rankAdjust: rankAdjust({ penalties, boosts: [] }),
+      ...base,
+    }
+  }
 
   const reasons: string[] = []
+  if (domain.hard) reasons.push(domain.hard)
   const description = (job.descriptionMd ?? '').slice(0, DESCRIPTION_WINDOW)
   const haystack = normalizeForMatch([job.title, (job.techStack ?? []).join(' '), description].join(' \n '))
   const excluded = findTerms(haystack, prefs.exclude)
   if (excluded.length > 0) reasons.push(`excluded: ${excluded.slice(0, 2).join(', ')}`)
-  const roleWhy = roleReason(prefs, job.title, role.families, role.engineering, role.generic)
+  const roleWhy = roleReason(prefs, job.title, role.families, role.engineering, role.generic, domain)
   if (roleWhy) reasons.push(roleWhy)
   const senior = seniorityOutcome({
     mode: ruleMode(prefs.extra, 'seniority'),
@@ -210,17 +260,20 @@ export function evaluateRelevance(job: GateInput, prefs: SearchPrefs): GateResul
     prefs,
   )
   reasons.push(...soft.hard)
-  const penalties = [...(senior.penalty ? [senior.penalty.label] : []), ...(loc.penalty ? [loc.penalty] : []), ...soft.penalties]
+  const domainPenalty = domain.penalty ? [domain.penalty] : []
+  const penalties = [...domainPenalty, ...(senior.penalty ? [senior.penalty.label] : []), ...(loc.penalty ? [loc.penalty] : []), ...soft.penalties]
   const boosts = [...(loc.boost ? [loc.boost] : []), ...soft.boosts]
   // Seniority carries its own weight (light / strong / offset); every other
   // chip counts through rankAdjust's per-chip points.
-  const adjust = rankAdjust({ penalties: [...(loc.penalty ? [loc.penalty] : []), ...soft.penalties], boosts }) + (senior.penalty?.points ?? 0)
+  const adjust =
+    rankAdjust({ penalties: [...domainPenalty, ...(loc.penalty ? [loc.penalty] : []), ...soft.penalties], boosts }) +
+    (senior.penalty?.points ?? 0)
   return {
     pass: reasons.length === 0,
     reasons,
     penalties,
     boosts,
-    infos: soft.infos,
+    infos: [...domainInfos, ...soft.infos],
     rankAdjust: Math.max(-60, Math.min(20, adjust)),
     ...base,
   }

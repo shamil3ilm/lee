@@ -43,7 +43,8 @@ const ITEMS: DiscoveryItem[] = [
   job('fit-1', 'Laravel Developer', { location: 'Dubai', remoteType: 'onsite' }),
   job('fit-2', 'Backend Engineer', { location: 'Remote' }),
   job('senior', 'Engineering Director'),
-  job('gardener', 'Gardener Handyman Driver'),
+  // No stack overlap: the domain rule filters it on its title (trades) alone.
+  job('gardener', 'Gardener Handyman Driver', { techStack: [], descriptionMd: 'Garden maintenance and deliveries.' }),
   job('us-only', 'Backend Engineer II', { location: 'Remote - US' }),
   job('frontend', 'Frontend Engineer', { techStack: ['react'] }),
 ]
@@ -95,13 +96,15 @@ async function statuses(userId: string): Promise<Record<string, { status: string
 describe('relevance gate at ingest', () => {
   beforeEach(() => vi.restoreAllMocks())
 
-  it('filters nothing and scores everything (within the cap) with no preferences', async () => {
+  it('with no preferences, filters only the unrelated field and scores the rest', async () => {
     const userId = await setup(false)
     stubAdapter(ITEMS)
     const scoreSpy = vi.fn(() => scoreResult)
     await runDiscoveryCycleForUser({ userId, ai: new FixtureAIProvider({ scoreJob: scoreSpy }) })
-    expect(Object.values(await statuses(userId)).every((s) => s.status === 'new')).toBe(true)
-    expect(scoreSpy).toHaveBeenCalledTimes(ITEMS.length)
+    const s = await statuses(userId)
+    expect(s['gardener']).toEqual({ status: 'filtered', reason: 'domain: Trades/Field work' })
+    expect(Object.entries(s).filter(([k]) => k !== 'gardener').every(([, v]) => v.status === 'new')).toBe(true)
+    expect(scoreSpy).toHaveBeenCalledTimes(ITEMS.length - 1)
   })
 
   it('marks non-matching postings filtered, with reasons, and AI-scores only the relevant ones', async () => {
@@ -113,7 +116,7 @@ describe('relevance gate at ingest', () => {
     expect(s['fit-1']).toEqual({ status: 'new', reason: null })
     expect(s['fit-2']).toEqual({ status: 'new', reason: null })
     expect(s['senior']).toEqual({ status: 'filtered', reason: 'seniority: Director' })
-    expect(s['gardener']).toEqual({ status: 'filtered', reason: 'role: not engineering' })
+    expect(s['gardener']).toEqual({ status: 'filtered', reason: 'domain: Trades/Field work' })
     expect(s['us-only']).toEqual({ status: 'filtered', reason: 'location: US-only' })
     expect(s['frontend']).toEqual({ status: 'filtered', reason: 'role: Frontend' })
     expect(scoreSpy).toHaveBeenCalledTimes(2)
@@ -146,7 +149,8 @@ describe('re-evaluation when preferences change', () => {
     const userId = await setup(false)
     stubAdapter(ITEMS)
     await runDiscoveryCycleForUser({ userId, ai: new FixtureAIProvider({ scoreJob: () => scoreResult }) })
-    expect(Object.values(await statuses(userId)).filter((s) => s.status === 'filtered')).toHaveLength(0)
+    // Before preferences: only the domain rule (the gardener).
+    expect(Object.values(await statuses(userId)).filter((s) => s.status === 'filtered')).toHaveLength(1)
 
     await profileQ.upsert(userId, { ...PREFS, searchPrefsSavedAt: new Date() })
     expect(relevanceStale(await profileQ.get(userId))).toBe(true)
@@ -161,10 +165,11 @@ describe('re-evaluation when preferences change', () => {
     await reevaluateRelevance(userId)
     expect((await statuses(userId))['senior']!.status).toBe('new')
 
-    // Turning filtering off restores everything else.
+    // Turning preferences off restores everything but the unrelated field.
     await profileQ.upsert(userId, { searchPrefsSavedAt: null })
     await reevaluateRelevance(userId)
-    expect(Object.values(await statuses(userId)).every((s) => s.status === 'new')).toBe(true)
+    const after = await statuses(userId)
+    expect(Object.entries(after).filter(([, v]) => v.status === 'filtered').map(([k]) => k)).toEqual(['gardener'])
   })
 
   it('leaves shortlisted, saved and dismissed rows in their status', async () => {
