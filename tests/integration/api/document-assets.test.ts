@@ -11,7 +11,7 @@ vi.mock('@/lib/auth', () => ({ auth: authMock }))
 // Import routes AFTER the mock is registered.
 async function importRoutes() {
   const list = await import('@/app/api/documents/[id]/assets/route')
-  const single = await import('@/app/api/documents/[id]/assets/[filename]/route')
+  const single = await import('@/app/api/documents/[id]/assets/[...filename]/route')
   return { list, single }
 }
 
@@ -166,7 +166,7 @@ describe('GET /api/documents/[id]/assets', () => {
   })
 })
 
-describe('GET /api/documents/[id]/assets/[filename]', () => {
+describe('GET /api/documents/[id]/assets/[...filename]', () => {
   it('serves raw bytes with the stored MIME type', async () => {
     const { u, doc } = await seedDoc()
     await assetsQ.create(u.id, doc.id, {
@@ -179,7 +179,7 @@ describe('GET /api/documents/[id]/assets/[filename]', () => {
     const { single } = await importRoutes()
     const res = await single.GET(
       buildRequest(`http://localhost/api/documents/${doc.id}/assets/x.png`),
-      { params: Promise.resolve({ id: doc.id, filename: 'x.png' }) },
+      { params: Promise.resolve({ id: doc.id, filename: ['x.png'] }) },
     )
     expect(res.status).toBe(200)
     expect(res.headers.get('content-type')).toBe('image/png')
@@ -194,13 +194,13 @@ describe('GET /api/documents/[id]/assets/[filename]', () => {
     const { single } = await importRoutes()
     const res = await single.GET(
       buildRequest(`http://localhost/api/documents/${doc.id}/assets/..%2Fetc`),
-      { params: Promise.resolve({ id: doc.id, filename: '..%2Fetc' }) },
+      { params: Promise.resolve({ id: doc.id, filename: ['..%2Fetc'] }) },
     )
     expect(res.status).toBe(400)
   })
 })
 
-describe('DELETE /api/documents/[id]/assets/[filename]', () => {
+describe('DELETE /api/documents/[id]/assets/[...filename]', () => {
   it('removes the asset', async () => {
     const { u, doc } = await seedDoc()
     await assetsQ.create(u.id, doc.id, {
@@ -215,7 +215,7 @@ describe('DELETE /api/documents/[id]/assets/[filename]', () => {
       buildRequest(`http://localhost/api/documents/${doc.id}/assets/del.jpg`, {
         method: 'DELETE',
       }),
-      { params: Promise.resolve({ id: doc.id, filename: 'del.jpg' }) },
+      { params: Promise.resolve({ id: doc.id, filename: ['del.jpg'] }) },
     )
     expect(res.status).toBe(200)
     expect(await assetsQ.get(u.id, doc.id, 'del.jpg')).toBeNull()
@@ -229,8 +229,54 @@ describe('DELETE /api/documents/[id]/assets/[filename]', () => {
       buildRequest(`http://localhost/api/documents/${doc.id}/assets/missing.jpg`, {
         method: 'DELETE',
       }),
-      { params: Promise.resolve({ id: doc.id, filename: 'missing.jpg' }) },
+      { params: Promise.resolve({ id: doc.id, filename: ['missing.jpg'] }) },
     )
     expect(res.status).toBe(404)
+  })
+})
+
+describe('folder paths (imported projects)', () => {
+  it('stores a file under its `path` and serves it by its segments', async () => {
+    const { u, doc } = await seedDoc()
+    authMock.mockResolvedValue({ user: { id: u.id } })
+    const { list, single } = await importRoutes()
+    const form = makeMultipart([{ name: 'logo.png', type: 'image/png', body: new Uint8Array([9, 8, 7]) }])
+    form.append('path', 'figures/my logo.png')
+    const res = await list.POST(
+      buildRequest(`http://localhost/api/documents/${doc.id}/assets`, { method: 'POST', body: form }),
+      { params: Promise.resolve({ id: doc.id }) },
+    )
+    const body = (await res.json()) as { assets: { filename: string }[] }
+    expect(body.assets[0]!.filename).toBe('figures/my_logo.png')
+
+    const got = await single.GET(
+      buildRequest(`http://localhost/api/documents/${doc.id}/assets/figures/my_logo.png`),
+      { params: Promise.resolve({ id: doc.id, filename: ['figures', 'my_logo.png'] }) },
+    )
+    expect(got.status).toBe(200)
+    expect([...new Uint8Array(await got.arrayBuffer())]).toEqual([9, 8, 7])
+
+    const del = await single.DELETE(
+      buildRequest(`http://localhost/api/documents/${doc.id}/assets/figures/my_logo.png`, { method: 'DELETE' }),
+      { params: Promise.resolve({ id: doc.id, filename: ['figures', 'my_logo.png'] }) },
+    )
+    expect(del.status).toBe(200)
+  })
+
+  it('never stores a climbing path, and rejects traversal segments on read', async () => {
+    const { u, doc } = await seedDoc()
+    const asset = await assetsQ.create(u.id, doc.id, {
+      filename: 'a/../../b.png',
+      mimeType: 'image/png',
+      sizeBytes: 1,
+      bytes: Buffer.from([1]),
+    })
+    expect(asset.filename).toBe('b.png')
+    authMock.mockResolvedValue({ user: { id: u.id } })
+    const { single } = await importRoutes()
+    for (const segments of [['..', 'etc'], ['a', ''], ['a%2Fb.png']]) {
+      const res = await single.GET(buildRequest('http://localhost/x'), { params: Promise.resolve({ id: doc.id, filename: segments }) })
+      expect(res.status).toBe(400)
+    }
   })
 })

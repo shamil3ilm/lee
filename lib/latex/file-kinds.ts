@@ -1,7 +1,7 @@
 // File kinds in a LaTeX project: main.tex is the document's source, every
 // other file is a document asset bundled flat next to it at compile time.
 
-export type ProjectFileKind = 'tex' | 'bib' | 'sty' | 'cls' | 'image' | 'pdf' | 'other'
+export type ProjectFileKind = 'tex' | 'bib' | 'sty' | 'cls' | 'text' | 'image' | 'pdf' | 'other'
 
 export const MAIN_FILE = 'main.tex'
 
@@ -10,6 +10,19 @@ const EXT_KIND: Readonly<Record<string, ProjectFileKind>> = {
   bib: 'bib',
   sty: 'sty',
   cls: 'cls',
+  // Package-like files (bibliography styles, biblatex styles, font and
+  // class option files) open as text like a .sty.
+  bst: 'sty',
+  bbx: 'sty',
+  cbx: 'sty',
+  def: 'sty',
+  cfg: 'sty',
+  clo: 'sty',
+  fd: 'sty',
+  txt: 'text',
+  md: 'text',
+  csv: 'text',
+  dat: 'text',
   png: 'image',
   jpg: 'image',
   jpeg: 'image',
@@ -31,7 +44,7 @@ export function fileKind(filename: string): ProjectFileKind {
 /** Files the editor can open as text in a tab. */
 export function isTextFile(filename: string): boolean {
   const kind = fileKind(filename)
-  return kind === 'tex' || kind === 'bib' || kind === 'sty' || kind === 'cls'
+  return kind === 'tex' || kind === 'bib' || kind === 'sty' || kind === 'cls' || kind === 'text'
 }
 
 /** `accept` for the Import / Upload file pickers. */
@@ -43,6 +56,7 @@ export function mimeForFile(filename: string, browserType: string): string {
   const kind = fileKind(filename)
   if (kind === 'bib') return 'text/x-bibtex'
   if (kind === 'tex' || kind === 'sty' || kind === 'cls') return 'text/x-tex'
+  if (kind === 'text') return 'text/plain'
   return 'application/octet-stream'
 }
 

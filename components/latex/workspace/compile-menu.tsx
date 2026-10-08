@@ -33,6 +33,8 @@ export interface CompileMenuProps {
   onSettings: (next: CompileSettings) => void
   onCompile: () => void
   onClearCache: () => void
+  /** Icon-only primary button on narrow workspaces (the label stays for screen readers). */
+  compact?: boolean
 }
 
 function Hint({ children }: { children: string }) {
@@ -56,7 +58,7 @@ export function CompileMenu(p: CompileMenuProps) {
         className="inline-flex items-center gap-1.5 whitespace-nowrap px-2.5 text-xs font-semibold hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:opacity-80"
       >
         {p.compiling ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
-        {p.compiling ? 'Compiling…' : 'Recompile'}
+        <span className={cn(p.compact && 'hidden @md/editor:inline')}>{p.compiling ? 'Compiling…' : 'Recompile'}</span>
       </button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

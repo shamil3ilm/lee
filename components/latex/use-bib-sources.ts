@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import type { AssetMetadata } from '@/lib/db/queries/documentAssets'
+import { assetUrl } from '@/lib/latex/project/paths'
 
 const MAX_BIB_BYTES = 512 * 1024
 
@@ -22,7 +23,7 @@ export function useBibSources(documentId: string, assets: readonly AssetMetadata
     const controller = new AbortController()
     Promise.all(
       names.map((name) =>
-        fetch(`/api/documents/${documentId}/assets/${encodeURIComponent(name)}`, {
+        fetch(assetUrl(documentId, name), {
           signal: controller.signal,
         })
           .then((res) => (res.ok ? res.text() : ''))

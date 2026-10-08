@@ -3,6 +3,8 @@ import { and, count, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import { db, type DbClient } from '@/lib/db/client'
 import { documentAssets } from '@/lib/db/schema'
+import { MAX_ASSET_BYTES, MAX_ASSETS_PER_DOCUMENT } from '@/lib/latex/project/limits'
+import { sanitizeAssetPath, sanitizeSegment } from '@/lib/latex/project/paths'
 import type * as schema from '@/lib/db/schema'
 
 // Db / Tx are unions over the postgres-js and PGlite drivers, which hides
@@ -69,8 +71,7 @@ export function sha256Hex(bytes: Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex')
 }
 
-export const MAX_ASSET_BYTES = 5 * 1024 * 1024
-export const MAX_ASSETS_PER_DOCUMENT = 20
+export { MAX_ASSET_BYTES, MAX_ASSETS_PER_DOCUMENT }
 
 export class AssetValidationError extends Error {
   readonly code:
@@ -97,24 +98,11 @@ export class AssetValidationError extends Error {
 }
 
 /**
- * Normalise a caller-supplied filename to something safe to embed in a LaTeX
- * source and to store on the compile server's filesystem. Strips directory
- * traversal, path separators, and any control characters; collapses runs of
- * whitespace to a single underscore. Preserves the extension.
+ * Normalise a caller-supplied file name (directory prefix dropped, unsafe
+ * characters replaced). Asset names may also be folder paths; those go
+ * through `sanitizeAssetPath` (lib/latex/project/paths.ts).
  */
-export function sanitizeFilename(input: string): string {
-  const trimmed = (input ?? '').trim()
-  if (!trimmed) return ''
-  // Drop any directory prefix (Windows or POSIX) and traversal segments.
-  const noPath = trimmed.split(/[\\/]/).pop() ?? ''
-  const noTraversal = noPath.replace(/\.\.+/g, '.')
-  // Replace whitespace runs with a single '_'.
-  const collapsed = noTraversal.replace(/\s+/g, '_')
-  // Keep alphanumerics, dot, dash, underscore. Anything else → underscore.
-  const safe = collapsed.replace(/[^A-Za-z0-9._-]/g, '_')
-  // Collapse runs of underscores to a single one to keep names tidy.
-  return safe.replace(/_{2,}/g, '_').slice(0, 200)
-}
+export const sanitizeFilename = sanitizeSegment
 
 /**
  * List all assets belonging to (userId, documentId) — metadata only. Bytes
@@ -236,7 +224,8 @@ export async function listWithBytes(
  * Create a new asset. Enforces:
  *   - filename is non-empty after sanitisation
  *   - size <= MAX_ASSET_BYTES (5MB per file)
- *   - document holds <= MAX_ASSETS_PER_DOCUMENT (20 per document)
+ *   - document holds <= MAX_ASSETS_PER_DOCUMENT (100 per document)
+ *   - the name may be a folder path ('figures/logo.png'), kept when clean
  *   - filename is unique per document (also enforced at DB level via
  *     the unique index — we check up-front for a friendlier error).
  * Throws `AssetValidationError` on failure so the API layer can map to a
@@ -248,7 +237,7 @@ export async function validateNew(
   input: { filename: string; sizeBytes: number },
   client: DbClient = db,
 ): Promise<string> {
-  const filename = sanitizeFilename(input.filename)
+  const filename = sanitizeAssetPath(input.filename)
   if (!filename) {
     throw new AssetValidationError('filename_empty', 'Filename is empty after sanitisation.')
   }
@@ -540,7 +529,7 @@ export async function renameFile(
   newName: string,
   client: DbClient = db,
 ): Promise<AssetMetadata | null> {
-  const target = sanitizeFilename(newName)
+  const target = sanitizeAssetPath(newName)
   if (!target) {
     throw new AssetValidationError('invalid_new_filename', 'New filename is empty after sanitisation.')
   }

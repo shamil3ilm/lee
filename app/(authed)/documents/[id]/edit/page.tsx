@@ -10,11 +10,14 @@ export const dynamic = 'force-dynamic'
 
 interface EditPageProps {
   params: Promise<{ id: string }>
+  /** compile=1: just imported, compile once on open. */
+  searchParams: Promise<{ compile?: string | string[] }>
 }
 
-export default async function EditLatexPage({ params }: EditPageProps) {
+export default async function EditLatexPage({ params, searchParams }: EditPageProps) {
   const userId = await requireUserId()
   const { id } = await params
+  const { compile } = await searchParams
   const doc = await documentsQ.getById(userId, id)
   if (!doc) notFound()
   if (doc.kind !== 'latex_cv' && doc.kind !== 'latex_cover_letter') {
@@ -39,6 +42,8 @@ export default async function EditLatexPage({ params }: EditPageProps) {
         initialError={compileError ? { message: compileError, log: compileLog ?? '' } : null}
         initialAssets={initialAssets}
         initialSettings={readCompileSettings(content.success ? content.data.compileSettings : undefined)}
+        initialMainFile={content.success ? (content.data.mainFile ?? null) : null}
+        compileOnOpen={compile === '1'}
       />
     </div>
   )

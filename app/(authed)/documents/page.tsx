@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { FilePlus2, Layers } from 'lucide-react'
+import { Layers } from 'lucide-react'
 import { requireUserId } from '@/lib/auth/require-session'
 import * as documentsQ from '@/lib/db/queries/documents'
 import * as cvScoresQ from '@/lib/db/queries/cvScores'
@@ -7,6 +7,7 @@ import { toDocScoreMap } from '@/lib/cv-score/fit'
 import { PageHeader } from '@/components/page-header'
 import { DocumentsTable } from '@/components/documents-table'
 import { Button } from '@/components/ui/button'
+import { DocumentsNewMenu, DocumentsZipDropZone } from '@/components/documents-new-menu'
 
 export const dynamic = 'force-dynamic'
 
@@ -88,16 +89,13 @@ export default async function DocumentsLibraryPage({
                 Merge PDFs
               </Link>
             </Button>
-            <Button asChild size="sm">
-              <Link href="/documents/new/latex">
-                <FilePlus2 className="size-4" />
-                New LaTeX CV
-              </Link>
-            </Button>
+            <DocumentsNewMenu />
           </>
         }
       />
-      <DocumentsTable documents={documents} currentFilter={filter} scores={scores} />
+      <DocumentsZipDropZone>
+        <DocumentsTable documents={documents} currentFilter={filter} scores={scores} />
+      </DocumentsZipDropZone>
     </div>
   )
 }

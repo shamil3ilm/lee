@@ -232,6 +232,12 @@ export const latexDocumentContentSchema = z.object({
   compileLog: z.string().optional(),
   /** Compile service + engine chosen in the editor; absent = auto + pdflatex. */
   compileSettings: compileSettingsSchema.optional().catch(undefined),
+  /**
+   * Where the source lived in an imported project ('thesis.tex',
+   * 'src/main.tex'): it compiles as main.tex, and "Download project (.zip)"
+   * puts it back at this path. Absent = main.tex.
+   */
+  mainFile: z.string().max(100).optional().catch(undefined),
 })
 
 export type LatexDocumentContent = z.infer<typeof latexDocumentContentSchema>

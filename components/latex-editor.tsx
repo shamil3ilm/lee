@@ -35,6 +35,12 @@ import { useWorkspaceSize } from '@/components/latex/workspace/use-workspace-siz
 import { useAutosave } from '@/components/latex/workspace/use-autosave'
 import { useProjectFiles } from '@/components/latex/workspace/use-project-files'
 import { useImport } from '@/components/latex/workspace/use-import'
+import { useZipPicker, ZipImportHost, ZipInput } from '@/components/latex/project-import/zip-import-host'
+import type { EditorImportResult } from '@/components/latex/project-import/zip-import-dialog'
+import { ImportReport } from '@/components/latex/project-import/import-report'
+import { takeImportReport, type ImportReportItem } from '@/components/latex/project-import/report-store'
+import { downloadProjectZip } from '@/components/latex/project-import/export-zip'
+import { isZipFile } from '@/lib/latex/project/file-types'
 
 // CodeMirror 6 is bundled (no CDN) into its own chunk that only this route
 // loads, after hydration. Until it arrives a plain textarea is editable, so
@@ -53,6 +59,10 @@ interface LatexEditorProps {
   initialAssets: AssetMetadata[]
   /** Saved compile service + engine (defaults: auto fallback, pdfLaTeX). */
   initialSettings?: CompileSettings
+  /** The source's path in an imported project (export puts it back there). */
+  initialMainFile?: string | null
+  /** Compile once on open (right after a project import). */
+  compileOnOpen?: boolean
   className?: string
 }
 
@@ -74,6 +84,8 @@ export function LatexEditor({
   initialError,
   initialAssets,
   initialSettings = DEFAULT_COMPILE_SETTINGS,
+  initialMainFile = null,
+  compileOnOpen = false,
   className,
 }: LatexEditorProps) {
   const rootRef = useRef<HTMLDivElement | null>(null)
@@ -88,6 +100,13 @@ export function LatexEditor({
   const [banner, setBanner] = useState<Banner | null>(null)
   const [overlayPanel, setOverlayPanel] = useState<SidePanel>(null)
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
+  const [mainFile, setMainFile] = useState<string | null>(initialMainFile)
+  const [report, setReport] = useState<ImportReportItem[]>([])
+  const zip = useZipPicker()
+  // Compile once the state an import (or opening after one) set has settled.
+  const compileSoon = useRef(compileOnOpen)
+  // Phones: after a compile pressed in the Editor view, show the PDF.
+  const showPdfAfterCompile = useRef(false)
   const [prefs, setPrefs] = useEditorPrefs()
   const size = useWorkspaceSize(rootRef)
   const files = useProjectFiles(documentId, initialAssets)
@@ -131,8 +150,30 @@ export function LatexEditor({
   const compileCurrent = useCallback(() => compileNow(snapshotRef.current), [compileNow])
   const saveAndCompile = useCallback(() => {
     void autosave.saveNow()
+    showPdfAfterCompile.current = true
     compileCurrent()
   }, [autosave, compileCurrent])
+
+  useEffect(() => {
+    if (!compileSoon.current) return
+    // Cleared only when it runs: Strict Mode's effect replay must not drop it.
+    const t = setTimeout(() => {
+      compileSoon.current = false
+      compileNow(snapshotRef.current)
+    }, 50)
+    return () => clearTimeout(t)
+  }, [snapshot, compileNow])
+
+  // A report handed over by an import from the Documents page; drop the
+  // one-time ?compile=1 from the address bar.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const items = takeImportReport(documentId)
+      if (items.length > 0) setReport(items)
+      if (compileOnOpen) window.history.replaceState(null, '', window.location.pathname)
+    }, 0)
+    return () => clearTimeout(t)
+  }, [documentId, compileOnOpen])
 
   // Ctrl/Cmd+Enter and Ctrl/Cmd+S compile (and save) from anywhere on the
   // page. Inside CodeMirror its own keymap handles them first.
@@ -177,6 +218,50 @@ export function LatexEditor({
   const importInputRef = useRef<HTMLInputElement | null>(null)
   const importer = useImport({ files, inputRef: importInputRef, replaceMain, insertSnippet })
 
+  const narrowNow = size === 'narrow'
+  useEffect(() => {
+    if (compile.compiling || !showPdfAfterCompile.current) return
+    showPdfAfterCompile.current = false
+    if (!narrowNow || compile.error || !compile.pdfUrl) return
+    const t = setTimeout(() => setNarrowPane('pdf'), 0)
+    return () => clearTimeout(t)
+  }, [compile.compiling, compile.error, compile.pdfUrl, narrowNow])
+
+  const importAny = useCallback(
+    (list: FileList | readonly File[], pos: number | null = null) => {
+      const all = Array.from(list)
+      const rest = all.filter((f) => !isZipFile(f))
+      if (rest.length < all.length) zip.takeDropped(all)
+      if (rest.length > 0) void importer.importFiles(rest, pos)
+    },
+    [importer, zip],
+  )
+
+  const onImported = useCallback(
+    (result: EditorImportResult) => {
+      files.forget(result.removed)
+      if (result.created.length > 0) files.setAssets((a) => [...a, ...result.created])
+      if (result.source !== null) {
+        replaceMain(result.source)
+        setMainFile(result.mainFile)
+      }
+      const { engine, service } = result
+      if (engine) setSettings((s) => ({ ...s, engine, ...(service ? { service } : {}) }))
+      setReport(result.report)
+      compileSoon.current = true
+    },
+    [files, replaceMain],
+  )
+
+  async function downloadZip(): Promise<void> {
+    try {
+      await files.flushTexts()
+      await downloadProjectZip({ documentId, title, source, mainFile, assets: files.assets })
+    } catch {
+      toast.error('Could not build the project zip. Try again.')
+    }
+  }
+
   const jumpToLine = useCallback(
     (line: number, file: string = MAIN_FILE) => {
       setNarrowPane('editor')
@@ -204,7 +289,7 @@ export function LatexEditor({
     setBanner({ fileName: pathFileName(text), pasted: text })
     return true
   }, [])
-  const onDropFiles = useCallback((list: FileList, pos: number | null) => void importer.importFiles(list, pos), [importer])
+  const onDropFiles = useCallback((list: FileList, pos: number | null) => importAny(list, pos), [importAny])
   const onEditorReady = useCallback(() => setEditorReady(true), [])
 
   const parsedLog = useMemo(() => (compile.error ? parseLatexLog(compile.error.log) : null), [compile.error])
@@ -277,7 +362,8 @@ export function LatexEditor({
         onDelete={setPendingDelete}
         onCreate={files.create}
         onUpload={importer.openPicker}
-        onDropFiles={(list) => void importer.importFiles(list)}
+        onImportZip={zip.open}
+        onDropFiles={(list) => importAny(list)}
         onJump={(line) => jumpToLine(line, files.active)}
       />
     ) : sidePanel === 'search' ? (
@@ -302,6 +388,7 @@ export function LatexEditor({
         fontSize={prefs.fontSize}
         onFontSize={(d) => setPrefs({ fontSize: stepFontSize(prefs.fontSize, d) })}
       />
+      <ImportReport items={report} onJump={(file, line) => jumpToLine(line, file)} onDismiss={() => setReport([])} />
       {banner ? (
         <PathBanner
           fileName={banner.fileName}
@@ -376,19 +463,21 @@ export function LatexEditor({
       </div>
     )
 
+  const compileMenu = {
+    compiling: compile.compiling,
+    autoCompile: compile.autoCompile,
+    onAutoCompile: compile.setAutoCompile,
+    fastMode: prefs.fastMode,
+    onFastMode: (on: boolean) => setPrefs({ fastMode: on }),
+    settings,
+    onSettings: setSettings,
+    onCompile: saveAndCompile,
+    onClearCache: () => compileNow(snapshotRef.current, { fresh: true }),
+  }
+
   const pdfColumn = (
     <PdfPane
-      compile={{
-        compiling: compile.compiling,
-        autoCompile: compile.autoCompile,
-        onAutoCompile: compile.setAutoCompile,
-        fastMode: prefs.fastMode,
-        onFastMode: (on) => setPrefs({ fastMode: on }),
-        settings,
-        onSettings: setSettings,
-        onCompile: saveAndCompile,
-        onClearCache: () => compileNow(snapshotRef.current, { fresh: true }),
-      }}
+      compile={compileMenu}
       previewState={compile.previewState}
       pdfBytes={compile.pdfBytes}
       pdfUrl={compile.pdfUrl}
@@ -397,10 +486,7 @@ export function LatexEditor({
       serviceNote={compile.outcome.notes.join(' ')}
       lastCompile={compile.lastCompile}
       downloadName={`${title.replace(/[^a-z0-9\-_. ]/gi, '_') || 'document'}.pdf`}
-      errors={parsedLog?.errors.length ?? (compile.error ? 1 : 0)}
-      warnings={parsedLog?.warnings.length ?? 0}
       logsOpen={compile.problemsOpen}
-      onLogs={compile.setProblemsOpen}
       logs={logs}
       dark={prefs.darkPdf}
       onDark={(on) => setPrefs({ darkPdf: on })}
@@ -425,6 +511,17 @@ export function LatexEditor({
           pdfUrl={compile.pdfUrl}
           onImport={importer.openPicker}
           onDownloadTex={downloadTex}
+          onImportZip={zip.open}
+          onDownloadZip={() => void downloadZip()}
+          compile={compileMenu}
+          errors={parsedLog?.errors.length ?? (compile.error ? 1 : 0)}
+          warnings={parsedLog?.warnings.length ?? 0}
+          logsOpen={compile.problemsOpen}
+          onLogs={(open) => {
+            compile.setProblemsOpen(open)
+            // The logs show in the PDF column; on phones, switch to it.
+            if (open && narrow) setNarrowPane('pdf')
+          }}
         />
         <WorkspaceLayout
           size={size}
@@ -454,11 +551,18 @@ export function LatexEditor({
           tabIndex={-1}
           data-testid="import-input"
           onChange={(e) => {
-            if (e.target.files) void importer.importFiles(e.target.files)
+            if (e.target.files) importAny(Array.from(e.target.files))
             e.target.value = ''
           }}
         />
         <ImportTexDialog {...importer.dialog} />
+        <ZipInput inputRef={zip.inputRef} onChange={zip.onInputChange} />
+        <ZipImportHost
+          file={zip.file}
+          target={{ kind: 'editor', documentId, assets: files.assets }}
+          onClose={() => zip.setFile(null)}
+          onImported={onImported}
+        />
         <ConfirmDialog
           open={pendingDelete !== null}
           onOpenChange={(open) => !open && setPendingDelete(null)}
