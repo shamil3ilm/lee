@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { WHATS_NEW_E2E_WATCH } from './seed-radar-new'
+import { WHATS_NEW_E2E_WATCH } from './radar-whats-new-data'
 
 // Radar › What's new on seeded, synthetic shared rows (tests/e2e/seed-radar-new.ts;
 // no network): categories, filters, reason chips, the folded variant, and

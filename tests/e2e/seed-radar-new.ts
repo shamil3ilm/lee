@@ -6,7 +6,7 @@
 import { storeNewItems } from '@/lib/radar/new/store'
 import type { NewItemInput } from '@/lib/radar/new/types'
 
-export const WHATS_NEW_E2E_WATCH = 'quillfeather'
+export { WHATS_NEW_E2E_WATCH } from './radar-whats-new-data'
 
 const DAY = 86_400_000
 
