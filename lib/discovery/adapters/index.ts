@@ -16,6 +16,7 @@ import { WeWorkRemotelyAdapter } from './weworkremotely'
 import { RemotiveAdapter } from './remotive'
 import { AdzunaAdapter } from './adzuna'
 import { EmailAlertAdapter } from './email-alert'
+import { GoogleAlertsAdapter } from './google-alerts'
 import { WorkdayAdapter } from './workday'
 import { WatchAdapter } from './watch'
 import { WorkingNomadsAdapter } from './workingnomads'
@@ -43,6 +44,7 @@ const registry: Record<string, DiscoveryAdapter> = {
   remotive: new RemotiveAdapter(),
   adzuna: new AdzunaAdapter(),
   email_alert: new EmailAlertAdapter(),
+  google_alerts: new GoogleAlertsAdapter(),
   workday: new WorkdayAdapter(),
   watch: new WatchAdapter(),
   workingnomads: new WorkingNomadsAdapter(),

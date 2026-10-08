@@ -9,6 +9,9 @@ import { SourceRow, type SourceRowItem } from '@/components/source-row'
 import { EmptyState } from '@/components/empty-state'
 import { EmailAlertsPanel } from '@/components/email-alerts-panel'
 import { WatchListPanel, type WatchItem } from '@/components/watch-list-panel'
+import { GoogleAlertsPanel } from '@/components/google-alerts-panel'
+import { googleAlertsPanelData } from '@/lib/google-alerts/panel-data'
+import { getProfile } from '@/lib/profile/service'
 import { PopularStarters } from './popular-starters'
 import { describePollStats, readSourceLastResult } from '@/lib/discovery/poll-stats'
 
@@ -41,7 +44,12 @@ function configValue(config: SourceConfig): string {
 
 export default async function SourcesSettingsPage(): Promise<React.ReactElement> {
   const userId = await requireUserId()
-  const [sources, alertStats] = await Promise.all([sourcesQ.list(userId), emailAlertsQ.summaryBySite(userId)])
+  const [sources, alertStats, profile] = await Promise.all([
+    sourcesQ.list(userId),
+    emailAlertsQ.summaryBySite(userId),
+    getProfile(userId),
+  ])
+  const googleAlerts = googleAlertsPanelData(profile, sources)
 
   const polled = sources.filter((s) => s.kind !== 'watch')
   const watch: WatchItem[] = sources
@@ -107,6 +115,8 @@ export default async function SourcesSettingsPage(): Promise<React.ReactElement>
         stats={alertStats.map((s) => ({ ...s, lastAlertAt: s.lastAlertAt ? s.lastAlertAt.toISOString() : null }))}
         source={alertSource ? { enabled: alertSource.enabled, lastError: alertSource.lastError } : null}
       />
+
+      <GoogleAlertsPanel queries={googleAlerts.queries} source={googleAlerts.source} />
 
       <WatchListPanel items={watch} />
 

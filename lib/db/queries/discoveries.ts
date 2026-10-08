@@ -347,6 +347,23 @@ export async function countList(
   return Number(row?.c ?? 0)
 }
 
+/**
+ * Which of these apply URLs the user already has as a discovery from ANY
+ * source (cross-source dedupe for link-only sources such as Google Alerts).
+ */
+export async function existingApplyUrls(
+  userId: string,
+  urls: readonly string[],
+  client: DbClient = db,
+): Promise<Set<string>> {
+  if (urls.length === 0) return new Set()
+  const rows = await client
+    .select({ url: sql<string | null>`${discoveries.normalized}->>'applyUrl'` })
+    .from(discoveries)
+    .where(and(eq(discoveries.userId, userId), inArray(sql`${discoveries.normalized}->>'applyUrl'`, [...urls])))
+  return new Set(rows.map((r) => r.url).filter((u): u is string => Boolean(u)))
+}
+
 export async function getById(
   userId: string,
   id: string,
