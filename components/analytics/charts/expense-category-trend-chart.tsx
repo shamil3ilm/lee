@@ -2,11 +2,13 @@
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
 import {
   ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart'
-import { CHART_MARGIN, TIME_AXIS, VALUE_AXIS } from '@/components/ui/chart-defaults'
+import { CHART_MARGIN, LEGEND_PROPS, TIME_AXIS, VALUE_AXIS, lineProps } from '@/components/ui/chart-defaults'
 import { formatMoney, formatMoneyAxis } from '@/lib/ui/money'
 
 interface ExpenseCategoryTrendChartProps {
@@ -25,15 +27,9 @@ export function ExpenseCategoryTrendChart({ config, categories, data }: ExpenseC
         <ChartTooltip
           content={<ChartTooltipContent valueFormatter={(v) => formatMoney(Number(v))} />}
         />
+        <ChartLegend {...LEGEND_PROPS} content={<ChartLegendContent />} />
         {categories.map((c) => (
-          <Line
-            key={c}
-            type="monotone"
-            dataKey={c}
-            stroke={`var(--color-${c})`}
-            strokeWidth={2}
-            dot={false}
-          />
+          <Line key={c} dataKey={c} stroke={`var(--color-${c})`} fill={`var(--color-${c})`} {...lineProps(data.length)} />
         ))}
       </LineChart>
     </ChartContainer>

@@ -3,11 +3,13 @@ import { CHART_MUTED, CHART_PRIMARY } from '@/lib/ui/chart-palette'
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from 'recharts'
 import {
   ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart'
-import { CATEGORY_AXIS, CHART_MARGIN_LABELLED, VALUE_AXIS } from '@/components/ui/chart-defaults'
+import { CATEGORY_AXIS, CHART_MARGIN_LABELLED, LEGEND_PROPS, VALUE_AXIS } from '@/components/ui/chart-defaults'
 import { formatMoney, formatMoneyAxis } from '@/lib/ui/money'
 
 const CONFIG: ChartConfig = {
@@ -32,6 +34,7 @@ export function MonthOverMonthChart({ data }: { data: MonthOverMonthDatum[] }) {
         <ChartTooltip
           content={<ChartTooltipContent valueFormatter={(v) => formatMoney(Number(v))} />}
         />
+        <ChartLegend {...LEGEND_PROPS} content={<ChartLegendContent />} />
         <Bar dataKey="previous" fill="var(--color-previous)" radius={[2, 2, 0, 0]} />
         <Bar dataKey="current" fill="var(--color-current)" radius={[2, 2, 0, 0]}>
           <LabelList

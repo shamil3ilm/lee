@@ -1,6 +1,10 @@
 import { VITAL_THRESHOLDS, type VitalMetric } from '@/lib/vitals/metrics'
 import type { TrendPoint } from '@/lib/vitals/report'
+import { shortDay } from '@/lib/ui/date'
 import { formatVital } from './vitals-format'
+
+/** Fewer days with data than this and the sparkline says so instead. */
+export const MIN_TREND_POINTS = 3
 
 interface VitalsTrendProps {
   metric: VitalMetric
@@ -14,7 +18,9 @@ const PAD = 4
 /**
  * Daily p75 as a small server-rendered SVG (no chart library on this page):
  * one dot per day with data, joined by a line, over the good / poor
- * threshold lines. Fixed size, so it never shifts layout.
+ * threshold lines. Fixed size, so it never shifts layout. With fewer than
+ * MIN_TREND_POINTS days of data it shows a note of the same height instead
+ * of an empty or one-dot chart.
  */
 export function VitalsTrend({ metric, points }: VitalsTrendProps) {
   const { good, poor } = VITAL_THRESHOLDS[metric]
@@ -26,8 +32,15 @@ export function VitalsTrend({ metric, points }: VitalsTrendProps) {
     .map((p, i) => (p.p75 === null ? null : { x: x(i), y: y(p.p75), p }))
     .filter((d): d is NonNullable<typeof d> => d !== null)
   const path = dots.map((d, i) => `${i === 0 ? 'M' : 'L'}${d.x.toFixed(1)},${d.y.toFixed(1)}`).join(' ')
-  const first = points[0]?.day
-  const last = points[points.length - 1]?.day
+  const first = points[0]?.day ? shortDay(points[0].day) : ''
+  const last = points[points.length - 1]?.day ? shortDay(points[points.length - 1]!.day) : ''
+  if (dots.length < MIN_TREND_POINTS) {
+    return (
+      <p className="flex h-[88px] items-center justify-center rounded-md bg-muted px-3 text-center text-xs text-muted-foreground">
+        Not enough days with data yet for a trend.
+      </p>
+    )
+  }
   return (
     <figure className="space-y-1">
       <svg
@@ -42,7 +55,7 @@ export function VitalsTrend({ metric, points }: VitalsTrendProps) {
         {path ? <path d={path} fill="none" className="stroke-primary" strokeWidth={1.5} vectorEffect="non-scaling-stroke" /> : null}
         {dots.map((d) => (
           <circle key={d.p.day} cx={d.x} cy={d.y} r={2} className="fill-primary">
-            <title>{`${d.p.day}: p75 ${formatVital(metric, d.p.p75)} (${d.p.count} samples)`}</title>
+            <title>{`${shortDay(d.p.day)}: p75 ${formatVital(metric, d.p.p75)} (${d.p.count} samples)`}</title>
           </circle>
         ))}
       </svg>

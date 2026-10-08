@@ -1,7 +1,7 @@
 'use client'
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
-import { CHART_MARGIN, TIME_AXIS, VALUE_AXIS } from '@/components/ui/chart-defaults'
+import { CHART_MARGIN, TIME_AXIS, VALUE_AXIS, lineProps } from '@/components/ui/chart-defaults'
 import { CHART_PRIMARY } from '@/lib/ui/chart-palette'
 
 const CONFIG: ChartConfig = {
@@ -22,7 +22,7 @@ export function RatingChart({ data }: { data: RatingPoint[] }) {
         <XAxis dataKey="label" {...TIME_AXIS} />
         <YAxis {...VALUE_AXIS} domain={['dataMin - 50', 'dataMax + 50']} allowDecimals={false} />
         <ChartTooltip content={<ChartTooltipContent />} />
-        <Line type="monotone" dataKey="rating" stroke="var(--color-rating)" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} />
+        <Line dataKey="rating" stroke="var(--color-rating)" fill="var(--color-rating)" {...lineProps(data.length)} isAnimationActive={false} />
       </LineChart>
     </ChartContainer>
   )

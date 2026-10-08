@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/empty-state'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { VitalsTrend } from '@/components/analytics/vitals-trend'
+import { MIN_STAT_POINTS, hasEnoughForStats } from '@/components/ui/chart-defaults'
 import {
   formatVital,
   RATING_BAR_CLASS,
@@ -73,8 +74,12 @@ export default async function PerformancePage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-semibold tabular-nums">{formatVital(o.metric, o.p75)}</span>
-                    {o.rating ? (
+                    {hasEnoughForStats(o.count) ? (
+                      <span className="text-2xl font-semibold tabular-nums">{formatVital(o.metric, o.p75)}</span>
+                    ) : (
+                      <span className="text-sm font-medium text-muted-foreground">Not enough samples yet</span>
+                    )}
+                    {o.rating && hasEnoughForStats(o.count) ? (
                       <span className={cn('rounded px-1.5 py-0.5 text-[11px] font-medium', RATING_CLASS[o.rating])}>
                         {RATING_LABEL[o.rating]}
                       </span>
@@ -118,16 +123,21 @@ export default async function PerformancePage() {
                       <TableCell className="text-right tabular-nums">{r.loads}</TableCell>
                       {VITAL_METRICS.map((m) => {
                         const s = r.metrics[m]
+                        const enough = hasEnoughForStats(s.count)
                         return (
                           <TableCell key={m} className="text-right">
                             <span
                               className={cn(
                                 'rounded px-1.5 py-0.5 text-xs tabular-nums',
-                                s.rating ? RATING_CLASS[s.rating] : 'text-muted-foreground',
+                                enough && s.rating ? RATING_CLASS[s.rating] : 'text-muted-foreground',
                               )}
-                              title={s.count ? `${s.count} samples` : 'No samples'}
+                              title={
+                                enough
+                                  ? `${s.count} samples`
+                                  : `${s.count} of ${MIN_STAT_POINTS} samples needed for a p75`
+                              }
                             >
-                              {formatVital(m, s.p75)}
+                              {enough ? formatVital(m, s.p75) : '—'}
                             </span>
                           </TableCell>
                         )

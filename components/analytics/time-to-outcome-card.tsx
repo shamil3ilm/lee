@@ -2,6 +2,7 @@
 import { Hourglass } from 'lucide-react'
 import { AnalyticsCardShell } from './card-shell'
 import type { TimeToOutcomeStats } from '@/lib/analytics/service'
+import { MIN_STAT_POINTS, hasEnoughForStats } from '@/components/ui/chart-defaults'
 
 interface TimeToOutcomeCardProps {
   data: TimeToOutcomeStats
@@ -9,8 +10,9 @@ interface TimeToOutcomeCardProps {
 
 /**
  * Key-numbers card (no chart) — median and p90 days from applied_at to the
- * first status change into 'offer' or 'rejected'. Sample size is exposed so
- * the reader can weigh how much to trust the numbers.
+ * first status change into 'offer' or 'rejected'. Below MIN_STAT_POINTS
+ * outcomes a "median" would mislead, so the block shows the count and
+ * "Not enough outcomes yet" instead.
  */
 export function TimeToOutcomeCard({ data }: TimeToOutcomeCardProps) {
   const isEmpty = data.offer.count === 0 && data.rejection.count === 0
@@ -18,7 +20,7 @@ export function TimeToOutcomeCard({ data }: TimeToOutcomeCardProps) {
   return (
     <AnalyticsCardShell
       title="Time to outcome"
-      description="Median and 90th-percentile days from an application's applied date to the first status change into 'offer' or 'rejected'."
+      description={`Median and 90th-percentile days from applying to an offer or a rejection, once there are ${MIN_STAT_POINTS} outcomes.`}
       exportMetric="time-to-outcome"
       isEmpty={isEmpty}
       emptyMessage="Move applications to offer or rejected to build up an outcome distribution."
@@ -59,6 +61,13 @@ function OutcomeBlock({ label, median, p90, count, accent }: OutcomeBlockProps) 
       <div className={`text-[11px] font-semibold uppercase tracking-wider ${accent}`}>{label}</div>
       {noData ? (
         <p className="text-xs text-muted-foreground">No data yet.</p>
+      ) : !hasEnoughForStats(count) ? (
+        <>
+          <p className="text-xs font-medium text-muted-foreground">Not enough outcomes yet</p>
+          <div className="text-[10px] text-muted-foreground">
+            {outcomeCount(count)} so far. A median needs {MIN_STAT_POINTS}.
+          </div>
+        </>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-2 text-sm">
@@ -75,11 +84,13 @@ function OutcomeBlock({ label, median, p90, count, accent }: OutcomeBlockProps) 
               </div>
             </div>
           </div>
-          <div className="text-[10px] text-muted-foreground">
-            {count === 1 ? '1 outcome' : `${count} outcomes`}
-          </div>
+          <div className="text-[10px] text-muted-foreground">{outcomeCount(count)}</div>
         </>
       )}
     </div>
   )
+}
+
+function outcomeCount(count: number): string {
+  return count === 1 ? '1 outcome' : `${count} outcomes`
 }

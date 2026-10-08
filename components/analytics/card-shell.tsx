@@ -54,18 +54,21 @@ export function AnalyticsCardShell({
   return (
     <Card className={cn('flex min-w-0 flex-col', className)}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <CardTitle>{title}</CardTitle>
           <TooltipProvider delayDuration={200}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button
+                {/* 24px target (WCAG 2.5.8) around a 14px icon. */}
+                <Button
                   type="button"
-                  className="text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
+                  variant="ghost"
+                  size="icon"
+                  className="size-6 text-muted-foreground hover:text-foreground [&_svg]:size-3.5"
                   aria-label={`About ${title}`}
                 >
-                  <HelpCircle className="size-3.5" />
-                </button>
+                  <HelpCircle />
+                </Button>
               </TooltipTrigger>
               <TooltipContent className="max-w-[240px] text-xs">{description}</TooltipContent>
             </Tooltip>
