@@ -20,9 +20,13 @@ test('shortlist renders with reasons, and Not for me takes a reason', async ({ p
 
   const payouts = cards.filter({ hasText: PAYOUTS })
   await expect(payouts).toBeVisible()
-  // The match chip reads "AI 88", or "Match N · AI 88" once the Match Score exists.
-  await expect(payouts.getByRole('list', { name: 'Why it ranks here' })).toContainText('AI 88')
-  await expect(payouts.getByTestId('match-badge')).toContainText('AI 88')
+  // One Fit badge per card; AI 88 and the shortlist's rank parts are in "Why this score".
+  await expect(payouts.getByTestId('match-badge')).toContainText(/^Fit \d+/)
+  await payouts.getByRole('button', { name: /Why this score/ }).click()
+  const why = page.getByTestId('match-why')
+  await expect(why.getByRole('list', { name: 'Fit breakdown' })).toContainText('88')
+  await expect(why.getByTestId('shortlist-reasons')).toContainText('on today’s shortlist')
+  await page.keyboard.press('Escape')
   await expect(payouts).toContainText('Suggested résumé')
 
   const platform = cards.filter({ hasText: PLATFORM })
@@ -76,8 +80,8 @@ test('prepare application runs to applied with the AI fixtures', async ({ page }
   await page.getByRole('link', { name: 'Application details' }).click()
   await expect(page.getByRole('combobox', { name: 'Application status' })).toHaveText('Applied')
 
-  // Home: the week's funnel counts it.
-  await page.goto('/')
+  // Shortlist: the week's apply funnel counts it.
+  await page.goto('/shortlist')
   const funnel = page.getByTestId('week-funnel')
   await expect(funnel).toBeVisible()
   await expect(funnel.getByRole('listitem').filter({ hasText: 'Applied' })).not.toContainText(/^0/)

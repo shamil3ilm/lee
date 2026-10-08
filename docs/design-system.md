@@ -381,6 +381,22 @@ dependency; use it instead of `whitespace-pre-wrap` on raw Markdown.
 <MarkdownText source={job.descriptionMd} className="text-sm" />
 ```
 
+**Page structure primitives** (added after the Oct 8 UX audit):
+
+| Primitive | Rule |
+|---|---|
+| `NoticeArea` (`components/discovery/notice-area.tsx`) | At most **one** notice above a list. Pass notices highest priority first; the rest wait behind "+N more". Notices are one line where possible (compact banner, not a card). |
+| `SectionNav` (`components/section-nav.tsx`) | Sticky in-page anchor chips under the header for pages taller than ~3 screens. Targets get `SECTION_ANCHOR` (`scroll-mt-28`). |
+| `CollapsibleSection` (`components/collapsible-section.tsx`) | A titled group that folds to a one-line status summary ("12 on · 1 failing"). `collapseOnMobile` closes it below `md` without layout shift. Never a native `<details>` triangle. |
+| `ResponsivePopover` (`components/responsive-popover.tsx`) | Rich popovers are anchored popovers from `sm` up and **bottom sheets** on phones (max 85dvh, internal scroll). |
+| Settings links that return (`lib/ui/settings-links.ts`) | Links from a page into Settings carry `?from=<path>`; the settings page offers "Back to …". Only internal paths are accepted. |
+
+Filters: primary filters inline in a toolbar row, the rest under a "More filters (n)" popover, **applied on change** (URL state), with a ghost "Clear" when anything differs from the default. No Filter/Apply buttons.
+
+#### Score vocabulary
+
+Every job shows **one** number: **Fit** (`MatchBadge`, "Fit 76"), coloured by band (75+ strong, 55–74 good, 35–54 fair, below 35 weak). Fit = (Match + AI) ÷ 2 when both exist, otherwise whichever exists (`blendScores`, `lib/discovery/match/blend.ts`). "Fit ~45" means it rests on the job title only. Match (deterministic, from ready profile evidence), AI, Benefits, ranking notes and the shortlist's rank parts appear only inside "Why this score". Never use "%" for a 0–100 score. The shortlist shows its order as "#1", never a second number.
+
 ### Labels, meta lines and times
 
 - **Machine keys → words:** `humanizeLabel` (`lib/ui/labels.ts`) is the one

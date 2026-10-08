@@ -96,6 +96,13 @@ const TARGETS: Target[] = [
   { name: 'settings-storage', path: '/settings/storage' },
   { name: 'settings-scam-shield', path: '/settings/scam-shield' },
   { name: 'analytics-performance', path: '/analytics/performance' },
+  // Extra targets from the Oct 8 UX audit.
+  { name: 'settings-cv', path: '/settings/cv' },
+  { name: 'discoveries-filtered', path: '/discoveries?status=filtered' },
+  { name: 'contacts-empty-search', path: '/contacts?q=zzzzzz-no-match' },
+  { name: 'not-found', path: '/this-page-does-not-exist' },
+  // The retired first-run panel, opened again from Home's "Setup" link.
+  { name: 'dashboard-setup', path: '/?setup=1' },
   { name: 'documents-merge', path: '/documents/merge' },
 ]
 
