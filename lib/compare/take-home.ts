@@ -70,7 +70,7 @@ export function takeHome(input: TakeHomeInput): TakeHome {
   return { gross, taxRate: p.taxRate, net, housing, living, disposable, assumptions: lines }
 }
 
-export type PayBasis = 'disposable' | 'net' | 'gross'
+export type PayBasis = 'net' | 'gross'
 
 export interface PayRatio {
   ratio: number
@@ -78,20 +78,18 @@ export interface PayRatio {
 }
 
 /**
- * Compare like with like: after living costs when both sides have them,
- * else after tax, else gross (the caller labels which).
+ * Compare like with like: take-home after tax when both sides have a tax
+ * rate, else gross (the caller labels which). What is left after living
+ * costs is shown next to it but never used as the headline ratio: small
+ * leftovers turn modest pay gaps into misleading percentages ("+600%").
  */
 export function payRatio(job: TakeHome, current: TakeHome): PayRatio | null {
-  if (job.disposable !== null && current.disposable !== null && current.disposable > 0) {
-    return { ratio: job.disposable / current.disposable, basis: 'disposable' }
-  }
   if (job.net !== null && current.net !== null && current.net > 0) return { ratio: job.net / current.net, basis: 'net' }
   if (current.gross > 0) return { ratio: job.gross / current.gross, basis: 'gross' }
   return null
 }
 
 export const BASIS_LABELS: Readonly<Record<PayBasis, string>> = {
-  disposable: 'take-home after living costs',
   net: 'take-home after tax',
   gross: 'gross pay (tax and costs not set)',
 }

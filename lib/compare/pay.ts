@@ -150,9 +150,7 @@ export function payCriterion(input: {
     drafts.push({
       text: !current?.monthlyGross
         ? 'Add your current pay to compare.'
-        : ratio
-          ? 'Your estimated costs use up this pay or your current pay, so no ratio is shown.'
-          : 'Set where both jobs are to compare take-home.',
+        : 'Set where both jobs are to compare take-home.',
       effect: 0,
       confidence: 'unknown',
       source: { kind: 'current_job', label: 'Your current job' },

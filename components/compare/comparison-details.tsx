@@ -25,7 +25,8 @@ function TakeHomeLine({ label, th, currency }: { label: string; th: TakeHome | n
           <span className="text-muted-foreground">take-home unknown</span>
         ) : (
           <span className="tabular-nums">
-            ≈ {formatMoney(value, currency)}/mo {th.disposable !== null ? 'after tax and living costs' : 'after tax'}
+            ≈ {formatMoney(th.net ?? value, currency)}/mo after tax
+            {th.disposable !== null ? `, ${formatMoney(th.disposable, currency)}/mo left after living costs` : ''}
           </span>
         )}
       </p>

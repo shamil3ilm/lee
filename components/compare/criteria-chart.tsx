@@ -37,7 +37,7 @@ export function CriteriaChart({ series, className }: { series: readonly ChartSer
           <ChartTooltip content={<ChartTooltipContent />} />
           <ChartLegend {...LEGEND_PROPS} content={<ChartLegendContent />} />
           {series.map((s, i) => (
-            <Bar key={s.key} dataKey={`s${i}`} fill={`var(--color-s${i})`} radius={[0, 2, 2, 0]} />
+            <Bar key={s.key} dataKey={`s${i}`} fill={`var(--color-s${i})`} radius={[0, 2, 2, 0]} isAnimationActive={false} />
           ))}
         </BarChart>
       </ChartContainer>

@@ -31,7 +31,7 @@ function ItemList({ title, items, icon: Icon, testId }: { title: string; items: 
 
 export function GainsLosses({ c }: { c: Comparison }) {
   return (
-    <div className="grid gap-4 md:grid-cols-3">
+    <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
       <ItemList title="Gains" items={c.gains} icon={Plus} testId="compare-gains" />
       <ItemList title="Losses" items={c.losses} icon={Minus} testId="compare-losses" />
       <ItemList title="Unknowns" items={c.unknowns} icon={HelpCircle} testId="compare-unknowns" />

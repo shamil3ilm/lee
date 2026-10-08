@@ -44,12 +44,10 @@ describe('takeHome', () => {
 })
 
 describe('payRatio', () => {
-  it('compares after living costs when both sides have them, else after tax, else gross', () => {
+  it('compares take-home after tax (never the leftover after costs), else gross', () => {
     const job = takeHome({ grossMonthly: 400_000, currency: 'INR', place: 'AE', assumptions })
     const cur = takeHome({ grossMonthly: 200_000, currency: 'INR', place: 'IN', assumptions })
-    const r = payRatio(job, cur)
-    expect(r?.basis).toBe('disposable')
-    expect(r?.ratio).toBeCloseTo(job.disposable! / cur.disposable!, 6)
+    expect(payRatio(job, cur)).toEqual({ ratio: 400_000 / 160_000, basis: 'net' })
 
     const taxOnly = assumptionsSchema.parse({ places: { IN: { taxRate: 20 } } })
     const j2 = takeHome({ grossMonthly: 300_000, currency: 'INR', place: 'AE', assumptions: taxOnly })
