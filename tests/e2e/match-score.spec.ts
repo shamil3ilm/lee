@@ -50,3 +50,23 @@ test('board cards carry the badge and the popover', async ({ page }) => {
   await card.getByRole('button', { name: /Why this score/ }).click()
   await expect(page.getByTestId('match-why')).toBeVisible()
 })
+
+test.describe('phones', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
+
+  test('"Why this score" opens as a bottom sheet that fits the screen', async ({ page }) => {
+    await page.goto('/discoveries')
+    const row = page.locator('[data-slot="card"]').filter({ hasText: LEDGER_ROLE })
+    await row.getByRole('button', { name: /Why this score/ }).click()
+    const sheet = page.getByTestId('responsive-sheet')
+    await expect(sheet.getByTestId('match-why')).toBeVisible()
+    const box = await sheet.boundingBox()
+    expect(box).not.toBeNull()
+    // Anchored to the bottom edge and never above the top of the viewport.
+    expect(box!.y).toBeGreaterThanOrEqual(0)
+    expect(Math.round(box!.y + box!.height)).toBeLessThanOrEqual(844)
+    if (process.env.E2E_SCREENS) await page.screenshot({ path: '.e2e/screens/audit-mobile-why-sheet.png' })
+    await page.keyboard.press('Escape')
+    await expect(sheet).toBeHidden()
+  })
+})

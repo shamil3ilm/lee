@@ -229,7 +229,7 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
           so long titles never push Save/Dismiss off-screen. sm+: original
           side-by-side layout is preserved.
         */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <div className="flex flex-col gap-3 @2xl/main:flex-row @2xl/main:items-start">
           <div className="flex min-w-0 flex-1 items-start gap-3">
           {(isActionable || isFiltered) && onToggleSelect ? (
             <input
@@ -392,7 +392,7 @@ export function CompanyDiscoveryRow({ item }: { item: DiscoveryRowCompany }) {
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <div className="flex flex-col gap-3 @2xl/main:flex-row @2xl/main:items-start">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="truncate text-sm font-semibold">{n.name}</span>
