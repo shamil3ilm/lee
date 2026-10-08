@@ -11,18 +11,16 @@ import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CompareTable } from '@/components/compare/compare-table'
+import { ComparePicker, type PickerOption } from '@/components/compare/compare-picker'
+import { Pencil } from 'lucide-react'
 import { joinMeta } from '@/lib/ui/meta'
 
 export const dynamic = 'force-dynamic'
 
 const MAX_JOBS = 3
 const PICKER_SIZE = 15
-
-interface PickerOption {
-  key: string
-  label: string
-  meta: string
-}
+// Settings › Current job (moved out of Settings › Profile; the old URL redirects).
+const CURRENT_JOB_HREF = '/settings/current-job'
 
 async function pickerOptions(userId: string): Promise<{ applications: PickerOption[]; discoveries: PickerOption[] }> {
   const [apps, found] = await Promise.all([
@@ -43,35 +41,14 @@ async function pickerOptions(userId: string): Promise<{ applications: PickerOpti
   }
 }
 
-function PickerGroup({ title, options, selected }: { title: string; options: PickerOption[]; selected: readonly string[] }) {
-  if (options.length === 0) return null
-  return (
-    <fieldset className="space-y-2">
-      <legend className="text-sm font-semibold">{title}</legend>
-      <ul className="divide-y rounded-lg border">
-        {options.map((o) => (
-          <li key={o.key}>
-            <label className="flex cursor-pointer items-start gap-3 px-3 py-2 text-sm hover:bg-accent">
-              <input type="checkbox" name="ids" value={o.key} defaultChecked={selected.includes(o.key)} className="mt-1 size-4 accent-primary" />
-              <span className="min-w-0">
-                <span className="block font-medium">{o.label}</span>
-                {o.meta ? <span className="block truncate text-xs text-muted-foreground">{o.meta}</span> : null}
-              </span>
-            </label>
-          </li>
-        ))}
-      </ul>
-    </fieldset>
-  )
-}
-
 /** Side by side: up to three jobs and the current job, sorted by weighted total. */
 export default async function ComparePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const userId = await requireUserId()
   const sp = await searchParams
   const keys = parseOpportunityKeys(sp.ids, MAX_JOBS)
   const [data, options] = await Promise.all([compareKeys(userId, keys), pickerOptions(userId)])
-  const hasCurrent = data.settings.current !== null
+  const current = data.settings.current
+  const hasCurrent = current !== null
   // Keep the compared jobs pickable even when they are not in the lists below (e.g. dismissed).
   const listed = new Set([...options.applications, ...options.discoveries].map((o) => o.key))
   const inComparison: PickerOption[] = data.comparisons
@@ -83,12 +60,26 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
       <PageHeader
         title="Compare"
         description={`Up to ${MAX_JOBS} jobs next to your current one, sorted by a weighted total of the criteria you care about.`}
-        actions={
-          <Button asChild size="sm" variant="ghost">
-            <Link href="/settings/profile/current-job">Current job &amp; assumptions</Link>
-          </Button>
-        }
       />
+
+      {current ? (
+        <div
+          className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border bg-muted/40 px-3 py-2 text-sm"
+          data-testid="compare-baseline"
+        >
+          <span className="text-muted-foreground">Baseline</span>
+          <span className="min-w-0 font-medium">
+            Current job: {joinMeta([current.title || 'Untitled', current.employer], ', ') || 'Saved'}
+          </span>
+          <Link
+            href={CURRENT_JOB_HREF}
+            className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-primary underline-offset-2 hover:underline"
+          >
+            <Pencil className="size-3" aria-hidden="true" />
+            Edit current job &amp; assumptions
+          </Link>
+        </div>
+      ) : null}
 
       {!hasCurrent ? (
         <EmptyState
@@ -97,11 +88,17 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
           description="The comparison needs a baseline: your pay, benefits and how your job feels now. It stays private."
           action={
             <Button asChild size="sm">
-              <Link href="/settings/profile/current-job">Add current job</Link>
+              <Link href={CURRENT_JOB_HREF}>Add current job</Link>
             </Button>
           }
         />
-      ) : data.comparisons.length === 0 ? null : (
+      ) : data.comparisons.length === 0 ? (
+        <EmptyState
+          icon={Columns3}
+          title="Pick jobs to put next to your current one"
+          description={`Tick up to ${MAX_JOBS} applications or discoveries below, then press Compare. Each gets a weighted total from pay, benefits, growth and the rest, with your current job as the baseline row.`}
+        />
+      ) : (
         <CompareTable
           current={data.current?.scores ?? null}
           initialWeights={data.comparisons[0]!.weights}
@@ -127,17 +124,15 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
           {options.applications.length + options.discoveries.length + inComparison.length === 0 ? (
             <EmptyState size="sm" title="Nothing to compare yet" description="Save an application or let discovery find some postings." />
           ) : (
-            <form method="get" action="/compare" className="space-y-4">
-              <p className="text-xs text-muted-foreground">Pick up to {MAX_JOBS}; extra picks are ignored.</p>
-              <PickerGroup title="In this comparison" options={inComparison} selected={keys} />
-              <div className="grid gap-4 lg:grid-cols-2">
-                <PickerGroup title="Applications" options={options.applications} selected={keys} />
-                <PickerGroup title="Discoveries" options={options.discoveries} selected={keys} />
-              </div>
-              <Button type="submit" size="sm">
-                Compare
-              </Button>
-            </form>
+            <ComparePicker
+              max={MAX_JOBS}
+              selected={keys}
+              groups={[
+                { title: 'In this comparison', options: inComparison, wide: true },
+                { title: 'Applications', options: options.applications },
+                { title: 'Discoveries', options: options.discoveries },
+              ]}
+            />
           )}
         </CardContent>
       </Card>

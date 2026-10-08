@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/empty-state'
 import { InterestStars } from '@/components/interest-stars'
+import { ApplicationsStackedList } from '@/components/applications-stacked-list'
 import { cn } from '@/lib/utils'
 import { relativeFromNow, shortDate } from '@/lib/ui/date'
 import {
@@ -161,7 +162,9 @@ export function ApplicationsTable({ rows, initialFilter = 'all' }: ApplicationsT
           />
         )
       ) : (
-        <div className="overflow-hidden rounded-lg border">
+        <>
+        <ApplicationsStackedList rows={sorted} />
+        <div className="hidden overflow-hidden rounded-lg border sm:block">
           {/*
             Wrap the table in an overflow-x-auto scroller so 6 columns don't
             force horizontal page overflow on mobile. `min-w-[720px]` keeps
@@ -251,6 +254,7 @@ export function ApplicationsTable({ rows, initialFilter = 'all' }: ApplicationsT
           </table>
           </div>
         </div>
+        </>
       )}
     </div>
   )
