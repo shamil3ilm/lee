@@ -23,6 +23,10 @@ import * as weekly from '@/lib/digest/weekly'
 import * as adapters from '@/lib/discovery/adapters'
 import type { DiscoveryAdapter, DiscoveryItem } from '@/lib/discovery/adapters/types'
 import { MAX_SCORED_PER_SOURCE } from '@/lib/discovery/service'
+import { matchContext } from '@/lib/discovery/match/service'
+import { computeMatch } from '@/lib/discovery/match/score'
+import { evaluateRelevance } from '@/lib/discovery/relevance/gate'
+import { relevanceContext } from '@/lib/discovery/relevance/service'
 import { drain } from '@/lib/queue/drain'
 import { JOB_TYPES } from '@/lib/queue/job-types'
 import { scheduleDailyJobs } from '@/lib/queue/scheduler'
@@ -222,6 +226,12 @@ describe('parity with the old sync-all', () => {
     // job's cooperative deadline (start + 120 s timeout − 10 s margin) lands
     // ~100 ms from now in real time — before the 300 ms adapter returns.
     const lag = 109_900
+    // Warm the deterministic matchers (relevance gate, Match Score) first:
+    // when this test runs before any other discovery test (shuffled order),
+    // their one-time regex compilation would otherwise eat the 100 ms window.
+    const profile = await profileQ.get(u.id)
+    computeMatch({ title: 'Backend Developer', descriptionMd: 'PHP and Laravel' }, matchContext(profile).profile)
+    evaluateRelevance({ title: 'Backend Developer' }, relevanceContext(profile).prefs)
     await scheduleDailyJobs(new Date(Date.now() - lag))
     const r = await drain({ budgetMs: 240_000, clock: () => Date.now() - lag, types: [JOB_TYPES.discoverySource] })
     expect(r.done).toBe(1)
