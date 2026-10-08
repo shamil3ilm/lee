@@ -140,7 +140,11 @@ describe('outbound timeouts', () => {
   }
   // No network of their own: `watch` never fetches; `email_alert` reads
   // Gmail through lib/gmail/adapter (timeouts covered in the Gmail case).
-  const noFetchKinds = ['watch', 'email_alert']
+  // `google_alerts` reads Gmail the same way, its optional RSS feed through
+  // lib/ingest/fetch (10 s AbortController, SSRF checks) and its JD
+  // enrichment through discoveryFetch; it needs a user, so it is checked in
+  // tests/unit/google-alerts.test.ts with stubbed deps.
+  const noFetchKinds = ['watch', 'email_alert', 'google_alerts']
 
   it('covers every registered discovery adapter', () => {
     expect([...Object.keys(adapterConfigs), ...noFetchKinds].sort()).toEqual(listAdapterKinds().sort())
