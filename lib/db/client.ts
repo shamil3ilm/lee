@@ -6,6 +6,7 @@ import postgres from 'postgres'
 import { env } from '@/lib/env'
 import * as schema from './schema'
 import { lazyObject } from './lazy'
+import { installDateSerializers } from './date-serializers'
 import { acquirePgliteLock } from './pglite-lock'
 import { PGLITE_QUERY_DELAY_ENV, parseQueryDelay, withSimulatedLatency } from './pglite-latency'
 
@@ -57,8 +58,11 @@ function makeDb(): DbInstance {
   // emit pool events (pg/mysql/mongo/ioredis `.on(...)`); postgres-js exposes
   // no event emitter, so it would be a no-op for this client.
   const client = postgres(url, { max: 1, idle_timeout: 20, connect_timeout: 10 })
+  const db = drizzlePg(client, { schema })
+  // After drizzle(): it replaces the date serializers with a pass-through.
+  installDateSerializers(client as unknown as Parameters<typeof installDateSerializers>[0])
   return {
-    db: drizzlePg(client, { schema }),
+    db,
     close: async () => {
       await client.end()
     },

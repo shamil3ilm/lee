@@ -55,3 +55,43 @@ jobs:
       # v13 13.1: runners stay out of initial bundles, Playground route JS
       # within the 5.5 budget, reference solutions never in client output.
       - run: pnpm check:bundle
+
+  # Real-Postgres smoke (scripts/pg-smoke.ts). The main job runs on PGlite,
+  # which accepts things the production driver rejects (a JS Date bound in raw
+  # sql`` broke /analytics and the retention cron on Neon with CI green).
+  postgres-smoke:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: lee
+          POSTGRES_PASSWORD: lee
+          POSTGRES_DB: lee
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U lee"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://lee:lee@localhost:5432/lee
+      DATABASE_URL_UNPOOLED: postgres://lee:lee@localhost:5432/lee
+      AUTH_SECRET: '00000000000000000000000000000000'
+      AUTH_GOOGLE_ID: dummy
+      AUTH_GOOGLE_SECRET: dummy
+      NEXTAUTH_URL: http://localhost:3000
+      AUTH_URL: http://localhost:3000
+      AUTH_TRUST_HOST: 'true'
+      ALLOWED_EMAIL: test@example.com
+      AI_PROVIDER: gemini
+      GEMINI_API_KEY: dummy
+      CRON_SECRET: '00000000000000000000000000000000'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:migrate
+      - run: pnpm tsx scripts/pg-smoke.ts
