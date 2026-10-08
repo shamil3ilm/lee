@@ -38,8 +38,23 @@ afterEach(() => {
   globalThis.fetch = originalFetch
 })
 
+const detailUrls: string[] = []
+const DETAIL = {
+  jobPostingInfo: {
+    jobDescription: '<p>Build <b>payment</b> APIs in PHP &amp; Laravel.</p><ul><li>3+ years</li></ul>',
+    startDate: '2026-10-07',
+    timeType: 'Full time',
+    jobRequisitionLocation: { country: { alpha2Code: 'AE' } },
+  },
+}
+
 function mockWorkday(total: number): void {
-  globalThis.fetch = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+  detailUrls.length = 0
+  globalThis.fetch = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+    if (init?.method !== 'POST') {
+      detailUrls.push(String(url))
+      return new Response(JSON.stringify(DETAIL), { status: 200 })
+    }
     const body = JSON.parse(String(init?.body)) as { appliedFacets: Record<string, string[]>; offset: number }
     bodies.push(body)
     headers.push(new Headers(init?.headers))
@@ -94,6 +109,32 @@ describe('WorkdayAdapter', () => {
     })
     expect((items[1]!.normalized as NormalizedJob).location).toBe('India - Bangalore')
     expect(headers[0]!.get('user-agent')).toBe(DISCOVERY_USER_AGENT)
+  })
+
+  it('reads the detail JSON (description, start date, country, time type) for the first postings only', async () => {
+    mockWorkday(45)
+    const items = await new WorkdayAdapter().fetch({ url: 'https://salesforce.wd12.myworkdayjobs.com/External_Career_Site', countries: 'IN,AE' })
+    expect(detailUrls).toHaveLength(25)
+    expect(detailUrls[0]).toBe(
+      'https://salesforce.wd12.myworkdayjobs.com/wday/cxs/salesforce/External_Career_Site/job/India---Bangalore/Software-Engineer_JR0',
+    )
+    const first = items[0]!.normalized as NormalizedJob
+    expect(first.descriptionMd).toBe('Build payment APIs in PHP & Laravel.\n\n- 3+ years')
+    expect(first.postedAt?.toISOString().slice(0, 10)).toBe('2026-10-07')
+    expect(first.employmentType).toBe('fulltime')
+    expect(first.tags).toContain('country:ae')
+    expect((items[30]!.normalized as NormalizedJob).descriptionMd).toBe('')
+  })
+
+  it('keeps the list data when a detail read fails', async () => {
+    mockWorkday(3)
+    const listFetch = globalThis.fetch
+    globalThis.fetch = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) =>
+      init?.method === 'POST' ? listFetch(url, init) : new Response('down', { status: 503 }),
+    ) as typeof globalThis.fetch
+    const items = await new WorkdayAdapter().fetch({ url: 'https://salesforce.wd12.myworkdayjobs.com/External_Career_Site', countries: 'IN,AE' })
+    expect(items).toHaveLength(3)
+    expect((items[0]!.normalized as NormalizedJob).descriptionMd).toBe('')
   })
 
   it('reads nothing when the site has a country facet without any target country', async () => {

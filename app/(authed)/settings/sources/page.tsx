@@ -12,6 +12,9 @@ import { WatchListPanel, type WatchItem } from '@/components/watch-list-panel'
 import { GoogleAlertsPanel } from '@/components/google-alerts-panel'
 import { googleAlertsPanelData } from '@/lib/google-alerts/panel-data'
 import { getProfile } from '@/lib/profile/service'
+import { EmployerWatchPanel } from '@/components/employer-watch-panel'
+import { employerWatchRows } from '@/lib/defaults/watch-status'
+import { lastSeenBySource } from '@/lib/defaults/watch-last-seen'
 import { PopularStarters } from './popular-starters'
 import { describePollStats, readSourceLastResult } from '@/lib/discovery/poll-stats'
 
@@ -52,8 +55,15 @@ export default async function SourcesSettingsPage(): Promise<React.ReactElement>
   const googleAlerts = googleAlertsPanelData(profile, sources)
 
   const polled = sources.filter((s) => s.kind !== 'watch')
+  const lastSeen = await lastSeenBySource(
+    userId,
+    polled.map((s) => s.id),
+  )
+  const employerRows = employerWatchRows(sources, lastSeen)
+  // Employer links live in the employer watch list, not in "Check these yourself".
+  const employerSourceIds = new Set(employerRows.map((r) => r.sourceId).filter(Boolean))
   const watch: WatchItem[] = sources
-    .filter((s) => s.kind === 'watch')
+    .filter((s) => s.kind === 'watch' && !employerSourceIds.has(s.id))
     .map((s) => {
       const c = (s.config ?? {}) as SourceConfig
       return { id: s.id, name: s.name, url: String(c.url ?? ''), reason: typeof c.reason === 'string' ? c.reason : null }
@@ -117,6 +127,7 @@ export default async function SourcesSettingsPage(): Promise<React.ReactElement>
       />
 
       <GoogleAlertsPanel queries={googleAlerts.queries} source={googleAlerts.source} />
+      <EmployerWatchPanel rows={employerRows} />
 
       <WatchListPanel items={watch} />
 

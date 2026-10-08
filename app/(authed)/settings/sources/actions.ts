@@ -7,6 +7,7 @@ import { getAdapter, listAdapterKinds } from '@/lib/discovery/adapters'
 import { BOARD_SLUG_RE, getSourceKind, sourceKindNeeds } from '@/lib/discovery/source-kinds'
 import { logger } from '@/lib/logger'
 import { queueFirstPoll } from '@/lib/queue/first-poll'
+import { nextWatchConfig } from '@/lib/defaults/watch-status'
 
 export type ActionResult = { success: true } | { error: string }
 
@@ -205,5 +206,37 @@ export async function updateSource(id: string, formData: FormData): Promise<Acti
       err: err instanceof Error ? err.message : String(err),
     })
     return { error: 'Could not update source.' }
+  }
+}
+
+/**
+ * Employer watch list: switch watching on/off for a watch link, or record
+ * "Checked" (the weekly look). Stored in the source's config jsonb; polled
+ * employers use toggleSourceEnabled instead.
+ */
+const watchChangeSchema = z.object({ watching: z.boolean().optional(), checked: z.boolean().optional() }).strict()
+
+export async function updateEmployerWatch(
+  id: string,
+  input: { watching?: boolean; checked?: boolean },
+): Promise<ActionResult> {
+  try {
+    const userId = await requireUserId()
+    if (!idSchema.safeParse(id).success) return { error: 'Source not found.' }
+    const parsed = watchChangeSchema.safeParse(input)
+    if (!parsed.success) return { error: 'Invalid change.' }
+    const change = parsed.data
+    const source = await sourcesQ.getById(userId, id)
+    if (!source || source.kind !== 'watch') return { error: 'Source not found.' }
+    const config = nextWatchConfig(source.config, {
+      watching: typeof change.watching === 'boolean' ? change.watching : undefined,
+      checkedAt: change.checked === true ? new Date() : undefined,
+    })
+    await sourcesQ.update(userId, id, { config })
+    revalidatePath('/settings/sources')
+    return { success: true }
+  } catch (err) {
+    logger.error('updateEmployerWatch failed', { id, err: err instanceof Error ? err.message : String(err) })
+    return { error: 'Could not update the watch list.' }
   }
 }

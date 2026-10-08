@@ -21,12 +21,12 @@ const DAY_MS = 86_400_000
 const DAYS_PER_CYCLE = 7
 
 /**
- * The ai_web_search entries (every entry when none is marked that way),
+ * The entries monitored by AI search (every entry when none is marked that way),
  * minus nationals-only employers: the user needs roles open to expatriates.
  */
 export function promptEmployers(all: readonly WatchEmployer[] = WATCH_EMPLOYERS): WatchEmployer[] {
   const open = all.filter((e) => !e.nationalsOnly)
-  const marked = open.filter((e) => e.method === 'ai_web_search')
+  const marked = open.filter((e) => e.methods.includes('ai_search'))
   return marked.length > 0 ? marked : open
 }
 

@@ -4,13 +4,16 @@ import { EMPTY_PREFS, type SearchPrefs } from '@/lib/discovery/relevance/prefs'
 import type { WatchEmployer } from '@/lib/defaults/watch-employers'
 
 const employers: WatchEmployer[] = Array.from({ length: 20 }, (_, i) => ({
+  key: `employer-${i}`,
   name: `Employer ${i}`,
   country: 'AE',
-  sector: 'utility',
+  sector: 'utilities',
   nationalsOnly: i === 0,
   careersUrl: `https://careers.employer${i}.test/`,
-  method: 'ai_web_search',
-  alertSignupUrl: null,
+  backend: 'custom',
+  methods: ['ai_search', 'manual'],
+  sourceKey: `watch:employer-${i}`,
+  note: '',
 }))
 const prefs: SearchPrefs = { ...EMPTY_PREFS, active: true, regions: ['AE', 'IN'], remoteScope: 'worldwide' }
 const day = (n: number) => new Date(Date.UTC(2026, 9, 1 + n))

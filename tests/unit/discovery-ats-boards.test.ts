@@ -98,7 +98,7 @@ describe('WorkableAdapter (widget API)', () => {
   it('reads the widget API and uses the account name', async () => {
     mockFetch(() => json(widget))
     const items = await new WorkableAdapter().fetch({ company: 'salla' })
-    expect(calls).toEqual([{ url: 'https://www.workable.com/api/accounts/salla?details=false', method: 'GET' }])
+    expect(calls).toEqual([{ url: 'https://www.workable.com/api/accounts/salla?details=true', method: 'GET' }])
     expect(job(items[0]!)).toMatchObject({
       companyName: 'Salla',
       location: 'Riyadh, Riyadh Province, Saudi Arabia',

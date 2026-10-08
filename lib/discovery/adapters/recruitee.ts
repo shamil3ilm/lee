@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { DiscoveryAdapter, DiscoveryItem, NormalizedJob } from './types'
 import { discoveryFetch } from './http'
 import { employmentTypeOf, toDate } from './prefs'
+import { htmlToText } from './html-text'
 
 /**
  * Recruitee public careers API (no key):
@@ -29,6 +30,9 @@ interface RecruiteeOffer {
   employment_type_code?: string
   company_name?: string
   department?: string
+  /** HTML; the offers list carries the full text. */
+  description?: string
+  requirements?: string
 }
 
 /** Recruitee dates look like "2026-09-10 07:25:25 UTC". */
@@ -49,7 +53,7 @@ export function normalizeRecruiteeOffer(o: RecruiteeOffer, company: string): Dis
     location: o.location ?? ([o.city, o.country].filter(Boolean).join(', ') || undefined),
     remoteType,
     employmentType: employmentTypeOf(o.employment_type_code),
-    descriptionMd: '',
+    descriptionMd: htmlToText([o.description, o.requirements].filter(Boolean).join('<br>')),
     applyUrl,
     postedAt: recruiteeDate(o.published_at ?? o.created_at),
     techStack: [],

@@ -1,6 +1,8 @@
+import { DEFAULT_SOURCES_V3 } from './catalog-v3'
+
 /**
  * Starter data every account gets, applied once per DEFAULTS_VERSION (see
- * lib/defaults/apply.ts). Client-safe (no imports): the Settings › Sources
+ * lib/defaults/apply.ts). Client-safe (data-only imports): the Settings › Sources
  * "Popular starters" buttons read the same list, so they can't drift.
  *
  * Board slugs were checked live against each ATS public API: v1 on
@@ -38,7 +40,7 @@ export interface DefaultSource {
 }
 
 /** Bump when adding defaults; users below it get only the newer ones. */
-export const DEFAULTS_VERSION = 2
+export const DEFAULTS_VERSION = 3
 
 export const DEFAULT_SOURCES: readonly DefaultSource[] = [
   // Broad, all-jobs sources
@@ -379,6 +381,9 @@ export const DEFAULT_SOURCES: readonly DefaultSource[] = [
   { key: 'watch:foundit', name: 'foundit (Monster India)', kind: 'watch', config: { url: 'https://www.foundit.in/', reason: 'Bot wall.' }, enabled: false, since: 2 },
   { key: 'watch:internshala', name: 'Internshala', kind: 'watch', config: { url: 'https://internshala.com/jobs/', reason: 'Terms forbid bots.' }, enabled: false, since: 2 },
   { key: 'watch:kkem', name: 'Kerala Knowledge Mission (DWMS)', kind: 'watch', config: { url: 'https://knowledgemission.kerala.gov.in/', reason: 'Login portal.' }, enabled: false, since: 2 },
+
+  // ── v3 (2026-10-08): GCC employer watch list (lib/defaults/catalog-v3.ts) ──
+  ...DEFAULT_SOURCES_V3,
 ]
 
 /**

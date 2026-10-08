@@ -1,5 +1,6 @@
 import type { AdapterContext, DiscoveryAdapter, DiscoveryItem, NormalizedJob } from './types'
 import { discoveryFetch } from './http'
+import { htmlToText } from './html-text'
 import { employmentTypeOf, geoTag, searchPrefsFor, toDate } from './prefs'
 
 /**
@@ -38,6 +39,8 @@ interface JobicyJob {
   jobGeo?: string
   jobLevel?: string
   jobExcerpt?: string
+  /** HTML: the full posting. */
+  jobDescription?: string
   pubDate?: string
   salaryMin?: number
   salaryMax?: number
@@ -60,7 +63,7 @@ export function normalizeJobicyJob(job: JobicyJob): DiscoveryItem | null {
     location: geo ? `Remote (${geo})` : 'Remote',
     remoteType: 'remote',
     employmentType: employmentTypeOf(job.jobType),
-    descriptionMd: job.jobExcerpt ?? '',
+    descriptionMd: htmlToText(job.jobDescription || job.jobExcerpt),
     applyUrl: job.url,
     postedAt: toDate(job.pubDate),
     techStack: [],

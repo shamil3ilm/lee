@@ -18,26 +18,29 @@ import { EMPTY_PREFS } from '@/lib/discovery/relevance/prefs'
 // Synthetic employers on example domains.
 function employer(i: number, over: Partial<WatchEmployer> = {}): WatchEmployer {
   return {
+    key: `employer-${i}`,
     name: `Employer ${String(i).padStart(2, '0')}`,
     country: i % 2 === 0 ? 'AE' : 'SA',
     sector: 'government',
     nationalsOnly: false,
     careersUrl: `https://careers.employer${i}.test/jobs`,
-    method: 'ai_web_search',
-    alertSignupUrl: null,
+    backend: 'custom',
+    methods: ['ai_search', 'manual'],
+    sourceKey: `watch:employer-${i}`,
+    note: '',
     ...over,
   }
 }
 const many = (n: number) => Array.from({ length: n }, (_, i) => employer(i))
 
 describe('promptEmployers', () => {
-  it('uses the ai_web_search entries and leaves out nationals-only employers', () => {
-    const list = [employer(1), employer(2, { nationalsOnly: true }), employer(3, { method: 'watch' })]
+  it('uses the AI-search entries and leaves out nationals-only employers', () => {
+    const list = [employer(1), employer(2, { nationalsOnly: true }), employer(3, { methods: ['manual'] })]
     expect(promptEmployers(list).map((e) => e.name)).toEqual(['Employer 01'])
   })
 
-  it('falls back to every open entry when none is marked ai_web_search', () => {
-    const list = [employer(1, { method: 'watch' }), employer(2, { method: 'source', nationalsOnly: true }), employer(3, { method: 'email_alert' })]
+  it('falls back to every open entry when none is marked for AI search', () => {
+    const list = [employer(1, { methods: ['manual'] }), employer(2, { methods: ['adapter'], nationalsOnly: true }), employer(3, { methods: ['alert'] })]
     expect(promptEmployers(list).map((e) => e.name)).toEqual(['Employer 01', 'Employer 03'])
   })
 })
