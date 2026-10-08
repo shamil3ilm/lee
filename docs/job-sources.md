@@ -145,3 +145,60 @@ See Settings › Sources › "Job alerts by email" for the per-site setup
 steps. Parsers live in `lib/email-alerts/`; their test fixtures in
 `tests/fixtures/email-alerts/` are **synthetic** (hand-written from the
 sites' documented or observable formats), not real emails.
+
+## AI search: Google AI Mode hand-off and "Add from text or link"
+
+Checked 2026-10-08 against Google's own pages (dates are each page's
+"Last updated").
+
+### Gemini API "Grounding with Google Search": verified facts
+
+| Point | What Google says | Source |
+|---|---|---|
+| Tool and API shape | Tool `google_search`. The current docs show it on the Interactions API (`POST /v1beta/interactions`, `"tools": [{"type": "google_search"}]`); `generateContent` takes `"tools": [{"google_search": {}}]` and returns `groundingMetadata` (`webSearchQueries`, `searchEntryPoint.renderedContent`, `groundingChunks[].web.{uri,title}`, `groundingSupports`). Supported on Gemini 3.x Flash / Pro and 2.5 / 2.0 models. | [Grounding with Google Search](https://ai.google.dev/gemini-api/docs/google-search) (2026-09-23) |
+| Free tier | **Not available** on the free tier for any Gemini 3.x model ("can be tested in Google AI Studio"); paid tier: 5,000 free search requests a month shared across Gemini 3.x, then $14 / 1,000 search queries (billed per search query the model runs). Only `gemini-2.5-flash` and `gemini-2.5-flash-lite` keep a free grounded quota: "free of charge, up to 500 RPD (limit shared)". | [Pricing](https://ai.google.dev/gemini-api/docs/pricing) (2026-10-07) |
+| Structured output with the tool | "Structured outputs with tools … available only to Gemini 3 series models" (preview), i.e. not on the free 2.5 models. | [Structured output](https://ai.google.dev/gemini-api/docs/structured-output) (2026-09-23) |
+| Display requirements | Show "the Grounded Results with the associated Search Suggestion(s) to the end user who submitted the prompt"; do not "modify, or intersperse any other content with, the Grounded Results or Search Suggestions"; no interstitials between a Link and its page. | [Gemini API Additional Terms](https://ai.google.dev/gemini-api/terms#grounding-with-google-search) (2026-04-28) |
+| Use restrictions | No "cache, frame, syndicate, resell, analyze, train on, or otherwise learn from Grounded Results or Search Suggestions"; "it is a violation of these terms to use Grounding with Google Search to extract or collect one or more of these components for another purpose (for example, using programmatic or automated means to collect Links, using Links to build an index, or using Links to identify destination pages for crawling or scraping)". Storage only up to 2 years for display evaluation, the end user's chat history, or a refinement prompt; no click or Link tracking. | same |
+| Data use (unpaid tier) | Google uses prompts and responses "to provide, improve, and develop Google products"; "human reviewers may read, annotate, and process your API input and output … Do not submit sensitive, confidential, or personal information to the Unpaid Services." Grounding prompts and output are also stored 30 days for debugging. | same |
+
+**Decision: no automated "AI web search" source.** A daily poll that turns
+grounded answers into discoveries — parsing out Links, resolving the
+grounding redirects, fetching the destination ATS boards, deduping and
+scoring them — is the use the terms name as a violation (collecting Links
+by automated means, using them to find pages to fetch, building an index,
+analysing Grounded Results). It would also need a paid Gemini 3 key for
+structured output, against lee's zero-cost rule. Revisit only if Google
+publishes terms that allow it; a compliant alternative would be an
+on-demand "ask" view that shows the grounded answer verbatim with its
+Search Suggestions to the user who asked, without extracting anything.
+
+### What lee does instead
+
+- **Search with Google AI Mode** (Discovery header, Shortlist empty state):
+  prompts built from the search preferences only (role families, regions,
+  remote scope, sponsorship, keywords; scrubbed of the profile's name,
+  email, phone, employers and schools), editable, opened with a plain link
+  `https://www.google.com/search?udm=50&q=…` (`rel="noopener noreferrer"`)
+  in a new tab of the user's own browser, or copied (Incognito works).
+  Prompt families: GCC (roles open to expatriates), India, other countries,
+  remote roles workable from the user's home country (no US-only /
+  EU-residency-only roles), relocation or visa sponsorship anywhere, and
+  employer-watch batches of 5–8 GCC employers from
+  `lib/defaults/watch-employers.ts` (nationals-only employers left out).
+  A daily rotation shows four; every prompt comes round within a week.
+  lee never contacts Google.
+- **Add from text or link** (same places): the user pastes an AI Mode
+  answer, any text, or links. URLs are found by regex (Google's
+  `/url?q=` wrapper unwrapped offline; other Google links dropped, never
+  followed). With an AI key the provider extracts title, employer,
+  location, date and link with a JSON schema, and a link is kept only when
+  it occurs in the pasted text. Without a key, links only. Nationals-only
+  openings are dropped. The user ticks what to import; items become
+  discoveries of a switched-off `manual_import` source ("Added by you") and
+  go through the relevance gate, Scam Shield and scoring. Links on
+  Greenhouse, Lever, Ashby, Workable and Workday are filled in through the
+  existing adapters' public endpoints (each board read once per import);
+  SmartRecruiters, LinkedIn, Indeed, Naukri, Bayt and every other page stay
+  links with the pasted details. Duplicates (same canonical link, or same
+  employer and title, from any source) are skipped.
