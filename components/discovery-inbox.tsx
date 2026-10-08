@@ -150,7 +150,7 @@ export function DiscoveryInbox(props: DiscoveryInboxProps) {
       <EmptyState
         icon={Filter}
         title="Nothing filtered out"
-        description="Postings that do not match your search preferences land here with the reason. Nothing is ever deleted."
+        description="Clear mismatches (an unrelated field, a deal-breaker, a place or level you ruled out) land here with the reason. Nothing is ever deleted."
       />
     )
   }
@@ -180,8 +180,8 @@ export function DiscoveryInbox(props: DiscoveryInboxProps) {
       ) : null}
       {filteredView ? (
         <p className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-          Filtered out by your search preferences, before any AI scoring. Each shows why. “Show anyway” moves one to
-          your inbox for good.
+          Clear mismatches, judged from the job description and your preferences. Each shows why. “Show anyway” moves
+          one to your inbox for good and teaches lee the title.
         </p>
       ) : null}
       {isJobs ? (

@@ -14,7 +14,10 @@ interface SectionProps {
 export function TargetSections({ values }: SectionProps) {
   return (
     <div className="space-y-6">
-      <PrefsFieldset legend="Target roles" description="Postings outside these go to “Filtered out”.">
+      <PrefsFieldset
+        legend="Target roles"
+        description="lee ranks these highest. Jobs in clearly unrelated fields (judged from the job description, not just the title) go to Filtered out with the reason; unfamiliar titles that fit stay, marked Uncertain fit."
+      >
         {ROLE_FAMILIES.map((f) => (
           <ChoiceChip
             key={f.id}

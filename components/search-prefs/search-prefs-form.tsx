@@ -55,7 +55,7 @@ export function SearchPrefsForm({ values }: SearchPrefsFormProps) {
       <CardHeader>
         <CardTitle>Search preferences</CardTitle>
         <CardDescription>
-          What Discovery keeps. Postings that do not fit go to “Filtered out” with the reason, before any AI scoring.
+          What Discovery keeps and how it ranks. Only clear mismatches and your deal-breakers are filtered out, always with the reason.
         </CardDescription>
       </CardHeader>
       <CardContent>
