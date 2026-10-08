@@ -124,6 +124,6 @@ describe('reset discoveries', () => {
     const { userId } = await setup()
     expect(await queueRefetch(userId, null)).toBe(1)
     const jobs = await db.select().from(queueJobs).where(and(eq(queueJobs.userId, userId), eq(queueJobs.type, JOB_TYPES.discoverySource)))
-    expect(jobs.some((j) => j.idempotencyKey.includes(':reset-'))).toBe(true)
+    expect(jobs.some((j) => (j.idempotencyKey ?? '').includes(':reset-'))).toBe(true)
   })
 })
