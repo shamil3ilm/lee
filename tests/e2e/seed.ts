@@ -412,6 +412,9 @@ async function main(): Promise<void> {
     event('info', 'cron', 'cron_schedule', 'Scheduled 9 job(s) for 1 user(s)', 30, { userId: null, context: { users: 1, enqueued: 9 } }),
   ])
 
+  // Compare with my current job: a private current job and assumptions.
+  await db.insert(s.jobComparison).values({ userId, currentJob: data.CURRENT_JOB, assumptions: data.COMPARE_ASSUMPTIONS })
+
   for (const [i, log] of data.AI_CALLS.entries()) {
     await db.insert(s.aiCallLogs).values({ userId, ...log, createdAt: ago(i % 20) })
   }

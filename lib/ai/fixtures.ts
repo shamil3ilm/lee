@@ -34,6 +34,7 @@ import type {
   OutreachTone,
   TailoredCV,
 } from '@/lib/documents/types'
+import type { CompareNarrativeInput, CompareNarrativeResult } from './prompts/compare-narrative'
 import type { InterviewStage } from '@/lib/db/queries/stages'
 
 export class FixtureAIProvider implements AIProvider {
@@ -78,6 +79,7 @@ export class FixtureAIProvider implements AIProvider {
       assessRequirementFit?: (input: RequirementFitInput) => RequirementFitResult
       rewriteCvBullets?: (input: BulletRewriteInput) => BulletRewriteResult
       summarizeReputation?: (input: ReputationSummaryInput) => ReputationSummaryResult
+      narrateComparison?: (input: CompareNarrativeInput) => CompareNarrativeResult
       suggestRoles?: (input: SuggestRolesInput) => SuggestRolesResult
       proposeResumeVariant?: (input: ResumeVariantInput) => ResumeVariantResult
       extractOpenings?: (input: ExtractOpeningsInput) => ExtractOpeningsResult
@@ -265,6 +267,15 @@ export class FixtureAIProvider implements AIProvider {
     await this.emitLoggedCallId('suggest_roles', meta)
     if (this.fixtures.suggestRoles) return this.fixtures.suggestRoles(input)
     return { suggestions: [] }
+  }
+  /** Deterministic default: restate the first facts and ask about the unknowns, citing them. */
+  async narrateComparison(input: CompareNarrativeInput, meta?: CallMeta): Promise<CompareNarrativeResult> {
+    await this.emitLoggedCallId('job_comparison_narrative', meta)
+    if (this.fixtures.narrateComparison) return this.fixtures.narrateComparison(input)
+    return {
+      summary: input.facts.slice(0, 3).map((f) => ({ text: f.text, cites: [f.id] })),
+      questions: input.unknowns.slice(0, 4).map((u) => ({ text: `Could you tell me more about: ${u.text}?`, cites: [u.id] })),
+    }
   }
   async summarizeReputation(
     input: ReputationSummaryInput,

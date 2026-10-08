@@ -6,6 +6,9 @@ import type { ShortlistRow } from '@/lib/db/queries/shortlist'
 import { prefSuggestions, type PrefSuggestion } from './feedback'
 import { FEEDBACK_WINDOW_DAYS, readShortlist } from './shortlist'
 import { applySettingsFrom } from './settings'
+import { comparisonChips } from '@/lib/compare/service'
+import { opportunityKey } from '@/lib/compare/inputs'
+import { logger } from '@/lib/logger'
 
 /**
  * What the shortlist page renders, from the precomputed snapshot (plus the
@@ -24,6 +27,8 @@ export interface ShortlistEntryView {
   reasons: ShortlistRow['reasons']
   variantName: string | null
   applicationId: string | null
+  /** "vs current: pay ↑ 35% est. · …" when a current job is saved. */
+  vsCurrent: string | null
 }
 
 export interface ShortlistPageData {
@@ -48,6 +53,20 @@ function toView(r: ShortlistRow): ShortlistEntryView {
     reasons: r.reasons,
     variantName: r.variantName,
     applicationId: r.savedApplicationId,
+    vsCurrent: null,
+  }
+}
+
+/** Comparison chips for the open picks; a failure only drops the chips. */
+async function withChips(userId: string, entries: ShortlistEntryView[], now: Date): Promise<ShortlistEntryView[]> {
+  const open = entries.filter((e) => e.state === 'open')
+  try {
+    const chips = await comparisonChips(userId, open.map((e) => opportunityKey('discovery', e.discoveryId)), now)
+    if (chips.size === 0) return entries
+    return entries.map((e) => ({ ...e, vsCurrent: chips.get(opportunityKey('discovery', e.discoveryId)) ?? null }))
+  } catch (err) {
+    logger.warn('compare_chips_failed', { err: err instanceof Error ? err.name : 'unknown' })
+    return entries
   }
 }
 
@@ -58,7 +77,7 @@ export async function loadShortlistPage(userId: string, now: Date = new Date()):
     profileQ.get(userId),
     feedbackQ.listSince(userId, since),
   ])
-  const entries = view.entries.map(toView)
+  const entries = await withChips(userId, view.entries.map(toView), now)
   return {
     day: view.day,
     today: view.today,

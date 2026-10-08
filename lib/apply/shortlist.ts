@@ -6,6 +6,7 @@ import { variantSummaries } from '@/lib/variants/service'
 import { signalsFromTags, suggestVariant, type VariantSummary } from '@/lib/variants/suggest'
 import { getUserTimeZone } from '@/lib/settings/timezone'
 import { logger } from '@/lib/logger'
+import { shortlistDeltas, shortlistFactorOn } from '@/lib/compare/service'
 import { loadCandidates, targetRegionTags, type Candidate } from './candidates'
 import { buildShortlist } from './rank'
 import { localDay } from './dates'
@@ -32,6 +33,25 @@ function variantFor(variants: readonly VariantSummary[], c: Candidate): string |
   return suggestVariant(variants, signalsFromTags(c.regions, c.families)).variant?.id ?? null
 }
 
+/**
+ * Optional "factor in my current job" (off by default): the top 3 × N by the
+ * usual rank are compared with the current job and get a ±8 nudge. With the
+ * setting off this costs one small read and changes nothing.
+ */
+async function withComparison(
+  userId: string,
+  candidates: Candidate[],
+  ctx: Parameters<typeof buildShortlist>[1],
+  size: number,
+  now: Date,
+): Promise<Candidate[]> {
+  if (!(await shortlistFactorOn(userId))) return candidates
+  const pool = buildShortlist(candidates, ctx, size * 3).map((r) => r.id)
+  const deltas = await shortlistDeltas(userId, pool, now)
+  if (deltas.size === 0) return candidates
+  return candidates.map((c) => (deltas.has(c.id) ? { ...c, comparisonDelta: deltas.get(c.id)! } : c))
+}
+
 export async function buildShortlistForUser(userId: string, now: Date = new Date()): Promise<BuildResult> {
   const [profile, tz] = await Promise.all([profileQ.get(userId), getUserTimeZone(userId)])
   const day = localDay(now, tz)
@@ -43,12 +63,10 @@ export async function buildShortlistForUser(userId: string, now: Date = new Date
     shortlistQ.actedIds(userId, day),
     variantSummaries(userId),
   ])
-  const candidates = await loadCandidates(userId, { now, feedback, excludeIds: acted })
-  const ranked = buildShortlist(
-    candidates,
-    { now, targetFamilies: prefs.roleFamilies, targetRegions: targetRegionTags(prefs) },
-    settings.shortlistSize,
-  )
+  const loaded = await loadCandidates(userId, { now, feedback, excludeIds: acted })
+  const ctx = { now, targetFamilies: prefs.roleFamilies, targetRegions: targetRegionTags(prefs) }
+  const candidates = await withComparison(userId, loaded, ctx, settings.shortlistSize, now)
+  const ranked = buildShortlist(candidates, ctx, settings.shortlistSize)
   const byId = new Map(candidates.map((c) => [c.id, c] as const))
   const written = await shortlistQ.replaceOpen(
     userId,

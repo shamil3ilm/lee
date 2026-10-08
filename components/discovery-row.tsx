@@ -11,6 +11,7 @@ import {
   XCircle,
   Sparkles,
   Filter,
+  Scale,
 } from 'lucide-react'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -249,6 +250,11 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
           </div>
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+            <Button asChild size="sm" variant="ghost" className="h-8 w-8 p-0" title="Details and comparison">
+              <Link href={`/discoveries/${item.id}`} aria-label={`Details and comparison: ${n.title}`}>
+                <Scale className="size-4" />
+              </Link>
+            </Button>
             {n.applyUrl ? (
               <Button
                 asChild
