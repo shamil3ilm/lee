@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { DiscoveryAdapter, DiscoveryItem, NormalizedJob } from './types'
 import { discoveryFetch } from './http'
+import { htmlToText, workModeOf } from './html-text'
 
 const configSchema = z.object({ company: z.string() })
 
@@ -9,6 +10,8 @@ interface GreenhouseJob {
   title: string
   absolute_url: string
   updated_at?: string | null
+  first_published?: string | null
+  company_name?: string | null
   location?: { name?: string } | null
   content?: string
 }
@@ -19,8 +22,9 @@ interface GreenhouseResponse {
 
 /**
  * Greenhouse public job-board API — no auth required, one call per board.
- * Descriptions ship inline as HTML in `content` on the list endpoint for most
- * boards; we hand it through unmodified so the AI scorer can inspect it.
+ * Descriptions ship inline in `content` as entity-escaped HTML; they are
+ * stored as plain text so the gate and the match score can read them.
+ * `first_published` is the posting date (`updated_at` moves on every edit).
  */
 export class GreenhouseAdapter implements DiscoveryAdapter {
   readonly kind = 'greenhouse'
@@ -33,15 +37,18 @@ export class GreenhouseAdapter implements DiscoveryAdapter {
     const body = (await res.json()) as GreenhouseResponse
     const jobs = body.jobs ?? []
     return jobs.map((job) => {
+      const location = job.location?.name?.trim() || undefined
+      const posted = job.first_published ?? job.updated_at
       const normalized: NormalizedJob = {
         kind: 'job',
         title: job.title,
-        companyName: company,
-        location: job.location?.name ?? undefined,
+        companyName: job.company_name?.trim() || company,
+        location,
+        remoteType: workModeOf(`${location ?? ''} ${job.title}`),
         applyUrl: job.absolute_url,
-        descriptionMd: job.content ?? '',
+        descriptionMd: htmlToText(job.content),
         techStack: [],
-        postedAt: job.updated_at ? new Date(job.updated_at) : undefined,
+        postedAt: posted ? new Date(posted) : undefined,
         raw: job,
       }
       return {

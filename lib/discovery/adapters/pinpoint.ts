@@ -2,12 +2,14 @@ import { z } from 'zod'
 import type { DiscoveryAdapter, DiscoveryItem, NormalizedJob } from './types'
 import { discoveryFetch } from './http'
 import { employmentTypeOf } from './prefs'
+import { htmlToText } from './html-text'
 import { DNS_LABEL_RE } from './recruitee'
 
 /**
  * Pinpoint public job board feed (no key):
  *   GET https://{company}.pinpointhq.com/postings.json  →  { data: [...] }
- * No posting date is published. The slug becomes a hostname, so it must
+ * No posting date is published (only `deadline_at`). Descriptions come
+ * as HTML sections (description, key responsibilities, skills). The slug becomes a hostname, so it must
  * be a single DNS label. Config: { company, displayName? }.
  */
 
@@ -24,6 +26,24 @@ interface PinpointPosting {
   workplace_type?: string
   location?: { city?: string; name?: string; province?: string }
   job?: { department?: { name?: string } }
+  description?: string
+  key_responsibilities?: string
+  skills_knowledge_expertise?: string
+  compensation_visible?: boolean
+  compensation_minimum?: number | null
+  compensation_maximum?: number | null
+  compensation_currency?: string | null
+}
+
+function pinpointText(p: PinpointPosting): string {
+  return htmlToText([p.description, p.key_responsibilities, p.skills_knowledge_expertise].filter(Boolean).join('<br>'))
+}
+
+function pinpointSalary(p: PinpointPosting): NormalizedJob['salary'] {
+  if (!p.compensation_visible || !p.compensation_currency) return undefined
+  const min = p.compensation_minimum ?? undefined
+  const max = p.compensation_maximum ?? undefined
+  return min || max ? { min, max, currency: p.compensation_currency } : undefined
 }
 
 function titleCase(slug: string): string {
@@ -44,9 +64,10 @@ export function normalizePinpointPosting(p: PinpointPosting, company: string, di
     location,
     remoteType,
     employmentType: employmentTypeOf(p.employment_type),
-    descriptionMd: '',
+    descriptionMd: pinpointText(p),
     applyUrl: p.url,
     techStack: [],
+    salary: pinpointSalary(p),
     raw,
   }
   return { sourceItemId: String(p.id), raw, normalized }

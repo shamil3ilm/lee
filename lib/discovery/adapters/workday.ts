@@ -1,7 +1,8 @@
 import { z } from 'zod'
 import type { AdapterContext, DiscoveryAdapter, DiscoveryItem, NormalizedJob } from './types'
 import { discoveryFetch } from './http'
-import { searchPrefsFor } from './prefs'
+import { employmentTypeOf, searchPrefsFor, toDate } from './prefs'
+import { enrichSome, htmlToText, workModeOf } from './html-text'
 import { COUNTRY_NAMES, locationMatchesCountries } from '../search-prefs'
 
 /**
@@ -23,6 +24,14 @@ import { COUNTRY_NAMES, locationMatchesCountries } from '../search-prefs'
 
 const PAGE_SIZE = 20
 const MAX_PAGES = 5
+/**
+ * The list has no description and only "Posted 3 Days Ago". The detail
+ * JSON (GET /wday/cxs/{tenant}/{site}{externalPath}) has the full text,
+ * the exact start date, the ISO country and the time type: read for at
+ * most this many postings per poll (checked live 2026-10-08, ~0.3 s each).
+ */
+const DETAIL_MAX = 25
+const DETAIL_CONCURRENCY = 4
 const HOST_RE = /^([a-z0-9-]+)\.(wd\d{1,3})\.myworkday(?:jobs|site)\.com$/i
 const SITE_RE = /^[A-Za-z0-9_-]{1,100}$/
 const LOCALE_RE = /^[a-z]{2}-[A-Z]{2}$/
@@ -153,6 +162,35 @@ export function normalizeWorkdayPosting(p: WorkdayPosting, site: WorkdaySite, co
   return { sourceItemId: p.externalPath, raw, normalized }
 }
 
+interface WorkdayDetail {
+  jobPostingInfo?: {
+    jobDescription?: string
+    startDate?: string
+    timeType?: string
+    remoteType?: string
+    location?: string
+    jobRequisitionLocation?: { country?: { alpha2Code?: string } }
+  }
+}
+
+/** Merge a posting's detail JSON into its list item (pure; exported for tests). */
+export function withWorkdayDetail(item: DiscoveryItem, detail: WorkdayDetail): DiscoveryItem {
+  const info = detail.jobPostingInfo
+  if (!info) return item
+  const job = item.normalized as NormalizedJob
+  const cc = info.jobRequisitionLocation?.country?.alpha2Code
+  const mode = workModeOf(info.remoteType)
+  const normalized: NormalizedJob = {
+    ...job,
+    descriptionMd: htmlToText(info.jobDescription) || job.descriptionMd,
+    postedAt: toDate(info.startDate) ?? job.postedAt,
+    employmentType: info.timeType ? employmentTypeOf(info.timeType) : job.employmentType,
+    remoteType: mode !== 'unknown' ? mode : job.remoteType,
+    tags: [...(job.tags ?? []), ...(cc ? [`country:${cc.toLowerCase()}`] : [])],
+  }
+  return { ...item, normalized }
+}
+
 export class WorkdayAdapter implements DiscoveryAdapter {
   readonly kind = 'workday'
 
@@ -198,6 +236,10 @@ export class WorkdayAdapter implements DiscoveryAdapter {
       if ((page.jobPostings ?? []).length < PAGE_SIZE || offset >= total) break
       page = await post(facets, offset)
     }
-    return [...items.values()]
+    const base = `https://${site.host}/wday/cxs/${site.tenant}/${site.site}`
+    return enrichSome([...items.values()], DETAIL_MAX, DETAIL_CONCURRENCY, async (item) => {
+      const res = await discoveryFetch('workday', `${base}${item.sourceItemId}`, { headers: { accept: 'application/json' } })
+      return res.ok ? withWorkdayDetail(item, (await res.json()) as WorkdayDetail) : item
+    })
   }
 }

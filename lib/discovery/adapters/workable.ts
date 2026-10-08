@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { DiscoveryAdapter, DiscoveryItem, NormalizedJob } from './types'
 import { discoveryFetch } from './http'
+import { htmlToText } from './html-text'
 
 const configSchema = z.object({ company: z.string() })
 
@@ -57,7 +58,8 @@ function employmentTypeOf(value: string | undefined): NormalizedJob['employmentT
 }
 
 function normalize(job: WorkableJob, company: string, companyName: string): DiscoveryItem {
-  const loc = job.location ?? { city: job.city, region: job.state, country: job.country }
+  const first = job.locations?.find((l) => l.city || l.country)
+  const loc = job.location ?? (job.city || job.country ? { city: job.city, region: job.state, country: job.country } : first ?? {})
   const locBits = [loc.city, loc.region, loc.country].filter(Boolean)
   const applyUrl =
     job.url ??
@@ -74,7 +76,7 @@ function normalize(job: WorkableJob, company: string, companyName: string): Disc
     remoteType: remoteTypeOf(job),
     employmentType: employmentTypeOf(job.employment_type),
     applyUrl,
-    descriptionMd: job.description ?? '',
+    descriptionMd: htmlToText(job.description),
     techStack: [],
     postedAt: posted ? new Date(posted) : undefined,
     tags: countryCode ? [`country:${countryCode.toLowerCase()}`] : [],
@@ -85,9 +87,10 @@ function normalize(job: WorkableJob, company: string, companyName: string): Disc
 
 /**
  * Workable public job boards. Primary: the widget API
- * (GET www.workable.com/api/accounts/{company}, redirects to
+ * (GET www.workable.com/api/accounts/{company}?details=true, redirects to
  * apply.workable.com/api/v1/widget/…) — every published job in one
- * response, and far less rate-limited than v3. Fallback when the widget
+ * response WITH its description (details=false, used until 2026-10-08,
+ * left every description empty), and far less rate-limited than v3. Fallback when the widget
  * errors (other than 404, an unknown account): the v3 list endpoint
  * (POST apply.workable.com/api/v3/accounts/{company}/jobs, page 1).
  */
@@ -97,7 +100,7 @@ export class WorkableAdapter implements DiscoveryAdapter {
   async fetch(config: unknown): Promise<DiscoveryItem[]> {
     const { company } = configSchema.parse(config)
     const slug = encodeURIComponent(company)
-    let res = await discoveryFetch('workable', `https://www.workable.com/api/accounts/${slug}?details=false`, {
+    let res = await discoveryFetch('workable', `https://www.workable.com/api/accounts/${slug}?details=true`, {
       headers: { accept: 'application/json' },
     })
     if (!res.ok && res.status !== 404) {

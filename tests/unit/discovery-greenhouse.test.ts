@@ -31,7 +31,7 @@ describe('GreenhouseAdapter', () => {
     expect(items[0]!.normalized.kind).toBe('job')
     const first = items[0]!.normalized as { title: string; companyName: string; applyUrl: string }
     expect(first.title).toBeTruthy()
-    expect(first.companyName).toBe('stripe')
+    expect(first.companyName).toBe('Stripe')
     expect(first.applyUrl).toMatch(/^https?:\/\//)
     expect(items[0]!.sourceItemId).toBeTruthy()
     expect(items[0]!.raw).toBeTruthy()

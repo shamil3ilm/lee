@@ -3,6 +3,7 @@ import { XMLParser } from 'fast-xml-parser'
 import type { AdapterContext, DiscoveryAdapter, DiscoveryItem, NormalizedJob } from './types'
 import { discoveryFetch } from './http'
 import { searchPrefsFor, toDate } from './prefs'
+import { enrichSome, htmlToText, workModeOf } from './html-text'
 import { locationMatchesCountries } from '../search-prefs'
 
 /**
@@ -55,6 +56,14 @@ interface OrcRequisition {
   PrimaryLocationCountry?: string
   WorkplaceType?: string
   ShortDescriptionStr?: string
+  ExternalResponsibilitiesStr?: string
+  ExternalQualificationsStr?: string
+}
+
+interface OrcDetail {
+  ExternalDescriptionStr?: string
+  ExternalResponsibilitiesStr?: string
+  ExternalQualificationsStr?: string
 }
 
 interface OrcResponse {
@@ -65,19 +74,31 @@ const ORC_PAGE = 100
 const ORC_MAX_PAGES = 5
 /** ORC hosts answer slowly (30–90 s seen); the default 15 s would fail. */
 const ORC_TIMEOUT_MS = 90_000
+/**
+ * The list carries a one-line teaser at best (checked 2026-10-08: 0–36 of
+ * 50 rows had more than 40 characters), so the newest postings get their
+ * full text from the detail endpoint: at most this many per poll.
+ */
+const ORC_DETAIL_MAX = 20
+const ORC_DETAIL_TIMEOUT_MS = 20_000
+/** A description shorter than this is worth a detail read. */
+const THIN_DESCRIPTION = 200
+
+function orcText(parts: ReadonlyArray<string | undefined>): string {
+  return htmlToText(parts.filter(Boolean).join('<br>'))
+}
 
 export function normalizeOrc(r: OrcRequisition, host: string, siteNumber: string, companyName: string): DiscoveryItem | null {
   if (!r.Id || !r.Title) return null
-  const workplace = (r.WorkplaceType ?? '').toLowerCase()
   const raw = { Id: r.Id, Title: r.Title, PostedDate: r.PostedDate, PrimaryLocation: r.PrimaryLocation, PrimaryLocationCountry: r.PrimaryLocationCountry }
   const normalized: NormalizedJob = {
     kind: 'job',
     title: clean(r.Title),
     companyName,
     location: clean(r.PrimaryLocation) || undefined,
-    remoteType: workplace.includes('remote') ? 'remote' : workplace.includes('hybrid') ? 'hybrid' : 'unknown',
+    remoteType: workModeOf(r.WorkplaceType),
     employmentType: 'unknown',
-    descriptionMd: clean(r.ShortDescriptionStr),
+    descriptionMd: orcText([r.ShortDescriptionStr, r.ExternalResponsibilitiesStr, r.ExternalQualificationsStr]),
     applyUrl: `https://${host}/hcmUI/CandidateExperience/en/sites/${siteNumber}/job/${encodeURIComponent(r.Id)}`,
     postedAt: toDate(r.PostedDate),
     techStack: [],
@@ -112,8 +133,21 @@ export class OracleOrcAdapter implements DiscoveryAdapter {
       }
       if (list.length < ORC_PAGE || (page + 1) * ORC_PAGE >= (block.TotalJobsCount ?? 0)) break
     }
-    return items
+    // Newest first (sortBy=POSTING_DATES_DESC): the detail reads go to them.
+    return enrichSome(items, ORC_DETAIL_MAX, 4, (item) => withOrcDetail(item, host, cfg.siteNumber))
   }
+}
+
+async function withOrcDetail(item: DiscoveryItem, host: string, siteNumber: string): Promise<DiscoveryItem> {
+  const job = item.normalized as NormalizedJob
+  if (job.descriptionMd.length >= THIN_DESCRIPTION) return item
+  const finder = `ById;Id="${item.sourceItemId}",siteNumber=${siteNumber}`
+  const url = `https://${host}/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails?onlyData=true&expand=all&finder=${encodeURIComponent(finder)}`
+  const res = await discoveryFetch('oracle_orc', url, { headers: { accept: 'application/json' } }, ORC_DETAIL_TIMEOUT_MS)
+  if (!res.ok) return item
+  const d = ((await res.json()) as { items?: OrcDetail[] }).items?.[0]
+  const text = d ? orcText([d.ExternalDescriptionStr, d.ExternalResponsibilitiesStr, d.ExternalQualificationsStr]) : ''
+  return text.length > job.descriptionMd.length ? { ...item, normalized: { ...job, descriptionMd: text } } : item
 }
 
 // ---------------------------------------------------------------------------
@@ -124,6 +158,8 @@ const sfConfig = z.object({ host: z.string(), displayName: z.string().max(100) }
 
 interface SfItem {
   title?: string
+  /** Entity-escaped HTML in CDATA: the full posting. */
+  description?: string
   link?: string
   guid?: string | { '#text'?: string }
   'g:id'?: string | number
@@ -143,6 +179,21 @@ function sfLocation(loc: string): { place: string; country?: string } {
   return { place, country: cc }
 }
 
+/**
+ * Two title styles: "Role (Abu Dhabi, AE, 939)" (ADCB) and
+ * "Role | Business | KSA | Riyadh (SA)" (Al-Futtaim). Returns the role and,
+ * for the second style, the city the title names (the feed's g:location is
+ * then often just "SA").
+ */
+export function sfTitle(raw: string): { title: string; city?: string } {
+  const t = clean(raw)
+  const paren = t.replace(/\s*\([^()]*,\s*[A-Z]{2}(,[^()]*)?\)\s*$/, '')
+  if (paren !== t) return { title: paren }
+  const m = /^(.*?)\s*\|.*\|\s*([^|()]+?)\s*\([A-Z]{2}\)\s*$/.exec(t)
+  if (m?.[1]) return { title: m[1], city: m[2]?.trim() }
+  return { title: t.replace(/\s*\([A-Z]{2}\)\s*$/, '') }
+}
+
 export function parseSuccessFactorsFeed(text: string, displayName: string): DiscoveryItem[] {
   const parsed = xml.parse(text) as { rss?: { channel?: { item?: SfItem | SfItem[] } } }
   if (!parsed.rss?.channel) throw new Error('successfactors: job feed not found — the site layout may have changed')
@@ -153,17 +204,18 @@ export function parseSuccessFactorsFeed(text: string, displayName: string): Disc
     const link = clean(it.link)
     if (!id || !it.title || !/^https:\/\//.test(link)) return []
     const loc = sfLocation(clean(it['g:location']))
-    // Titles carry the location: "Role (Abu Dhabi, AE, 939)".
-    const title = clean(it.title).replace(/\s*\([^()]*,\s*[A-Z]{2}(,[^()]*)?\)\s*$/, '')
+    const { title, city } = sfTitle(it.title)
+    // A bare country code ("SA") gains the city the title names.
+    const place = city && /^[A-Z]{2}$/.test(loc.place) ? `${city}, ${loc.place}` : loc.place
     const rawItem = { id, title: it.title, location: it['g:location'], employer: it['g:employer'], expires: it['g:expiration_date'] }
     const normalized: NormalizedJob = {
       kind: 'job',
       title,
       companyName: displayName,
-      location: loc.place || undefined,
+      location: place || undefined,
       remoteType: 'unknown',
       employmentType: 'unknown',
-      descriptionMd: clean(it['g:job_function']),
+      descriptionMd: htmlToText(it.description) || clean(it['g:job_function']),
       applyUrl: link,
       techStack: [],
       tags: ['ats:successfactors', ...(loc.country ? [`country:${loc.country.toLowerCase()}`] : [])],
@@ -212,6 +264,7 @@ interface PhenomJob {
   jobId?: string
   title?: string
   location?: string
+  cityStateCountry?: string
   country?: string
   postedDate?: string
   descriptionTeaser?: string
@@ -235,12 +288,14 @@ function slugify(title: string): string {
 export function normalizePhenomJob(j: PhenomJob, host: string, pathPrefix: string, companyName: string): DiscoveryItem | null {
   if (!j.jobId || !j.title) return null
   const raw = { jobId: j.jobId, title: j.title, location: j.location, country: j.country, postedDate: j.postedDate }
+  // Some postings leave `location` empty and only fill the country.
+  const location = clean(j.location) || clean(j.cityStateCountry) || clean(j.country)
   const normalized: NormalizedJob = {
     kind: 'job',
     title: clean(j.title),
     companyName,
-    location: clean(j.location) || undefined,
-    remoteType: /remote/i.test(j.location ?? '') ? 'remote' : 'unknown',
+    location: location || undefined,
+    remoteType: workModeOf(`${location} ${j.title}`),
     employmentType: 'unknown',
     descriptionMd: clean(j.descriptionTeaser),
     applyUrl: `https://${host}${pathPrefix}/job/${encodeURIComponent(j.jobId)}/${slugify(j.title)}`,
@@ -258,7 +313,11 @@ export class PhenomAdapter implements DiscoveryAdapter {
   async fetch(config: unknown, ctx?: AdapterContext): Promise<DiscoveryItem[]> {
     const cfg = phenomConfig.parse(config)
     const host = safeHost(cfg.host)
-    const prefs = await searchPrefsFor(config, ctx)
+    // `country` here is the site's locale ("us" on ADNOC), not a search
+    // country: passing it on read every ADNOC posting as outside "US" and
+    // dropped them all (found 2026-10-08).
+    const { country: _locale, ...searchConfig } = (config ?? {}) as Record<string, unknown>
+    const prefs = await searchPrefsFor(searchConfig, ctx)
     const items: DiscoveryItem[] = []
     for (let page = 0; page < PHENOM_MAX_PAGES; page++) {
       const body = {
