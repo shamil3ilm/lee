@@ -57,7 +57,11 @@ describe('file kinds', () => {
     expect(fileKind('refs.BIB')).toBe('bib')
     expect(fileKind('photo.jpeg')).toBe('image')
     expect(fileKind('cover.pdf')).toBe('pdf')
-    expect(fileKind('notes.txt')).toBe('other')
+    // Project text files (from a .zip import) open in the editor too.
+    expect(fileKind('notes.txt')).toBe('text')
+    expect(isTextFile('notes.txt')).toBe(true)
+    expect(fileKind('plainnat.bst')).toBe('sty')
+    expect(fileKind('notes.docx')).toBe('other')
     expect(isTextFile('awesome-cv.cls')).toBe(true)
     expect(isTextFile('photo.png')).toBe(false)
   })

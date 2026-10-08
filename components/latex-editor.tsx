@@ -253,6 +253,9 @@ export function LatexEditor({
     [files, replaceMain],
   )
 
+  // Stable while the file list is, so the review is not re-planned on every keystroke.
+  const zipTarget = useMemo(() => ({ kind: 'editor' as const, documentId, assets: files.assets }), [documentId, files.assets])
+
   async function downloadZip(): Promise<void> {
     try {
       await files.flushTexts()
@@ -559,7 +562,7 @@ export function LatexEditor({
         <ZipInput inputRef={zip.inputRef} onChange={zip.onInputChange} />
         <ZipImportHost
           file={zip.file}
-          target={{ kind: 'editor', documentId, assets: files.assets }}
+          target={zipTarget}
           onClose={() => zip.setFile(null)}
           onImported={onImported}
         />
