@@ -59,6 +59,11 @@ export function ResponsivePopover({ trigger, title, children, contentClassName, 
           aria-label={title}
           // A press on the trigger toggles it (its own click handler); don't
           // let it count as an outside press that closes and reopens.
+          // There is no Radix Trigger (the anchor is the trigger), so put focus back on it by hand.
+          onCloseAutoFocus={(e) => {
+            e.preventDefault()
+            triggerRef.current?.focus()
+          }}
           onInteractOutside={(e) => {
             if (triggerRef.current?.contains(e.target as Node)) e.preventDefault()
           }}

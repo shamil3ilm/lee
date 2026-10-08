@@ -16,6 +16,8 @@ describe('settings links that come back', () => {
     expect(safeReturnPath('/\\evil.example')).toBeNull()
     expect(safeReturnPath('https://evil.example')).toBeNull()
     expect(safeReturnPath(undefined)).toBeNull()
+    expect(safeReturnPath('/\t/evil.example')).toBeNull()
+    expect(safeReturnPath('/\n/evil.example')).toBeNull()
     expect(settingsHref('/settings/search', 'https://evil.example')).toBe('/settings/search')
   })
 
