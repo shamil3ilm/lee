@@ -301,12 +301,15 @@ export default async function ApplicationDetail({
 
           {compareCard ? (
             <section id="compare" aria-label="Compare" className={SECTION_ANCHOR}>
-              <ComparisonCard
-                comparison={compareCard.comparison}
-                hasCurrent={compareCard.hasCurrent}
-                saved={compareCard.saved}
-                citations={compareCard.citations}
-              />
+              {/* ~3k px on phones: folded there like the other secondary cards. */}
+              <PhoneFold label="Compare with your current job">
+                <ComparisonCard
+                  comparison={compareCard.comparison}
+                  hasCurrent={compareCard.hasCurrent}
+                  saved={compareCard.saved}
+                  citations={compareCard.citations}
+                />
+              </PhoneFold>
             </section>
           ) : null}
         </div>
