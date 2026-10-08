@@ -9,6 +9,7 @@ import {
   Gauge,
   Home,
   ListChecks,
+  Radar,
   Settings,
   Shapes,
   Sparkles,
@@ -18,7 +19,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
-export type NavBadgeKey = 'discoveries' | 'todos'
+export type NavBadgeKey = 'discoveries' | 'todos' | 'radar'
 
 export interface NavItem {
   href: string
@@ -78,6 +79,8 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Playground',
     items: [
       { href: '/playground', label: 'Playground', icon: Shapes },
+      // New for your watch terms (unread, matching an unmuted term).
+      { href: '/radar', label: 'Radar', icon: Radar, badge: 'radar' },
       { href: '/playground/models', label: 'Models', icon: Swords },
       { href: '/playground/decisions', label: 'Decisions', icon: Beaker },
     ],

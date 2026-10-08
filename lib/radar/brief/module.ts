@@ -58,14 +58,14 @@ export function buildModule(briefId: string, entry: { name: string; kind: string
 export async function learnThis(userId: string, entryId: string, now: Date = new Date()): Promise<BriefModule> {
   const [entry, brief] = await Promise.all([itemsQ.getEntry(userId, entryId), briefsQ.getByEntry(userId, entryId)])
   if (!entry || !brief) throw new RadarError('Save a brief first.', 'not_found')
-  const module = (brief.module as BriefModule | null) ?? buildModule(brief.id, entry, brief.sections as BriefSections, now)
-  if (module.cards.length === 0) throw new RadarError('The brief has nothing to learn yet.')
+  const mod = (brief.module as BriefModule | null) ?? buildModule(brief.id, entry, brief.sections as BriefSections, now)
+  if (mod.cards.length === 0) throw new RadarError('The brief has nothing to learn yet.')
   await db.transaction(async (tx) => {
-    await reviewsQ.enroll(userId, module.cards.map((c) => ({ cardId: c.id, skillId: RADAR_SKILL_ID, dueAt: now })), tx)
-    if (!brief.module) await briefsQ.setModule(userId, brief.id, module, tx)
+    await reviewsQ.enroll(userId, mod.cards.map((c) => ({ cardId: c.id, skillId: RADAR_SKILL_ID, dueAt: now })), tx)
+    if (!brief.module) await briefsQ.setModule(userId, brief.id, mod, tx)
   })
-  logger.info('radar_module_created', { cards: module.cards.length, lab: module.lab ? 1 : 0 })
-  return module
+  logger.info('radar_module_created', { cards: mod.cards.length, lab: mod.lab ? 1 : 0 })
+  return mod
 }
 
 /** Front/back of radar cards by id (the review session's lookup). */

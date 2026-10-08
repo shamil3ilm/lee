@@ -45,6 +45,8 @@ export async function listEntries(
 export interface FirstSeen {
   entryId: string
   source: string
+  /** Official feed id (source 'feeds'), so each blog is its own source. */
+  feedId: string | null
   /** Earliest publication date the source reports, else when lee first saw it. */
   firstPublishedAt: Date | null
   firstFetchedAt: Date
@@ -57,16 +59,18 @@ export async function firstSeenBySource(userId: string, entryIds: readonly strin
     .select({
       entryId: radarItems.entryId,
       source: radarItems.source,
+      feedId: sql<string | null>`${radarItems.metrics}->>'feedId'`,
       firstPublishedAt: sql<Date | string | null>`min(${radarItems.publishedAt})`,
       firstFetchedAt: sql<Date | string>`min(${radarItems.fetchedAt})`,
       items: sql<number>`count(*)::int`,
     })
     .from(radarItems)
     .where(and(eq(radarItems.userId, userId), inArray(radarItems.entryId, [...entryIds])))
-    .groupBy(radarItems.entryId, radarItems.source)
+    .groupBy(radarItems.entryId, radarItems.source, sql`${radarItems.metrics}->>'feedId'`)
   return rows.map((r) => ({
     entryId: r.entryId,
     source: r.source,
+    feedId: r.feedId ?? null,
     firstPublishedAt: r.firstPublishedAt ? new Date(r.firstPublishedAt) : null,
     firstFetchedAt: new Date(r.firstFetchedAt),
     items: Number(r.items),

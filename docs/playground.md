@@ -409,6 +409,24 @@ At this phase:
 E2E (`tests/e2e/problems.spec.ts`) checks that no worker and no CDN request
 happen until Run.
 
+## AI Radar cards ("Learn this", v16 phase 16.1)
+
+13.x has no module table yet, so a confirmed AI Radar brief becomes a
+minimal module stored on the brief itself (`radar_briefs.module`:
+`{ cards, lab, createdAt }`, see `docs/ai-radar.md`):
+
+- **Reading:** the brief (Radar › entry page).
+- **Cards:** one SM-2 concept card per filled brief section, enrolled in the
+  existing `academy_reviews` table with ids `radar:<briefId>:<section>`
+  under the pseudo-skill `radar` (shown as "AI Radar"). They are due at
+  once, reviewed on `/playground/review` with the content-pack cards, and
+  earn the usual review XP and streak.
+- **Lab:** a model links to the Model Arena; other kinds have no lab yet.
+
+`lib/academy/service/reviews.ts` resolves a `radar:` card from its brief's
+module (`lib/radar/brief/module.ts`); a card whose brief was replaced waits
+until "Learn this" rebuilds the module with the same ids.
+
 ## Not in 13.0 (later phases)
 
 - **Shipped in 13.1** (above): the coding workbench (Web Worker runners, hidden tests, complexity fit, quality metrics, Pyodide, PHP, SQL problems).

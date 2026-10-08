@@ -108,12 +108,12 @@ describe('grounded briefs', () => {
     expect((saved.sections as typeof draft.sections).what).toHaveLength(1)
     expect(saved.promptVersion).toBe('1.0.0')
 
-    const module = await learnThis(u.id, id, NOW)
-    expect(module.cards).toHaveLength(1)
-    expect(module.cards[0]?.front).toBe('What is Introducing Zorb?')
+    const mod = await learnThis(u.id, id, NOW)
+    expect(mod.cards).toHaveLength(1)
+    expect(mod.cards[0]?.front).toBe('What is Introducing Zorb?')
     const due = await dueCards(u.id, NOW)
-    expect(due.map((c) => [c.cardId, c.skillName])).toEqual([[module.cards[0]!.id, 'AI Radar']])
-    const r = await gradeCard(u.id, module.cards[0]!.id, 'good', NOW)
+    expect(due.map((c) => [c.cardId, c.skillName])).toEqual([[mod.cards[0]!.id, 'AI Radar']])
+    const r = await gradeCard(u.id, mod.cards[0]!.id, 'good', NOW)
     expect(r.intervalDays).toBe(1)
     // Idempotent.
     expect((await learnThis(u.id, id, NOW)).cards).toHaveLength(1)

@@ -149,6 +149,13 @@ describe('GDELT parser', () => {
     expect(items[0]?.publishedAt?.toISOString()).toBe('2026-10-05T00:00:00.000Z')
   })
 
+  it('skips phrases GDELT rejects as too short', async () => {
+    const fetchImpl = fixtureFetch(radarRoutes())
+    const r = await fetchGdeltTerms({ fetchImpl, limiter: NO_WAIT, terms: [{ id: 's', term: 'Zrb', aliases: [] }] })
+    expect(r.items).toEqual([])
+    expect(fetchImpl.calls).toHaveLength(0)
+  })
+
   it('queries a 7-day phrase search and records failures per term', async () => {
     expect(new URL(gdeltTermUrl('Zorb')).searchParams.get('query')).toBe('"Zorb"')
     const fetchImpl = fixtureFetch([{ match: (u) => u.host === 'api.gdeltproject.org', status: 429, body: {} }])

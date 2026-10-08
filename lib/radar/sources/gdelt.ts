@@ -14,6 +14,14 @@ import { pastDeadline, termsForRun, type RadarFetchDeps, type RadarFetchResult }
  */
 
 const MAX_PER_TERM = 15
+/** GDELT often takes well over the shared client's 10 s to answer. */
+export const GDELT_TIMEOUT_MS = 30_000
+/** GDELT answers "The specified phrase is too short." below this length (seen live on 2026-10-08 for a 3-letter term). */
+export const GDELT_MIN_PHRASE = 4
+
+export function gdeltSearchable(term: string): boolean {
+  return cleanTerm(term).replace(/"/g, '').length >= GDELT_MIN_PHRASE
+}
 
 interface Article {
   url?: string
@@ -69,10 +77,11 @@ export function toGdeltItems(body: unknown, term: WatchTermLike): RadarItemInput
 export async function fetchGdeltTerms(deps: RadarFetchDeps = {}): Promise<RadarFetchResult> {
   const items: RadarItemInput[] = []
   const partialErrors: string[] = []
-  for (const term of termsForRun(deps)) {
+  for (const term of termsForRun({ ...deps, terms: (deps.terms ?? []).filter((t) => gdeltSearchable(t.term)) })) {
     if (pastDeadline(deps)) break
     try {
-      items.push(...toGdeltItems(await requestJson('gdelt', gdeltTermUrl(term.term), deps), term))
+      const body = await requestJson('gdelt', gdeltTermUrl(term.term), { ...deps, timeoutMs: deps.timeoutMs ?? GDELT_TIMEOUT_MS })
+      items.push(...toGdeltItems(body, term))
     } catch (e) {
       partialErrors.push(errorText(e))
       // GDELT rate-limits per IP: a 429 means the rest of the run would fail too.
