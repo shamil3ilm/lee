@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import * as cheerio from 'cheerio'
 import { resolveJobLink, unresolvedJobClick } from './links'
+import { isArabicLocation } from './arabic-places'
 import type { AlertSiteId } from './sites'
 
 /** The slice of domhandler's node shape the parser reads (cheerio doesn't export it). */
@@ -66,6 +67,10 @@ const NOISE_RES: readonly RegExp[] = [
   /^(\d+\s*-\s*\d+|\d+\+?)\s*(yrs?|years?)(\s+exp(erience)?)?$/i,
   /^[₹$€£]|\b(aed|sar|qar|kwd|bhd|omr|inr|usd|lpa|lacs?|per (month|year|annum|hour))\b/i,
   /^(skills?|key ?skills?|job description)\s*:/i,
+  // Labelled card lines (NaukriGulf, Bayt): "Experience: 2 - 5 Years", "Salary: Not Disclosed".
+  /^(experience|exp|salary|industry|job role|role|functional area|nationality|gender|vacanc(y|ies)|education|job type|employment type|career level|posted( on)?)\s*:/i,
+  // Glassdoor age chips: "3d", "24h", "30d+".
+  /^\d+\s*[dh]\+?$/i,
   /^(full[- ]?time|part[- ]?time|contract|internship|temporary|permanent)$/i,
   /^(entry level|junior|mid[- ]?(level|career|senior)|senior( level)?|management|executive|career level:.*|experience level:.*)$/i,
   /^\d(\.\d)?\s*★?$/,
@@ -73,7 +78,7 @@ const NOISE_RES: readonly RegExp[] = [
 ]
 
 const PLACE_RE =
-  /\b(remote|hybrid|on-?site|work from home|wfh|anywhere|worldwide|united arab emirates|uae|dubai|abu dhabi|sharjah|ajman|ras al khaimah|saudi( arabia)?|ksa|riyadh|jeddah|dammam|khobar|qatar|doha|kuwait|bahrain|manama|oman|muscat|india|bengaluru|bangalore|hyderabad|chennai|mumbai|pune|delhi|ncr|gurgaon|gurugram|noida|kochi|cochin|kerala|thiruvananthapuram|trivandrum|kolkata|ahmedabad|jaipur|coimbatore|united states|usa|united kingdom|uk|london|germany|berlin|europe|emea|apac|singapore|canada|australia)\b/i
+  /\b(remote|hybrid|on-?site|work from home|wfh|anywhere|worldwide|united arab emirates|uae|dubai|abu dhabi|sharjah|ajman|ras al khaimah|saudi( arabia)?|ksa|riyadh|jeddah|dammam|khobar|dhahran|makkah|mecca|madinah|medina|jubail|yanbu|tabuk|neom|qatar|doha|lusail|kuwait|salmiya|hawalli|bahrain|manama|muharraq|riffa|oman|muscat|salalah|sohar|nizwa|al ain|fujairah|umm al quwain|india|bengaluru|bangalore|hyderabad|chennai|mumbai|pune|delhi|ncr|gurgaon|gurugram|noida|kochi|cochin|kerala|thiruvananthapuram|trivandrum|kolkata|ahmedabad|jaipur|coimbatore|united states|usa|united kingdom|uk|london|germany|berlin|europe|emea|apac|singapore|canada|australia)\b/i
 
 const SEPARATOR_RE = /\s+[·•|–—]\s+|\s+-\s+/
 
@@ -99,6 +104,7 @@ const PLACE_GLOBAL_RE = new RegExp(PLACE_RE.source, 'gi')
 export function isLocationLine(line: string): boolean {
   const parts = line.split(SEPARATOR_RE).filter((p) => p.trim())
   if (parts.length > 1) return parts.every((p) => isLocationLine(p.trim()))
+  if (/[؀-ۿ]/.test(line)) return isArabicLocation(line)
   if (/^[A-Z][\w.'-]*( [A-Z][\w.'-]*)*,\s*[A-Z][\w .'-]+(,\s*[A-Z][\w .'-]+)?(\s*\([^)]*\))?$/.test(line)) return true
   if (!PLACE_RE.test(line)) return false
   const residue = line

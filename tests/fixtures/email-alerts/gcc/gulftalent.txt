@@ -1,0 +1,16 @@
+SYNTHETIC fixture (2026-10-08): the plain-text part of a GulfTalent-style alert. Not a real email; companies and ids invented.
+
+New jobs matching your alert "Software Developer"
+
+Software Developer - .NET
+Example Holding
+Abu Dhabi, United Arab Emirates
+https://www.gulftalent.com/uae/jobs/software-developer-net-512301?utm_source=alert&ref=email
+
+Backend Engineer
+Example Telecom SAOG
+Muscat, Oman
+View job: https://www.gulftalent.com/oman/jobs/backend-engineer-512399?utm_source=alert
+
+More jobs: https://www.gulftalent.com/uae/jobs/title/software-developer
+Unsubscribe: https://www.gulftalent.com/alerts/unsubscribe?token=invented
