@@ -1,4 +1,5 @@
 'use client'
+import { plural } from '@/lib/ui/labels'
 import { useState, useTransition } from 'react'
 import { ExternalLink, Star } from 'lucide-react'
 import { toast } from 'sonner'
@@ -34,7 +35,7 @@ export function GoogleRating({ companyId, capLeft }: { companyId: string; capLef
         <Button type="button" size="sm" variant="outline" onClick={check} disabled={pending || left === 0}>
           <Star /> {pending ? 'Checking…' : 'Check Google rating'}
         </Button>
-        <span className="text-xs text-muted-foreground">{left} call(s) left this month</span>
+        <span className="text-xs text-muted-foreground">{plural(left, 'call')} left this month</span>
       </div>
       {place ? (
         <div className="space-y-2 rounded-md border px-3 py-2">

@@ -1,3 +1,4 @@
+import { plural } from '@/lib/ui/labels'
 import { notFound } from 'next/navigation'
 import { requireUserId } from '@/lib/auth/require-session'
 import * as variantsQ from '@/lib/db/queries/resumeVariants'
@@ -36,7 +37,7 @@ export default async function VariantPage({ params }: { params: Promise<{ id: st
       />
       <PageHeader
         title={loaded.variant.name}
-        description={`Version ${loaded.version} · ${versions.length} version(s) since ${shortDate(versions[0]?.createdAt ?? loaded.variant.createdAt)}. Applications keep the version they used; older unused versions are cleaned up after a while (Settings › Storage).`}
+        description={`Version ${loaded.version} · ${plural(versions.length, 'version')} since ${shortDate(versions[0]?.createdAt ?? loaded.variant.createdAt)}. Applications keep the version they used; older unused versions are cleaned up after a while (Settings › Storage).`}
       />
       <VariantEditor
         key={`${id}-${loaded.version}-${loaded.variant.portfolioSlug ?? ''}-${loaded.variant.publishToPortfolio}-${loaded.variant.portfolioLastSha ?? ''}`}

@@ -108,7 +108,7 @@ describe('ats', () => {
     const r = scoreAts(structured(weakCv()))
     expect(r.score).toBe(87)
     expect(r.findings.map((f) => f.message)).toEqual([
-      'Missing standard section(s): Education',
+      'Missing standard section: Education',
       'Contact details missing: phone, LinkedIn URL, location',
     ])
   })

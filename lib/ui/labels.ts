@@ -89,3 +89,12 @@ export function humanizeLabel(raw: string | number | null | undefined): string {
   if (!/^[a-z][a-z0-9]*([_-][a-z0-9]+)*$/.test(s) && !/^[a-z]+[A-Z][A-Za-z]*$/.test(s)) return s
   return sentenceCase(s)
 }
+
+/**
+ * "1 item" / "3 items": a count with the right word form, instead of the
+ * lazy "item(s)". Regular plurals add "s"; pass `pluralWord` for the rest
+ * ("1 entry" / "2 entries").
+ */
+export function plural(n: number, word: string, pluralWord?: string): string {
+  return `${n} ${n === 1 ? word : (pluralWord ?? `${word}s`)}`
+}

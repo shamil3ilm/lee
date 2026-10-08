@@ -133,7 +133,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                   defaultValue={profile?.compFloorAnnual ?? ''}
                 />
                 <Field
-                  label="Comp currency (ISO-3)"
+                  label="Pay currency code"
                   name="compCurrency"
                   defaultValue={profile?.compCurrency ?? ''}
                   placeholder="INR, USD, AED…"

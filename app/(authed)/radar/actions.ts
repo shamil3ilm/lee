@@ -1,4 +1,5 @@
 'use server'
+import { plural } from '@/lib/ui/labels'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { requireUserId } from '@/lib/auth/require-session'
@@ -114,7 +115,7 @@ export async function refreshRadarAction(): Promise<RadarActionResult> {
     if (r.status === 'no_terms') return { error: 'Watch at least one term first.' }
     if (r.status === 'recent') return { error: 'Already refreshed this hour — try again later.' }
     if (r.status === 'queued') return { success: true, message: 'Queued — it finishes on the next background run.' }
-    return { success: true, message: r.failed > 0 ? `Refreshed; ${r.failed} source(s) failed.` : 'Radar refreshed.' }
+    return { success: true, message: r.failed > 0 ? `Refreshed; ${plural(r.failed, 'source')} failed.` : 'Radar refreshed.' }
   } catch (err) {
     return fail('refreshRadar', err, 'Could not refresh right now.')
   }

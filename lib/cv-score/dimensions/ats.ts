@@ -170,7 +170,7 @@ export function scoreAts(cv: ScorableCv, opts: AtsOptions = {}): DimensionResult
   if (missingSecs.length) {
     findings.push(makeFinding('ats', {
       severity: 'minor',
-      message: `Missing standard section(s): ${missingSecs.join(', ')}`,
+      message: `Missing standard ${missingSecs.length === 1 ? 'section' : 'sections'}: ${missingSecs.join(', ')}`,
       evidence: headings.length ? headings : headerEvidence(cv),
       suggestion: 'ATS parsers map fields by heading — conventional section names help them file your details.',
     }))

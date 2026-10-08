@@ -108,6 +108,6 @@ describe('tailoring', () => {
     expect(cv.experience.map((e) => e.company)).toEqual(['PayFlow'])
     expect(cv.experience[0]!.bullets).toEqual(start.experience[0]!.bullets)
     expect(cv.projects?.map((p) => p.name)).toEqual(['Open Ledger'])
-    expect(cv._tailoring.reasoning).toContain('removed 4 line(s)')
+    expect(cv._tailoring.reasoning).toContain('removed 4 lines')
   })
 })

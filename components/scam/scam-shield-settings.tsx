@@ -20,6 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { humanizeLabel } from '@/lib/ui/labels'
 
 interface AllowEntry {
   id: string
@@ -77,24 +79,12 @@ function NetChecksCard({ initial }: { initial: boolean }) {
               lookup never raises the risk.
             </div>
           </div>
-          <label className="relative inline-flex shrink-0 cursor-pointer items-center">
-            <input
-              type="checkbox"
-              className="peer sr-only"
-              checked={enabled}
-              disabled={saving}
-              onChange={(e) => toggle(e.currentTarget.checked)}
-              aria-label="Enable Scam Shield network checks"
-            />
-            <span
-              className="h-5 w-9 rounded-full bg-input transition-colors peer-checked:bg-primary peer-disabled:opacity-50"
-              aria-hidden="true"
-            />
-            <span
-              className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-background shadow transition-transform peer-checked:translate-x-4"
-              aria-hidden="true"
-            />
-          </label>
+          <Switch
+            checked={enabled}
+            disabled={saving}
+            onChange={(e) => toggle(e.currentTarget.checked)}
+            aria-label="Enable Scam Shield network checks"
+          />
         </div>
       </CardContent>
     </Card>
@@ -180,7 +170,7 @@ function AllowListCard({ entries }: { entries: AllowEntry[] }) {
           <ul className="divide-y rounded-md border">
             {entries.map((e) => (
               <li key={e.id} className="flex items-center gap-2 px-3 py-2 text-sm">
-                <Badge variant={e.kind === 'domain' ? 'blue' : 'violet'}>{e.kind}</Badge>
+                <Badge variant={e.kind === 'domain' ? 'blue' : 'violet'}>{humanizeLabel(e.kind)}</Badge>
                 <span className="min-w-0 flex-1 truncate">{e.value}</span>
                 <Button
                   size="sm"

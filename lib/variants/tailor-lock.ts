@@ -1,3 +1,4 @@
+import { plural } from '@/lib/ui/labels'
 import type { MasterCV, TailoredCV } from '@/lib/documents/types'
 import { checkFactLock } from '@/lib/resume/fact-lock'
 
@@ -60,7 +61,7 @@ export function lockTailoredCv(tailored: TailoredCV, starting: MasterCV): Locked
       ...tailored._tailoring,
       reasoning:
         dropped > 0
-          ? `${tailored._tailoring.reasoning} (lee removed ${dropped} line(s) that went beyond your résumé's facts.)`.trim()
+          ? `${tailored._tailoring.reasoning} (lee removed ${plural(dropped, 'line')} that went beyond your résumé's facts.)`.trim()
           : tailored._tailoring.reasoning,
     },
   }

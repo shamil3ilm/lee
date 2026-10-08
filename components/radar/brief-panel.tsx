@@ -1,4 +1,5 @@
 'use client'
+import { plural } from '@/lib/ui/labels'
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -70,7 +71,7 @@ export function BriefPanel({ entryId, primarySources, saved }: BriefPanelProps) 
     start(async () => {
       const r = await learnThisAction(entryId)
       if ('error' in r) return void toast.error(r.error)
-      toast.success(`Added ${r.module.cards.length} card(s) to your Playground reviews.`)
+      toast.success(`Added ${plural(r.module.cards.length, 'card')} to your Playground reviews.`)
       router.refresh()
     })
   }
@@ -98,7 +99,7 @@ export function BriefPanel({ entryId, primarySources, saved }: BriefPanelProps) 
           <>
             <p className="text-xs text-muted-foreground">
               Draft — not saved. Untick sentences you don&apos;t want, then confirm.
-              {draft.dropped > 0 ? ` ${draft.dropped} sentence(s) failed the citation check and were dropped.` : ''}
+              {draft.dropped > 0 ? ` ${plural(draft.dropped, 'sentence')} failed the citation check and were dropped.` : ''}
             </p>
             <UsageBadge usage={usage} />
             <BriefSectionsView sections={draft.sections} sources={draft.sources} removed={removed} onToggle={toggle} />

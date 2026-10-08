@@ -1,4 +1,5 @@
 'use client'
+import { plural } from '@/lib/ui/labels'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -13,6 +14,7 @@ import {
   setDriveStorageEnabledAction,
 } from '@/app/(authed)/settings/integrations/actions'
 import { LastActivity, type LastActivityItem } from '@/components/settings/last-activity'
+import { Switch } from '@/components/ui/switch'
 
 export interface DriveStorageCardProps {
   hasGoogleAccount: boolean
@@ -69,7 +71,7 @@ export function DriveStorageCard(props: DriveStorageCardProps) {
             break
           }
           if (res.remaining === 0 || res.migrated === 0) {
-            if (res.remaining > 0) toast.error(`${res.remaining} file(s) could not be moved. Try again later.`)
+            if (res.remaining > 0) toast.error(`${plural(res.remaining, 'file')} could not be moved. Try again later.`)
             break
           }
         } else {
@@ -77,7 +79,7 @@ export function DriveStorageCard(props: DriveStorageCardProps) {
           break
         }
       }
-      if (moved > 0) toast.success(`Moved ${moved} file(s) to Google Drive.`)
+      if (moved > 0) toast.success(`Moved ${plural(moved, 'file')} to Google Drive.`)
       router.refresh()
     } catch {
       toast.error('Could not move files right now. Please try again.')
@@ -129,9 +131,7 @@ export function DriveStorageCard(props: DriveStorageCardProps) {
           <>
             <label className="flex items-center justify-between gap-3 text-sm">
               <span>Save new files to Google Drive</span>
-              <input
-                type="checkbox"
-                className="size-4"
+              <Switch
                 checked={enabled}
                 disabled={saving}
                 onChange={(e) => toggle(e.target.checked)}
@@ -141,7 +141,7 @@ export function DriveStorageCard(props: DriveStorageCardProps) {
             <div className="flex items-center justify-between gap-3 border-t pt-3">
               <p className="text-xs text-muted-foreground">
                 {pending > 0
-                  ? `${pending} file(s) are still stored in ${APP_NAME}. Moving copies each one, checks it, then frees the space.`
+                  ? `${plural(pending, 'file')} ${pending === 1 ? 'is' : 'are'} still stored in ${APP_NAME}. Moving copies each one, checks it, then frees the space.`
                   : 'All document files are in Google Drive.'}
               </p>
               <Button

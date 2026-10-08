@@ -409,7 +409,7 @@ async function main(): Promise<void> {
     event('error', 'ai', 'generate_cover_letter_failed', 'Generate cover letter failed: Groq 429 rate limited', 3, {
       context: { err: 'Groq 429 rate limited' },
     }),
-    event('info', 'cron', 'cron_schedule', 'Scheduled 9 job(s) for 1 user(s)', 30, { userId: null, context: { users: 1, enqueued: 9 } }),
+    event('info', 'cron', 'cron_schedule', 'Scheduled 9 jobs for 1 user', 30, { userId: null, context: { users: 1, enqueued: 9 } }),
   ])
 
   // Compare with my current job: a private current job and assumptions.

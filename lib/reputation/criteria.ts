@@ -1,3 +1,4 @@
+import { plural } from '@/lib/ui/labels'
 import { RED_FLAG_LABELS, type CompanyFacts, type ConfirmedSummary, type RedFlagCategory, type UserRating } from './types'
 
 /**
@@ -96,10 +97,10 @@ export function environmentCriterion(inputs: ReputationInputs): CriterionScore {
   const proCon: CriterionEvidence[] = s
     ? [
         ...(s.pros.length > 0
-          ? [{ label: `${s.pros.length} confirmed pro(s)`, effect: Math.min(PRO_CON_MAX, s.pros.length * PRO_CON_POINTS), source: 'confirmed_summary' as const }]
+          ? [{ label: plural(s.pros.length, 'confirmed pro'), effect: Math.min(PRO_CON_MAX, s.pros.length * PRO_CON_POINTS), source: 'confirmed_summary' as const }]
           : []),
         ...(s.cons.length > 0
-          ? [{ label: `${s.cons.length} confirmed con(s)`, effect: -Math.min(PRO_CON_MAX, s.cons.length * PRO_CON_POINTS), source: 'confirmed_summary' as const }]
+          ? [{ label: plural(s.cons.length, 'confirmed con'), effect: -Math.min(PRO_CON_MAX, s.cons.length * PRO_CON_POINTS), source: 'confirmed_summary' as const }]
           : []),
       ]
     : []

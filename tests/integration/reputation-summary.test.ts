@@ -135,7 +135,7 @@ describe('confirming a summary feeds scoring and Scam Shield', () => {
     expect(env).toMatchObject({ score: 14, base: 38 })
     expect(env?.evidence.map((e) => e.label)).toEqual([
       'Your glassdoor rating: 2.5/5',
-      '1 confirmed con(s)',
+      '1 confirmed con',
       'Red flag you confirmed: Unpaid salaries / wage theft',
     ])
     // 50 + 10 (founded 2011, 15 y) + 10 (1,450 people) − 20

@@ -86,12 +86,12 @@ export function DecisionProviderSelector({
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-xs text-muted-foreground">
-          Used for classification tasks — expense auto-categorize, discovery
-          pre-filter. Default: Groq (works via the existing key). Advanced:
-          Laya via HTTP.
+          Used for quick sorting tasks: expense categories and the first
+          pass over new postings. Default: Groq (uses your existing key).
+          Advanced: your own Laya server.
         </p>
         <Select value={selected} onValueChange={handleProviderChange} disabled={pending}>
-          <SelectTrigger className="w-full">
+          <SelectTrigger className="w-full" aria-label="Decision provider">
             <SelectValue placeholder="Pick a provider" />
           </SelectTrigger>
           <SelectContent>

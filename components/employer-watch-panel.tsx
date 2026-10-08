@@ -9,22 +9,23 @@ import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/
 import type { EmployerWatchRow, WatchStatus } from '@/lib/defaults/watch-status'
 import type { WatchMethod } from '@/lib/defaults/watch-employers'
 import { shortDate } from '@/lib/ui/date'
+import { Switch } from '@/components/ui/switch'
 
 const COUNTRY: Readonly<Record<string, string>> = {
   AE: 'United Arab Emirates', SA: 'Saudi Arabia', QA: 'Qatar', KW: 'Kuwait', BH: 'Bahrain', OM: 'Oman',
 }
 
 const METHOD_LABEL: Readonly<Record<WatchMethod, string>> = {
-  adapter: 'Polled daily',
-  alert: 'Job alerts',
+  adapter: 'Daily feed',
+  alert: 'Email alerts',
   ai_search: 'AI search',
   manual: 'Check weekly',
 }
 
 const STATUS: Readonly<Record<WatchStatus, { label: string; variant: BadgeProps['variant'] }>> = {
-  polling: { label: 'Polling', variant: 'success' },
-  waiting: { label: 'First poll pending', variant: 'info' },
-  error: { label: 'Poll failed', variant: 'danger' },
+  polling: { label: 'Watching', variant: 'success' },
+  waiting: { label: 'First check pending', variant: 'info' },
+  error: { label: "Couldn't check", variant: 'danger' },
   off: { label: 'Off', variant: 'neutral' },
   check_due: { label: 'Check due', variant: 'warning' },
   checked: { label: 'Checked', variant: 'success' },
@@ -66,12 +67,13 @@ function EmployerRow({ row }: { row: EmployerWatchRow }) {
             href={row.careersUrl}
             target="_blank"
             rel="noopener noreferrer"
+            // The careers backend (vendor) and the research note stay one hover away.
+            title={`Careers site: ${row.backend}. ${row.note}`}
             className="inline-flex items-center gap-1 font-medium text-primary underline-offset-2 hover:underline"
           >
             {row.name} <ExternalLink className="size-3" aria-hidden="true" />
           </a>
           <Badge variant={status.variant}>{status.label}</Badge>
-          <Badge variant="outline">{row.backend}</Badge>
           {row.methods.map((m) => (
             <Badge key={m} variant="neutral">
               {METHOD_LABEL[m]}
@@ -79,7 +81,7 @@ function EmployerRow({ row }: { row: EmployerWatchRow }) {
           ))}
         </div>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {lastSeenLine(row)} · {row.note}
+          {lastSeenLine(row)}
         </p>
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-1.5">
@@ -101,30 +103,12 @@ function EmployerRow({ row }: { row: EmployerWatchRow }) {
             Checked
           </Button>
         ) : null}
-        <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-          <input
-            type="checkbox"
-            className="peer sr-only"
-            checked={row.watching}
-            onChange={toggle}
-            disabled={isPending || !row.sourceId}
-            aria-label={`${row.watching ? 'Stop watching' : 'Watch'} ${row.name}`}
-          />
-          <span
-            className={[
-              'relative inline-flex h-5 w-9 items-center rounded-full transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-ring',
-              row.watching ? 'bg-primary' : 'bg-muted',
-            ].join(' ')}
-          >
-            <span
-              className={[
-                'inline-block h-4 w-4 transform rounded-full bg-card shadow ring-1 ring-border transition-transform',
-                row.watching ? 'translate-x-4' : 'translate-x-0.5',
-              ].join(' ')}
-            />
-          </span>
-          <span>{row.watching ? 'On' : 'Off'}</span>
-        </label>
+        <Switch
+          checked={row.watching}
+          onChange={toggle}
+          disabled={isPending || !row.sourceId}
+          aria-label={`Watch ${row.name}`}
+        />
       </div>
     </li>
   )

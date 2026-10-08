@@ -5,6 +5,7 @@ import { SENIORITY_LABELS, SENIORITY_LEVELS } from '@/lib/discovery/relevance/se
 import { TARGET_REGIONS } from '@/lib/discovery/relevance/places'
 import type { SearchPrefsFormValues } from '@/lib/discovery/relevance/view'
 import { ChoiceChip, PrefsFieldset } from './choice-chip'
+import { Checkbox } from '@/components/ui/checkbox'
 
 interface SectionProps {
   values: SearchPrefsFormValues
@@ -66,7 +67,7 @@ export function TargetSections({ values }: SectionProps) {
       </PrefsFieldset>
       <TextField
         name="otherCountries"
-        label="Other countries (ISO-2, comma separated)"
+        label="Other countries (codes, comma separated)"
         defaultValue={values.otherCountries}
         placeholder="e.g. SG, DE"
       />
@@ -82,11 +83,9 @@ export function TargetSections({ values }: SectionProps) {
 
       <div className="space-y-2 rounded-lg border p-3">
         <label className="flex items-center gap-2 text-sm">
-          <input
+          <Checkbox
             name="relocationIfSponsored"
-            type="checkbox"
             defaultChecked={values.relocationIfSponsored}
-            className="size-4 rounded border-input"
           />
           Open to relocation if the employer sponsors it
         </label>
@@ -95,7 +94,7 @@ export function TargetSections({ values }: SectionProps) {
         </p>
         <TextField
           name="relocationCountries"
-          label="Only these countries (ISO-2, empty = any)"
+          label="Only these countries (codes; empty means any)"
           defaultValue={values.relocationCountries}
           placeholder="e.g. DE, NL, GB"
         />
@@ -103,17 +102,15 @@ export function TargetSections({ values }: SectionProps) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="flex items-center gap-2 text-sm sm:col-span-2">
-          <input
+          <Checkbox
             name="acceptRelocation"
-            type="checkbox"
             defaultChecked={values.acceptRelocation}
-            className="size-4 rounded border-input"
           />
           Open to relocating to other countries
         </label>
         <TextField
           name="willingToRelocateTo"
-          label="Relocation countries (ISO-2)"
+          label="Relocation countries (codes)"
           defaultValue={values.willingToRelocateTo}
           placeholder="e.g. SG"
         />

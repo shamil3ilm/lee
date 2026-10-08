@@ -1,4 +1,5 @@
 'use client'
+import { plural } from '@/lib/ui/labels'
 import { useState } from 'react'
 import { GitBranch, Loader2, Plus } from 'lucide-react'
 import { toast } from 'sonner'
@@ -48,7 +49,7 @@ function GitHubImport({ onImport }: { onImport: (items: ProjectItem[]) => void }
           }),
         ),
       )
-      toast.success(`Added ${json.proposed.length} project(s) — review them, then save.`)
+      toast.success(`Added ${plural(json.proposed.length, 'project')} — review them, then save.`)
     } catch {
       toast.error('Could not reach GitHub.')
     } finally {

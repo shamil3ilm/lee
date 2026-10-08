@@ -1,3 +1,4 @@
+import { plural } from '@/lib/ui/labels'
 import { notFound } from 'next/navigation'
 import { ExternalLink } from 'lucide-react'
 import { requireUserId } from '@/lib/auth/require-session'
@@ -37,7 +38,7 @@ export default async function RadarEntryPage({ params }: { params: Promise<{ id:
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <Breadcrumbs items={[{ label: 'Radar', href: '/radar' }, { label: entry.name }]} />
-      <PageHeader title={entry.name} description={`${RADAR_KIND_LABELS[entry.kind]} · ${entry.itemCount} item(s) from ${entry.firstSeen.length} source(s)`} />
+      <PageHeader title={entry.name} description={`${RADAR_KIND_LABELS[entry.kind]} · ${plural(entry.itemCount, 'item')} from ${plural(entry.firstSeen.length, 'source')}`} />
       {entry.terms.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2" aria-label="Matching watch terms">
           {entry.terms.map((t) => (
