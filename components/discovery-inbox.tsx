@@ -18,9 +18,12 @@ import {
   showFilteredAnyway,
 } from '@/app/(authed)/discoveries/actions'
 import { toastDismissedJobs } from '@/components/discovery-undo'
+import { BulkMenu } from '@/components/discovery/bulk-menu'
 
 interface JobsInboxProps {
   kind: 'jobs'
+  /** The top pager; shares one row with the bulk menu. */
+  pager?: React.ReactNode
   items: DiscoveryRowJob[]
   /** v17 §1 — showing the Scam Shield quarantine instead of the inbox. */
   quarantineView?: boolean
@@ -30,6 +33,7 @@ interface JobsInboxProps {
 
 interface CompaniesInboxProps {
   kind: 'companies'
+  pager?: React.ReactNode
   items: DiscoveryRowCompany[]
 }
 
@@ -184,52 +188,40 @@ export function DiscoveryInbox(props: DiscoveryInboxProps) {
           one to your inbox for good and teaches lee the title.
         </p>
       ) : null}
-      {isJobs ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2 text-xs">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            {effectiveSelected.size > 0 ? (
-              <span>{effectiveSelected.size} selected</span>
-            ) : (
-              <span>Select rows to bulk-dismiss.</span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {effectiveSelected.size > 0 && filteredView ? (
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="min-w-0 flex-1">{props.pager}</div>
+        {isJobs ? (
+          <BulkMenu
+            disabled={isPending}
+            pageCount={pageIds.length}
+            filteredView={filteredView}
+            olderThanDays={OLDER_THAN_DAYS}
+            onDismissPage={handleDismissPage}
+            onDismissAllFiltered={handleDismissAllFiltered}
+            onDismissOlder={handleDismissOlder}
+          />
+        ) : null}
+      </div>
+      {isJobs && effectiveSelected.size > 0 ? (
+        <div
+          className="sticky top-14 z-10 flex flex-wrap items-center justify-between gap-2 rounded-md border bg-card px-3 py-2 text-xs shadow-sm"
+          data-testid="bulk-bar"
+        >
+          <span className="text-muted-foreground">{effectiveSelected.size} selected</span>
+          <div className="flex flex-wrap items-center gap-2">
+            {filteredView ? (
               <Button size="sm" variant="outline" onClick={handleShowSelected} disabled={isPending}>
                 <Undo2 className="size-3.5" />
                 Show selected anyway
               </Button>
             ) : null}
-            {effectiveSelected.size > 0 ? (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleDismissSelected}
-                disabled={isPending}
-              >
-                <Trash2 className="size-3.5" />
-                Dismiss selected
-              </Button>
-            ) : null}
-            {pageIds.length > 0 ? (
-              <Button size="sm" variant="outline" onClick={handleDismissPage} disabled={isPending}>
-                Dismiss all on this page
-              </Button>
-            ) : null}
-            {filteredView ? (
-              <Button size="sm" variant="outline" onClick={handleDismissAllFiltered} disabled={isPending}>
-                Dismiss all filtered
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleDismissOlder}
-                disabled={isPending}
-              >
-                Dismiss older than {OLDER_THAN_DAYS}d
-              </Button>
-            )}
+            <Button size="sm" variant="outline" onClick={handleDismissSelected} disabled={isPending}>
+              <Trash2 className="size-3.5" />
+              Dismiss selected
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())} disabled={isPending}>
+              Clear selection
+            </Button>
           </div>
         </div>
       ) : null}

@@ -15,15 +15,12 @@ import type {
   DiscoveryReasoning,
 } from '@/components/discovery-row'
 import { DiscoveryPager } from '@/components/discovery/pager'
-import { LookingForCard } from '@/components/discovery/looking-for-card'
-import { ShortlistStrip } from '@/components/apply/shortlist-strip'
+import { ShortlistHeaderLink } from '@/components/apply/shortlist-strip'
+import { NoticeArea } from '@/components/discovery/notice-area'
 import type { NormalizedCompany } from '@/lib/discovery/adapters/types'
 import { PAGE_SIZE_COOKIE } from '@/lib/discovery/pager'
 import { loadRoleSuggestions } from '@/lib/discovery/relevance/service'
-import { defaultsBannerFamilies, lookingForView } from '@/lib/discovery/relevance/view'
-import { domainFilterReview } from '@/lib/discovery/relevance/review'
-import { DefaultsBanner } from '@/components/discovery/defaults-banner'
-import { FilterReview } from '@/components/discovery/filter-review'
+import { relevanceStale } from '@/lib/discovery/relevance/service'
 import { DiscoveryOverflowMenu } from '@/components/discovery/reset-menu'
 import { repairMojibake } from '@/lib/discovery/relevance/text'
 import { toMatchDetail } from '@/lib/discovery/match/detail'
@@ -38,6 +35,7 @@ import { catchUp, loadBoard, loadJobs, parseDiscoveryParams, type DiscoveryParam
 import { AiModeDialog } from '@/components/discovery/ai-mode-dialog'
 import { PasteImportDialog } from '@/components/discovery/paste-import-dialog'
 import { loadAiModePrompts, type AiModePromptSet } from '@/lib/discovery/ai-mode/load'
+import { discoveryNotices } from './notices'
 
 /** "Last checked 2h ago · 12 new" from the sources' last poll results. */
 function lastCheckedLine(sources: Parameters<typeof lastCheck>[0]): string | null {
@@ -49,10 +47,19 @@ export const dynamic = 'force-dynamic'
 // "Add from text or link" reads ATS job boards and scores within this limit.
 export const maxDuration = 60
 
-/** AI Mode hand-off + paste import, next to the view toggle. */
-function FindMoreActions({ promptSet, children }: { promptSet: AiModePromptSet; children?: React.ReactNode }) {
+/** Today's shortlist, AI Mode hand-off and paste import, next to the view toggle. */
+function FindMoreActions({
+  promptSet,
+  shortlist,
+  children,
+}: {
+  promptSet: AiModePromptSet
+  shortlist?: React.ReactNode
+  children?: React.ReactNode
+}) {
   return (
     <>
+      {shortlist}
       <AiModeDialog promptSet={promptSet} />
       <PasteImportDialog />
       {children}
@@ -74,6 +81,9 @@ export default async function DiscoveriesPage({
   const { view, explicit } = parseBoardView(sp.view, 'list')
   const profile = await getProfile(userId)
 
+  // Read before the catch-up below re-gates the inbox, so a background
+  // re-check that is still running can be shown.
+  const stale = p.tab === 'jobs' && relevanceStale(profile)
   if (p.tab === 'jobs') await catchUp(userId, profile)
   const [sources, suggestions, promptSet] = await Promise.all([
     sourcesQ.list(userId),
@@ -81,21 +91,19 @@ export default async function DiscoveriesPage({
     loadAiModePrompts(userId, { profile }),
   ])
   const sourceOptions = sources.map((s) => ({ id: s.id, name: s.name }))
-  const bannerFamilies = p.tab === 'jobs' ? defaultsBannerFamilies(profile) : null
-  const banner = bannerFamilies ? <DefaultsBanner families={bannerFamilies} /> : null
-  const review =
-    p.tab === 'jobs' && p.status === 'filtered'
-      ? (await domainFilterReview(userId)).map(({ key, title, domain, count }) => ({ key, title, domain, count }))
+  const notices =
+    p.tab === 'jobs'
+      ? await discoveryNotices({
+          userId,
+          profile,
+          filteredTab: p.status === 'filtered' && view !== 'board',
+          stale,
+          suggestions: suggestions ? { count: suggestions.suggestions.length, sparse: suggestions.sparse } : null,
+          from: '/discoveries',
+        })
       : []
   const checked = lastCheckedLine(sources)
-  const lookingFor =
-    p.tab === 'jobs' && suggestions ? (
-      <LookingForCard
-        view={lookingForView(profile)}
-        suggestionCount={suggestions.suggestions.length}
-        sparse={suggestions.sparse}
-      />
-    ) : null
+  const shortlist = p.tab === 'jobs' ? <ShortlistHeaderLink userId={userId} /> : null
 
   if (p.tab === 'jobs' && view === 'board') {
     const board = await loadBoard(userId, p)
@@ -105,17 +113,17 @@ export default async function DiscoveriesPage({
           title="Discovery"
           description={`Triage scored roles: shortlist, apply or dismiss.${checked ? ` ${checked}.` : ''}`}
           actions={
-            <FindMoreActions promptSet={promptSet}>
+            <FindMoreActions promptSet={promptSet} shortlist={shortlist}>
               <div className="flex items-center gap-1">
                 <ViewToggle sp={sp} view={view} explicit={explicit} />
                 <DiscoveryOverflowMenu sources={sourceOptions} />
               </div>
             </FindMoreActions>
           }
+          className="mb-0"
         />
         <TabBar tab={p.tab} />
-        {banner}
-        {lookingFor}
+        <NoticeArea notices={notices} />
         <DiscoveryFilters
           tab="jobs"
           status="new"
@@ -142,9 +150,10 @@ export default async function DiscoveriesPage({
       <PageHeader
         title="Discovery"
         description={`Scored jobs and companies from your sources.${checked ? ` ${checked}.` : ''}`}
+        className="mb-0"
         actions={
           p.tab === 'jobs' ? (
-            <FindMoreActions promptSet={promptSet}>
+            <FindMoreActions promptSet={promptSet} shortlist={shortlist}>
               <div className="flex items-center gap-1">
                 <ViewToggle sp={sp} view={view} explicit={explicit} />
                 <DiscoveryOverflowMenu sources={sourceOptions} />
@@ -154,10 +163,7 @@ export default async function DiscoveriesPage({
         }
       />
       <TabBar tab={p.tab} />
-      {p.tab === 'jobs' && p.page === 1 ? <ShortlistStrip userId={userId} banner /> : null}
-      {banner}
-      {lookingFor}
-      <FilterReview items={review} />
+      <NoticeArea notices={notices} />
       <DiscoveryFilters
         tab={p.tab}
         status={p.status}
@@ -171,16 +177,20 @@ export default async function DiscoveriesPage({
         scoredOnly={p.scoredOnly}
         showFiltered={p.showFiltered}
       />
-      <DiscoveryPager searchParams={sp} page={p.page} size={p.size} total={total} position="top" />
       {jobs ? (
         <DiscoveryInbox
           kind="jobs"
           items={toJobRows(jobs, sourceNameById)}
           quarantineView={p.status === 'quarantined'}
           filteredView={p.status === 'filtered'}
+          pager={<DiscoveryPager searchParams={sp} page={p.page} size={p.size} total={total} position="top" />}
         />
       ) : (
-        <DiscoveryInbox kind="companies" items={companies?.rows ?? []} />
+        <DiscoveryInbox
+          kind="companies"
+          items={companies?.rows ?? []}
+          pager={<DiscoveryPager searchParams={sp} page={p.page} size={p.size} total={total} position="top" />}
+        />
       )}
       {total > p.size ? (
         <DiscoveryPager searchParams={sp} page={p.page} size={p.size} total={total} position="bottom" />
