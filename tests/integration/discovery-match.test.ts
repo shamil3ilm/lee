@@ -1,3 +1,4 @@
+import { blendScores } from '@/lib/discovery/match/blend'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
@@ -112,12 +113,13 @@ describe('Match Score at ingest', () => {
     expect(detail?.missing).toEqual(expect.arrayContaining(['Kubernetes (required)', 'Terraform (required)']))
   })
 
-  it('filters by the Match Score and sorts by the Match / AI blend', async () => {
+  it('filters and sorts by Fit, the Match / AI blend the badge shows', async () => {
     const userId = await setup()
     stubAdapter(ITEMS)
     await runDiscoveryCycleForUser({ userId, ai: new FixtureAIProvider({ scoreJob: () => scoreResult }) })
-    const f = await fits(userId)
-    const min = f['laravel-dubai']!.score!
+    const rows = await discQ.list(userId, { statuses: ['new', 'filtered'] })
+    const laravel = rows.find((r) => r.title === 'Laravel Developer')!
+    const min = blendScores(laravel.fitScore, laravel.matchScore)!
     const kept = await discQ.list(userId, { statuses: ['new', 'filtered'], minScore: min })
     expect(kept.map((r) => r.title)).toEqual(['Laravel Developer'])
     const sorted = await discQ.list(userId, { statuses: ['new', 'filtered'], sort: 'match' })

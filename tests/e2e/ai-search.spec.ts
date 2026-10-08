@@ -55,8 +55,9 @@ test('Add from text or link imports the picked openings into Discovery', async (
   await expectToast(page, /1 added to Discovery/)
 
   // It is a discovery of the "Added by you" source.
-  await page.locator('#disc-source').click()
-  await page.getByRole('option', { name: 'Added by you' }).click()
+  // Source is one of the "More filters" (applied on change).
+  await page.getByTestId('more-filters').click()
+  await page.locator('#disc-source').selectOption({ label: 'Added by you' })
   await expect(page).toHaveURL(/source=/)
   await expect(page.locator('[data-slot="card"]').filter({ hasText: 'Integration Engineer' })).toBeVisible()
   await expect(page.locator('[data-slot="card"]').filter({ hasText: 'Data Analyst' })).toHaveCount(0)
