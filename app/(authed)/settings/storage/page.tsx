@@ -6,6 +6,8 @@ import { PageHeader } from '@/components/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CleanUpNowButton, RetentionWindowsForm } from '@/components/settings/storage-actions'
 import { LocalTime } from '@/components/local-time'
+import { ResetDiscoveriesButton } from '@/components/discovery/reset-menu'
+import * as sourcesQ from '@/lib/db/queries/sources'
 
 export const dynamic = 'force-dynamic'
 // "Clean up now" runs the cleanup in this function (bounded to 45 s).
@@ -20,7 +22,7 @@ function percent(share: number): string {
 
 export default async function StoragePage() {
   const userId = await requireUserId()
-  const data = await getStoragePageData(userId)
+  const [data, sources] = await Promise.all([getStoragePageData(userId), sourcesQ.list(userId)])
   const { lastRun, policy } = data.settings
   const changed = lastRun
     ? [...USER_STEP_IDS, ...GLOBAL_STEP_IDS].filter((id) => (lastRun.counts[id] ?? 0) > 0)
@@ -33,6 +35,18 @@ export default async function StoragePage() {
         description="What lee keeps in its database, and how long. Clutter such as stale discoveries, raw source payloads, old logs and finished jobs is cleaned every night at 03:30 UTC. Applications, saved jobs, notes and your documents are never removed."
         actions={<CleanUpNowButton />}
       />
+
+      <Card data-testid="storage-reset-discoveries">
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
+          <div className="space-y-1">
+            <CardTitle>Reset discoveries</CardTitle>
+            <CardDescription>
+              Clear the postings your sources found and let them fill the inbox again. Saved jobs and applications are never removed.
+            </CardDescription>
+          </div>
+          <ResetDiscoveriesButton sources={sources.map((s) => ({ id: s.id, name: s.name }))} />
+        </CardHeader>
+      </Card>
 
       <Card data-testid="storage-last-run">
         <CardHeader className="pb-2">

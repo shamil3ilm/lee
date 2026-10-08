@@ -24,6 +24,7 @@ import { defaultsBannerFamilies, lookingForView } from '@/lib/discovery/relevanc
 import { domainFilterReview } from '@/lib/discovery/relevance/review'
 import { DefaultsBanner } from '@/components/discovery/defaults-banner'
 import { FilterReview } from '@/components/discovery/filter-review'
+import { DiscoveryOverflowMenu } from '@/components/discovery/reset-menu'
 import { repairMojibake } from '@/lib/discovery/relevance/text'
 import { toMatchDetail } from '@/lib/discovery/match/detail'
 import { jdTarget } from '@/lib/discovery/match/jd-fetch'
@@ -86,7 +87,12 @@ export default async function DiscoveriesPage({
         <PageHeader
           title="Discovery"
           description={`Triage scored roles: shortlist, apply or dismiss.${checked ? ` ${checked}.` : ''}`}
-          actions={<ViewToggle sp={sp} view={view} explicit={explicit} />}
+          actions={
+            <div className="flex items-center gap-1">
+              <ViewToggle sp={sp} view={view} explicit={explicit} />
+              <DiscoveryOverflowMenu sources={sourceOptions} />
+            </div>
+          }
         />
         <TabBar tab={p.tab} />
         {banner}
@@ -117,7 +123,14 @@ export default async function DiscoveriesPage({
       <PageHeader
         title="Discovery"
         description={`Scored jobs and companies from your sources.${checked ? ` ${checked}.` : ''}`}
-        actions={p.tab === 'jobs' ? <ViewToggle sp={sp} view={view} explicit={explicit} /> : undefined}
+        actions={
+          p.tab === 'jobs' ? (
+            <div className="flex items-center gap-1">
+              <ViewToggle sp={sp} view={view} explicit={explicit} />
+              <DiscoveryOverflowMenu sources={sourceOptions} />
+            </div>
+          ) : undefined
+        }
       />
       <TabBar tab={p.tab} />
       {p.tab === 'jobs' && p.page === 1 ? <ShortlistStrip userId={userId} banner /> : null}
