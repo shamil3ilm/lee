@@ -18,6 +18,7 @@ import type {
 } from '@/lib/documents/types'
 import type { InterviewStage } from '@/lib/db/queries/stages'
 import type { CallMeta } from './log'
+import type { CompareNarrativeInput, CompareNarrativeResult } from './prompts/compare-narrative'
 import type { ReputationSummaryInput, ReputationSummaryResult } from './prompts/reputation-summary'
 import type { ScoreJobContext } from './prompts/score-job'
 import type { SharedLink } from './prompts/shared-links'
@@ -191,6 +192,10 @@ export interface AIProvider {
   // Company reputation — on-demand draft; the caller drops claims whose
   // cites are not real signal ids and the user confirms before saving.
   summarizeReputation(input: ReputationSummaryInput, meta?: CallMeta): Promise<ReputationSummaryResult>
+  // Compare with my current job — on-demand narrative over facts lee
+  // computed; the caller drops uncited claims and invented figures, and the
+  // user confirms before saving.
+  narrateComparison(input: CompareNarrativeInput, meta?: CallMeta): Promise<CompareNarrativeResult>
   // Discovery relevance — optional refinement of the deterministic role
   // suggestions, from the profile + master-CV digest only.
   suggestRoles(input: SuggestRolesInput, meta?: CallMeta): Promise<SuggestRolesResult>

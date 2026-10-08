@@ -38,6 +38,13 @@ import {
   GENERATE_LATEX_CV_PROMPT_VERSION,
 } from './prompts/generate-latex-cv'
 import { hashPrompt } from './prompts/hash'
+import {
+  buildCompareNarrativePrompt,
+  COMPARE_NARRATIVE_PROMPT_VERSION,
+  compareNarrativeResultSchema,
+  type CompareNarrativeInput,
+  type CompareNarrativeResult,
+} from './prompts/compare-narrative'
 import { withSharedLinks, type SharedLink } from './prompts/shared-links'
 import {
   buildSuggestRolesPrompt,
@@ -403,6 +410,15 @@ export class GeminiProvider implements AIProvider {
       promptVersion: REPUTATION_SUMMARY_PROMPT_VERSION,
     })
     return reputationSummaryResultSchema.parse(JSON.parse(raw))
+  }
+
+  async narrateComparison(input: CompareNarrativeInput, meta: CallMeta = {}): Promise<CompareNarrativeResult> {
+    const raw = await this.generate(buildCompareNarrativePrompt(input), {
+      ...meta,
+      kind: 'job_comparison_narrative',
+      promptVersion: COMPARE_NARRATIVE_PROMPT_VERSION,
+    })
+    return compareNarrativeResultSchema.parse(JSON.parse(raw))
   }
 
   async proposeResumeVariant(input: ResumeVariantInput, meta: CallMeta = {}): Promise<ResumeVariantResult> {

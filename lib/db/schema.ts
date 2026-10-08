@@ -495,6 +495,10 @@ export const discoveries = pgTable(
     // Ranking nudge from soft rules (boosts minus penalties), added to the
     // inbox sort so "lower priority" rows sink without being hidden.
     rankAdjust: smallint('rank_adjust').notNull().default(0),
+    // A job description the user pasted for a posting whose source gave
+    // little or none (Compare with my current job reads it before
+    // normalized.descriptionMd). Null = not pasted.
+    pastedJd: text('pasted_jd'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1586,3 +1590,5 @@ export const retentionSettings = pgTable('retention_settings', {
 export * from './schema-academy'
 // Apply faster: daily shortlist, dismiss feedback, prepare progress.
 export * from './schema-apply'
+// Compare with my current job: one private row per user.
+export * from './schema-compare'

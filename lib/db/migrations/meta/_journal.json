@@ -246,6 +246,13 @@
       "when": 1791379163512,
       "tag": "0034_coding_workbench",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1791447591897,
+      "tag": "0035_job_comparison",
+      "breakpoints": true
     }
   ]
 }
