@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState } from '@/components/empty-state'
 import { HistoryList } from '@/components/playground/history-list'
-import { RatingChart } from '@/components/playground/rating-chart'
+import { LazyRatingChart } from '@/components/playground/lazy-rating-chart'
 import { StartButton } from '@/components/playground/start-button'
 import { levelBadge } from '@/components/playground/labels'
 
@@ -67,7 +67,7 @@ export default async function SkillPage({ params }: { params: Promise<{ skill: s
               <EmptyState size="sm" title="No history yet" description="Practise to start the line." />
             ) : (
               <div className="h-56">
-                <RatingChart data={points} />
+                <LazyRatingChart data={points} />
               </div>
             )}
           </CardContent>

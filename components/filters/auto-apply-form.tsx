@@ -83,8 +83,10 @@ export function AutoApplyForm({
 
   return (
     <form
-      {...props}
+      // key before the spread: a key after a spread makes JSX fall back to
+      // createElement, which warns about the children list.
       key={generation}
+      {...props}
       ref={formRef}
       method="get"
       action={action}
