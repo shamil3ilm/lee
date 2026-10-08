@@ -16,6 +16,8 @@ function makeRow(overrides: Partial<ApplicationWithJob> = {}): ApplicationWithJo
     priority: 0,
     resumeVariantId: null,
     resumeVariantVersion: null,
+    bestCv: null,
+    bestCvKey: null,
     createdAt: new Date('2026-01-01T00:00:00Z'),
     updatedAt: new Date('2026-01-02T00:00:00Z'),
     job: {

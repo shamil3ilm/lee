@@ -197,6 +197,10 @@ export const applications = pgTable(
     // tailoring starts from it. Null → the master profile.
     resumeVariantId: uuid('resume_variant_id').references(() => resumeVariants.id, { onDelete: 'set null' }),
     resumeVariantVersion: integer('resume_variant_version'),
+    // Best CV for this job (lib/cv-fit), as on discoveries; the key also
+    // carries the JD hash because the job is editable.
+    bestCv: jsonb('best_cv'),
+    bestCvKey: text('best_cv_key'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -520,6 +524,12 @@ export const discoveries = pgTable(
     fitScore: smallint('fit_score'),
     fitDetail: jsonb('fit_detail'),
     fitKey: text('fit_key'),
+    // Best CV for this posting (lib/cv-fit): the best résumé variant and the
+    // runner-up with fit and reasons (BestCv, ≈ 0.5–1 KB), and the key it
+    // was computed under (profile + variants + rules). A new JD clears the
+    // key; retention clears both on filtered / dismissed rows.
+    bestCv: jsonb('best_cv'),
+    bestCvKey: text('best_cv_key'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1619,3 +1629,5 @@ export * from './schema-compare'
 export * from './schema-radar'
 // AI Radar "What's new": shared (not per-user) entries and items.
 export * from './schema-radar-new'
+// Best CV per job: tailored copies with their accepted suggestions.
+export * from './schema-cv-fit'

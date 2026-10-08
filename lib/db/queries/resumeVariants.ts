@@ -184,3 +184,30 @@ export async function slugTaken(userId: string, slug: string, exceptId: string):
     .limit(1)
   return row !== undefined
 }
+
+export interface CurrentRecipeRow {
+  id: string
+  name: string
+  region: string
+  version: number
+  recipe: unknown
+}
+
+/** Every live variant with its current version's recipe, in one query (best-CV scoring). */
+export async function listCurrentRecipes(userId: string): Promise<CurrentRecipeRow[]> {
+  return db
+    .select({
+      id: resumeVariants.id,
+      name: resumeVariants.name,
+      region: resumeVariants.region,
+      version: resumeVariants.currentVersion,
+      recipe: resumeVariantVersions.recipe,
+    })
+    .from(resumeVariants)
+    .innerJoin(
+      resumeVariantVersions,
+      and(eq(resumeVariantVersions.variantId, resumeVariants.id), eq(resumeVariantVersions.version, resumeVariants.currentVersion)),
+    )
+    .where(and(eq(resumeVariants.userId, userId), isNull(resumeVariants.archivedAt)))
+    .orderBy(asc(resumeVariants.name))
+}

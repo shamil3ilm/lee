@@ -120,6 +120,8 @@ export type BulletRewriteResult = z.infer<typeof bulletRewriteResultSchema>
 
 export interface BulletRewriteInput {
   bullets: { id: string; text: string; role?: string; company?: string }[]
+  /** Job-ad terms a rewrite may use for what a bullet already says (tailoring). */
+  terms?: string[]
 }
 
 export interface AIProvider {

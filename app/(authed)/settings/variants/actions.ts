@@ -6,15 +6,15 @@ import { getAIProviderForUser } from '@/lib/ai'
 import { withAiUsage } from '@/lib/ai/usage'
 import * as variantsQ from '@/lib/db/queries/resumeVariants'
 import { logger } from '@/lib/logger'
+import { refreshMatchesAfterSave } from '@/lib/discovery/match/enqueue'
 import { resolvePortfolioSettings } from '@/lib/portfolio/variant-settings'
 import { getResumeProfile, ResumeValidationError, saveResumeProfile } from '@/lib/resume/service'
-import { addWording } from '@/lib/resume/wordings'
+import { addWordingToProfile } from '@/lib/resume/add-wording'
 import { ensureVariantDocument, saveVariantPdfToDrive, scoreVariant } from '@/lib/variants/outputs'
 import { filterProposal, itemsForAi, type FilteredProposal } from '@/lib/variants/proposals'
 import { chooseVariantForApplication, createVariant, loadVariant, saveRecipe, VariantError } from '@/lib/variants/service'
 import { REGIONS, type Recipe } from '@/lib/variants/types'
 import { applyProposalToRecipe } from '@/lib/variants/apply-proposal'
-import type { Highlight, ResumeProfile } from '@/lib/resume/types'
 
 type Result<T = object> = ({ success: true } & T) | { error: string }
 
@@ -26,6 +26,7 @@ function fail(what: string, err: unknown): { error: string } {
 
 function revalidate(id?: string): void {
   revalidatePath('/settings/variants')
+  revalidatePath('/shortlist')
   revalidatePath('/settings/publish')
   if (id) revalidatePath(`/settings/variants/${id}`)
 }
@@ -44,6 +45,8 @@ export async function createVariantAction(input: unknown): Promise<Result<{ id: 
     if (!parsed.success) return { error: 'Pick a region.' }
     const { region, roleFamily, lengthTarget, name } = parsed.data
     const v = await createVariant(userId, { region, roleFamily: roleFamily || null, lengthTarget: lengthTarget as 1 | 2, name })
+    // Every posting's best CV now has one more candidate.
+    await refreshMatchesAfterSave(userId)
     revalidate()
     return { success: true, id: v.id }
   } catch (err) {
@@ -75,6 +78,7 @@ export async function saveVariantAction(
     })
     const { variant, changed } = await saveRecipe(userId, variantId, recipe)
     await variantsQ.updateMeta(userId, variantId, { name: m.data.name, ...portfolio })
+    await refreshMatchesAfterSave(userId)
     revalidate(variantId)
     return { success: true, version: variant.currentVersion, changed }
   } catch (err) {
@@ -86,6 +90,7 @@ export async function archiveVariantAction(variantId: string): Promise<Result> {
   try {
     const userId = await requireUserId()
     await variantsQ.updateMeta(userId, variantId, { archivedAt: new Date() })
+    await refreshMatchesAfterSave(userId)
     revalidate(variantId)
     return { success: true }
   } catch (err) {
@@ -163,7 +168,7 @@ export async function acceptProposalAction(variantId: string, accepted: unknown)
     let { profile } = await getResumeProfile(userId)
     const wordingIds = new Map<string, string>()
     for (const w of a.data.wordings) {
-      const next = addWordingTo(profile, w.highlightId, w.text)
+      const next = addWordingToProfile(profile, w.highlightId, w.text, 'ai')
       if (next) {
         profile = next.profile
         wordingIds.set(w.highlightId, next.wordingId)
@@ -173,28 +178,12 @@ export async function acceptProposalAction(variantId: string, accepted: unknown)
     const loaded = await loadVariant(userId, variantId)
     const recipe: Recipe = applyProposalToRecipe(profile, loaded.recipe, { ...a.data, wordingIds })
     const { variant } = await saveRecipe(userId, variantId, recipe)
+    await refreshMatchesAfterSave(userId)
     revalidate(variantId)
     return { success: true, version: variant.currentVersion }
   } catch (err) {
     return fail('acceptProposal', err)
   }
-}
-
-function addWordingTo(profile: ResumeProfile, highlightId: string, text: string): { profile: ResumeProfile; wordingId: string } | null {
-  let wordingId: string | null = null
-  const patch = (h: Highlight): Highlight => {
-    if (h.id !== highlightId) return h
-    const r = addWording(h, text, 'ai')
-    if (!r.ok) return h
-    wordingId = r.wording.id
-    return r.highlight
-  }
-  const next: ResumeProfile = {
-    ...profile,
-    work: profile.work.map((w) => ({ ...w, highlights: w.highlights.map(patch) })),
-    projects: profile.projects.map((p) => ({ ...p, highlights: p.highlights.map(patch) })),
-  }
-  return wordingId ? { profile: next, wordingId } : null
 }
 
 /** Application page: use this variant (its current version) for the application. */

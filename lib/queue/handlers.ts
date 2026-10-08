@@ -14,6 +14,7 @@ import { reevaluateRelevance } from '@/lib/discovery/relevance/service'
 import { enqueueRelevanceJob } from '@/lib/discovery/relevance/enqueue'
 import { rescoreMatches } from '@/lib/discovery/match/service'
 import { enqueueMatchJob } from '@/lib/discovery/match/enqueue'
+import { rescoreBestCv } from '@/lib/cv-fit/service'
 import { takeUsageSnapshot } from '@/lib/usage/snapshot'
 import { buildShortlistForUser } from '@/lib/apply/shortlist'
 import { isThrottled } from '@/lib/usage/throttle'
@@ -245,7 +246,8 @@ const discoveryRelevance = defineHandler({
 /**
  * Backfill the deterministic Match Score: re-score every discovery whose
  * `fit_key` is not the current one (new rules, or the profile's ready
- * evidence / preferences changed). Batched, time-boxed and continued in a
+ * evidence / preferences changed), then the best CV of every in-play
+ * posting whose `best_cv_key` moved. Batched, time-boxed and continued in a
  * follow-up job like the relevance re-check. No AI.
  */
 const discoveryMatch = defineHandler({
@@ -254,9 +256,19 @@ const discoveryMatch = defineHandler({
   payload: USER_PAYLOAD,
   timeoutMs: 60_000,
   async run({ job, deadline }): Promise<JobResult> {
-    const r = await rescoreMatches(userId(job), { deadline: Math.min(deadline, Date.now() + 50_000) })
-    if (r.remaining) await enqueueMatchJob(userId(job))
-    return { metrics: { match_scored: r.scored, match_continued: r.remaining ? 1 : 0 } }
+    const end = Math.min(deadline, Date.now() + 50_000)
+    const r = await rescoreMatches(userId(job), { deadline: end })
+    // Best CV per posting (lib/cv-fit) under the same budget: variants or
+    // the profile moved, or new postings arrived.
+    const b = r.remaining ? { computed: 0, remaining: true } : await rescoreBestCv(userId(job), { deadline: end })
+    if (r.remaining || b.remaining) await enqueueMatchJob(userId(job))
+    return {
+      metrics: {
+        match_scored: r.scored,
+        best_cv_computed: b.computed,
+        match_continued: r.remaining || b.remaining ? 1 : 0,
+      },
+    }
   },
 })
 

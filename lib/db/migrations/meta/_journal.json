@@ -274,6 +274,13 @@
       "when": 1791460653247,
       "tag": "0038_radar_whats_new",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1791479706559,
+      "tag": "0039_best_cv",
+      "breakpoints": true
     }
   ]
 }

@@ -200,6 +200,8 @@ function makeApp(): ApplicationWithJob {
     priority: 0,
     resumeVariantId: null,
     resumeVariantVersion: null,
+    bestCv: null,
+    bestCvKey: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     job: {

@@ -45,14 +45,20 @@ export async function queueMatchRescore(userId: string): Promise<void> {
 
 /**
  * After any save that can move the score (search preferences, résumé or
- * readiness flags, profile settings): queue the backfill only when the
- * current key differs from the applied one. Never throws: a failure here
- * must not fail the save; the next Discovery view catches up anyway.
+ * readiness flags, profile settings, a résumé variant): queue the backfill
+ * only when the current key differs from the applied one. Never throws: a
+ * failure here must not fail the save; the next Discovery view catches up.
  */
 export async function refreshMatchesAfterSave(userId: string): Promise<void> {
   try {
-    const [{ get }, { matchStale }] = await Promise.all([import('@/lib/db/queries/profile'), import('./service')])
-    if (matchStale(await get(userId))) await queueMatchRescore(userId)
+    const [{ get }, { matchStale }, { bestCvStale }] = await Promise.all([
+      import('@/lib/db/queries/profile'),
+      import('./service'),
+      import('@/lib/cv-fit/service'),
+    ])
+    // The same job also refreshes each posting's best CV (lib/cv-fit), which
+    // moves with any résumé or variant change, not only the Match key.
+    if (matchStale(await get(userId)) || (await bestCvStale(userId))) await queueMatchRescore(userId)
   } catch (err) {
     logger.warn('match_refresh_failed', { userId, err: err instanceof Error ? err.message : String(err) })
   }

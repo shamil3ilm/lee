@@ -69,7 +69,8 @@ export async function rowForMatch(
  * Store a full JD on a discovery. A pasted JD goes to `pasted_jd` (shared
  * with Compare with my current job; read before the source's description);
  * a JD fetched from an ATS API replaces `normalized.descriptionMd` and sets
- * `normalized.jdSource`. Every later re-score and re-gate reads either.
+ * `normalized.jdSource`. Every later re-score and re-gate reads either. The
+ * best CV was picked for the old JD, so its key is cleared (recomputed).
  */
 export async function setDescription(
   userId: string,
@@ -81,13 +82,14 @@ export async function setDescription(
   const rows =
     source === 'pasted'
       ? await client.execute(sql`
-          update discoveries set pasted_jd = ${text}, updated_at = now()
+          update discoveries set pasted_jd = ${text}, best_cv_key = null, updated_at = now()
           where id = ${id}::uuid and user_id = ${userId}::uuid
           returning id
         `)
       : await client.execute(sql`
           update discoveries set
             normalized = jsonb_set(jsonb_set(normalized, '{descriptionMd}', to_jsonb(${text}::text)), '{jdSource}', to_jsonb(${source}::text)),
+            best_cv_key = null,
             updated_at = now()
           where id = ${id}::uuid and user_id = ${userId}::uuid
           returning id

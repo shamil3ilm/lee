@@ -101,6 +101,8 @@ export function makeApplication(
     priority: 0,
     resumeVariantId: null,
     resumeVariantVersion: null,
+    bestCv: null,
+    bestCvKey: null,
     createdAt: new Date('2026-09-01T00:00:00Z'),
     updatedAt: new Date('2026-09-01T00:00:00Z'),
     job: {
