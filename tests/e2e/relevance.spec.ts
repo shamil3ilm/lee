@@ -27,6 +27,8 @@ test('search preferences filter Discovery, with reasons and "Show anyway"', asyn
   }
   await form.getByRole('button', { name: 'Save preferences' }).click()
   await expectToast(page, 'Search preferences saved')
+  // The re-check is visible: "Re-checking N jobs… M filtered out", then done.
+  await expect(form.getByTestId('recheck-progress')).toContainText(/Re-check(?:ed|ing) \d+ jobs/)
 
   // A Senior title is a soft stretch now: it stays in the inbox with a chip;
   // the summary card replaced the prompt.
@@ -42,7 +44,8 @@ test('search preferences filter Discovery, with reasons and "Show anyway"', asyn
   await expect(row).toBeVisible()
   await expect(row.getByTestId('relevance-chips')).toContainText('contract / freelance')
   // Filtered rows still show their Match Score.
-  await expect(row.getByTestId('match-badge')).toContainText(/Match \d+/)
+  // (Its seeded JD is short, so the score is flagged "title only".)
+  await expect(row.getByTestId('match-badge')).toContainText(/Match ~?\d+/)
   await row.getByRole('button', { name: 'Show anyway' }).click()
   await expectToast(page, 'Moved to your inbox')
   await page.goto('/discoveries')

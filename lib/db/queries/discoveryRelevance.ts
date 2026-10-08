@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm'
+import { and, asc, eq, gte, inArray, isNull, ne, or, sql } from 'drizzle-orm'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import { db, type DbClient } from '@/lib/db/client'
 import { discoveries } from '@/lib/db/schema'
@@ -59,6 +59,69 @@ export async function staleRows(
     )
     .orderBy(asc(discoveries.id))
     .limit(limit)
+}
+
+/** Gate fields for specific rows (learning from "Show anyway", saves). */
+export async function rowsByIds(userId: string, ids: readonly string[], client: DbClient = db): Promise<GateRow[]> {
+  if (ids.length === 0) return []
+  return client
+    .select({
+      id: discoveries.id,
+      status: discoveries.status,
+      filterOverride: discoveries.filterOverride,
+      title: n('title'),
+      location: n('location'),
+      remoteType: n('remoteType'),
+      employmentType: n('employmentType'),
+      descriptionMd: sql<string | null>`left(${discoveries.normalized}->>'descriptionMd', 8000)`,
+      techStack: sql<unknown>`${discoveries.normalized}->'techStack'`,
+      salary: sql<unknown>`${discoveries.normalized}->'salary'`,
+    })
+    .from(discoveries)
+    .where(and(eq(discoveries.userId, userId), inArray(discoveries.id, [...ids])))
+}
+
+export interface FilteredByDomain {
+  id: string
+  title: string | null
+  reason: string | null
+}
+
+/** Rows the domain rule filtered since `since` (title + reason only). */
+export async function filteredByDomainSince(
+  userId: string,
+  since: Date,
+  limit = 2_000,
+  client: DbClient = db,
+): Promise<FilteredByDomain[]> {
+  return client
+    .select({ id: discoveries.id, title: n('title'), reason: discoveries.filterReason })
+    .from(discoveries)
+    .where(
+      and(
+        eq(discoveries.userId, userId),
+        eq(discoveries.status, 'filtered'),
+        gte(discoveries.createdAt, since),
+        sql`${discoveries.filterReason} like 'domain:%'`,
+      ),
+    )
+    .limit(limit)
+}
+
+/** How many rows still wait for a re-gate under `key`, and how many are filtered now. */
+export async function progress(
+  userId: string,
+  key: string,
+  client: DbClient = db,
+): Promise<{ remaining: number; filtered: number }> {
+  const [row] = await client
+    .select({
+      remaining: sql<number>`count(*) filter (where ${discoveries.relevanceKey} is null or ${discoveries.relevanceKey} <> ${key})`,
+      filtered: sql<number>`count(*) filter (where ${discoveries.status} = 'filtered')`,
+    })
+    .from(discoveries)
+    .where(eq(discoveries.userId, userId))
+  return { remaining: Number(row?.remaining ?? 0), filtered: Number(row?.filtered ?? 0) }
 }
 
 function textArray(values: readonly string[]): string {

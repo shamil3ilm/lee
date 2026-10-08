@@ -1,0 +1,16 @@
+{
+  "name": "Treasury analyst doing month-end and IFRS work: finance, not fintech engineering",
+  "inputs": {
+    "job": {
+      "title": "Treasury Analyst",
+      "location": "Dubai",
+      "descriptionMd": "Bank reconciliations, journal entries and month-end closing under IFRS."
+    }
+  },
+  "expect": {
+    "pass": false,
+    "reasons": [
+      "domain: Accounting/Audit (non-tech)"
+    ]
+  }
+}

@@ -13,6 +13,8 @@ import * as compDiscQ from '@/lib/db/queries/companyDiscoveries'
 import * as relevanceQ from '@/lib/db/queries/discoveryRelevance'
 import * as aiCallLogsQ from '@/lib/db/queries/aiCallLogs'
 import { logger } from '@/lib/logger'
+import { learnFromDiscoveries } from '@/lib/discovery/relevance/learn-service'
+import { UNCERTAIN_FIT } from '@/lib/discovery/relevance/domain-rule'
 
 export type ActionResult =
   | { success: true }
@@ -43,6 +45,11 @@ export async function saveDiscovery(discoveryId: string): Promise<ActionResult> 
       }
     }
     await promoteJobDiscovery({ userId, discoveryId })
+    // Saving an "Uncertain fit" posting teaches lee its title is related.
+    const notes = (current.relevanceNotes ?? {}) as { penalties?: unknown }
+    if (Array.isArray(notes.penalties) && notes.penalties.includes(UNCERTAIN_FIT)) {
+      await learnFromDiscoveries(userId, [discoveryId], true)
+    }
     // v10.1 — implicit positive signal on the underlying scoring call so
     // analytics can correlate discovery scores → outcomes.
     if (current.scoredByCallId) {
@@ -216,6 +223,8 @@ export async function showFilteredAnyway(ids: string[]): Promise<BulkResult> {
     const clean = ids.filter((v) => typeof v === 'string' && UUID_RE.test(v)).slice(0, 500)
     if (clean.length === 0) return { success: true, count: 0 }
     const count = await relevanceQ.showAnyway(userId, clean)
+    // "Show anyway" teaches lee the title is related to the family its JD reads as.
+    if (count > 0) await learnFromDiscoveries(userId, clean, true)
     revalidatePath('/discoveries')
     revalidatePath('/')
     return { success: true, count }

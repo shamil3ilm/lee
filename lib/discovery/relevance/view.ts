@@ -1,9 +1,20 @@
 import type { UserProfile } from '@/lib/db/queries/profile'
 import { EXCLUSION_RULES, noticeLabel, RULE_LABELS, ruleMode } from './discovery-prefs'
 import { regionLabel, REGION_CODES } from './places'
-import { searchPrefsFromProfile, type RemoteScope } from './prefs'
+import { searchPrefsFromProfile, targetFamilies, type RemoteScope } from './prefs'
+import { parseLearnedTitles } from './learned'
 import { resolveRoleFamily, roleFamilyLabel } from './roles'
 import { SENIORITY_LABELS, type SeniorityLevel } from './seniority'
+
+/**
+ * The defaults banner's role chips while preferences are unsaved (null once
+ * saved): the families the domain filter is using right now.
+ */
+export function defaultsBannerFamilies(profile: UserProfile | null): Array<{ id: string; label: string }> | null {
+  const p = searchPrefsFromProfile(profile)
+  if (p.active) return null
+  return targetFamilies(p).map((id) => ({ id, label: roleFamilyLabel(id) }))
+}
 
 /** Plain, serialisable view of the search preferences for cards and forms. */
 export interface LookingForView {
@@ -63,6 +74,8 @@ export interface SearchPrefsFormValues {
   languages: Array<{ name: string; level: string }>
   notice: string[]
   saved: boolean
+  /** Titles lee learned, newest first. */
+  learnedTitles: Array<{ key: string; related: boolean; family: string | null; at: string }>
 }
 
 export function searchPrefsFormValues(profile: UserProfile | null): SearchPrefsFormValues {
@@ -92,5 +105,8 @@ export function searchPrefsFormValues(profile: UserProfile | null): SearchPrefsF
     languages: p.extra.languages.map((l) => ({ name: l.name, level: l.level })),
     notice: p.extra.noticePeriods,
     saved: p.active,
+    learnedTitles: Object.entries(parseLearnedTitles(profile?.learnedTitles))
+      .map(([key, v]) => ({ key, ...v }))
+      .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : a.key.localeCompare(b.key))),
   }
 }

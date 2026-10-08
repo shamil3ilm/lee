@@ -20,7 +20,10 @@ import { ShortlistStrip } from '@/components/apply/shortlist-strip'
 import type { NormalizedCompany } from '@/lib/discovery/adapters/types'
 import { PAGE_SIZE_COOKIE } from '@/lib/discovery/pager'
 import { loadRoleSuggestions } from '@/lib/discovery/relevance/service'
-import { lookingForView } from '@/lib/discovery/relevance/view'
+import { defaultsBannerFamilies, lookingForView } from '@/lib/discovery/relevance/view'
+import { domainFilterReview } from '@/lib/discovery/relevance/review'
+import { DefaultsBanner } from '@/components/discovery/defaults-banner'
+import { FilterReview } from '@/components/discovery/filter-review'
 import { repairMojibake } from '@/lib/discovery/relevance/text'
 import { toMatchDetail } from '@/lib/discovery/match/detail'
 import { jdTarget } from '@/lib/discovery/match/jd-fetch'
@@ -60,6 +63,12 @@ export default async function DiscoveriesPage({
     p.tab === 'jobs' ? loadRoleSuggestions(userId, profile) : Promise.resolve(null),
   ])
   const sourceOptions = sources.map((s) => ({ id: s.id, name: s.name }))
+  const bannerFamilies = p.tab === 'jobs' ? defaultsBannerFamilies(profile) : null
+  const banner = bannerFamilies ? <DefaultsBanner families={bannerFamilies} /> : null
+  const review =
+    p.tab === 'jobs' && p.status === 'filtered'
+      ? (await domainFilterReview(userId)).map(({ key, title, domain, count }) => ({ key, title, domain, count }))
+      : []
   const checked = lastCheckedLine(sources)
   const lookingFor =
     p.tab === 'jobs' && suggestions ? (
@@ -80,6 +89,7 @@ export default async function DiscoveriesPage({
           actions={<ViewToggle sp={sp} view={view} explicit={explicit} />}
         />
         <TabBar tab={p.tab} />
+        {banner}
         {lookingFor}
         <DiscoveryFilters
           tab="jobs"
@@ -111,7 +121,9 @@ export default async function DiscoveriesPage({
       />
       <TabBar tab={p.tab} />
       {p.tab === 'jobs' && p.page === 1 ? <ShortlistStrip userId={userId} banner /> : null}
+      {banner}
       {lookingFor}
+      <FilterReview items={review} />
       <DiscoveryFilters
         tab={p.tab}
         status={p.status}

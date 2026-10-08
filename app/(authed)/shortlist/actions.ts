@@ -1,4 +1,5 @@
 'use server'
+import { learnFromDiscoveries } from '@/lib/discovery/relevance/learn-service'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { requireUserId } from '@/lib/auth/require-session'
@@ -64,6 +65,8 @@ export async function notForMeAction(discoveryId: string, reason: string): Promi
   try {
     const userId = await requireUserId()
     await notForMe(userId, discoveryId, reason)
+    // "Not my field": future postings with this title are filtered as unrelated.
+    if (reason === 'field') await learnFromDiscoveries(userId, [discoveryId], false)
     refreshPages()
     return { success: true }
   } catch (err) {

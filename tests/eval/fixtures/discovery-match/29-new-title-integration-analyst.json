@@ -1,0 +1,14 @@
+{
+  "name": "'Integration Analyst' (fintech) with an API JD: kept, not filtered as an analyst",
+  "inputs": {
+    "job": {
+      "title": "Integration Analyst",
+      "location": "Riyadh, KSA",
+      "descriptionMd": "## Responsibilities\n- Build REST APIs and payment webhooks in Laravel\n## Requirements\n- PHP and Laravel\n- MySQL and REST APIs\n- Git"
+    }
+  },
+  "expect": {
+    "pass": true,
+    "reasons": []
+  }
+}

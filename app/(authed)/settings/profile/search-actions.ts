@@ -10,12 +10,12 @@ import { refreshMatchesAfterSave } from '@/lib/discovery/match/enqueue'
 import { searchPrefsPatch } from '@/lib/discovery/relevance/form'
 import { refineSuggestionsWithAI } from '@/lib/discovery/relevance/refine'
 import { ROLE_FAMILY_IDS, resolveRoleFamily } from '@/lib/discovery/relevance/roles'
-import { loadMasterCv, reevaluateRelevance } from '@/lib/discovery/relevance/service'
+import { loadMasterCv, reevaluateRelevance, relevanceProgress } from '@/lib/discovery/relevance/service'
 import { suggestRoles, type RoleSuggestion } from '@/lib/discovery/relevance/suggest'
 import { logger } from '@/lib/logger'
 
 export type SearchPrefsResult =
-  | { success: true; evaluated: number; filtered: number; pending: boolean }
+  | { success: true; evaluated: number; filtered: number; pending: boolean; total: number }
   | { error: string }
 
 /** Inline re-evaluation budget; the rest runs in the queued job. */
@@ -31,10 +31,11 @@ function revalidate(): void {
  * Re-gate the inbox right away (bounded), then hand anything left to the
  * queue so a large inbox never blocks the save.
  */
-async function reapply(userId: string): Promise<{ evaluated: number; filtered: number; pending: boolean }> {
+async function reapply(userId: string): Promise<{ evaluated: number; filtered: number; pending: boolean; total: number }> {
   const r = await reevaluateRelevance(userId, { deadline: Date.now() + INLINE_BUDGET_MS })
   if (r.remaining) await queueRelevanceReevaluation(userId)
-  return { evaluated: r.evaluated, filtered: r.filtered, pending: r.remaining }
+  const left = r.remaining ? (await relevanceProgress(userId)).remaining : 0
+  return { evaluated: r.evaluated, filtered: r.filtered, pending: r.remaining, total: r.evaluated + left }
 }
 
 export async function saveSearchPrefsAction(formData: FormData): Promise<SearchPrefsResult> {
@@ -48,6 +49,30 @@ export async function saveSearchPrefsAction(formData: FormData): Promise<SearchP
     return { success: true, ...applied }
   } catch (err) {
     logger.error('saveSearchPrefs failed', { err: err instanceof Error ? err.message : String(err) })
+    return { error: 'Could not save your search preferences.' }
+  }
+}
+
+/**
+ * The defaults banner's one-click confirm: save search preferences with the
+ * role families the user ticked (the provisional ones lee suggested), keeping
+ * everything else as it is.
+ */
+export async function confirmDefaultPrefsAction(families: string[]): Promise<SearchPrefsResult> {
+  try {
+    const picked = Array.isArray(families) ? families.filter((f) => ROLE_FAMILY_IDS.includes(f)).slice(0, 20) : []
+    if (picked.length === 0) return { error: 'Pick at least one kind of role.' }
+    const userId = await requireUserId()
+    const profile = await profileQ.get(userId)
+    const custom = (profile?.roleTypes ?? []).filter((r) => resolveRoleFamily(r) === null)
+    await saveProfile(userId, { roleTypes: [...new Set([...picked, ...custom])], searchPrefsSavedAt: new Date() })
+    const applied = await reapply(userId)
+    await refreshMatchesAfterSave(userId)
+    revalidate()
+    revalidatePath('/shortlist')
+    return { success: true, ...applied }
+  } catch (err) {
+    logger.error('confirmDefaultPrefs failed', { err: err instanceof Error ? err.message : String(err) })
     return { error: 'Could not save your search preferences.' }
   }
 }

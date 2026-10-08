@@ -10,6 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ShortlistList } from '@/components/apply/shortlist-list'
 import { RefreshShortlistButton } from '@/components/apply/refresh-shortlist-button'
 import { shortDay } from '@/lib/ui/date'
+import { getProfile } from '@/lib/profile/service'
+import { defaultsBannerFamilies } from '@/lib/discovery/relevance/view'
+import { DefaultsBanner } from '@/components/discovery/defaults-banner'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,7 +29,8 @@ const STATE_BADGE: Record<Exclude<ShortlistEntryView['state'], 'open'>, { label:
  */
 export default async function ShortlistPage() {
   const userId = await requireUserId()
-  const data = await loadShortlistPage(userId)
+  const [data, profile] = await Promise.all([loadShortlistPage(userId), getProfile(userId)])
+  const bannerFamilies = defaultsBannerFamilies(profile)
   const subtitle = data.day
     ? data.today
       ? `Today's top ${data.size} new roles, ranked by fit. Prepare, park for later, or pass.`
@@ -50,6 +54,8 @@ export default async function ShortlistPage() {
           </div>
         }
       />
+
+      {bannerFamilies ? <DefaultsBanner families={bannerFamilies} /> : null}
 
       {data.open.length === 0 ? (
         <EmptyState

@@ -99,6 +99,7 @@ export function WeeklyDigestEmail({
     completedStagesThisWeek,
     usageWarnings = [],
     shortlist = [],
+    filterReview = [],
   } = snapshot
   return (
     <div style={styles.wrapper}>
@@ -205,6 +206,28 @@ export function WeeklyDigestEmail({
           <p style={styles.meta}>
             <a href={`${appBaseUrl}/shortlist`} style={styles.link}>
               Prepare from your shortlist
+            </a>
+          </p>
+        </div>
+      ) : null}
+
+      {filterReview.length > 0 ? (
+        <div style={styles.section}>
+          <h2 style={styles.h2}>Did we filter something useful?</h2>
+          <ul style={styles.list}>
+            {filterReview.map((r, i) => (
+              <li key={`${i}-${r.title}`} style={styles.listItem}>
+                {r.title}
+                <span style={styles.meta}>
+                  {' '}
+                  · {r.domain} · {r.count}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p style={styles.meta}>
+            <a href={`${appBaseUrl}/discoveries?status=filtered`} style={styles.link}>
+              Review filtered postings
             </a>
           </p>
         </div>

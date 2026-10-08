@@ -7,7 +7,6 @@ import {
   SENIORITY_LEVELS,
   type SeniorityLevel,
 } from '../relevance/seniority'
-import { findTerms, normalizeForMatch } from '../relevance/text'
 import { strengthIn, strengthsFrom } from './strengths'
 import type { MatchComponent, MatchJob, MatchProfile } from './types'
 

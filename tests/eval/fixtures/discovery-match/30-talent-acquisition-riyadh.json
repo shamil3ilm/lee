@@ -1,0 +1,17 @@
+{
+  "name": "Talent Acquisition Partner in Riyadh: filtered by the domain rule",
+  "inputs": {
+    "job": {
+      "title": "Talent Acquisition Partner - Riyadh",
+      "location": "Riyadh",
+      "descriptionMd": "End-to-end recruitment and sourcing candidates for Saudization targets."
+    }
+  },
+  "expect": {
+    "pass": false,
+    "reasons": [
+      "domain: HR",
+      "visa: nationals only"
+    ]
+  }
+}
