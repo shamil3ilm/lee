@@ -1,5 +1,6 @@
 import type { DiscoveryAdapter, DiscoveryItem, NormalizedJob } from './types'
 import { discoveryFetch } from './http'
+import { htmlToText } from './html-text'
 import { employmentTypeOf, geoTag, toDate } from './prefs'
 
 /**
@@ -23,6 +24,9 @@ interface RemotiveJob {
   job_type?: string
   publication_date?: string
   candidate_required_location?: string
+  /** HTML; carries eligibility text ("US only", "relocation package"). */
+  description?: string
+  salary?: string
 }
 
 export function normalizeRemotiveJob(job: RemotiveJob): DiscoveryItem | null {
@@ -36,7 +40,7 @@ export function normalizeRemotiveJob(job: RemotiveJob): DiscoveryItem | null {
     location: where ? `Remote (${where})` : 'Remote',
     remoteType: 'remote',
     employmentType: employmentTypeOf(job.job_type),
-    descriptionMd: '',
+    descriptionMd: htmlToText([job.salary ? `Salary: ${job.salary}` : '', job.description].filter(Boolean).join('<br>')),
     applyUrl: job.url,
     postedAt: toDate(job.publication_date),
     techStack: Array.isArray(job.tags) ? job.tags.slice(0, 12) : [],

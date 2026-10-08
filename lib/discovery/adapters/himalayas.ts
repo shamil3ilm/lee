@@ -1,5 +1,6 @@
 import type { AdapterContext, DiscoveryAdapter, DiscoveryItem, NormalizedJob } from './types'
 import { discoveryFetch } from './http'
+import { htmlToText } from './html-text'
 import { employmentTypeOf, geoTag, searchPrefsFor, toDate } from './prefs'
 import type { Seniority } from '../search-prefs'
 
@@ -37,6 +38,8 @@ interface HimalayasJob {
   currency?: string
   seniority?: string[]
   locationRestrictions?: string[]
+  /** e.g. [5.5, 4]: UTC offsets the employer hires in. */
+  timezoneRestrictions?: number[]
   categories?: string[]
   description?: string
   pubDate?: number
@@ -53,6 +56,21 @@ function locationOf(restrictions: readonly string[]): string {
   const shown = restrictions.slice(0, MAX_LOCATIONS_SHOWN).join(', ')
   const more = restrictions.length - MAX_LOCATIONS_SHOWN
   return `Remote (${shown}${more > 0 ? ` +${more} more` : ''})`
+}
+
+/** UTC offsets as text ("UTC+5:30") so the gate can read the hiring window. */
+function utcOffset(h: number): string {
+  const sign = h < 0 ? '-' : '+'
+  const abs = Math.abs(h)
+  const mins = Math.round((abs % 1) * 60)
+  return `UTC${sign}${Math.floor(abs)}${mins ? `:${String(mins).padStart(2, '0')}` : ''}`
+}
+
+/** The full description (the excerpt is one line), plus the timezone window. */
+function himalayasText(job: HimalayasJob): string {
+  const zones = Array.isArray(job.timezoneRestrictions) ? job.timezoneRestrictions.filter((z) => typeof z === 'number') : []
+  const window = zones.length > 0 ? `Timezones: ${zones.map(utcOffset).join(', ')}` : ''
+  return htmlToText([window, job.description || job.excerpt].filter(Boolean).join('<br>'))
 }
 
 export function normalizeHimalayasJob(job: HimalayasJob): DiscoveryItem | null {
@@ -74,7 +92,7 @@ export function normalizeHimalayasJob(job: HimalayasJob): DiscoveryItem | null {
     location: locationOf(restrictions),
     remoteType: 'remote',
     employmentType: employmentTypeOf(job.employmentType),
-    descriptionMd: job.excerpt ?? '',
+    descriptionMd: himalayasText(job),
     applyUrl: url,
     postedAt: toDate(job.pubDate),
     techStack: [],

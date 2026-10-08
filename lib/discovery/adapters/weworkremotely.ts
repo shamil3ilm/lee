@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { XMLParser } from 'fast-xml-parser'
 import type { DiscoveryAdapter, DiscoveryItem, NormalizedJob } from './types'
 import { discoveryFetch } from './http'
+import { htmlToText } from './html-text'
 import { employmentTypeOf, geoTag, toDate } from './prefs'
 
 /**
@@ -37,6 +38,8 @@ interface WwrItem {
   category?: string
   type?: string
   pubDate?: string
+  /** Escaped HTML: the full posting. */
+  description?: string
 }
 
 const parser = new XMLParser({ ignoreAttributes: true, trimValues: true, processEntities: true })
@@ -75,7 +78,7 @@ export function parseWwrFeed(xml: string): DiscoveryItem[] {
       location: region ? `Remote (${region})` : 'Remote',
       remoteType: 'remote',
       employmentType: employmentTypeOf(text(item.type)),
-      descriptionMd: '',
+      descriptionMd: htmlToText(text(item.description)),
       applyUrl: link,
       postedAt: toDate(item.pubDate),
       techStack: skills,

@@ -1,5 +1,6 @@
 import type { DiscoveryAdapter, DiscoveryItem, NormalizedJob } from './types'
 import { discoveryFetch } from './http'
+import { htmlToText } from './html-text'
 import { geoTag, toDate } from './prefs'
 
 /**
@@ -21,6 +22,7 @@ interface WorkingNomadsJob {
   tags?: string
   location?: string
   pub_date?: string
+  description?: string
 }
 
 export function normalizeWorkingNomadsJob(job: WorkingNomadsJob): DiscoveryItem | null {
@@ -38,7 +40,7 @@ export function normalizeWorkingNomadsJob(job: WorkingNomadsJob): DiscoveryItem 
     location: where || 'Remote',
     remoteType: 'remote',
     employmentType: 'unknown',
-    descriptionMd: '',
+    descriptionMd: htmlToText(job.description),
     applyUrl: job.url,
     postedAt: toDate(job.pub_date),
     techStack: (job.tags ?? '')
