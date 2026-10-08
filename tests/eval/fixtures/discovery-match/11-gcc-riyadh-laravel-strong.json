@@ -29,7 +29,7 @@
       "gcc"
     ],
     "match": {
-      "min": 85,
+      "min": 80,
       "missing": [],
       "labels": [
         "Region: Saudi Arabia",

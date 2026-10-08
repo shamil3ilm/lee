@@ -23,6 +23,7 @@ import { loadRoleSuggestions } from '@/lib/discovery/relevance/service'
 import { lookingForView } from '@/lib/discovery/relevance/view'
 import { repairMojibake } from '@/lib/discovery/relevance/text'
 import { toMatchDetail } from '@/lib/discovery/match/detail'
+import { jdTarget } from '@/lib/discovery/match/jd-fetch'
 import { cn } from '@/lib/utils'
 import { BoardViewToggle } from '@/components/board/view-toggle'
 import { LazyDiscoveriesBoard } from '@/components/board/lazy'
@@ -153,6 +154,7 @@ function toJobRows(jobs: JobsData, sourceNameById: Map<string, string>): Discove
       benefitsScore: d.benefitsScore,
       fitScore: d.fitScore,
       fitDetail: toMatchDetail(d.fitDetail),
+      jdFetchable: jdTarget(d.applyUrl) !== null,
       createdAt: d.createdAt.toISOString(),
       sourceName,
       normalized: {

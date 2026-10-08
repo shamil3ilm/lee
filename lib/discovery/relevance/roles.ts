@@ -357,6 +357,21 @@ function inferFamilies(evidence: string): string[] {
   return out
 }
 
+/**
+ * Families a job description reads as, from its stack and asks (not the
+ * title): backend / full-stack / frontend / DevOps as above, plus data
+ * analysis and business analysis when the JD names two of their skills.
+ */
+export function familiesFromEvidence(normalizedText: string): string[] {
+  const out = inferFamilies(normalizedText)
+  if (findTerms(normalizedText, DATA_ANALYST_SKILLS.filter((t) => !BACKEND_SKILLS.includes(t))).length >= 2) out.push('data_analyst')
+  if (findTerms(normalizedText, BUSINESS_ANALYST_SKILLS).length >= 2) out.push('business_analyst')
+  return out
+}
+
+/** Distinct software skills named in a description: strong JD evidence for an odd title. */
+const STRONG_JD_EVIDENCE = 3
+
 export function classifyRole(input: {
   title: string
   description?: string | null
@@ -369,10 +384,15 @@ export function classifyRole(input: {
   if (NON_ENGINEERING_TITLE(title) !== null || nonSoftware) {
     return { families: [], engineering: false, generic: false }
   }
-  if (GENERIC_SOFTWARE(title) === null) return { families: [], engineering: false, generic: false }
   const evidence = normalizeForMatch(
     [(input.techStack ?? []).join(' '), (input.description ?? '').slice(0, 2_000)].join(' '),
   )
+  if (GENERIC_SOFTWARE(title) === null) {
+    // An unusual title ("Ninja", "Product Builder") is judged by its JD: a
+    // description naming several software skills makes it a tech role.
+    const hits = new Set([...findTerms(evidence, BACKEND_SKILLS), ...findTerms(evidence, FRONTEND_SKILLS)]).size
+    if (hits < STRONG_JD_EVIDENCE) return { families: [], engineering: false, generic: false }
+  }
   return { families: inferFamilies(evidence), engineering: true, generic: true }
 }
 

@@ -2,10 +2,15 @@ import { describe, expect, it } from 'vitest'
 import {
   FIT_MAX,
   regionComponent,
-  roleComponent,
+  roleComponent as roleWithJd,
   seniorityComponent,
   workModeComponent,
 } from '@/lib/discovery/match/fit'
+import { parseJd } from '@/lib/discovery/match/jd'
+import type { MatchJob, MatchProfile } from '@/lib/discovery/match/types'
+
+/** Role with the JD parsed from the job and full skill coverage. */
+const roleComponent = (job: MatchJob, p: MatchProfile, coverage = 1) => roleWithJd(job, p, parseJd(job), coverage)
 import { matchJob, matchProfile } from './discovery-match-helpers'
 
 describe('roleComponent', () => {
@@ -17,12 +22,27 @@ describe('roleComponent', () => {
   })
 
   it('gives most points to a generic software title, a little to another family, none to non-engineering', () => {
-    expect(roleComponent(matchJob({ title: 'Software Engineer' }), matchProfile()).points).toBe(10)
+    expect(roleComponent(matchJob({ title: 'Software Engineer' }), matchProfile()).points).toBe(7)
     expect(roleComponent(matchJob({ title: 'iOS Engineer' }), matchProfile())).toMatchObject({
-      points: 4,
+      points: 3,
       label: 'Role: Mobile (not a target)',
     })
-    expect(roleComponent(matchJob({ title: 'Relationship Manager - Corporate Banking' }), matchProfile()).points).toBe(0)
+    expect(roleComponent(matchJob({ title: 'Relationship Manager - Corporate Banking' }), matchProfile())).toMatchObject({
+      points: 0,
+      label: 'Role: not a tech role',
+    })
+  })
+
+  it('lets the JD decide: a title-only match with a mismatching JD drops; an odd title with a matching JD rises', () => {
+    const devopsJd = '## Requirements\n- Kubernetes, Terraform and Helm\n- AWS and CI/CD pipelines\n- Prometheus, Grafana'
+    const titleOnly = matchJob({ title: 'Laravel Developer', descriptionMd: devopsJd })
+    expect(roleComponent(titleOnly, matchProfile(), 0.1)).toMatchObject({
+      points: 3,
+      label: 'Role: title says Backend, the JD reads DevOps-leaning Backend / Platform',
+    })
+    const laravelJd = '## Requirements\n- PHP and Laravel\n- MySQL and Redis\n- REST APIs and webhooks\n- Vue.js'
+    const odd = matchJob({ title: 'Payments Operations Technologist', descriptionMd: laravelJd })
+    expect(roleComponent(odd, matchProfile(), 0.9)).toMatchObject({ points: 8, label: 'Role: Backend (from the JD, new title)' })
   })
 
   it('honours custom role targets literally', () => {

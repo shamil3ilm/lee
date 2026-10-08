@@ -6,6 +6,12 @@ export function matchProfile(over: Partial<MatchProfile> = {}): MatchProfile {
   return {
     skills: withImplied(['laravel', 'mysql', 'rest', 'git', 'docker']),
     domains: new Set(['payments']),
+    evidence: [
+      'Backend Developer (Laravel, MySQL)',
+      'Built payment gateway webhooks and REST APIs in Laravel',
+      'Containerised services with Docker and Git-based CI',
+    ],
+    credentials: ['Bachelor Computer Science'],
     years: 2,
     seniority: ['junior', 'mid'],
     roleFamilies: ['backend', 'fullstack'],

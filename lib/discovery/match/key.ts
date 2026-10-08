@@ -24,6 +24,8 @@ export function matchKey(p: MatchProfile): string {
   const canonical = JSON.stringify([
     sorted(p.skills),
     sorted(p.domains),
+    fnv1a(p.evidence.join('\n')),
+    sorted(p.credentials),
     p.years,
     sorted(p.seniority),
     sorted(p.roleFamilies),

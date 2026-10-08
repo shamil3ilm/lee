@@ -1,4 +1,4 @@
-import { evidenceOf, isSkillBacked } from '@/lib/resume/readiness'
+import { evidenceOf, isSkillBacked, presentableTexts, presentation, readyHighlights } from '@/lib/resume/readiness'
 import { readResumeProfile, type ResumeProfile } from '@/lib/resume/types'
 import { findTerms, normalizeForMatch } from '../relevance/text'
 import { canonicalSkill, skillsInText, withImplied } from './lexicon'
@@ -25,6 +25,26 @@ export interface ReadyEvidence {
   skills: Set<string>
   domains: Set<string>
   resume: ResumeProfile | null
+  /** Ready lines shown as evidence ("Built payment webhooks in Laravel"). */
+  lines: string[]
+}
+
+/** Ready (or domain-worded) highlight and item lines, as written. */
+function evidenceLines(resume: ResumeProfile, skillNames: readonly string[]): string[] {
+  const out: string[] = []
+  for (const w of resume.work) {
+    const ready = readyHighlights(w.highlights)
+    if (ready.length > 0) out.push(`${w.position}${w.keywords.length ? ` (${w.keywords.join(', ')})` : ''}`)
+    out.push(...ready.map((h) => h.text), ...presentableTexts(w.highlights.filter((h) => !h.interviewReady)))
+  }
+  for (const p of resume.projects) {
+    const mode = presentation(p)
+    if (mode === 'excluded') continue
+    if (mode === 'full') out.push(`${p.name}: ${p.description}${p.keywords.length ? ` (${p.keywords.join(', ')})` : ''}`)
+    out.push(...presentableTexts(p.highlights))
+  }
+  if (skillNames.length > 0) out.push(`Skills: ${skillNames.join(', ')}`)
+  return [...new Set(out.map((l) => l.trim()).filter(Boolean))].slice(0, 120)
 }
 
 export const PAYMENTS_TERMS = [
@@ -78,10 +98,20 @@ export function readyEvidence(profile: EvidenceSource | null | undefined): Ready
     const evidence = evidenceOf(resume)
     const names = readySkillNames(resume)
     const domainText = normalizeForMatch([evidence.full, evidence.domain, ...names.tech, ...names.domain].join(' | '))
-    return { skills: skillSet(names.tech, evidence.full), domains: domainsOf(domainText), resume }
+    return {
+      skills: skillSet(names.tech, evidence.full),
+      domains: domainsOf(domainText),
+      resume,
+      lines: evidenceLines(resume, [...names.tech, ...names.domain]),
+    }
   }
   const weights =
     profile?.stackWeights && typeof profile.stackWeights === 'object' ? Object.keys(profile.stackWeights) : []
   const names = [...(profile?.skills ?? []), ...weights]
-  return { skills: skillSet(names, ''), domains: domainsOf(normalizeForMatch(names.join(' | '))), resume: null }
+  return {
+    skills: skillSet(names, ''),
+    domains: domainsOf(normalizeForMatch(names.join(' | '))),
+    resume: null,
+    lines: names.length > 0 ? [`Skills: ${names.join(', ')}`] : [],
+  }
 }

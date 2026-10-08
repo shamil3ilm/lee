@@ -1,22 +1,23 @@
 import { conceptSatisfiers, isConcept, partialFamily, skillLabel } from './lexicon'
+import type { ParsedJd } from './jd'
 import { extractRequirements, REQ_WEIGHTS, type Requirement } from './requirements'
 import type { MatchComponent, MatchJob, MatchProfile } from './types'
 
 /**
- * Skills / keywords overlap (0–40). Each posting skill earns credit from
+ * Skills / keywords overlap (0–35). Each posting skill earns credit from
  * the profile's READY skills: 1 for the skill itself (or anything that
  * satisfies a concept: Laravel for "a PHP framework"), ½ for a sibling in a
  * close family (MySQL for PostgreSQL), 0 otherwise. Credits are weighted
  * required 2 · mentioned 1 · nice-to-have ½:
  *
- *   points = round(40 × Σ weight × credit / Σ weight)
+ *   points = round(35 × Σ weight × credit / Σ weight)
  *
  * A posting that names no recognisable skill scores the neutral midpoint,
  * unless it is not a tech role at all (then there is nothing to match).
  */
 
-export const SKILLS_MAX = 40
-const NEUTRAL = SKILLS_MAX / 2
+export const SKILLS_MAX = 35
+const NEUTRAL = Math.round(SKILLS_MAX / 2)
 
 export interface SkillCredit {
   req: Requirement
@@ -50,9 +51,9 @@ export interface SkillsOutcome {
 export function skillsComponent(
   job: MatchJob,
   profile: Pick<MatchProfile, 'skills'>,
-  opts: { techRole?: boolean } = {},
+  opts: { techRole?: boolean; jd?: ParsedJd } = {},
 ): SkillsOutcome {
-  const reqs = extractRequirements(job)
+  const reqs = extractRequirements(job, opts.jd)
   if (reqs.length === 0) {
     const tech = opts.techRole ?? true
     return {

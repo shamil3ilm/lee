@@ -64,6 +64,11 @@ export function matchProfileFrom(profile: ProfileSource | null, now: Date = new 
   return {
     skills: evidence.skills,
     domains: evidence.domains,
+    evidence: evidence.lines,
+    credentials: [
+      ...(evidence.resume?.education ?? []).map((e) => [e.studyType, e.area, e.institution].filter(Boolean).join(' ')),
+      ...(evidence.resume?.certificates ?? []).map((c) => c.name),
+    ],
     years: profile?.yearsExperience ?? resumeYears(evidence.resume, now),
     seniority: prefs.seniority,
     roleFamilies: prefs.roleFamilies,

@@ -10,6 +10,7 @@ import type { SeniorityLevel } from '../relevance/seniority'
 
 export const MATCH_COMPONENT_KEYS = [
   'skills',
+  'responsibilities',
   'role',
   'seniority',
   'region',
@@ -31,12 +32,25 @@ export interface MatchComponent {
   max: number
 }
 
+/** One JD requirement line checked against READY profile evidence. */
+export interface RequirementCheck {
+  text: string
+  weight: 'must' | 'nice'
+  status: 'met' | 'partial' | 'missing' | 'unchecked'
+  /** The profile line that backs it. */
+  evidence?: string
+}
+
 /** What is stored in `discoveries.fit_detail` and rendered in the popover. */
 export interface MatchDetail {
   /** Rules version that produced it (MATCH_SCORE_VERSION). */
   v: string
   score: number
+  /** "title_only": no usable JD, so the score rests on the title (low confidence). */
+  confidence: 'full' | 'title_only'
   components: MatchComponent[]
+  /** Must-haves and nice-to-haves from the JD, met / partial / missing. */
+  requirements: RequirementCheck[]
   /** Must-haves the profile does not show: "Kubernetes (required)". */
   missing: string[]
   /** Posting skills the profile's ready evidence covers. */
@@ -64,6 +78,10 @@ export interface MatchProfile {
   skills: ReadonlySet<string>
   /** Ready domain evidence: 'payments' | 'einvoicing'. */
   domains: ReadonlySet<string>
+  /** Ready profile lines quoted as evidence for met requirements. */
+  evidence: readonly string[]
+  /** Education and certificates (names) from the résumé. */
+  credentials: readonly string[]
   /** Whole years of experience, or null when unknown. */
   years: number | null
   /** Target seniority levels (search preferences). */

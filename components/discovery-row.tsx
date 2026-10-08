@@ -33,6 +33,7 @@ import { CallUsageBadge } from '@/components/ai/usage-badge'
 import type { RiskView } from '@/lib/scam/view'
 import type { MatchDetail } from '@/lib/discovery/match/types'
 import { MatchBadge } from '@/components/discovery/match-badge'
+import { JdPaste } from '@/components/discovery/jd-paste'
 
 /**
  * Only the fields a job row renders — the page never ships the full
@@ -65,6 +66,8 @@ export interface DiscoveryRowJob {
   /** Deterministic Match Score and its explanation (every posting). */
   fitScore?: number | null
   fitDetail?: MatchDetail | null
+  /** The posting sits on an ATS with a public job API (Fetch the full JD). */
+  jdFetchable?: boolean
   createdAt: string
   sourceName: string
   normalized: DiscoveryJobSummary
@@ -246,6 +249,9 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
               </span>
             </div>
             <RelevanceChips item={item} />
+            {item.fitDetail?.confidence === 'title_only' && item.status !== 'saved' && item.status !== 'dismissed' ? (
+              <JdPaste discoveryId={item.id} canFetch={item.jdFetchable ?? false} />
+            ) : null}
           </div>
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">

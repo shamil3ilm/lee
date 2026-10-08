@@ -47,7 +47,7 @@ export interface DiscoveryMatchExpect {
   regions?: string[]
   score?: number
   promptIncludes?: string[]
-  match?: { min?: number; max?: number; missing?: string[]; labels?: string[] }
+  match?: { min?: number; max?: number; missing?: string[]; labels?: string[]; confidence?: 'full' | 'title_only' }
 }
 
 export interface DiscoveryMatchFixture {
@@ -169,6 +169,7 @@ function checkMatch(want: DiscoveryMatchExpect['match'], got: MatchDetail, out: 
   if (typeof want.min === 'number' && got.score < want.min) out.push(`match: ${got.score} below ${want.min}`)
   if (typeof want.max === 'number' && got.score > want.max) out.push(`match: ${got.score} above ${want.max}`)
   sameList('match.missing', want.missing, got.missing, out)
+  if (want.confidence && want.confidence !== got.confidence) out.push(`match.confidence: expected ${want.confidence}, got ${got.confidence}`)
   const labels = got.components.map((c) => c.label)
   for (const l of want.labels ?? []) if (!labels.includes(l)) out.push(`match lacks component ${JSON.stringify(l)} (got ${JSON.stringify(labels)})`)
 }

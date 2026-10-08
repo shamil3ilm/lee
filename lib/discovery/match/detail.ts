@@ -1,4 +1,10 @@
-import { MATCH_COMPONENT_KEYS, type MatchComponent, type MatchComponentKey, type MatchDetail } from './types'
+import {
+  MATCH_COMPONENT_KEYS,
+  type MatchComponent,
+  type MatchComponentKey,
+  type MatchDetail,
+  type RequirementCheck,
+} from './types'
 
 /**
  * Read a stored `fit_detail` jsonb defensively (client-safe). Anything
@@ -19,6 +25,20 @@ function component(v: unknown): MatchComponent | null {
   return { key: c.key as MatchComponentKey, label: c.label, points: c.points, max: c.max }
 }
 
+const STATUSES: ReadonlySet<string> = new Set(['met', 'partial', 'missing', 'unchecked'])
+
+function check(v: unknown): RequirementCheck | null {
+  if (!v || typeof v !== 'object') return null
+  const r = v as Record<string, unknown>
+  if (typeof r.text !== 'string' || typeof r.status !== 'string' || !STATUSES.has(r.status)) return null
+  return {
+    text: r.text,
+    weight: r.weight === 'nice' ? 'nice' : 'must',
+    status: r.status as RequirementCheck['status'],
+    ...(typeof r.evidence === 'string' ? { evidence: r.evidence } : {}),
+  }
+}
+
 export function toMatchDetail(value: unknown): MatchDetail | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   const d = value as Record<string, unknown>
@@ -27,7 +47,11 @@ export function toMatchDetail(value: unknown): MatchDetail | null {
   return {
     v: typeof d.v === 'string' ? d.v : '',
     score: d.score,
+    confidence: d.confidence === 'title_only' ? 'title_only' : 'full',
     components,
+    requirements: Array.isArray(d.requirements)
+      ? d.requirements.map(check).filter((c): c is RequirementCheck => c !== null).slice(0, 20)
+      : [],
     missing: strings(d.missing),
     matched: strings(d.matched),
   }

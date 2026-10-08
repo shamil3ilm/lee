@@ -121,13 +121,13 @@ describe('skillsComponent', () => {
     })
     const r = skillsComponent(job, matchProfile())
     expect(r.missing).toEqual(['Kubernetes (required)'])
-    // (2·1 + 2·0 + 0.5·0) / 4.5 × 40 = 17.8 → 18
-    expect(r.component.points).toBe(18)
+    // (2·1 + 2·0 + 0.5·0) / 4.5 × 35 = 15.6 → 16
+    expect(r.component.points).toBe(16)
   })
 
   it('is neutral when the posting names no recognisable skill', () => {
     const r = skillsComponent(matchJob({ descriptionMd: 'Join our Doha office.' }), matchProfile())
-    expect(r.component.points).toBe(SKILLS_MAX / 2)
+    expect(r.component.points).toBe(Math.round(SKILLS_MAX / 2))
     expect(r.component.label).toContain('neutral')
   })
 

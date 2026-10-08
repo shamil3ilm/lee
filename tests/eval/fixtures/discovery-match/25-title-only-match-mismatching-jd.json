@@ -1,0 +1,25 @@
+{
+  "name": "Title says Laravel Developer, the JD is a Kubernetes platform job: scored low",
+  "inputs": {
+    "job": {
+      "title": "Laravel Developer",
+      "location": "Dubai",
+      "descriptionMd": "## Responsibilities\n- Run our Kubernetes platform and Terraform modules\n- Own Prometheus and Grafana alerting\n## Requirements\n- Kubernetes, Helm and Terraform\n- Go for tooling\n- AWS networking"
+    }
+  },
+  "expect": {
+    "pass": true,
+    "match": {
+      "max": 49,
+      "missing": [
+        "Kubernetes (required)",
+        "Terraform (required)",
+        "Go (required)",
+        "AWS (required)"
+      ],
+      "labels": [
+        "Role: title says Backend, the JD reads DevOps-leaning Backend / Platform"
+      ]
+    }
+  }
+}

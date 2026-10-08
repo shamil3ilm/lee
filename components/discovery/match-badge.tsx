@@ -4,7 +4,7 @@ import { badgeVariants, type BadgeProps } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { focusRing } from '@/components/ui/focus-ring'
 import { BAND_LABELS, blendScores, scoreBand, scoreText, type ScoreBand } from '@/lib/discovery/match/blend'
-import type { MatchComponent, MatchDetail } from '@/lib/discovery/match/types'
+import type { MatchComponent, MatchDetail, RequirementCheck } from '@/lib/discovery/match/types'
 import { cn } from '@/lib/utils'
 
 /**
@@ -53,6 +53,38 @@ function ComponentRow({ c }: { c: MatchComponent }) {
   )
 }
 
+const STATUS_LABEL: Readonly<Record<RequirementCheck['status'], string>> = {
+  met: 'Met',
+  partial: 'Partial',
+  missing: 'Missing',
+  unchecked: 'Not checked',
+}
+
+const STATUS_TONE: Readonly<Record<RequirementCheck['status'], string>> = {
+  met: 'text-success',
+  partial: 'text-warning',
+  missing: 'text-danger',
+  unchecked: 'text-muted-foreground',
+}
+
+function RequirementList({ items, label }: { items: readonly RequirementCheck[]; label: string }) {
+  if (items.length === 0) return null
+  return (
+    <div>
+      <p className="text-xs font-medium">{label}</p>
+      <ul className="mt-1 space-y-1" aria-label={label}>
+        {items.map((r, i) => (
+          <li key={`${r.text}-${i}`} className="text-xs leading-snug">
+            <span className={cn('mr-1 font-medium', STATUS_TONE[r.status])}>{STATUS_LABEL[r.status]}:</span>
+            {r.text}
+            {r.evidence ? <span className="block pl-3 text-[11px] text-muted-foreground">“{r.evidence}”</span> : null}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 export function MatchWhy({ match, ai, detail, filtered }: Omit<MatchBadgeProps, 'interactive' | 'className'>) {
   const ranked = blendScores(match, ai)
   return (
@@ -62,6 +94,11 @@ export function MatchWhy({ match, ai, detail, filtered }: Omit<MatchBadgeProps, 
         <p className="text-xs text-muted-foreground">
           {match !== null ? `Match ${match}/100 · ${BAND_LABELS[scoreBand(match)]}` : 'Match Score pending (computed shortly)'}
         </p>
+        {detail?.confidence === 'title_only' ? (
+          <p className="mt-1 rounded-md bg-warning-soft px-2 py-1 text-xs text-warning" data-testid="match-low-confidence">
+            Low confidence: title only. Paste or fetch the JD to score it properly.
+          </p>
+        ) : null}
       </div>
       {detail && detail.components.length > 0 ? (
         <ul className="divide-y" aria-label="Score components">
@@ -69,6 +106,12 @@ export function MatchWhy({ match, ai, detail, filtered }: Omit<MatchBadgeProps, 
             <ComponentRow key={c.key} c={c} />
           ))}
         </ul>
+      ) : null}
+      {detail ? (
+        <div className="max-h-56 space-y-2 overflow-y-auto">
+          <RequirementList label="Must-haves" items={detail.requirements.filter((r) => r.weight === 'must')} />
+          <RequirementList label="Nice to have" items={detail.requirements.filter((r) => r.weight === 'nice')} />
+        </div>
       ) : null}
       {detail && detail.missing.length > 0 ? (
         <p className="rounded-md bg-danger-soft px-2 py-1.5 text-xs text-danger" data-testid="match-missing">
@@ -88,9 +131,10 @@ export function MatchWhy({ match, ai, detail, filtered }: Omit<MatchBadgeProps, 
 
 export function MatchBadge({ match, ai, detail, interactive = true, filtered = false, className }: MatchBadgeProps) {
   const shown = match ?? ai
-  const variant = shown === null ? 'neutral' : BAND_VARIANT[scoreBand(shown)]
-  const band = shown === null ? undefined : scoreBand(shown)
-  const text = scoreText(match, ai)
+  const titleOnly = detail?.confidence === 'title_only' && ai === null
+  const variant = shown === null || titleOnly ? 'neutral' : BAND_VARIANT[scoreBand(shown)]
+  const band = shown === null ? undefined : titleOnly ? 'low' : scoreBand(shown)
+  const text = titleOnly && match !== null ? `Match ~${match} · title only` : scoreText(match, ai)
   // A <span> (not the <div> Badge) so it may sit inside the trigger button.
   const badge = (
     <span

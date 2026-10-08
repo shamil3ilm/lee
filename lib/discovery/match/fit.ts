@@ -1,5 +1,4 @@
 import { isRemotePosting } from '../relevance/gate'
-import { classifyRole, roleFamilyLabel } from '../relevance/roles'
 import {
   detectSeniority,
   detectYearsRequired,
@@ -13,31 +12,14 @@ import { strengthIn, strengthsFrom } from './strengths'
 import type { MatchComponent, MatchJob, MatchProfile } from './types'
 
 /**
- * Role family (0–15), seniority (0–15), region (0–10) and work mode (0–5).
+ * Seniority (0–15), region (0–10) and work mode (0–5); role (0–10) is in ./role.
  * Each reads the same detectors as the relevance gate, so the score and
  * the gate never disagree about what a posting is.
  */
 
-export const FIT_MAX = { role: 15, seniority: 15, region: 10, workMode: 5 } as const
+export const FIT_MAX = { role: 10, seniority: 15, region: 10, workMode: 5 } as const
 
-const CORE_FAMILIES = ['backend', 'fullstack', 'frontend']
-
-export function roleComponent(job: MatchJob, p: Pick<MatchProfile, 'roleFamilies' | 'customRoles'>): MatchComponent {
-  const max = FIT_MAX.role
-  const role = classifyRole({ title: job.title, description: job.descriptionMd, techStack: job.techStack })
-  const c = (points: number, label: string): MatchComponent => ({ key: 'role', label, points, max })
-  const custom = p.customRoles.find((r) => findTerms(normalizeForMatch(job.title), [r]).length > 0)
-  if (custom) return c(max, `Role: ${custom}`)
-  const target = role.families.find((f) => p.roleFamilies.includes(f))
-  if (target) return c(role.generic ? 12 : max, `Role: ${roleFamilyLabel(target)}`)
-  if (!role.engineering) return c(0, 'Role: not engineering')
-  if (p.roleFamilies.length === 0) return c(10, 'Role: engineering (no target roles set)')
-  if (role.generic && role.families.length === 0 && p.roleFamilies.some((t) => CORE_FAMILIES.includes(t))) {
-    return c(10, 'Role: general software engineering')
-  }
-  const other = role.families[0]
-  return c(4, other ? `Role: ${roleFamilyLabel(other)} (not a target)` : 'Role: not a target role')
-}
+export { roleComponent } from './role'
 
 const RANK = new Map(SENIORITY_LEVELS.map((l, i) => [l, i] as const))
 const rank = (l: SeniorityLevel): number => RANK.get(l) ?? 0

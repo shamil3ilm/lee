@@ -9,6 +9,12 @@ import type { MatchDetail } from '@/lib/discovery/match/types'
 const DETAIL: MatchDetail = {
   v: 'm1',
   score: 72,
+  confidence: 'full',
+  requirements: [
+    { text: 'PHP and Laravel', weight: 'must', status: 'met', evidence: 'Built payment webhooks in Laravel' },
+    { text: 'Kubernetes', weight: 'must', status: 'missing' },
+    { text: 'Redis is a plus', weight: 'nice', status: 'partial' },
+  ],
   components: [
     { key: 'skills', label: 'Skills: 3 of 4 (Laravel, MySQL, PHP)', points: 30, max: 40 },
     { key: 'region', label: 'Region: Saudi Arabia', points: 10, max: 10 },

@@ -13,6 +13,7 @@ import { matchStale, rescoreMatches } from '@/lib/discovery/match/service'
 import { enqueueMatchJob } from '@/lib/discovery/match/enqueue'
 import { toMatchDetail } from '@/lib/discovery/match/detail'
 import { MATCH_SCORE_VERSION } from '@/lib/discovery/match/version'
+import { saveJd } from '@/lib/discovery/match/jd-service'
 import { drain } from '@/lib/queue/drain'
 import { JOB_TYPES } from '@/lib/queue/job-types'
 import { makeUser } from '@/tests/factories'
@@ -121,6 +122,28 @@ describe('Match Score at ingest', () => {
     expect(kept.map((r) => r.title)).toEqual(['Laravel Developer'])
     const sorted = await discQ.list(userId, { statuses: ['new', 'filtered'], sort: 'match' })
     expect(sorted[0]!.title).toBe('Laravel Developer')
+  })
+})
+
+describe('title-only postings and a pasted JD', () => {
+  beforeEach(() => vi.restoreAllMocks())
+
+  it('marks a posting without a JD as low confidence, and re-scores it from a pasted JD', async () => {
+    const userId = await setup()
+    stubAdapter([job('alert-1', 'Software Engineer', { descriptionMd: '', location: 'Dubai' })])
+    await runDiscoveryCycleForUser({ userId, ai: new FixtureAIProvider({ scoreJob: () => scoreResult }) })
+    const [row] = await discQ.list(userId, { status: 'new' })
+    expect(toMatchDetail(row!.fitDetail)?.confidence).toBe('title_only')
+
+    expect(await saveJd(userId, row!.id, 'too short', 'pasted')).toEqual({ ok: false, error: expect.stringMatching(/whole job description/) })
+    const jd = '## Responsibilities\n- Build REST APIs in Laravel\n## Requirements\n- PHP and Laravel\n- MySQL\n- Git and code review\n'.repeat(2)
+    const r = await saveJd(userId, row!.id, jd, 'pasted')
+    expect(r.ok).toBe(true)
+    const [after] = await discQ.list(userId, { status: 'new' })
+    const detail = toMatchDetail(after!.fitDetail)
+    expect(detail?.confidence).toBe('full')
+    expect(detail?.requirements.some((x) => x.status === 'met')).toBe(true)
+    expect(after!.fitScore!).toBeGreaterThan(row!.fitScore!)
   })
 })
 

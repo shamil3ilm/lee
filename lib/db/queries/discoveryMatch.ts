@@ -41,6 +41,53 @@ export async function staleRows(userId: string, key: string, limit: number, clie
     .limit(limit)
 }
 
+/** One row's scoring fields plus its apply URL; null when not the user's. */
+export async function rowForMatch(
+  userId: string,
+  id: string,
+  client: DbClient = db,
+): Promise<(MatchRow & { applyUrl: string | null }) | null> {
+  const [row] = await client
+    .select({
+      id: discoveries.id,
+      title: n('title'),
+      location: n('location'),
+      remoteType: n('remoteType'),
+      employmentType: n('employmentType'),
+      descriptionMd: sql<string | null>`left(${discoveries.normalized}->>'descriptionMd', 8000)`,
+      techStack: sql<unknown>`${discoveries.normalized}->'techStack'`,
+      salary: sql<unknown>`${discoveries.normalized}->'salary'`,
+      applyUrl: n('applyUrl'),
+    })
+    .from(discoveries)
+    .where(and(eq(discoveries.userId, userId), eq(discoveries.id, id)))
+    .limit(1)
+  return row ?? null
+}
+
+/**
+ * Store a full JD on a discovery (pasted by the user or fetched from an ATS
+ * API): `normalized.descriptionMd` plus `normalized.jdSource`, so every
+ * later re-score and re-gate reads it.
+ */
+export async function setDescription(
+  userId: string,
+  id: string,
+  text: string,
+  source: 'pasted' | 'fetched',
+  client: DbClient = db,
+): Promise<boolean> {
+  const rows = await client.execute(sql`
+    update discoveries set
+      normalized = jsonb_set(jsonb_set(normalized, '{descriptionMd}', to_jsonb(${text}::text)), '{jdSource}', to_jsonb(${source}::text)),
+      updated_at = now()
+    where id = ${id}::uuid and user_id = ${userId}::uuid
+    returning id
+  `)
+  const list = (rows as unknown as { rows?: unknown[] }).rows ?? (rows as unknown as unknown[])
+  return Array.isArray(list) && list.length > 0
+}
+
 /** Write many rows' Match Scores in ONE statement. `updated_at` is left alone (not a user-visible change). */
 export async function applyFitBatch(
   userId: string,
