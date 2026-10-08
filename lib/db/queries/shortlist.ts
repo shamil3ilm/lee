@@ -71,6 +71,8 @@ export interface ShortlistRow {
   location: string | null
   applyUrl: string | null
   matchScore: number | null
+  fitScore: number | null
+  fitDetail: unknown
   savedApplicationId: string | null
 }
 
@@ -93,6 +95,8 @@ export async function listForDay(userId: string, day: string, client: DbClient =
       location: n('location'),
       applyUrl: n('applyUrl'),
       matchScore: discoveries.matchScore,
+      fitScore: discoveries.fitScore,
+      fitDetail: discoveries.fitDetail,
       savedApplicationId: discoveries.savedApplicationId,
     })
     .from(shortlistEntries)

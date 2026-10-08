@@ -356,6 +356,9 @@ export const userProfile = pgTable('user_profile', {
   // Relevance key (prefs + rules version) every discovery row was last
   // gated with; differs from the current key → re-evaluation pending.
   relevanceAppliedKey: text('relevance_applied_key'),
+  // Match key (lib/discovery/match/key.ts) every discovery row was last
+  // scored with; differs from the current key → the match backfill runs.
+  matchAppliedKey: text('match_applied_key'),
   yearsExperience: integer('years_experience'),
   employmentTypes: text('employment_types').array().notNull().default([]),
   remotePref: text('remote_pref').notNull().default('any'),
@@ -495,11 +498,20 @@ export const discoveries = pgTable(
     // Ranking nudge from soft rules (boosts minus penalties), added to the
     // inbox sort so "lower priority" rows sink without being hidden.
     rankAdjust: smallint('rank_adjust').notNull().default(0),
+    // Deterministic Match Score (lib/discovery/match): 0–100 for EVERY row,
+    // no AI. `fit_detail` holds the explainable components and missing
+    // must-haves; `fit_key` the rules version + profile fingerprint it was
+    // computed under (differs from the current key → backfill re-scores).
+    fitScore: smallint('fit_score'),
+    fitDetail: jsonb('fit_detail'),
+    fitKey: text('fit_key'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
     srcJobUq: uniqueIndex('discoveries_source_job_uq').on(t.sourceId, t.sourceJobId),
+    // "Best match" sort and the minimum-match filter.
+    userStatusFitIx: index('discoveries_user_status_fit_idx').on(t.userId, t.status, t.fitScore),
     userStatusScoreIx: index('discoveries_user_status_score_idx').on(
       t.userId,
       t.status,

@@ -9,6 +9,7 @@ import type { NetBudget, NetMode } from '@/lib/scam/net-cache'
 import type { DiscoveryItem, NormalizedCompany, NormalizedJob } from './adapters/types'
 import { applyCaps, benefitsScore } from './scoring'
 import { gateColumns, type RelevanceContext } from './relevance/service'
+import { fitColumns, type MatchContext } from './match/service'
 import type { ScoreJobContext } from '@/lib/ai/prompts/score-job'
 import type { SourcePollStats } from './poll-stats'
 
@@ -19,7 +20,9 @@ import type { SourcePollStats } from './poll-stats'
  *      (ids + a scored flag only, never the jsonb payload).
  *   2. Only unseen items are inserted, in bulk.
  *   3. The relevance gate (lib/discovery/relevance) marks each new item
- *      'new' or 'filtered' (with reasons) before any AI call.
+ *      'new' or 'filtered' (with reasons) before any AI call, and EVERY new
+ *      item — filtered ones too — gets its deterministic Match Score
+ *      (lib/discovery/match), so nothing shows "Not scored".
  *   4. AI scoring covers RELEVANT new items first, then relevant rows an
  *      earlier run left unscored (match_score IS NULL) — at most
  *      `scoring.remaining` calls, and none once the deadline has passed.
@@ -48,6 +51,8 @@ export interface IngestArgs {
   scoring: ScoringBudget
   /** Search preferences + key for the gate (applies even when scoring is skipped). */
   relevance: RelevanceContext
+  /** Match Score profile + key; absent → rows are left to the backfill job. */
+  match?: MatchContext
   /** Master-CV digest and preferences for the scoring prompt. */
   scoreContext?: ScoreJobContext
   /** Optional tally for the poll's run summary. */
@@ -82,7 +87,7 @@ interface ToScore<N> {
 }
 
 export async function ingestJobItems(args: IngestArgs, items: readonly DiscoveryItem[]): Promise<number> {
-  const { userId, source, ai, profile, scam, scoring, relevance, scoreContext, stats } = args
+  const { userId, source, ai, profile, scam, scoring, relevance, match, scoreContext, stats } = args
   const unique = uniqueById(items)
   const seen = await discQ.seenBySourceJobIds(
     source.id,
@@ -91,22 +96,21 @@ export async function ingestJobItems(args: IngestArgs, items: readonly Discovery
   const fresh = unique.filter((i) => !seen.has(i.sourceItemId))
   const gated = fresh.map((i) => {
     const job = i.normalized as NormalizedJob
+    const fields = {
+      title: job.title,
+      location: job.location,
+      remoteType: job.remoteType,
+      employmentType: job.employmentType,
+      descriptionMd: job.descriptionMd,
+      techStack: job.techStack,
+      salary: job.salary,
+    }
     return {
       sourceJobId: i.sourceItemId,
       raw: i.raw,
       normalized: i.normalized,
-      gate: gateColumns(
-        {
-          title: job.title,
-          location: job.location,
-          remoteType: job.remoteType,
-          employmentType: job.employmentType,
-          descriptionMd: job.descriptionMd,
-          techStack: job.techStack,
-          salary: job.salary,
-        },
-        relevance,
-      ),
+      gate: gateColumns(fields, relevance),
+      ...(match ? { fit: fitColumns(fields, match) } : {}),
     }
   })
   const relevant = new Set(gated.filter((g) => g.gate.status === 'new').map((g) => g.sourceJobId))

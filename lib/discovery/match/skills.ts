@@ -11,7 +11,8 @@ import type { MatchComponent, MatchJob, MatchProfile } from './types'
  *
  *   points = round(40 × Σ weight × credit / Σ weight)
  *
- * A posting that names no recognisable skill scores the neutral midpoint.
+ * A posting that names no recognisable skill scores the neutral midpoint,
+ * unless it is not a tech role at all (then there is nothing to match).
  */
 
 export const SKILLS_MAX = 40
@@ -46,11 +47,21 @@ export interface SkillsOutcome {
   missing: string[]
 }
 
-export function skillsComponent(job: MatchJob, profile: Pick<MatchProfile, 'skills'>): SkillsOutcome {
+export function skillsComponent(
+  job: MatchJob,
+  profile: Pick<MatchProfile, 'skills'>,
+  opts: { techRole?: boolean } = {},
+): SkillsOutcome {
   const reqs = extractRequirements(job)
   if (reqs.length === 0) {
+    const tech = opts.techRole ?? true
     return {
-      component: { key: 'skills', label: 'Skills: no stack named (neutral)', points: NEUTRAL, max: SKILLS_MAX },
+      component: {
+        key: 'skills',
+        label: tech ? 'Skills: no stack named (neutral)' : 'Skills: no stack named',
+        points: tech ? NEUTRAL : 0,
+        max: SKILLS_MAX,
+      },
       matched: [],
       missing: [],
     }

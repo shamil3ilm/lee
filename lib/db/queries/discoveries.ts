@@ -99,6 +99,15 @@ export interface NewDiscoveryItem {
   normalized: unknown
   /** Relevance gate outcome (lib/discovery/relevance); absent → an ungated 'new' row. */
   gate?: GateColumns
+  /** Deterministic Match Score (lib/discovery/match); absent → backfilled later. */
+  fit?: FitColumns
+}
+
+/** Columns the deterministic Match Score writes. */
+export interface FitColumns {
+  fitScore: number
+  fitDetail: unknown
+  fitKey: string
 }
 
 /** Columns the relevance gate writes. */
@@ -153,6 +162,7 @@ export async function insertManyForSource(
                 rankAdjust: it.gate.rankAdjust,
               }
             : {}),
+          ...(it.fit ? { fitScore: it.fit.fitScore, fitDetail: it.fit.fitDetail as never, fitKey: it.fit.fitKey } : {}),
         })),
       )
       .onConflictDoNothing({ target: [discoveries.sourceId, discoveries.sourceJobId] })
@@ -167,11 +177,11 @@ export interface ListOpts {
   /** Several statuses at once (e.g. the inbox with "Hide filtered" off). Wins over `status`. */
   statuses?: readonly DiscoveryStatus[]
   /**
-   * Minimum match score. Unscored rows are included unless `scoredOnly`
-   * (fresh items that have not been scored yet stay visible).
+   * Minimum deterministic Match Score (`fit_score`). Rows the backfill has
+   * not reached yet (fit_score NULL) stay visible.
    */
   minScore?: number
-  /** Only rows with a match score. */
+  /** Only rows with an AI score. */
   scoredOnly?: boolean
   sourceIds?: string[]
   /** Region tag written by the relevance gate. */
@@ -202,6 +212,9 @@ export interface DiscoveryListItem {
   matchScore: number | null
   benefitsScore: number | null
   matchReasoning: unknown
+  /** Deterministic Match Score and its explanation (MatchDetail). */
+  fitScore: number | null
+  fitDetail: unknown
   scoredByCallId: string | null
   savedApplicationId: string | null
   createdAt: Date
@@ -227,6 +240,8 @@ const LIST_COLUMNS = {
   matchScore: discoveries.matchScore,
   benefitsScore: discoveries.benefitsScore,
   matchReasoning: discoveries.matchReasoning,
+  fitScore: discoveries.fitScore,
+  fitDetail: discoveries.fitDetail,
   // v18 — id only; the usage badge loads the call lazily when expanded.
   scoredByCallId: discoveries.scoredByCallId,
   savedApplicationId: discoveries.savedApplicationId,
@@ -244,22 +259,35 @@ const LIST_COLUMNS = {
   relevanceNotes: discoveries.relevanceNotes,
 }
 
+/**
+ * The ranking score (lib/discovery/match/blend.ts, same formula): the Match
+ * Score, the AI score, or their rounded mean when both exist; NULL when
+ * neither does.
+ */
+export function blendedSql(): SQL<number | null> {
+  return sql<number | null>`(case
+    when ${discoveries.matchScore} is null then ${discoveries.fitScore}
+    when ${discoveries.fitScore} is null then ${discoveries.matchScore}
+    else round((${discoveries.fitScore} + ${discoveries.matchScore}) / 2.0) end)`
+}
+
 function listOrder(sort: ListOpts['sort']): SQL[] {
   const tiebreak = [desc(discoveries.createdAt), desc(discoveries.id)]
   switch (sort) {
     case 'match':
-      // Soft-rule nudges (rank_adjust) sink "lower priority" rows.
-      return [desc(sql`(${discoveries.matchScore} + ${discoveries.rankAdjust})`), ...tiebreak]
+      // Best match first: Match blended with AI; soft-rule nudges
+      // (rank_adjust) sink "lower priority" rows; unscored rows last.
+      return [sql`(${blendedSql()} + ${discoveries.rankAdjust}) desc nulls last`, ...tiebreak]
     case 'benefits':
       return [desc(discoveries.benefitsScore), ...tiebreak]
     case 'posted':
       return tiebreak
     case 'combined':
     default:
-      // Combined: 0.6 * match + 0.4 * benefits (nulls as 0) + rank_adjust.
+      // Combined: 0.6 * blended match + 0.4 * benefits (nulls as 0) + rank_adjust.
       return [
         desc(
-          sql`(coalesce(${discoveries.matchScore}, 0) * 0.6 + coalesce(${discoveries.benefitsScore}, 0) * 0.4 + ${discoveries.rankAdjust})`,
+          sql`(coalesce(${blendedSql()}, 0) * 0.6 + coalesce(${discoveries.benefitsScore}, 0) * 0.4 + ${discoveries.rankAdjust})`,
         ),
         ...tiebreak,
       ]
@@ -276,11 +304,7 @@ function listWhere(userId: string, opts: ListOpts): SQL {
   }
   if (opts.scoredOnly) conds.push(isNotNull(discoveries.matchScore))
   if (typeof opts.minScore === 'number' && opts.minScore > 0) {
-    conds.push(
-      opts.scoredOnly
-        ? gte(discoveries.matchScore, opts.minScore)
-        : or(gte(discoveries.matchScore, opts.minScore), isNull(discoveries.matchScore))!,
-    )
+    conds.push(or(gte(discoveries.fitScore, opts.minScore), isNull(discoveries.fitScore))!)
   }
   if (opts.sourceIds && opts.sourceIds.length > 0) {
     conds.push(inArray(discoveries.sourceId, opts.sourceIds))

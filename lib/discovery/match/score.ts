@@ -25,11 +25,12 @@ import { MATCH_SCORE_VERSION } from './version'
  */
 
 export function computeMatch(job: MatchJob, profile: MatchProfile): MatchDetail {
-  const skills = skillsComponent(job, profile)
+  const role = roleComponent(job, profile)
+  const skills = skillsComponent(job, profile, { techRole: role.points > 0 })
   const language = languageComponent(job, profile)
   const components: MatchComponent[] = [
     skills.component,
-    roleComponent(job, profile),
+    role,
     seniorityComponent(job, profile),
     regionComponent(job, profile),
     workModeComponent(job, profile),

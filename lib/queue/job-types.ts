@@ -12,6 +12,7 @@ export const JOB_TYPES = {
   discoveryEmail: 'discovery-email:user',
   scamReassess: 'scam-reassess:user',
   discoveryRelevance: 'discovery-relevance:user',
+  discoveryMatch: 'discovery-match:user',
   usageSnapshot: 'usage-snapshot:all',
   companyReputation: 'company-reputation:user+company',
   shortlist: 'shortlist:user',
@@ -38,6 +39,8 @@ export const JOB_PRIORITY: Readonly<Record<JobType, number>> = {
   [JOB_TYPES.discoverySource]: 40,
   // Queued by a search-preferences save; DB-only and batched.
   [JOB_TYPES.discoveryRelevance]: 45,
+  // Match Score backfill (lib/discovery/match): DB-only, after a re-gate.
+  [JOB_TYPES.discoveryMatch]: 46,
   [JOB_TYPES.scamReassess]: 50,
   // After the polls and the Scam Shield re-check (it waits for that job),
   // before the discovery email (which waits for it and can include it).
@@ -55,6 +58,7 @@ export const JOB_LABELS: Readonly<Record<string, string>> = {
   [JOB_TYPES.discoveryEmail]: 'Discovery email',
   [JOB_TYPES.scamReassess]: 'Scam Shield re-check',
   [JOB_TYPES.discoveryRelevance]: 'Discovery relevance re-check',
+  [JOB_TYPES.discoveryMatch]: 'Discovery match scores',
   [JOB_TYPES.usageSnapshot]: 'Usage snapshot',
   [JOB_TYPES.companyReputation]: 'Company reputation refresh',
   [JOB_TYPES.shortlist]: 'Daily shortlist',
@@ -83,6 +87,8 @@ export const jobKeys = {
   discoveryEmail: (userId: string, day: string) => `discovery-email:${userId}:${day}`,
   /** One per preferences save (`stamp` = save time), so every change re-runs. */
   discoveryRelevance: (userId: string, stamp: string) => `discovery-relevance:${userId}:${stamp}`,
+  /** One per trigger (`stamp` = time), so every profile change re-runs. */
+  discoveryMatch: (userId: string, stamp: string) => `discovery-match:${userId}:${stamp}`,
   scamReassess: (userId: string, day: string) => `scam-reassess:${userId}:${day}`,
   shortlist: (userId: string, day: string) => `shortlist:${userId}:${day}`,
   usageSnapshot: (day: string) => `usage-snapshot:all:${day}`,

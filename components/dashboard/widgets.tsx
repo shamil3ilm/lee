@@ -18,6 +18,7 @@ import {
   type TodoNudge,
 } from '@/components/needs-attention'
 import { FreshDiscoveries, type FreshDiscoveryItem } from '@/components/fresh-discoveries'
+import { toMatchDetail } from '@/lib/discovery/match/detail'
 import { FunnelWidget } from '@/components/funnel-widget'
 import { SyncStatus } from '@/components/sync-status'
 import { SetupChecklist } from '@/components/setup-checklist'
@@ -258,6 +259,8 @@ export async function SignalsWidget({ userId, now }: WidgetProps) {
       title: r.title ?? 'Untitled',
       companyName: r.companyName ?? 'Unknown',
       matchScore: r.matchScore,
+      fitScore: r.fitScore,
+      fitDetail: toMatchDetail(r.fitDetail),
       risk: risk ? toRiskView(risk) : null,
     }
   })

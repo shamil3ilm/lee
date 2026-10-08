@@ -6,6 +6,7 @@ import { withAiUsage } from '@/lib/ai/usage'
 import * as profileQ from '@/lib/db/queries/profile'
 import { saveProfile } from '@/lib/profile/service'
 import { queueRelevanceReevaluation } from '@/lib/discovery/relevance/enqueue'
+import { refreshMatchesAfterSave } from '@/lib/discovery/match/enqueue'
 import { searchPrefsPatch } from '@/lib/discovery/relevance/form'
 import { refineSuggestionsWithAI } from '@/lib/discovery/relevance/refine'
 import { ROLE_FAMILY_IDS, resolveRoleFamily } from '@/lib/discovery/relevance/roles'
@@ -42,6 +43,7 @@ export async function saveSearchPrefsAction(formData: FormData): Promise<SearchP
     const existing = await profileQ.get(userId)
     await saveProfile(userId, searchPrefsPatch(formData, existing))
     const applied = await reapply(userId)
+    await refreshMatchesAfterSave(userId)
     revalidate()
     return { success: true, ...applied }
   } catch (err) {

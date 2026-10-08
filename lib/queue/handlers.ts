@@ -12,6 +12,8 @@ import { refreshCompanyReputation } from '@/lib/reputation/refresh'
 import { reassessStaleDiscoveries } from '@/lib/scam/service'
 import { reevaluateRelevance } from '@/lib/discovery/relevance/service'
 import { enqueueRelevanceJob } from '@/lib/discovery/relevance/enqueue'
+import { rescoreMatches } from '@/lib/discovery/match/service'
+import { enqueueMatchJob } from '@/lib/discovery/match/enqueue'
 import { takeUsageSnapshot } from '@/lib/usage/snapshot'
 import { buildShortlistForUser } from '@/lib/apply/shortlist'
 import { isThrottled } from '@/lib/usage/throttle'
@@ -236,6 +238,24 @@ const discoveryRelevance = defineHandler({
   },
 })
 
+/**
+ * Backfill the deterministic Match Score: re-score every discovery whose
+ * `fit_key` is not the current one (new rules, or the profile's ready
+ * evidence / preferences changed). Batched, time-boxed and continued in a
+ * follow-up job like the relevance re-check. No AI.
+ */
+const discoveryMatch = defineHandler({
+  type: JOB_TYPES.discoveryMatch,
+  scope: 'user',
+  payload: USER_PAYLOAD,
+  timeoutMs: 60_000,
+  async run({ job, deadline }): Promise<JobResult> {
+    const r = await rescoreMatches(userId(job), { deadline: Math.min(deadline, Date.now() + 50_000) })
+    if (r.remaining) await enqueueMatchJob(userId(job))
+    return { metrics: { match_scored: r.scored, match_continued: r.remaining ? 1 : 0 } }
+  },
+})
+
 const usageSnapshot = defineHandler({
   type: JOB_TYPES.usageSnapshot,
   scope: 'global',
@@ -289,7 +309,11 @@ const shortlist = defineHandler({
   scope: 'user',
   payload: USER_PAYLOAD,
   timeoutMs: 30_000,
-  async run({ job }): Promise<JobResult> {
+  async run({ job, deadline }): Promise<JobResult> {
+    // Bring Match Scores up to date first: the rank falls back to them when
+    // a posting has no AI score. Bounded; the rest is queued.
+    const m = await rescoreMatches(userId(job), { deadline: Math.min(deadline - 15_000, Date.now() + 10_000) })
+    if (m.remaining) await enqueueMatchJob(userId(job))
     const r = await buildShortlistForUser(userId(job))
     return {
       metrics: { shortlist_candidates: r.candidates, shortlisted: r.shortlisted },
@@ -307,6 +331,7 @@ export const appHandlers = [
   discoveryEmail,
   scamReassess,
   discoveryRelevance,
+  discoveryMatch,
   usageSnapshot,
   companyReputation,
   shortlist,

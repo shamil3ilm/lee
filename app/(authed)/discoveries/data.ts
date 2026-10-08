@@ -4,7 +4,10 @@ import type { UserProfile } from '@/lib/db/queries/profile'
 import { reassessStaleDiscoveries, safely } from '@/lib/scam/service'
 import { queueRelevanceReevaluation } from '@/lib/discovery/relevance/enqueue'
 import { reevaluateRelevance, relevanceStale } from '@/lib/discovery/relevance/service'
+import { matchStale, rescoreMatches } from '@/lib/discovery/match/service'
+import { queueMatchRescore } from '@/lib/discovery/match/enqueue'
 import { parsePageSize } from '@/lib/discovery/pager'
+import { toMatchDetail } from '@/lib/discovery/match/detail'
 import type {
   DiscoveryRegionFilter,
   DiscoverySort,
@@ -80,6 +83,8 @@ function sharedFilters(p: DiscoveryParams): Pick<
 const REASSESS_ON_VIEW = 100
 /** Bound on-view relevance catch-up; the rest is queued. */
 const RELEVANCE_ON_VIEW_MS = 2_500
+/** Bound on-view Match Score backfill; the rest is queued. */
+const MATCH_ON_VIEW_MS = 2_000
 
 /**
  * Before listing: bring Scam Shield and the relevance gate up to date. The
@@ -88,11 +93,17 @@ const RELEVANCE_ON_VIEW_MS = 2_500
  */
 export async function catchUp(userId: string, profile: UserProfile | null): Promise<void> {
   await safely('discoveries_view', () => reassessStaleDiscoveries(userId, { limit: REASSESS_ON_VIEW }))
-  if (!relevanceStale(profile)) return
-  const r = await safely('relevance_view', () =>
-    reevaluateRelevance(userId, { deadline: Date.now() + RELEVANCE_ON_VIEW_MS, profile }),
-  )
-  if (r?.remaining) await safely('relevance_queue', () => queueRelevanceReevaluation(userId))
+  if (relevanceStale(profile)) {
+    const r = await safely('relevance_view', () =>
+      reevaluateRelevance(userId, { deadline: Date.now() + RELEVANCE_ON_VIEW_MS, profile }),
+    )
+    if (r?.remaining) await safely('relevance_queue', () => queueRelevanceReevaluation(userId))
+  }
+  // Match Scores: rows ingested before the score existed, or under older
+  // rules / evidence, are re-scored here (bounded) and by the queued job.
+  if (!matchStale(profile)) return
+  const m = await safely('match_view', () => rescoreMatches(userId, { deadline: Date.now() + MATCH_ON_VIEW_MS, profile }))
+  if (m?.remaining) await safely('match_queue', () => queueMatchRescore(userId))
 }
 
 export interface JobsData {
@@ -166,6 +177,8 @@ export async function loadBoard(
           location: d.location,
           remoteType: d.remoteType,
           matchScore: d.matchScore,
+          fitScore: d.fitScore,
+          fitDetail: toMatchDetail(d.fitDetail),
           applyUrl: d.applyUrl,
           savedApplicationId: d.savedApplicationId,
         }),

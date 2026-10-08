@@ -22,6 +22,7 @@ import { PAGE_SIZE_COOKIE } from '@/lib/discovery/pager'
 import { loadRoleSuggestions } from '@/lib/discovery/relevance/service'
 import { lookingForView } from '@/lib/discovery/relevance/view'
 import { repairMojibake } from '@/lib/discovery/relevance/text'
+import { toMatchDetail } from '@/lib/discovery/match/detail'
 import { cn } from '@/lib/utils'
 import { BoardViewToggle } from '@/components/board/view-toggle'
 import { LazyDiscoveriesBoard } from '@/components/board/lazy'
@@ -74,7 +75,7 @@ export default async function DiscoveriesPage({
       <div className="space-y-4">
         <PageHeader
           title="Discovery"
-          description={`Triage AI-scored roles: shortlist, apply or dismiss.${checked ? ` ${checked}.` : ''}`}
+          description={`Triage scored roles: shortlist, apply or dismiss.${checked ? ` ${checked}.` : ''}`}
           actions={<ViewToggle sp={sp} view={view} explicit={explicit} />}
         />
         <TabBar tab={p.tab} />
@@ -104,7 +105,7 @@ export default async function DiscoveriesPage({
     <div className="space-y-4">
       <PageHeader
         title="Discovery"
-        description={`AI-scored jobs and companies from your sources.${checked ? ` ${checked}.` : ''}`}
+        description={`Scored jobs and companies from your sources.${checked ? ` ${checked}.` : ''}`}
         actions={p.tab === 'jobs' ? <ViewToggle sp={sp} view={view} explicit={explicit} /> : undefined}
       />
       <TabBar tab={p.tab} />
@@ -150,6 +151,8 @@ function toJobRows(jobs: JobsData, sourceNameById: Map<string, string>): Discove
       status: d.status,
       matchScore: d.matchScore,
       benefitsScore: d.benefitsScore,
+      fitScore: d.fitScore,
+      fitDetail: toMatchDetail(d.fitDetail),
       createdAt: d.createdAt.toISOString(),
       sourceName,
       normalized: {

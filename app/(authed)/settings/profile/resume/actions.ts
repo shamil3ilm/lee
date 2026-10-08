@@ -2,6 +2,7 @@
 import { revalidatePath } from 'next/cache'
 import { requireUserId } from '@/lib/auth/require-session'
 import { logger } from '@/lib/logger'
+import { refreshMatchesAfterSave } from '@/lib/discovery/match/enqueue'
 import { getResumeProfile, ResumeValidationError, saveResumeProfile } from '@/lib/resume/service'
 import { patchStudyItem, hasStudyTarget, type StudyPatch } from '@/lib/resume/study'
 import { DEPTHS, DATE_PATTERN, type ResumeProfile } from '@/lib/resume/types'
@@ -18,6 +19,7 @@ export async function saveResumeAction(input: unknown): Promise<SaveResumeResult
   try {
     const userId = await requireUserId()
     const { profile, masterDocument } = await saveResumeProfile(userId, input)
+    await refreshMatchesAfterSave(userId)
     revalidate()
     return { success: true, profile, snapshot: masterDocument !== null }
   } catch (err) {
@@ -54,6 +56,7 @@ export async function patchStudyAction(id: string, raw: StudyPatch): Promise<{ s
     const { profile } = await getResumeProfile(userId)
     if (!hasStudyTarget(profile, id)) return { error: 'That item is no longer in your profile.' }
     await saveResumeProfile(userId, patchStudyItem(profile, id, patch))
+    await refreshMatchesAfterSave(userId)
     revalidate()
     return { success: true }
   } catch (err) {

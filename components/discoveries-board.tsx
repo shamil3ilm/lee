@@ -5,8 +5,9 @@ import { Briefcase, ExternalLink, MapPin } from 'lucide-react'
 import { moveDiscovery } from '@/app/(authed)/discoveries/actions'
 import { Board, type BoardColumnDef, type BoardQuickAction } from '@/components/board/board'
 import { Badge } from '@/components/ui/badge'
-import type { BadgeVariant } from '@/lib/ui/status'
 import { workModeLabel } from '@/lib/ui/labels'
+import { MatchBadge } from '@/components/discovery/match-badge'
+import type { MatchDetail } from '@/lib/discovery/match/types'
 
 export type DiscoveryBoardColumn = 'new' | 'shortlisted' | 'saved' | 'dismissed'
 
@@ -18,7 +19,11 @@ export interface DiscoveryBoardItem {
   companyName: string
   location: string | null
   remoteType: string | null
+  /** AI score (optional). */
   matchScore: number | null
+  /** Deterministic Match Score and its explanation. */
+  fitScore: number | null
+  fitDetail: MatchDetail | null
   applyUrl: string | null
   savedApplicationId: string | null
 }
@@ -48,12 +53,6 @@ export const DISCOVERY_BOARD_COLUMNS: readonly BoardColumnDef<DiscoveryBoardColu
   },
 ]
 
-function scoreVariant(score: number): BadgeVariant {
-  if (score >= 80) return 'success'
-  if (score >= 60) return 'info'
-  return 'neutral'
-}
-
 function renderCard(d: DiscoveryBoardItem): React.ReactNode {
   return (
     <>
@@ -62,11 +61,14 @@ function renderCard(d: DiscoveryBoardItem): React.ReactNode {
           <div className="font-medium leading-tight">{d.companyName}</div>
           <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{d.title}</div>
         </div>
-        {d.matchScore !== null ? (
-          <Badge variant={scoreVariant(d.matchScore)} className="shrink-0 tabular-nums" title="Match score">
-            {d.matchScore}
-          </Badge>
-        ) : null}
+        {/* A card with an application link renders inside <a>: no nested button there. */}
+        <MatchBadge
+          match={d.fitScore}
+          ai={d.matchScore}
+          detail={d.fitDetail}
+          interactive={!d.savedApplicationId}
+          className="shrink-0"
+        />
       </div>
       {d.location || workModeLabel(d.remoteType) ? (
         <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">

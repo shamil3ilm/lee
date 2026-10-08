@@ -2,6 +2,7 @@
 import { assertSafeUrl } from '@/lib/ingest/ssrf'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
+import { refreshMatchesAfterSave } from '@/lib/discovery/match/enqueue'
 import { requireUserId } from '@/lib/auth/require-session'
 import { saveProfile } from '@/lib/profile/service'
 import { importProfile } from '@/lib/profile/importer'
@@ -87,6 +88,8 @@ export async function saveProfileAction(formData: FormData): Promise<ActionResul
   }
 
   await saveProfile(userId, patch)
+  // Years, work mode and legacy skills feed the Match Score.
+  await refreshMatchesAfterSave(userId)
   revalidatePath('/settings/profile')
   return { success: true }
   } catch (err) {

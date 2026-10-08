@@ -4,27 +4,24 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Sparkles, ArrowRight, Check, X } from 'lucide-react'
-import { Badge, type BadgeProps } from '@/components/ui/badge'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { saveDiscovery, dismissDiscovery } from '@/app/(authed)/discoveries/actions'
 import { RiskBadge } from '@/components/scam/risk-badge'
 import type { RiskView } from '@/lib/scam/view'
+import type { MatchDetail } from '@/lib/discovery/match/types'
+import { MatchBadge } from '@/components/discovery/match-badge'
 
 export interface FreshDiscoveryItem {
   id: string
   title: string
   companyName: string
   matchScore: number | null
+  fitScore?: number | null
+  fitDetail?: MatchDetail | null
   /** v17 §1 — Scam Shield assessment (quarantined rows never reach this card). */
   risk?: RiskView | null
-}
-
-function scoreVariant(score: number | null): BadgeProps['variant'] {
-  if (score === null) return 'neutral'
-  if (score >= 70) return 'emerald'
-  if (score >= 40) return 'blue'
-  return 'rose'
 }
 
 interface FreshDiscoveriesProps {
@@ -95,9 +92,7 @@ function FreshRow({ item }: { item: FreshDiscoveryItem }) {
         </div>
         <div className="line-clamp-2 text-xs text-muted-foreground">{item.title}</div>
       </div>
-      <Badge variant={scoreVariant(item.matchScore)}>
-        {item.matchScore === null ? '—' : `Match ${item.matchScore}`}
-      </Badge>
+      <MatchBadge match={item.fitScore ?? null} ai={item.matchScore} detail={item.fitDetail ?? null} />
       <div className="flex items-center gap-1">
         <Button
           size="sm"

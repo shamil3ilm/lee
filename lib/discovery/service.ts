@@ -15,6 +15,7 @@ import { getAdapter } from './adapters'
 import type { NormalizedCompany, NormalizedJob } from './adapters/types'
 import { ingestCompanyItems, ingestJobItems, type ScamCtx, type ScoringBudget } from './ingest'
 import { loadMasterCv, relevanceContext, type RelevanceContext } from './relevance/service'
+import { matchContext, type MatchContext } from './match/service'
 import { profileDigest } from './relevance/suggest'
 import type { ScoreJobContext } from '@/lib/ai/prompts/score-job'
 import { emptyPollStats, type SourcePollStats } from './poll-stats'
@@ -80,7 +81,7 @@ export async function runDiscoveryCycleForUser(args: {
 }): Promise<DiscoveryCycleResult> {
   const { userId, ai } = args
   const deadline = args.deadline ?? Number.POSITIVE_INFINITY
-  const { active, scoringProfile, signalSkip, relevance, scoreContext } = await loadCycleContext(userId)
+  const { active, scoringProfile, signalSkip, relevance, match, scoreContext } = await loadCycleContext(userId)
 
   const result: DiscoveryCycleResult = {
     sourcesPolled: 0,
@@ -105,7 +106,7 @@ export async function runDiscoveryCycleForUser(args: {
       return
     }
     try {
-      const perSource = await pollSource({ userId, source, ai, profile: scoringProfile, scam, deadline, relevance, scoreContext })
+      const perSource = await pollSource({ userId, source, ai, profile: scoringProfile, scam, deadline, relevance, match, scoreContext })
       result.sourcesPolled += 1
       result.newJobDiscoveries += perSource.newJobs
       result.newCompanyDiscoveries += perSource.newCompanies
@@ -134,6 +135,8 @@ interface CycleContext {
   signalSkip?: { code: string; message: string }
   /** Relevance gate prefs + key; applies even when scoring is skipped. */
   relevance: RelevanceContext
+  /** Deterministic Match Score context (every ingested posting gets a score). */
+  match: MatchContext
   /** Master-CV digest for the scoring prompt (only loaded when scoring). */
   scoreContext?: ScoreJobContext
 }
@@ -144,6 +147,7 @@ async function loadCycleContext(userId: string): Promise<CycleContext> {
   const sources = await sourcesQ.list(userId, { enabled: true })
   const active = sources.filter((s) => s.errorCount < MAX_ERRORS_BEFORE_SKIP)
   const relevance = relevanceContext(profile)
+  const match = matchContext(profile)
   // v10 — signal-check gate. If the user's profile is too thin to produce
   // grounded match scores, we still ingest fresh discoveries but skip the
   // AI scoring pass entirely.
@@ -151,13 +155,14 @@ async function loadCycleContext(userId: string): Promise<CycleContext> {
   if (signal.ok) {
     const masterCv = active.length > 0 ? await loadMasterCv(userId) : null
     const cvDigest = profileDigest({ profile, masterCv })
-    return { active, scoringProfile: profile, relevance, scoreContext: { cvDigest } }
+    return { active, scoringProfile: profile, relevance, match, scoreContext: { cvDigest } }
   }
   return {
     active,
     scoringProfile: null,
     signalSkip: { code: signal.code, message: signal.message },
     relevance,
+    match,
   }
 }
 
@@ -200,7 +205,7 @@ export async function runDiscoveryForSource(args: {
 }): Promise<SourcePollResult> {
   const { userId, ai } = args
   const deadline = args.deadline ?? Number.POSITIVE_INFINITY
-  const { active, scoringProfile, signalSkip, relevance, scoreContext } = await loadCycleContext(userId)
+  const { active, scoringProfile, signalSkip, relevance, match, scoreContext } = await loadCycleContext(userId)
   const index = active.findIndex((s) => s.id === args.sourceId)
   const source = active[index]
   const empty = {
@@ -217,7 +222,7 @@ export async function runDiscoveryForSource(args: {
   }
   const scam = await loadScamCtx(userId, Math.ceil(NET_LOOKUPS_PER_CYCLE / active.length))
   try {
-    const r = await pollSource({ userId, source, ai, profile: scoringProfile, scam, deadline, relevance, scoreContext })
+    const r = await pollSource({ userId, source, ai, profile: scoringProfile, scam, deadline, relevance, match, scoreContext })
     return {
       status: 'polled',
       newJobDiscoveries: r.newJobs,
@@ -247,6 +252,7 @@ async function pollSource(args: {
   scam: ScamCtx
   deadline: number
   relevance: RelevanceContext
+  match: MatchContext
   scoreContext?: ScoreJobContext
 }): Promise<{ newJobs: number; newCompanies: number; budgetExhausted: boolean; stats: SourcePollStats }> {
   const { source, deadline } = args
