@@ -35,7 +35,7 @@ export default async function RadarPage({ searchParams }: { searchParams: Promis
           title={filtered ? 'Nothing matches these filters' : terms.length === 0 ? 'Watch a term to start the Radar' : 'Nothing fetched yet'}
           description={
             terms.length === 0
-              ? 'The Radar runs once a day for accounts that watch at least one term.'
+              ? 'The watched-terms feed runs once a day for accounts that watch at least one term. What’s new needs no terms.'
               : 'Sources are fetched once a day; use Refresh now to fetch them sooner.'
           }
           action={

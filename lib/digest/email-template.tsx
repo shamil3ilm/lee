@@ -3,6 +3,7 @@ import type { PipelineSnapshot } from './weekly'
 import { APP_NAME } from '@/lib/brand'
 import { EmailBrandHeader } from '@/lib/email/brand-header'
 import { RadarSection } from '@/lib/radar/email-section'
+import { WhatsNewSection } from '@/lib/radar/new/email-section'
 
 // Inline styles only — no external CSS. Most email clients strip <style> tags
 // or refuse to load external stylesheets. Colors kept accessible and neutral.
@@ -102,6 +103,7 @@ export function WeeklyDigestEmail({
     shortlist = [],
     filterReview = [],
     radar = [],
+    whatsNew = [],
   } = snapshot
   return (
     <div style={styles.wrapper}>
@@ -191,6 +193,8 @@ export function WeeklyDigestEmail({
       </div>
 
       <RadarSection lines={radar} appBaseUrl={appBaseUrl} sectionStyle={styles.section} h2Style={styles.h2} />
+
+      <WhatsNewSection sections={whatsNew} appBaseUrl={appBaseUrl} sectionStyle={styles.section} h2Style={styles.h2} />
 
       {shortlist.length > 0 ? (
         <div style={styles.section}>

@@ -2,6 +2,7 @@ import { RouteTabs, type RouteTab } from '@/components/route-tabs'
 
 const RADAR_TABS: RouteTab[] = [
   { href: '/radar', label: 'Feed' },
+  { href: '/radar/new', label: "What's new" },
   { href: '/radar/watchlist', label: 'Watchlist' },
   { href: '/radar/sources', label: 'Sources' },
 ]

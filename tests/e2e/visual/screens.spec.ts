@@ -69,6 +69,7 @@ const TARGETS: Target[] = [
   { name: 'playground-arena', path: '/playground/models/arena' },
   { name: 'playground-decisions', path: '/playground/decisions' },
   { name: 'radar', path: '/radar' },
+  { name: 'radar-new', path: '/radar/new' },
   { name: 'radar-entry', from: '/radar', link: /^\/radar\/[0-9a-f-]{36}$/ },
   { name: 'radar-watchlist', path: '/radar/watchlist' },
   { name: 'radar-sources', path: '/radar/sources' },

@@ -8,6 +8,8 @@ import { PageHeader } from '@/components/page-header'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SourceToggle } from '@/components/radar/source-toggle'
+import { ReleaseProjectsPanel } from '@/components/radar/release-projects-panel'
+import { loadPersonalContext } from '@/lib/radar/new/personal'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,12 +34,12 @@ const LIMITS: Readonly<Record<string, string>> = {
 export default async function RadarSourcesPage() {
   const userId = await requireUserId()
   const off = (await profileQ.get(userId))?.radarSourcesOff ?? []
-  const statuses = await loadSourceStatuses(userId, off)
+  const [statuses, personal] = await Promise.all([loadSourceStatuses(userId, off), loadPersonalContext(userId)])
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <PageHeader
         title="Sources"
-        description={`Free sources, fetched once a day in the background. A source is stale when it has not fetched successfully for ${STALE_AFTER_HOURS} hours; a rate limit skips that day.`}
+        description={`Free sources, fetched once a day in the background. Switching one off also hides it from What’s new. A source is stale when it has not fetched successfully for ${STALE_AFTER_HOURS} hours; a rate limit skips that day.`}
       />
       <Card>
         <CardContent className="p-0">
@@ -59,6 +61,15 @@ export default async function RadarSourcesPage() {
               </li>
             ))}
           </ul>
+        </CardContent>
+      </Card>
+      <Card id="releases">
+        <CardHeader>
+          <CardTitle className="text-base">Releases in What&apos;s new</CardTitle>
+          <CardDescription>The projects whose new major and minor releases What&apos;s new shows you.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ReleaseProjectsPanel selected={personal.releaseProjects} derived={personal.releaseProjectsDerived} />
         </CardContent>
       </Card>
       <Card>

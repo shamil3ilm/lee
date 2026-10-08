@@ -28,6 +28,8 @@ import { shortlistForEmail, type EmailShortlistItem } from '@/lib/apply/email'
 import { domainFilterReview } from '@/lib/discovery/relevance/review'
 import { radarLinesFor } from '@/lib/radar/notify'
 import type { DigestLine } from '@/lib/radar/digest'
+import type { NewDigestSection } from '@/lib/radar/new/digest'
+import { whatsNewSectionsFor } from '@/lib/radar/new/notify'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -93,6 +95,8 @@ export interface PipelineSnapshot {
   filterReview?: Array<{ title: string; domain: string; count: number }>
   // AI Radar — "new on your watch terms" when the radar mode is weekly.
   radar?: DigestLine[]
+  // AI Radar What's new — the week's top few per category, unless radar mode is off.
+  whatsNew?: NewDigestSection[]
 }
 
 // ---------------------------------------------------------------------------
@@ -374,6 +378,7 @@ export async function gatherPipelineSnapshot(
   const shortlist = await shortlistForEmail(userId, now)
   const filterReview = (await domainFilterReview(userId, now).catch(() => [])).map(({ title, domain, count }) => ({ title, domain, count }))
   const radar = await radarLinesFor(userId, 'weekly_digest', { now })
+  const whatsNew = await whatsNewSectionsFor(userId, { now })
 
   return {
     userId,
@@ -392,6 +397,7 @@ export async function gatherPipelineSnapshot(
     shortlist,
     filterReview,
     radar,
+    whatsNew,
   }
 }
 
@@ -423,6 +429,7 @@ function digestFingerprint(snap: PipelineSnapshot): string {
     todos: snap.upcomingTodos.length,
     completed: snap.completedStagesThisWeek.length,
     radar: snap.radar?.length ?? 0,
+    whatsNew: snap.whatsNew?.reduce((n, s) => n + s.lines.length, 0) ?? 0,
   })
 }
 

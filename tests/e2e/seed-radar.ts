@@ -10,6 +10,7 @@ import * as s from '@/lib/db/schema'
 import { ingestItems } from '@/lib/radar/ingest'
 import type { RadarItemInput } from '@/lib/radar/types'
 import { JOB_TYPES } from '@/lib/queue/job-types'
+import { seedWhatsNew } from './seed-radar-new'
 
 export const RADAR_E2E_TERM = 'Zorblax'
 
@@ -82,4 +83,5 @@ export async function seedRadar(userId: string, now: number): Promise<void> {
     result: { summary: { kind: 'radar-source', source, status: 'polled', fetched, new: created, matched: 0 } },
   })
   await db.insert(s.queueJobs).values([run('hf', 40, 12), run('feeds', 31, 9)])
+  await seedWhatsNew(now)
 }
