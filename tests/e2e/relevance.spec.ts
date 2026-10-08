@@ -21,10 +21,10 @@ test('search preferences filter Discovery, with reasons and "Show anyway"', asyn
   // Save preferences: backend / full-stack, junior + mid, default GCC + India.
   await page.goto('/settings/profile')
   const form = page.getByRole('form', { name: 'Search preferences' })
-  await form.getByText('Backend', { exact: true }).click()
-  await form.getByText('Full-stack', { exact: true }).click()
-  await form.getByText('Junior', { exact: true }).click()
-  await form.getByText('Mid-level', { exact: true }).click()
+  // check(), not click(): the seeded profile already targets Backend.
+  for (const name of ['Backend', 'Full-stack', 'Junior', 'Mid-level']) {
+    await form.getByRole('checkbox', { name, exact: true }).check({ force: true })
+  }
   await form.getByRole('button', { name: 'Save preferences' }).click()
   await expectToast(page, 'Search preferences saved')
 

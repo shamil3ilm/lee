@@ -105,22 +105,26 @@ export function MatchBadge({ match, ai, detail, interactive = true, filtered = f
   )
   if (!interactive) return badge
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={`${text}. Why this score`}
-          className={cn('rounded-md', focusRing)}
-          onPointerDown={stop}
-          onKeyDown={stop}
-          onClick={stop}
-        >
-          {badge}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent onPointerDown={stop} onClick={stop}>
-        <MatchWhy match={match} ai={ai} detail={detail} filtered={filtered} />
-      </PopoverContent>
-    </Popover>
+    // Same guard as the board's card menu: pointer, mouse, touch and key
+    // events on the badge never start a card drag or follow a card link.
+    <span
+      className="inline-flex"
+      onPointerDown={stop}
+      onMouseDown={stop}
+      onTouchStart={stop}
+      onKeyDown={stop}
+      onClick={stop}
+    >
+      <Popover>
+        <PopoverTrigger asChild>
+          <button type="button" aria-label={`${text}. Why this score`} className={cn('rounded-md', focusRing)}>
+            {badge}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent onPointerDown={stop} onMouseDown={stop} onClick={stop}>
+          <MatchWhy match={match} ai={ai} detail={detail} filtered={filtered} />
+        </PopoverContent>
+      </Popover>
+    </span>
   )
 }

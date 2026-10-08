@@ -20,7 +20,9 @@ test('shortlist renders with reasons, and Not for me takes a reason', async ({ p
 
   const payouts = cards.filter({ hasText: PAYOUTS })
   await expect(payouts).toBeVisible()
-  await expect(payouts.getByRole('list', { name: 'Why it ranks here' })).toContainText('88% AI match')
+  // The match chip reads "AI 88", or "Match N · AI 88" once the Match Score exists.
+  await expect(payouts.getByRole('list', { name: 'Why it ranks here' })).toContainText('AI 88')
+  await expect(payouts.getByTestId('match-badge')).toContainText('AI 88')
   await expect(payouts).toContainText('Suggested résumé')
 
   const platform = cards.filter({ hasText: PLATFORM })
