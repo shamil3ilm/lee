@@ -24,7 +24,7 @@ export function DocumentsNewMenu() {
           <Button size="sm">
             <Plus className="size-4" />
             New
-            <ChevronDown className="size-3.5 opacity-70" />
+            <ChevronDown className="size-3.5" aria-hidden="true" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
