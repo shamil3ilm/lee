@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import type { AssetMetadata } from '@/lib/db/queries/documentAssets'
 import { uploadAsset } from '@/components/drive/asset-upload'
 import { isTextFile, MAIN_FILE, mimeForFile } from '@/lib/latex/file-kinds'
+import { assetUrl, basename } from '@/lib/latex/project/paths'
 
 /**
  * The project's files: main.tex (the document source, owned by the editor)
@@ -20,12 +21,8 @@ interface TextFile {
 
 export const TEXT_SAVE_DELAY_MS = 1500
 
-function assetUrl(documentId: string, filename: string): string {
-  return `/api/documents/${documentId}/assets/${encodeURIComponent(filename)}`
-}
-
 function textFile(name: string, text: string): File {
-  return new File([text], name, { type: mimeForFile(name, '') })
+  return new File([text], basename(name), { type: mimeForFile(name, '') })
 }
 
 export function useProjectFiles(documentId: string, initialAssets: AssetMetadata[]) {
@@ -112,9 +109,9 @@ export function useProjectFiles(documentId: string, initialAssets: AssetMetadata
         toast.error(`Could not save ${filename}.`)
         return
       }
-      const out = await uploadAsset(documentId, textFile(filename, value))
+      const out = await uploadAsset(documentId, textFile(filename, value), filename)
       if (!out.asset) {
-        await uploadAsset(documentId, textFile(filename, file.saved))
+        await uploadAsset(documentId, textFile(filename, file.saved), filename)
         toast.error(`Could not save ${filename}: ${out.error ?? 'upload failed'}.`)
         return
       }
@@ -161,6 +158,21 @@ export function useProjectFiles(documentId: string, initialAssets: AssetMetadata
     [upload],
   )
 
+  /** Drop files deleted elsewhere (a project import): tabs, cached text, pending saves. */
+  const forget = useCallback((filenames: readonly string[]) => {
+    if (filenames.length === 0) return
+    const gone = new Set(filenames)
+    for (const name of gone) {
+      const pending = timers.current.get(name)
+      if (pending) clearTimeout(pending)
+      timers.current.delete(name)
+    }
+    setAssets((a) => a.filter((x) => !gone.has(x.filename)))
+    setTabs((t) => t.filter((x) => !gone.has(x)))
+    setActive((cur) => (gone.has(cur) ? MAIN_FILE : cur))
+    setTexts((t) => Object.fromEntries(Object.entries(t).filter(([name]) => !gone.has(name))))
+  }, [])
+
   const dirtyTexts = Object.entries(texts)
     .filter(([, t]) => t.value !== t.saved)
     .map(([name]) => name)
@@ -178,6 +190,7 @@ export function useProjectFiles(documentId: string, initialAssets: AssetMetadata
     close,
     upload,
     remove,
+    forget,
     create,
     setText,
     flushTexts,

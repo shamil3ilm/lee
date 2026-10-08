@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger'
 import { fetchWithTimeout, isTimeoutError } from '@/lib/net/timeout'
+import { isSafeProjectPath } from '../project/paths'
 import { compileCancelled, readPdf, tailLog, type BackendRequest, type CompileResult } from '../compile-types'
 
 const YTOTECH_URL = 'https://latex.ytotech.com/builds/sync'
@@ -12,7 +13,6 @@ export function ytotechUrl(): string {
   return process.env.LATEX_YTOTECH_URL || YTOTECH_URL
 }
 const MAIN_DOC = /__main_document__\.(tex|log)/g
-const SAFE_NAME = /^[A-Za-z0-9._ -]{1,100}$/
 
 /**
  * YtoTech LaTeX-on-HTTP (latex.ytotech.com): the fallback compile service.
@@ -27,7 +27,7 @@ const SAFE_NAME = /^[A-Za-z0-9._ -]{1,100}$/
  * internal main-file name is mapped back to main.tex for the log parser.
  */
 export async function compileOnYtoTech(req: BackendRequest): Promise<CompileResult> {
-  const bad = req.assets.find((a) => !SAFE_NAME.test(a.filename) || a.filename === 'main.tex')
+  const bad = req.assets.find((a) => !isSafeProjectPath(a.filename) || a.filename === 'main.tex')
   if (bad) return { ok: false, status: 422, log: `Unsupported file name for compile: "${bad.filename}"`, service: 'ytotech' }
   const body = JSON.stringify({
     compiler: req.engine,

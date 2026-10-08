@@ -41,7 +41,7 @@ export async function GET(
 
 /**
  * POST /api/documents/[id]/assets
- *   multipart/form-data, one or more `file` fields
+ *   multipart/form-data, one or more `file` fields (optional `path` for one file)
  *   → 200 { assets: AssetMetadata[], errors?: {filename, error}[] }
  *
  * Uploads may partially succeed: per-file validation errors go into the
@@ -100,12 +100,17 @@ export async function POST(
         })
       }
     }
+    // A single file may carry its project path ('figures/logo.png') in a
+    // `path` field: a multipart file name is a plain name. Sanitised by the
+    // asset store like any name (folders kept only when clean).
+    const pathField = form.get('path')
+    const explicitPath = typeof pathField === 'string' && pathField && files.length === 1 ? pathField : null
     for (const file of files) {
       try {
         const bytes = Buffer.from(await file.arrayBuffer())
         const { asset } = await store.put(
           userId,
-          { kind: 'document-asset', documentId: id, filename: file.name },
+          { kind: 'document-asset', documentId: id, filename: explicitPath ?? file.name },
           bytes,
           { mimeType: file.type || 'application/octet-stream' },
         )

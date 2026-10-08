@@ -29,9 +29,10 @@ async function readJson<T>(res: Response): Promise<T | null> {
   return (await res.json().catch(() => null)) as T | null
 }
 
-async function serverUpload(documentId: string, file: File, uploadId?: string): Promise<UploadOutcome> {
+async function serverUpload(documentId: string, file: File, uploadId?: string, path?: string): Promise<UploadOutcome> {
   const form = new FormData()
   form.append('file', file)
+  if (path) form.append('path', path)
   if (uploadId) form.append('uploadId', uploadId)
   const res = await fetch(`/api/documents/${documentId}/assets`, { method: 'POST', body: form })
   const body = await readJson<{
@@ -46,18 +47,22 @@ async function serverUpload(documentId: string, file: File, uploadId?: string): 
   return { error: body?.errors?.[0]?.error ?? GENERIC, connect: body?.connect }
 }
 
-export async function uploadAsset(documentId: string, file: File): Promise<UploadOutcome> {
+/**
+ * Upload one asset. `path` names it inside the project ('figures/logo.png');
+ * by default it is the file's own name.
+ */
+export async function uploadAsset(documentId: string, file: File, path?: string): Promise<UploadOutcome> {
   try {
     const res = await fetch(`/api/documents/${documentId}/assets/upload-session`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ filename: file.name, mimeType: file.type || 'application/octet-stream', size: file.size }),
+      body: JSON.stringify({ filename: path ?? file.name, mimeType: file.type || 'application/octet-stream', size: file.size }),
     })
     const session = await readJson<
       ({ mode: 'direct'; uploadUrl: string; uploadId: string } | { mode: 'server' }) & ErrorBody
     >(res)
     if (!res.ok) return { error: session?.error ?? GENERIC, connect: session?.connect }
-    if (session?.mode !== 'direct') return serverUpload(documentId, file)
+    if (session?.mode !== 'direct') return serverUpload(documentId, file, undefined, path)
 
     try {
       const put = await fetch(session.uploadUrl, {
@@ -79,7 +84,7 @@ export async function uploadAsset(documentId: string, file: File): Promise<Uploa
     } catch {
       // Direct PUT blocked or dropped: fall through to the server path.
     }
-    return serverUpload(documentId, file, session.uploadId)
+    return serverUpload(documentId, file, session.uploadId, path)
   } catch {
     return { error: GENERIC }
   }

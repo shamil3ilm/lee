@@ -14,6 +14,8 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import type { AssetMetadata } from '@/lib/db/queries/documentAssets'
+import { MAX_ASSETS_PER_DOCUMENT } from '@/lib/latex/project/limits'
+import { assetUrl } from '@/lib/latex/project/paths'
 import { buildAssetSnippet, insertVariants, type SnippetVariant } from '@/lib/latex/snippets'
 import { DriveConnectButton } from '@/components/drive/drive-connect-button'
 import {
@@ -150,7 +152,7 @@ export function LatexAssetsDialog({
 
   async function handleDelete(filename: string): Promise<void> {
     const res = await fetch(
-      `/api/documents/${documentId}/assets/${encodeURIComponent(filename)}`,
+      assetUrl(documentId, filename),
       { method: 'DELETE' },
     )
     if (!res.ok) {
@@ -196,7 +198,7 @@ export function LatexAssetsDialog({
 
         <div className="flex items-center justify-between border-b pb-2">
           <p className="text-xs text-muted-foreground">
-            {assets.length} of 20 assets · 5 MB max per file
+            {assets.length} of {MAX_ASSETS_PER_DOCUMENT} files · 5 MB max per file
             {drive?.backend === 'drive' ? ' · saved to your Google Drive' : ''}
           </p>
           <div className="flex items-center gap-2">
@@ -251,7 +253,7 @@ export function LatexAssetsDialog({
                     {isImage(asset.mimeType) ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={`/api/documents/${documentId}/assets/${encodeURIComponent(asset.filename)}`}
+                        src={assetUrl(documentId, asset.filename)}
                         alt={asset.filename}
                         className="size-full object-cover"
                       />

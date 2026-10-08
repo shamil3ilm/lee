@@ -1,10 +1,12 @@
 /**
  * Minimal POSIX ustar writer. latexonline.cc's /data endpoint only accepts a
  * tarball upload (it answers "failed to extract tarball" for a loose .tex),
- * so main.tex and its assets are packed into one archive. Flat files only:
- * names are plain file names (no directories), which is all LaTeX needs to
- * resolve `\includegraphics{name}` from the working directory.
+ * so main.tex and its assets are packed into one archive. Names are relative
+ * paths ('logo.png', 'figures/logo.png'): both compile services extract
+ * folders (verified 2026-10-08), so `\input{sections/intro}` resolves from
+ * the working directory as in Overleaf. No directory entries are needed.
  */
+import { isSafeProjectPath } from './project/paths'
 
 export interface TarEntry {
   name: string
@@ -12,8 +14,6 @@ export interface TarEntry {
 }
 
 const BLOCK = 512
-const MAX_NAME_BYTES = 100
-const SAFE_NAME = /^[A-Za-z0-9._ -]+$/
 
 export class TarNameError extends Error {
   constructor(message: string) {
@@ -23,15 +23,18 @@ export class TarNameError extends Error {
 }
 
 function assertSafeName(name: string): void {
-  const byteLength = new TextEncoder().encode(name).length
-  if (
-    name.length === 0 ||
-    byteLength > MAX_NAME_BYTES ||
-    !SAFE_NAME.test(name) ||
-    name === '.' ||
-    name === '..'
-  ) {
-    throw new TarNameError(`Unsupported file name for compile: "${name}"`)
+  // At most 100 bytes, so the path always fits ustar's name field.
+  if (!isSafeProjectPath(name)) throw new TarNameError(`Unsupported file name for compile: "${name}"`)
+}
+
+/** A file whose path is also a folder of another file ('a' and 'a/b') can't be extracted. */
+function assertNoFileFolderClash(names: ReadonlySet<string>): void {
+  for (const name of names) {
+    const parts = name.split('/')
+    for (let i = 1; i < parts.length; i++) {
+      const folder = parts.slice(0, i).join('/')
+      if (names.has(folder)) throw new TarNameError(`"${folder}" is both a file and a folder.`)
+    }
   }
 }
 
@@ -68,6 +71,7 @@ export function createTar(entries: readonly TarEntry[], mtimeSeconds = 0): Uint8
     if (seen.has(entry.name)) throw new TarNameError(`Duplicate file name for compile: "${entry.name}"`)
     seen.add(entry.name)
   }
+  assertNoFileFolderClash(seen)
 
   const dataBlocks = (size: number) => Math.ceil(size / BLOCK) * BLOCK
   const total =

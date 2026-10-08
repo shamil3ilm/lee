@@ -3,11 +3,14 @@ import { useState, type DragEvent } from 'react'
 import {
   ChevronDown,
   ChevronRight,
+  FileArchive,
   FileCode2,
   FileImage,
   FilePlus2,
   FileText,
   FileType,
+  Folder,
+  FolderOpen,
   Loader2,
   Trash2,
   Upload,
@@ -15,6 +18,7 @@ import {
 import type { AssetMetadata } from '@/lib/db/queries/documentAssets'
 import { fileKind, isTextFile, MAIN_FILE, validateNewFileName } from '@/lib/latex/file-kinds'
 import type { OutlineItem } from '@/lib/latex/outline'
+import { treeRows, visibleRows } from '@/lib/latex/project/tree'
 import { cn } from '@/lib/utils'
 import { OutlinePanel } from '@/components/latex/outline-panel'
 import { IconButton } from './icon-button'
@@ -28,6 +32,7 @@ interface FilesPanelProps {
   onDelete: (filename: string) => void
   onCreate: (filename: string) => Promise<boolean>
   onUpload: () => void
+  onImportZip: () => void
   onDropFiles: (files: FileList) => void
   onJump: (line: number) => void
 }
@@ -40,15 +45,17 @@ function FileIcon({ name }: { name: string }) {
   return <FileCode2 className="size-3.5 shrink-0 text-muted-foreground" />
 }
 
-function order(a: AssetMetadata, b: AssetMetadata): number {
+function order(a: string, b: string): number {
   const rank = (n: string) => (isTextFile(n) ? 0 : fileKind(n) === 'image' ? 1 : 2)
-  return rank(a.filename) - rank(b.filename) || a.filename.localeCompare(b.filename)
+  return rank(a) - rank(b) || a.localeCompare(b)
 }
 
 /**
- * The Files panel: main.tex and every asset (flat: LaTeX sees them in one
- * folder), with new file / upload / delete and drag-and-drop upload; below
- * it, the File outline of the open file.
+ * The Files panel: main.tex and every asset as a folder tree (an imported
+ * project keeps its folders; both compile services take them), with new
+ * file / upload / import project / delete and drag-and-drop upload (a .zip
+ * dropped here is imported as a project); below it, the File outline of the
+ * open file.
  */
 export function FilesPanel(p: FilesPanelProps) {
   const [creating, setCreating] = useState(false)
@@ -56,7 +63,15 @@ export function FilesPanel(p: FilesPanelProps) {
   const [nameError, setNameError] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [outlineOpen, setOutlineOpen] = useState(true)
-  const files = [...p.assets].sort(order)
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set())
+  const rows = visibleRows(treeRows(p.assets.map((a) => a.filename), order), collapsed)
+  const toggleFolder = (path: string) =>
+    setCollapsed((c) => {
+      const next = new Set(c)
+      if (next.has(path)) next.delete(path)
+      else next.add(path)
+      return next
+    })
 
   async function submitNew(): Promise<void> {
     const error = validateNewFileName(name, p.assets.map((a) => a.filename))
@@ -97,6 +112,9 @@ export function FilesPanel(p: FilesPanelProps) {
             <IconButton label="Upload files" tip="Upload or import files (or drop them here)" onClick={p.onUpload}>
               <Upload />
             </IconButton>
+            <IconButton label="Import project (.zip)" tip="Import a LaTeX project .zip (e.g. from Overleaf)" onClick={p.onImportZip}>
+              <FileArchive />
+            </IconButton>
           </div>
         </div>
         {creating ? (
@@ -126,7 +144,27 @@ export function FilesPanel(p: FilesPanelProps) {
           </form>
         ) : null}
         <ul className="min-h-0 overflow-y-auto py-1" aria-label="Project files">
-          {[MAIN_FILE, ...files.map((f) => f.filename)].map((filename) => {
+          {[{ type: 'file' as const, path: MAIN_FILE, name: MAIN_FILE, depth: 0 }, ...rows].map((row) => {
+            const indent = { paddingLeft: `${0.75 + row.depth * 0.875}rem` }
+            if (row.type === 'folder') {
+              const open = !collapsed.has(row.path)
+              return (
+                <li key={`dir:${row.path}`} className="flex items-center pr-1">
+                  <button
+                    type="button"
+                    onClick={() => toggleFolder(row.path)}
+                    aria-expanded={open}
+                    title={row.path}
+                    style={indent}
+                    className="flex min-w-0 flex-1 items-center gap-1.5 rounded py-1 pr-3 text-left text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                  >
+                    {open ? <FolderOpen className="size-3.5 shrink-0" /> : <Folder className="size-3.5 shrink-0" />}
+                    <span className="truncate font-medium">{row.name}</span>
+                  </button>
+                </li>
+              )
+            }
+            const filename = row.path
             const openable = filename === MAIN_FILE || isTextFile(filename)
             return (
               <li key={filename} className="group flex items-center pr-1">
@@ -134,15 +172,17 @@ export function FilesPanel(p: FilesPanelProps) {
                   type="button"
                   onClick={() => openable && p.onOpen(filename)}
                   aria-current={p.active === filename ? 'true' : undefined}
+                  aria-label={filename}
                   title={openable ? `Open ${filename}` : `${filename} (bundled with the document at compile time)`}
+                  style={indent}
                   className={cn(
-                    'flex min-w-0 flex-1 items-center gap-1.5 rounded px-3 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                    'flex min-w-0 flex-1 items-center gap-1.5 rounded py-1 pr-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
                     p.active === filename ? 'bg-primary/10 font-medium text-foreground' : 'hover:bg-muted',
                     !openable && 'cursor-default text-muted-foreground',
                   )}
                 >
                   <FileIcon name={filename} />
-                  <span className="truncate">{filename}</span>
+                  <span className="truncate">{row.name}</span>
                 </button>
                 {filename !== MAIN_FILE ? (
                   <IconButton
@@ -159,7 +199,7 @@ export function FilesPanel(p: FilesPanelProps) {
           })}
         </ul>
         {p.assets.length === 0 ? (
-          <p className="px-3 pb-2 text-muted-foreground">Drop images, .bib or .tex files here.</p>
+          <p className="px-3 pb-2 text-muted-foreground">Drop images, .bib or .tex files, or a project .zip, here.</p>
         ) : null}
       </section>
       <div className="flex min-h-0 flex-1 flex-col border-t">
