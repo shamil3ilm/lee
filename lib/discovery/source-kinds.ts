@@ -125,6 +125,13 @@ export const SOURCE_KINDS: readonly SourceKindMeta[] = [
     needs: 'url',
     placeholder: 'https://careers.example.com/jobs',
   },
+  {
+    id: 'manual_import',
+    label: 'Added by you',
+    description: 'Openings you added on Discovery with "Add from text or link" (never polled)',
+    needs: 'none',
+    catalogOnly: true,
+  },
   { id: 'rss', label: 'RSS feed', description: 'Any jobs RSS feed URL', needs: 'url', placeholder: 'https://example.com/jobs.rss' },
   { id: 'jsonld', label: 'JSON-LD JobPosting', description: 'A page with JSON-LD JobPosting markup', needs: 'url', placeholder: 'https://example.com/careers' },
 ]

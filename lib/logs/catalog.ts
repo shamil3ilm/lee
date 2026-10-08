@@ -103,6 +103,13 @@ export const EVENT_CATALOG: Readonly<Record<string, EventSpec>> = {
     strings: ['source'],
     message: (c) => `${s(c, 'source') || 'Source'} poll failed: ${s(c, 'err')}`,
   },
+  // "Add from text or link" (lib/discovery/manual-import). Counts only.
+  manual_import_done: {
+    category: 'source',
+    persist: true,
+    message: (c) =>
+      `Added from text or link: ${n(c, 'imported')} imported · ${n(c, 'duplicates')} already in Discovery · ${n(c, 'enriched')} from an ATS`,
+  },
   // Company reputation (lib/reputation)
   reputation_refreshed: {
     category: 'source',

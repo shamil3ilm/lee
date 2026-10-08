@@ -45,6 +45,8 @@ const registry: Record<string, DiscoveryAdapter> = {
   email_alert: new EmailAlertAdapter(),
   workday: new WorkdayAdapter(),
   watch: new WatchAdapter(),
+  // Openings the user added from pasted text or links: nothing to poll.
+  manual_import: new WatchAdapter('manual_import'),
   workingnomads: new WorkingNomadsAdapter(),
   technopark: new TechnoparkAdapter(),
   infopark: new InfoparkAdapter(),

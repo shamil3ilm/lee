@@ -12,7 +12,7 @@ import * as actQ from '@/lib/db/queries/activities'
 import * as allowQ from '@/lib/db/queries/scamAllowList'
 import { addWatchedCompany } from '@/lib/companies/service'
 import { getAdapter } from './adapters'
-import type { NormalizedCompany, NormalizedJob } from './adapters/types'
+import type { DiscoveryItem, NormalizedCompany, NormalizedJob } from './adapters/types'
 import { ingestCompanyItems, ingestJobItems, type ScamCtx, type ScoringBudget } from './ingest'
 import { loadMasterCv, relevanceContext, type RelevanceContext } from './relevance/service'
 import { profileDigest } from './relevance/suggest'
@@ -276,6 +276,41 @@ async function pollSource(args: {
     durationMs: Date.now() - started,
   })
   return { newJobs, newCompanies, budgetExhausted: scoring.exhausted, stats }
+}
+
+/**
+ * Ingest items that did not come from an adapter poll (the "Add from text or
+ * link" import) into `source` through the same pipeline as a poll: relevance
+ * gate, Scam Shield, scoring (same caps) and the source's poll stats.
+ * The source does not have to be enabled.
+ */
+export async function ingestItemsForSource(args: {
+  userId: string
+  source: Source
+  items: DiscoveryItem[]
+  ai: AIProvider
+  deadline?: number
+}): Promise<SourcePollStats> {
+  const { userId, source } = args
+  const profile = await profileQ.get(userId)
+  const relevance = relevanceContext(profile)
+  const signal = checkDiscoveryScoringSignal(profile)
+  const scoreContext = signal.ok
+    ? { cvDigest: profileDigest({ profile, masterCv: await loadMasterCv(userId) }) }
+    : undefined
+  const scam = await loadScamCtx(userId, NET_LOOKUPS_PER_CYCLE)
+  const scoring: ScoringBudget = {
+    remaining: MAX_SCORED_PER_SOURCE,
+    deadline: args.deadline ?? Number.POSITIVE_INFINITY,
+    exhausted: false,
+  }
+  const stats = emptyPollStats()
+  await ingestJobItems(
+    { userId, source, ai: args.ai, profile: signal.ok ? profile ?? null : null, scam, scoring, relevance, scoreContext, stats },
+    args.items.filter((i) => i.normalized.kind === 'job'),
+  )
+  await sourcesQ.setPolled(userId, source.id, undefined, { ...stats })
+  return stats
 }
 
 // ---------------------------------------------------------------------------

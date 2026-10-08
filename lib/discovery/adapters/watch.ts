@@ -9,7 +9,7 @@ import type { DiscoveryAdapter, DiscoveryItem } from './types'
  * polls them, and this adapter makes no request even if one is switched on.
  */
 export class WatchAdapter implements DiscoveryAdapter {
-  readonly kind = 'watch'
+  constructor(readonly kind: string = 'watch') {}
 
   async fetch(): Promise<DiscoveryItem[]> {
     return []

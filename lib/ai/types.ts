@@ -22,6 +22,7 @@ import type { ReputationSummaryInput, ReputationSummaryResult } from './prompts/
 import type { ScoreJobContext } from './prompts/score-job'
 import type { SharedLink } from './prompts/shared-links'
 import type { SuggestRolesInput, SuggestRolesResult } from './prompts/suggest-roles'
+import type { ExtractOpeningsInput, ExtractOpeningsResult } from './prompts/extract-openings'
 
 export const parsedJobSchema = z.object({
   title: z.string(),
@@ -197,6 +198,9 @@ export interface AIProvider {
   // Résumé variants — proposals only; lib/variants/proposals.ts filters them
   // (readiness + fact lock) and the user confirms before anything is saved.
   proposeResumeVariant(input: ResumeVariantInput, meta?: CallMeta): Promise<ResumeVariantResult>
+  // "Add from text or link" — openings from pasted text; the caller keeps
+  // only URLs that appear in that text and the user picks what to import.
+  extractOpenings(input: ExtractOpeningsInput, meta?: CallMeta): Promise<ExtractOpeningsResult>
 }
 
 export const latexCVResultSchema = z.object({ source: z.string().min(1) })
