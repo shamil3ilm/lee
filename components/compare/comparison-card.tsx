@@ -46,7 +46,7 @@ export function ComparisonCard({ comparison: c, hasCurrent, saved, citations }: 
             description="Pay, benefits and how your job feels now, kept private. Then every posting shows what you would gain, lose and still need to ask."
             action={
               <Button asChild size="sm">
-                <Link href="/settings/profile/current-job">Add current job</Link>
+                <Link href="/settings/current-job">Add current job</Link>
               </Button>
             }
           />
