@@ -107,7 +107,7 @@ export function TailorPanel({ view }: { view: TailorView }) {
           <>
             {' '}
             Last saved copy:{' '}
-            <Link href={`/documents/${view.saved.documentId}`} className="font-medium text-primary underline-offset-2 hover:underline">
+            <Link href={`/documents/${view.saved.documentId}`} className="font-medium text-primary underline underline-offset-2">
               open it
             </Link>
             .

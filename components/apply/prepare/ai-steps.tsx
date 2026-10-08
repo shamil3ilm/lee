@@ -127,7 +127,7 @@ export function CoverStep({ view, state }: { view: PrepareView; state: StepState
         </fieldset>
       ) : (
         <p className="text-xs text-muted-foreground">
-          No profile links yet. <Link href="/settings/profile" className="text-primary underline-offset-2 hover:underline">Add some</Link> to share them in drafts.
+          No profile links yet. <Link href="/settings/profile#profile-links" className="text-primary underline underline-offset-2">Add some</Link> to share them in drafts.
         </p>
       )}
       <div className="flex flex-wrap gap-2">

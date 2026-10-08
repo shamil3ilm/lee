@@ -26,7 +26,7 @@ export const PROFILE = {
   keywords: ['payments', 'ledger', 'platform'],
   timezone: 'Asia/Kolkata',
   // Every seeded inbox posting fits on the daily shortlist.
-  shortlistSize: 6,
+  shortlistSize: 7,
 }
 
 export const COMPANIES = [
@@ -332,6 +332,8 @@ export const COMPARE_DISCOVERY_TITLE = 'Senior Backend Engineer, E-invoicing'
 
 export const DISCOVERIES: SeedDiscovery[] = [
   { status: 'new', score: 91, benefits: 72, job: { title: 'Senior Backend Engineer, Ledger', companyName: 'Juspay', companyDomain: 'juspay.example', location: 'Bengaluru, IN', remoteType: 'hybrid', employmentType: 'fulltime', descriptionMd: JD_BACKEND, applyUrl: 'https://juspay.example/jobs/ledger', techStack: ['Go', 'PostgreSQL', 'Kafka'], salary: { min: 4_500_000, max: 6_000_000, currency: 'INR' } }, reasoning: { summary: 'Strong match: ledger + Go + Kafka.', strengths: ['Ledger migration experience', 'Go and Kafka in production'], red_flags: [], stack_overlap: ['Go', 'PostgreSQL', 'Kafka'], stack_gaps: [] } },
+  // Prepared by tests/e2e/best-cv.spec.ts ("Use this CV"); no other spec relies on it staying new.
+  { status: 'new', score: 86, benefits: 62, job: { title: 'Backend Engineer, Settlements', companyName: 'Ferrolane', companyDomain: 'ferrolane.example', location: 'Bengaluru, IN', remoteType: 'hybrid', employmentType: 'fulltime', descriptionMd: JD_BACKEND, applyUrl: 'https://ferrolane.example/jobs/settlements', techStack: ['Go', 'PostgreSQL', 'Kafka'], salary: { min: 4_000_000, max: 5_500_000, currency: 'INR' } }, reasoning: { summary: 'Strong match: settlements + Go + PostgreSQL.', strengths: ['Payments background', 'PostgreSQL in production'], red_flags: [], stack_overlap: ['Go', 'PostgreSQL'], stack_gaps: [] } },
   { status: 'new', score: 78, benefits: 60, job: { title: 'Platform Engineer (Kubernetes)', companyName: 'CRED', companyDomain: 'cred.example', location: 'Bengaluru, IN', remoteType: 'onsite', employmentType: 'fulltime', descriptionMd: 'Run our Kubernetes platform on AWS.', applyUrl: 'https://cred.example/jobs/platform', techStack: ['Kubernetes', 'AWS', 'Terraform'] }, reasoning: { summary: 'Good platform overlap.', strengths: ['Kubernetes', 'AWS'], red_flags: ['Onsite five days a week'], stack_overlap: ['Kubernetes', 'AWS'], stack_gaps: ['Istio'] } },
   { status: 'new', score: 64, benefits: null, job: { title: 'Backend Engineer, Webhooks', companyName: 'Hasura', companyDomain: 'hasura.example', location: 'Remote', remoteType: 'remote', employmentType: 'fulltime', descriptionMd: 'Build our webhook delivery pipeline.', applyUrl: 'https://hasura.example/jobs/webhooks', techStack: ['Haskell', 'Go', 'PostgreSQL'] }, reasoning: { summary: 'Partial match; Haskell is a gap.', strengths: ['PostgreSQL'], red_flags: [], stack_overlap: ['Go', 'PostgreSQL'], stack_gaps: ['Haskell'] } },
   { status: 'new', score: 42, benefits: 35, job: { title: 'Senior Data Engineer', companyName: 'Swiggy', companyDomain: 'swiggy.example', location: 'Bengaluru, IN', remoteType: 'hybrid', employmentType: 'fulltime', descriptionMd: 'Spark and Airflow pipelines.', applyUrl: 'https://swiggy.example/jobs/data', techStack: ['Spark', 'Airflow', 'Scala'] }, reasoning: { summary: 'Weak match: data engineering.', strengths: [], red_flags: ['Different specialisation'], stack_overlap: [], stack_gaps: ['Spark', 'Scala'] } },

@@ -33,7 +33,7 @@ export function BestCvLine({ bestCv, target, currentVariantId = null, showReason
     return (
       <p className={cn('text-xs text-muted-foreground', className)} data-testid="best-cv">
         No résumé variant to compare yet.{' '}
-        <Link href="/settings/variants" className="font-medium text-primary underline-offset-2 hover:underline">
+        <Link href="/settings/variants" className="font-medium text-primary underline underline-offset-2">
           Create your starter set
         </Link>
       </p>

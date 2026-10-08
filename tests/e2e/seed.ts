@@ -333,10 +333,13 @@ async function main(): Promise<void> {
   // One application mid-preparation (the Swiggy posting, which no journey
   // reads), so the step panel has a resumable example.
   const { confirmVariant, startPrepare } = await import('@/lib/apply/prepare')
+  // Looked up by title, not position, so adding seed postings can't shift it.
+  const dataEngIndex = data.DISCOVERIES.findIndex((d) => d.job.title === 'Senior Data Engineer')
+  if (dataEngIndex < 0) throw new Error('e2e seed: the Swiggy data-engineering posting is missing')
   const [dataEng] = await db
     .select({ id: s.discoveries.id })
     .from(s.discoveries)
-    .where(eq(s.discoveries.sourceJobId, 'seed-3'))
+    .where(eq(s.discoveries.sourceJobId, `seed-${dataEngIndex}`))
   const { applicationId: preparing } = await startPrepare(userId, { discoveryId: dataEng!.id })
   await confirmVariant(userId, preparing, variant!.id)
 

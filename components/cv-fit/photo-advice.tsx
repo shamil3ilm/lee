@@ -63,7 +63,7 @@ export function PhotoAdvice({ data, applicationId, className }: { data: PhotoAdv
       {data.action.kind === 'upload' ? (
         <p className="pl-5 text-[11px] text-muted-foreground">
           {data.action.note}{' '}
-          <Link href={`/settings/resume?from=${encodeURIComponent(`/applications/${applicationId}/prepare`)}`} className="font-medium text-primary underline-offset-2 hover:underline">
+          <Link href={`/settings/resume?from=${encodeURIComponent(`/applications/${applicationId}/prepare`)}`} className="font-medium text-primary underline underline-offset-2">
             Upload a photo
           </Link>
         </p>

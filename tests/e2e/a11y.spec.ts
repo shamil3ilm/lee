@@ -112,10 +112,11 @@ for (const theme of ['light', 'dark'] as const) {
  * with the Tailor section open.
  */
 async function preparingApplication(page: Page): Promise<string> {
-  await page.goto('/applications')
-  const href = await page.getByRole('link', { name: /Senior Data Engineer/ }).first().getAttribute('href')
-  expect(href).toMatch(/^\/applications\/[0-9a-f-]{36}$/)
-  return href!
+  await page.goto('/applications?view=list')
+  // Table rows are clickable rows (role="link", no href): open one and read the URL.
+  await page.getByRole('link', { name: /Senior Data Engineer/ }).first().click()
+  await page.waitForURL(/\/applications\/[0-9a-f-]{36}$/)
+  return new URL(page.url()).pathname
 }
 
 for (const theme of ['light', 'dark'] as const) {
