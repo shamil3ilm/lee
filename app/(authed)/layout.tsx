@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { preconnect } from 'react-dom'
 import { getSession } from '@/lib/auth/require-session'
@@ -19,6 +20,8 @@ import { TimeZoneProvider } from '@/components/local-time'
 import { getUserTimeZone } from '@/lib/settings/timezone'
 import { DEFAULT_TIMEZONE } from '@/lib/ui/timezone'
 import { WebVitalsReporter } from '@/components/web-vitals-reporter'
+import { NavigationProgress } from '@/components/nav/navigation-progress'
+import { MAIN_CONTENT_ID } from '@/components/skip-link'
 import { APP_SHELL_ID, RAIL_BOOT_SCRIPT } from '@/lib/ui/sidebar-store'
 import Link from 'next/link'
 import { Logo } from '@/components/brand/logo'
@@ -89,6 +92,9 @@ export default async function AuthedLayout({ children }: { children: React.React
       <TimeZoneProvider timeZone={timeZone}>
       <div id={APP_SHELL_ID} className="group/shell flex min-h-screen" suppressHydrationWarning>
         <InlineScript html={RAIL_BOOT_SCRIPT} />
+        <Suspense fallback={null}>
+          <NavigationProgress />
+        </Suspense>
         <aside className="hidden w-[240px] shrink-0 group-data-[sidebar=rail]/shell:w-14 md:block">
           <div className="fixed inset-y-0 left-0 z-30 w-[240px] group-data-[sidebar=rail]/shell:w-14">
             <Sidebar email={email} name={name} image={image} railEnabled />
@@ -108,7 +114,7 @@ export default async function AuthedLayout({ children }: { children: React.React
               <UserMenu email={email} name={name} image={image} />
             </div>
           </header>
-          <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
+          <main id={MAIN_CONTENT_ID} tabIndex={-1} className="flex-1 px-4 py-6 outline-none md:px-8 md:py-8">
             <div className="@container/main mx-auto w-full max-w-[1600px]">{children}</div>
           </main>
         </div>

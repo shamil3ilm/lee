@@ -1,7 +1,7 @@
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
-type PageSkeletonVariant = 'list' | 'cards' | 'form'
+type PageSkeletonVariant = 'list' | 'cards' | 'form' | 'detail'
 
 interface PageSkeletonProps {
   variant: PageSkeletonVariant
@@ -12,11 +12,15 @@ interface PageSkeletonProps {
  * Route-level loading placeholder (used by loading.tsx files). Paints with
  * the app shell before any database work, in the rough shape of the page it
  * stands in for: a PageHeader line, then a table (`list`), a card grid
- * (`cards`) or stacked settings sections (`form`).
+ * (`cards`), stacked settings sections (`form`) or a detail page with a
+ * side column (`detail`).
  */
 export function PageSkeleton({ variant, className }: PageSkeletonProps) {
   return (
     <div className={cn('space-y-6', className)} aria-busy>
+      <span className="sr-only" role="status">
+        Loading…
+      </span>
       <div className="flex items-center justify-between gap-4">
         <div className="space-y-2">
           <Skeleton className="h-8 w-44" />
@@ -27,6 +31,7 @@ export function PageSkeleton({ variant, className }: PageSkeletonProps) {
       {variant === 'list' ? <ListBody /> : null}
       {variant === 'cards' ? <CardsBody /> : null}
       {variant === 'form' ? <FormBody /> : null}
+      {variant === 'detail' ? <DetailBody /> : null}
     </div>
   )
 }
@@ -63,6 +68,21 @@ function FormBody() {
     <div className="space-y-4">
       <Skeleton className="h-48 w-full" />
       <Skeleton className="h-32 w-full" />
+    </div>
+  )
+}
+
+function DetailBody() {
+  return (
+    <div className="grid gap-6 lg:grid-cols-3">
+      <div className="space-y-6 lg:col-span-2">
+        <Skeleton className="h-72 w-full" />
+        <Skeleton className="h-40 w-full" />
+      </div>
+      <div className="space-y-6">
+        <Skeleton className="h-56 w-full" />
+        <Skeleton className="h-32 w-full" />
+      </div>
     </div>
   )
 }
