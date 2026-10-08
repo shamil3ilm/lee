@@ -174,6 +174,33 @@ export const EVENT_CATALOG: Readonly<Record<string, EventSpec>> = {
     persist: true,
     message: (c) => `Radar brief saved: ${plural(n(c, 'sentences'), 'sentence')} from ${plural(n(c, 'sources'), 'source')}`,
   },
+  // What's new (lib/radar/new): shared fetch, no user context.
+  radar_new_polled: {
+    category: 'radar',
+    persist: true,
+    strings: ['source'],
+    message: (c) =>
+      `What's new ${s(c, 'source') || 'source'}: ${n(c, 'fetched')} found, ${n(c, 'new')} new, ${n(c, 'joined')} on another source too, ${n(c, 'variants')} variant(s) folded${n(c, 'partialErrors') > 0 ? ` · ${n(c, 'partialErrors')} request(s) failed` : ''}`,
+  },
+  radar_new_failed: {
+    category: 'radar',
+    strings: ['source'],
+    message: (c) => `What's new ${s(c, 'source') || 'source'} failed: ${s(c, 'err')}`,
+  },
+  radar_new_profile_failed: {
+    category: 'radar',
+    message: (c) => `What's new: a release list could not be read (${s(c, 'err')})`,
+  },
+  radar_new_action: {
+    category: 'radar',
+    persist: true,
+    strings: ['action'],
+    message: (c) => `What's new: ${s(c, 'action') || 'action'}`,
+  },
+  radar_new_digest_failed: {
+    category: 'radar',
+    message: (c) => `What's new digest section skipped: ${s(c, 'err')}`,
+  },
   radar_module_created: {
     category: 'playground',
     persist: true,

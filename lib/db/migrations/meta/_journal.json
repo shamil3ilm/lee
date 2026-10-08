@@ -267,6 +267,13 @@
       "when": 1791458150366,
       "tag": "0037_ai_radar",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1791460653247,
+      "tag": "0038_radar_whats_new",
+      "breakpoints": true
     }
   ]
 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { cronDrain, isCronAuthorized, summarizeDrain } from '@/lib/queue/cron'
 import { scheduleDailyJobs } from '@/lib/queue/scheduler'
 import { scheduleReputationRefresh } from '@/lib/reputation/schedule'
+import { scheduleWhatsNew } from '@/lib/radar/new/schedule'
 import { logger } from '@/lib/logger'
 
 // Daily scheduler (vercel.json): enqueue the day's jobs — idempotent per UTC
@@ -18,9 +19,11 @@ export async function GET(req: Request): Promise<NextResponse> {
     const schedule = await scheduleDailyJobs(now)
     // Weekly company reputation refreshes, spread over the week (bounded per day).
     const reputation = await scheduleReputationRefresh(now)
-    logger.info('cron_schedule', { ...schedule, reputationPlanned: reputation.planned })
+    // AI Radar What's new: one shared fetch per source for every account, due later in the day.
+    const whatsNew = await scheduleWhatsNew(now)
+    logger.info('cron_schedule', { ...schedule, reputationPlanned: reputation.planned, whatsNewPlanned: whatsNew.enqueued })
     const drained = await cronDrain()
-    return NextResponse.json({ schedule, reputation, drain: summarizeDrain(drained) })
+    return NextResponse.json({ schedule, reputation, whatsNew, drain: summarizeDrain(drained) })
   } catch (err) {
     logger.error('cron_schedule_failed', { err: err instanceof Error ? err.message : String(err) })
     return NextResponse.json({ error: 'Scheduling failed.' }, { status: 500 })

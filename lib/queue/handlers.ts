@@ -18,6 +18,8 @@ import { takeUsageSnapshot } from '@/lib/usage/snapshot'
 import { buildShortlistForUser } from '@/lib/apply/shortlist'
 import { isThrottled } from '@/lib/usage/throttle'
 import { runRadarSource } from '@/lib/radar/run'
+import { runWhatsNewSource } from '@/lib/radar/new/run'
+import { NEW_SOURCES } from '@/lib/radar/new/types'
 import { RADAR_SOURCES } from '@/lib/radar/types'
 import { JOB_TYPES } from './job-types'
 import { createRegistry, defineHandler, type HandlerRegistry } from './registry'
@@ -353,6 +355,33 @@ const radarSource = defineHandler({
   },
 })
 
+/**
+ * What's new (lib/radar/new/run.ts): one shared fetch per source per day
+ * for every account. Non-essential: skipped under the free-tier throttle.
+ */
+const radarNew = defineHandler({
+  type: JOB_TYPES.radarNew,
+  scope: 'global',
+  payload: z.object({ source: z.enum(NEW_SOURCES) }),
+  // 13 GitHub searches at 6.5 s, or up to 30 release projects, fit in this.
+  timeoutMs: 150_000,
+  minBudgetMs: 30_000,
+  async run({ payload, deadline }): Promise<JobResult> {
+    if (await isThrottled('pause_nonessential')) {
+      return {
+        metrics: { radar_new_paused_by_usage: 1 },
+        summary: { kind: 'radar-new', source: payload.source, status: 'paused', fetched: 0, new: 0, joined: 0, variants: 0 },
+      }
+    }
+    const s = await runWhatsNewSource(payload.source, { deadline: Math.min(deadline, Date.now() + 130_000) })
+    return {
+      metrics: { radar_new_entries: s.new, radar_new_joined: s.joined, radar_new_failed: s.status === 'failed' ? 1 : 0 },
+      warnings: s.status === 'failed' && s.error ? [`what's new ${payload.source}: ${s.error}`] : [],
+      summary: s,
+    }
+  },
+})
+
 export const appHandlers = [
   reminders,
   followups,
@@ -367,6 +396,7 @@ export const appHandlers = [
   companyReputation,
   shortlist,
   radarSource,
+  radarNew,
 ] as const
 
 export const appRegistry: HandlerRegistry = createRegistry(appHandlers)

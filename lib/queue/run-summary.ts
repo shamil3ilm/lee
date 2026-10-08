@@ -1,4 +1,5 @@
 import { describeRadarSummary, type RadarRunSummary } from '@/lib/radar/summary'
+import { describeWhatsNewSummary, type WhatsNewRunSummary } from '@/lib/radar/new/summary'
 
 /**
  * Typed run summaries: what one background job did, stored on its
@@ -40,10 +41,12 @@ export type DiscoveryEmailSummary =
 export type ShortlistSummary = { kind: 'shortlist'; candidates: number; shortlisted: number }
 
 export type { RadarRunSummary } from '@/lib/radar/summary'
+export type { WhatsNewRunSummary } from '@/lib/radar/new/summary'
 
 export type JobSummary =
   | DiscoverySourceSummary
   | RadarRunSummary
+  | WhatsNewRunSummary
   | ShortlistSummary
   | GmailSyncSummary
   | DigestSummary
@@ -94,7 +97,7 @@ export function capSummary(summary: JobSummary | undefined | null): JobSummary |
   const s = { ...summary } as JobSummary
   if (s.kind === 'discovery-source') s.source = s.source.slice(0, MAX_LABEL)
   if (s.kind === 'usage-snapshot') s.throttles = s.throttles.slice(0, 10).map((t) => t.slice(0, 40))
-  if (s.kind === 'radar-source' && s.error) s.error = s.error.slice(0, 160)
+  if ((s.kind === 'radar-source' || s.kind === 'radar-new') && s.error) s.error = s.error.slice(0, 160)
   return jsonBytes(s) > SUMMARY_BUDGET_BYTES ? null : s
 }
 
@@ -167,6 +170,8 @@ export function describeSummary(summary: JobSummary | null | undefined): string 
       return 'Nothing new to send'
     case 'radar-source':
       return describeRadarSummary(summary)
+    case 'radar-new':
+      return describeWhatsNewSummary(summary)
     default:
       return ''
   }

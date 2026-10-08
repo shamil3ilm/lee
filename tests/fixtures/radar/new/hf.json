@@ -1,0 +1,100 @@
+{
+  "models": [
+    {
+      "id": "acme-lab/Zorb-27B",
+      "likes": 600,
+      "downloads": 12000,
+      "trendingScore": 500,
+      "createdAt": "2026-10-02T05:00:00.000Z",
+      "pipeline_tag": "text-generation",
+      "library_name": "transformers",
+      "safetensors": { "total": 27781427952 },
+      "tags": ["transformers", "text-generation", "arxiv:2610.00001", "license:apache-2.0", "region:us"]
+    },
+    {
+      "id": "quantfolk/Zorb-27B-GGUF",
+      "likes": 90,
+      "createdAt": "2026-10-05T05:00:00.000Z",
+      "pipeline_tag": "text-generation",
+      "tags": ["gguf", "base_model:acme-lab/Zorb-27B", "base_model:quantized:acme-lab/Zorb-27B", "license:apache-2.0"]
+    },
+    {
+      "id": "tuner/Zorb-27B-Chat",
+      "likes": 40,
+      "createdAt": "2026-10-06T05:00:00.000Z",
+      "pipeline_tag": "text-generation",
+      "tags": ["base_model:finetune:acme-lab/Zorb-27B", "license:apache-2.0"]
+    },
+    {
+      "id": "quantfolk/Zorb-27B-Chat-AWQ",
+      "likes": 25,
+      "createdAt": "2026-10-07T05:00:00.000Z",
+      "pipeline_tag": "text-generation",
+      "tags": ["base_model:quantized:tuner/Zorb-27B-Chat"]
+    },
+    {
+      "id": "quantfolk/OldBase-8B-GGUF",
+      "likes": 300,
+      "createdAt": "2026-10-04T05:00:00.000Z",
+      "pipeline_tag": "text-generation",
+      "tags": ["base_model:quantized:oldlab/OldBase-8B"]
+    },
+    {
+      "id": "decider/Pick-9B",
+      "likes": 150,
+      "createdAt": "2026-10-03T05:00:00.000Z",
+      "pipeline_tag": "image-text-to-text",
+      "safetensors": { "total": 9400000000 },
+      "tags": ["base_model:adapter:oldlab/OldBase-8B", "license:mit"]
+    },
+    {
+      "id": "voicelab/Chirp-TTS",
+      "likes": 80,
+      "createdAt": "2026-10-01T05:00:00.000Z",
+      "pipeline_tag": "text-to-speech",
+      "tags": ["license:cc-by-4.0"]
+    },
+    {
+      "id": "acme-lab/zorb-coder-7b",
+      "likes": 60,
+      "createdAt": "2026-09-30T05:00:00.000Z",
+      "pipeline_tag": "text-generation",
+      "tags": []
+    },
+    {
+      "id": "oldlab/OldBase-8B",
+      "likes": 9000,
+      "createdAt": "2025-07-01T05:00:00.000Z",
+      "pipeline_tag": "text-generation",
+      "tags": ["license:llama3"]
+    },
+    {
+      "id": "spammy/Spicy-Model",
+      "likes": 400,
+      "createdAt": "2026-10-04T05:00:00.000Z",
+      "pipeline_tag": "text-to-image",
+      "tags": ["not-for-all-audiences"]
+    },
+    {
+      "id": "tiny/LowLikes-1B",
+      "likes": 3,
+      "createdAt": "2026-10-06T05:00:00.000Z",
+      "pipeline_tag": "text-generation",
+      "tags": []
+    }
+  ],
+  "spaces": [
+    { "id": "acme-lab/zorb-demo", "likes": 45, "createdAt": "2026-10-03T00:00:00.000Z", "sdk": "gradio", "tags": ["gradio", "chat", "region:us"] },
+    { "id": "someone/old-space", "likes": 900, "createdAt": "2025-01-03T00:00:00.000Z", "sdk": "gradio", "tags": [] }
+  ],
+  "datasets": [
+    {
+      "id": "acme-lab/zorb-traces",
+      "likes": 30,
+      "downloads": 500,
+      "createdAt": "2026-10-04T00:00:00.000Z",
+      "description": "Contact me at person@example.com or @handle on X",
+      "tags": ["license:cc-by-4.0", "modality:text", "size_categories:1K<n<10K"]
+    }
+  ]
+}

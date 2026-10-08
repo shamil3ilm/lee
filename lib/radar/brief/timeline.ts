@@ -44,6 +44,8 @@ function eventOf(item: TimelineItem): TimelineEvent | null {
       const feed = feedById(item.metrics.feedId)
       return published ? { date: published, label: `Announced on ${feed?.label ?? 'an official blog'}`, url: item.url } : null
     }
+    case 'releases':
+      return published ? { date: published, label: `Released${item.metrics.version ? ` (${item.metrics.version})` : ''}`, url: item.url } : null
     case 'hn':
       return { date: published ?? (day(item.fetchedAt) as string), label: 'First Hacker News story', url: item.url }
     case 'gdelt':

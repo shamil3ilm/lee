@@ -1,0 +1,51 @@
+{
+  "total_count": 4,
+  "items": [
+    {
+      "id": 501,
+      "full_name": "acme-lab/zorb",
+      "html_url": "https://github.com/acme-lab/zorb",
+      "description": "Zorb inference server for laptops",
+      "stargazers_count": 900,
+      "created_at": "2026-09-28T10:00:00Z",
+      "topics": ["llm", "inference"],
+      "language": "Python",
+      "fork": false,
+      "archived": false,
+      "license": { "spdx_id": "Apache-2.0" }
+    },
+    {
+      "id": 502,
+      "full_name": "artisan-dev/ledgerly",
+      "html_url": "https://github.com/artisan-dev/ledgerly",
+      "description": "Payments ledger package for Laravel",
+      "stargazers_count": 120,
+      "created_at": "2026-09-20T10:00:00Z",
+      "topics": ["laravel", "payments"],
+      "language": "PHP",
+      "fork": false,
+      "archived": false,
+      "license": null
+    },
+    {
+      "id": 503,
+      "full_name": "someone/zorb-fork",
+      "html_url": "https://github.com/someone/zorb-fork",
+      "description": "fork",
+      "stargazers_count": 400,
+      "created_at": "2026-09-29T10:00:00Z",
+      "topics": [],
+      "fork": true
+    },
+    {
+      "id": 504,
+      "full_name": "mirrors/linux-mirror",
+      "html_url": "https://github.com/mirrors/linux-mirror",
+      "description": "Read-only mirror of a kernel tree",
+      "stargazers_count": 300,
+      "created_at": "2026-09-29T10:00:00Z",
+      "topics": [],
+      "fork": false
+    }
+  ]
+}
