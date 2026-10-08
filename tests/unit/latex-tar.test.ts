@@ -53,9 +53,26 @@ describe('createTar (ustar, for latexonline.cc)', () => {
   it('rejects unsafe or oversized names', () => {
     const bytes = new Uint8Array([1])
     expect(() => createTar([{ name: '../etc/passwd', bytes }])).toThrow(/file name/i)
-    expect(() => createTar([{ name: 'a/b.png', bytes }])).toThrow(/file name/i)
+    expect(() => createTar([{ name: '/abs/b.png', bytes }])).toThrow(/file name/i)
+    expect(() => createTar([{ name: 'a//b.png', bytes }])).toThrow(/file name/i)
+    expect(() => createTar([{ name: 'a/./b.png', bytes }])).toThrow(/file name/i)
     expect(() => createTar([{ name: '', bytes }])).toThrow(/file name/i)
     expect(() => createTar([{ name: 'x'.repeat(101), bytes }])).toThrow(/file name/i)
+  })
+
+  it('keeps folder paths (both compile services extract them)', () => {
+    const tar = createTar([
+      { name: 'main.tex', bytes: new Uint8Array([1]) },
+      { name: 'figures/logo.png', bytes: new Uint8Array([2]) },
+      { name: 'sections/a/intro.tex', bytes: new Uint8Array([3]) },
+    ])
+    expect(readHeader(tar, BLOCK * 2).name).toBe('figures/logo.png')
+    expect(readHeader(tar, BLOCK * 4).name).toBe('sections/a/intro.tex')
+  })
+
+  it('rejects a name that is both a file and a folder', () => {
+    const bytes = new Uint8Array([1])
+    expect(() => createTar([{ name: 'a', bytes }, { name: 'a/b.png', bytes }])).toThrow(/file and a folder/)
   })
 
   it('rejects duplicate names', () => {

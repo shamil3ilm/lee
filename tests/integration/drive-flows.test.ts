@@ -159,15 +159,15 @@ describe('browser-direct resumable upload', () => {
     await store.put(u.id, { kind: 'document-asset', documentId: doc.id, filename: 'a.png' }, Buffer.alloc(8, 4), {
       mimeType: 'image/png',
     })
-    const { GET } = await import('@/app/api/documents/[id]/assets/[filename]/route')
-    const ctx = { params: Promise.resolve({ id: doc.id, filename: 'a.png' }) }
+    const { GET } = await import('@/app/api/documents/[id]/assets/[...filename]/route')
+    const ctx = { params: Promise.resolve({ id: doc.id, filename: ['a.png'] }) }
     const ok = await GET(new Request('http://localhost/x'), ctx)
     expect(ok.status).toBe(200)
     expect(ok.headers.get('content-type')).toBe('image/png')
     expect(Buffer.from(await ok.arrayBuffer())).toEqual(Buffer.alloc(8, 4))
 
     drive.revoked = true
-    const res = await GET(new Request('http://localhost/x'), { params: Promise.resolve({ id: doc.id, filename: 'a.png' }) })
+    const res = await GET(new Request('http://localhost/x'), { params: Promise.resolve({ id: doc.id, filename: ['a.png'] }) })
     expect(res.status).toBe(409)
     const body = (await res.json()) as { error: string; connect?: boolean }
     expect(body.error).toMatch(/Reconnect Google Drive/)

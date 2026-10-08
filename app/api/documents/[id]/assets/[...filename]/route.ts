@@ -5,6 +5,7 @@ import * as assetsQ from '@/lib/db/queries/documentAssets'
 import { getAssetStoreForUser } from '@/lib/storage/asset-store'
 import { DriveError, driveErrorResponse } from '@/lib/drive/errors'
 import { logger } from '@/lib/logger'
+import { basename } from '@/lib/latex/project/paths'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -13,28 +14,48 @@ export const maxDuration = 30
 const INLINE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/pdf'])
 
 /**
- * GET /api/documents/[id]/assets/[filename]
+ * The asset path from the catch-all segments ('figures', 'logo.png' →
+ * 'figures/logo.png'), or null when a segment is empty, '.', '..' or holds
+ * a slash or backslash (an encoded separator). Next passes decoded
+ * segments; decoding once more (as before) is harmless for stored names,
+ * which never contain '%'.
+ */
+function assetPathParam(segments: readonly string[] | string): string | null {
+  const parts = Array.isArray(segments) ? segments : [segments]
+  const decoded: string[] = []
+  for (const part of parts) {
+    let seg: string
+    try {
+      seg = decodeURIComponent(part)
+    } catch {
+      return null
+    }
+    if (!seg || seg === '.' || seg.includes('..') || seg.includes('/') || seg.includes('\\')) return null
+    decoded.push(seg)
+  }
+  return decoded.length > 0 ? decoded.join('/') : null
+}
+
+/**
+ * GET /api/documents/[id]/assets/[...filename]
  *   → 200 raw bytes with the stored MIME type
  *
+ * The name may be a folder path (figures/logo.png → two segments).
  * Serves the asset payload for previews, thumbnails, and downloads. Public
  * cache-control is safe: (documentId, filename) is unique and immutable —
  * a rename creates a new URL and a re-upload requires a delete first.
  */
 export async function GET(
   _req: Request,
-  ctx: { params: Promise<{ id: string; filename: string }> },
+  ctx: { params: Promise<{ id: string; filename: string[] }> },
 ): Promise<Response> {
   try {
     const session = await auth()
     const userId = session?.user?.id
     if (!userId) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
     const { id, filename } = await ctx.params
-    // Next passes url-decoded params; still sanitise so we can't be tricked
-    // into an odd lookup (e.g. an encoded slash).
-    const decoded = decodeURIComponent(filename)
-    if (decoded.includes('/') || decoded.includes('\\') || decoded.includes('..')) {
-      return NextResponse.json({ error: 'Invalid filename.' }, { status: 400 })
-    }
+    const decoded = assetPathParam(filename)
+    if (decoded === null) return NextResponse.json({ error: 'Invalid filename.' }, { status: 400 })
 
     const doc = await documentsQ.getById(userId, id)
     if (!doc) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
@@ -56,13 +77,13 @@ export async function GET(
     // Only raster images and PDFs render inline; anything else (HTML, SVG,
     // scripts from a picked Drive file) downloads instead of running on our origin.
     if (!INLINE_TYPES.has(asset.mimeType)) {
-      headers['content-disposition'] = `attachment; filename="${asset.filename}"`
+      headers['content-disposition'] = `attachment; filename="${basename(asset.filename)}"`
     }
     if (stream.sizeBytes !== null) headers['content-length'] = String(stream.sizeBytes)
     return new Response(stream.body, { status: 200, headers })
   } catch (err) {
     if (err instanceof DriveError) return driveErrorResponse(err)
-    logger.error('GET /api/documents/[id]/assets/[filename] failed', {
+    logger.error('GET /api/documents/[id]/assets/[...filename] failed', {
       err: err instanceof Error ? err.message : String(err),
     })
     return NextResponse.json({ error: 'Could not fetch asset.' }, { status: 500 })
@@ -70,20 +91,21 @@ export async function GET(
 }
 
 /**
- * DELETE /api/documents/[id]/assets/[filename]
+ * DELETE /api/documents/[id]/assets/[...filename]
  *   → 200 { success: true }
  *   → 404 when the asset is missing (or belongs to another user)
  */
 export async function DELETE(
   _req: Request,
-  ctx: { params: Promise<{ id: string; filename: string }> },
+  ctx: { params: Promise<{ id: string; filename: string[] }> },
 ): Promise<NextResponse> {
   try {
     const session = await auth()
     const userId = session?.user?.id
     if (!userId) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
     const { id, filename } = await ctx.params
-    const decoded = decodeURIComponent(filename)
+    const decoded = assetPathParam(filename)
+    if (decoded === null) return NextResponse.json({ error: 'Invalid filename.' }, { status: 400 })
     const doc = await documentsQ.getById(userId, id)
     if (!doc) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
     const asset = await assetsQ.getMeta(userId, id, decoded)
@@ -94,7 +116,7 @@ export async function DELETE(
     return NextResponse.json({ success: true })
   } catch (err) {
     if (err instanceof DriveError) return driveErrorResponse(err)
-    logger.error('DELETE /api/documents/[id]/assets/[filename] failed', {
+    logger.error('DELETE /api/documents/[id]/assets/[...filename] failed', {
       err: err instanceof Error ? err.message : String(err),
     })
     return NextResponse.json({ error: 'Could not delete asset.' }, { status: 500 })

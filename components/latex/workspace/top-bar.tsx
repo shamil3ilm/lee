@@ -7,6 +7,7 @@ import {
   Columns2,
   Download,
   ExternalLink,
+  FileArchive,
   FileCode2,
   FileUp,
   Loader2,
@@ -29,6 +30,8 @@ import {
 import type { EditorLayout } from '@/lib/latex/editor-prefs'
 import { cn } from '@/lib/utils'
 import type { SaveState } from './use-autosave'
+import { CompileMenu, type CompileMenuProps } from './compile-menu'
+import { LogsButton } from './pdf-toolbar'
 
 interface TopBarProps {
   title: string
@@ -42,6 +45,14 @@ interface TopBarProps {
   pdfUrl: string | null
   onImport: () => void
   onDownloadTex: () => void
+  onImportZip: () => void
+  onDownloadZip: () => void
+  /** Recompile and its options: in the top bar so every layout has it. */
+  compile: CompileMenuProps
+  errors: number
+  warnings: number
+  logsOpen: boolean
+  onLogs: (open: boolean) => void
 }
 
 const SAVE_TEXT: Record<SaveState, string> = {
@@ -80,7 +91,9 @@ function SaveStatus({ state, onSave }: { state: SaveState; onSave: () => void })
 /**
  * One compact row: back, the inline-editable title (centred, like
  * Overleaf's project name), and on the right the Editor/PDF switch on
- * narrow screens, the save state, the Layout menu and More.
+ * narrow screens, the save state, Recompile (with its options) and the
+ * logs chip, the Layout menu and More. Recompile lives here, not in the
+ * PDF pane, so the editor-only and phone layouts can compile too.
  */
 export function TopBar(p: TopBarProps) {
   return (
@@ -93,12 +106,7 @@ export function TopBar(p: TopBarProps) {
       >
         <ChevronLeft className="size-4" />
       </Link>
-      <div
-        className={cn(
-          'flex min-w-0 justify-center',
-          p.narrow ? 'flex-1' : 'pointer-events-none absolute inset-x-0 px-28 @3xl/editor:px-40',
-        )}
-      >
+      <div className="flex min-w-0 flex-1 justify-center">
         <input
           value={p.title}
           onChange={(e) => p.onTitle(e.target.value)}
@@ -131,6 +139,17 @@ export function TopBar(p: TopBarProps) {
           </div>
         ) : null}
         <SaveStatus state={p.saveState} onSave={p.onSave} />
+        <CompileMenu {...p.compile} compact />
+        {p.compile.autoCompile ? (
+          <span
+            data-testid="auto-compile-badge"
+            title="Auto compile is on: recompiles a moment after you stop typing"
+            className="hidden rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary @2xl/editor:inline"
+          >
+            Auto
+          </span>
+        ) : null}
+        <LogsButton errors={p.errors} warnings={p.warnings} open={p.logsOpen} onToggle={() => p.onLogs(!p.logsOpen)} />
         {!p.narrow ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -182,8 +201,14 @@ export function TopBar(p: TopBarProps) {
             <DropdownMenuItem onSelect={p.onImport}>
               <FileUp className="size-4" /> Import file…
             </DropdownMenuItem>
+            <DropdownMenuItem onSelect={p.onImportZip}>
+              <FileArchive className="size-4" /> Import project (.zip)…
+            </DropdownMenuItem>
             <DropdownMenuItem onSelect={p.onDownloadTex}>
               <FileCode2 className="size-4" /> Download .tex
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={p.onDownloadZip}>
+              <FileArchive className="size-4" /> Download project (.zip)
             </DropdownMenuItem>
             <DropdownMenuItem disabled={!p.pdfUrl} onSelect={() => p.pdfUrl && window.open(p.pdfUrl, '_blank', 'noopener')}>
               <Download className="size-4" /> Open the PDF
