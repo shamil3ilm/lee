@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import * as cmpQ from '@/lib/db/queries/jobComparison'
 import { logger } from '@/lib/logger'
+import { saveJd } from '@/lib/discovery/match/jd-service'
 import { MIN_JD_CHARS } from './jd'
 import { CompareError } from './settings'
 
@@ -24,4 +25,8 @@ export async function savePastedJd(userId: string, discoveryId: string, text: un
   const changed = await cmpQ.setPastedJd(userId, discoveryId, parsed.data)
   if (changed === 0) throw new CompareError('That posting was not found.')
   logger.info('discovery_jd_pasted', { chars: parsed.data.length })
+  // Same stored JD feeds the Match Score: re-score and re-gate it now.
+  await saveJd(userId, discoveryId, parsed.data, 'pasted').catch((err: unknown) => {
+    logger.warn('discovery_jd_rescore_failed', { err: err instanceof Error ? err.name : 'unknown' })
+  })
 }

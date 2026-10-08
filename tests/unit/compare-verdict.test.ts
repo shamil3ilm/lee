@@ -65,7 +65,7 @@ describe('gains, losses, unknowns and questions', () => {
 
 describe('shortlist rank with the optional comparison factor', () => {
   const base: RankCandidate = {
-    id: 'a', matchScore: 80, regions: [], families: [], notes: {}, postedAt: null, createdAt: new Date('2026-10-08T00:00:00Z'),
+    id: 'a', matchScore: 80, fitScore: null, regions: [], families: [], notes: {}, postedAt: null, createdAt: new Date('2026-10-08T00:00:00Z'),
     riskLevel: null, quarantined: false, filtered: false, reputation: null, feedback: [],
   }
   const ctx = { now: new Date('2026-10-08T09:00:00Z'), targetFamilies: [], targetRegions: [] }

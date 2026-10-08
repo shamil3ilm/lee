@@ -45,8 +45,11 @@ export function applyCaps(
 
 /** Caps and bonus from the user's search preferences (lib/discovery/relevance). */
 export const PREFERENCE_CAPS = {
-  /** Title seniority outside the selected levels (a "Show anyway" row). */
+  /** Filtered seniority (Principal / Director / Head / VP; a "Show anyway" row). */
   seniority: 40,
+  /** A soft seniority stretch (Senior title, 5+ yrs asked); a strong ready match lifts it. */
+  seniorityStretch: 70,
+  seniorityStretchStrong: 80,
   /** Role family outside the targets. */
   role: 50,
   /** Named place outside the selected regions. */
@@ -84,8 +87,13 @@ function applyPreferenceCaps(score: number, job: NormalizedJob, profile: UserPro
   if (has('seniority:')) s = Math.min(s, PREFERENCE_CAPS.seniority)
   if (has('role:')) s = Math.min(s, PREFERENCE_CAPS.role)
   if (has('location:')) s = Math.min(s, PREFERENCE_CAPS.location)
-  // Bonuses only for postings that pass every preference.
+  // Bonuses only for postings that pass every preference, and never for a
+  // soft seniority stretch (Senior title, 5+ yrs asked), which is capped.
   if (!r.pass) return s
+  const stretch = r.penalties.find((p) => / title\b| yrs asked\b/.test(p))
+  if (stretch) {
+    return Math.min(s, /\bstrong .+ match$/.test(stretch) ? PREFERENCE_CAPS.seniorityStretchStrong : PREFERENCE_CAPS.seniorityStretch)
+  }
   if (r.regions.some((t) => t !== 'remote')) s += PREFERENCE_CAPS.regionBonus
   if (r.regions.includes('gcc')) {
     const posting = normalizeForMatch(`${job.title} ${job.descriptionMd ?? ''}`.slice(0, 8_000))

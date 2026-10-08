@@ -1,5 +1,5 @@
 'use client'
-import { useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,6 +10,8 @@ import {
 } from '@/app/(authed)/settings/profile/search-actions'
 import type { SearchPrefsFormValues } from '@/lib/discovery/relevance/view'
 import { TargetSections } from './target-sections'
+import { LearnedTitles } from './learned-titles'
+import { RecheckProgress, type RecheckStart } from './recheck-progress'
 import { LanguagesSection, NoticeSection, PaySection, RuleSection, WorkAuthSection } from './rule-sections'
 
 interface SearchPrefsFormProps {
@@ -22,7 +24,7 @@ function report(result: SearchPrefsResult, verb: string): void {
     return
   }
   const detail = result.pending
-    ? 'Re-checking the rest of your inbox in the background.'
+    ? `Re-checking ${result.total} jobs… ${result.filtered} filtered out so far.`
     : result.evaluated > 0
       ? `${result.filtered} of ${result.evaluated} postings filtered out.`
       : undefined
@@ -35,12 +37,17 @@ function report(result: SearchPrefsResult, verb: string): void {
  */
 export function SearchPrefsForm({ values }: SearchPrefsFormProps) {
   const [pending, start] = useTransition()
+  const [progress, setProgress] = useState<RecheckStart | null>(null)
 
+  const after = (result: SearchPrefsResult, verb: string): void => {
+    report(result, verb)
+    if ('success' in result && result.total > 0) setProgress({ total: result.total, filtered: result.filtered, pending: result.pending })
+  }
   const onSubmit = (fd: FormData): void => {
-    start(async () => report(await saveSearchPrefsAction(fd), 'Search preferences saved'))
+    start(async () => after(await saveSearchPrefsAction(fd), 'Search preferences saved'))
   }
   const onClear = (): void => {
-    start(async () => report(await clearSearchPrefsAction(), 'Filtering turned off'))
+    start(async () => after(await clearSearchPrefsAction(), 'Filtering turned off'))
   }
 
   return (
@@ -48,7 +55,7 @@ export function SearchPrefsForm({ values }: SearchPrefsFormProps) {
       <CardHeader>
         <CardTitle>Search preferences</CardTitle>
         <CardDescription>
-          What Discovery keeps. Postings that do not fit go to “Filtered out” with the reason, before any AI scoring.
+          What Discovery keeps and how it ranks. Only clear mismatches and your deal-breakers are filtered out, always with the reason.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -59,7 +66,9 @@ export function SearchPrefsForm({ values }: SearchPrefsFormProps) {
           <PaySection values={values} />
           <LanguagesSection values={values} />
           <NoticeSection values={values} />
+          <LearnedTitles titles={values.learnedTitles} />
           <div className="flex flex-wrap items-center justify-end gap-2 border-t pt-4">
+            {progress ? <span className="mr-auto"><RecheckProgress key={`${progress.total}-${progress.filtered}`} start={progress} /></span> : null}
             {values.saved ? (
               <Button type="button" variant="ghost" onClick={onClear} disabled={pending}>
                 Turn off filtering

@@ -53,7 +53,7 @@ const JOB_ONLY: ReadonlySet<DiscoveryStatusFilter> = new Set(['quarantined', 'sh
 
 const SORT_LABELS: Record<DiscoverySort, string> = {
   combined: 'Combined (match + benefits)',
-  match: 'Match score',
+  match: 'Best match',
   benefits: 'Benefits score',
   posted: 'Recently posted',
 }
@@ -210,7 +210,7 @@ export function DiscoveryFilters({
         <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 sm:w-auto sm:pb-1">
           <Toggle
             id="disc-scored"
-            label="Scored only"
+            label="AI-scored only"
             checked={scoredOnly}
             onChange={(on) => update({ scored: on ? '1' : '' })}
           />

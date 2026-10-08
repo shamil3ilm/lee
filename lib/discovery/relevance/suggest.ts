@@ -118,6 +118,31 @@ function evidence(c: Corpus, terms: readonly string[]): Evidence {
   }
 }
 
+/**
+ * Master-CV evidence only. The master CV is derived from READY items
+ * (interview-ready, or domain-ready in domain wording), so rules built on it
+ * never fire from the profile's free-text skills or a not-ready item.
+ */
+function readyEvidence(c: Corpus, terms: readonly string[]): Evidence {
+  const prose = terms.filter((t) => !LIST_ONLY.has(t))
+  return { profile: [], cv: [...new Set([...findTerms(c.cvList, terms), ...findTerms(c.cvText, prose)])] }
+}
+
+const READY_NOTE = 'From interview-ready or domain-ready items in your master profile'
+const SQL_TERMS = ['sql', 'postgresql', 'postgres', 'mysql', 'mariadb', 'sql server']
+const ANALYSIS_TERMS = [
+  'python', 'pandas', 'reporting', 'reports', 'statement exports', 'statement export', 'exports',
+  'reconciliation', 'reconciliations', 'ledger', 'ledgers', 'dashboards', 'dashboard', 'excel',
+  'power bi', 'tableau', 'looker', 'kpi', 'kpis', 'analytics',
+]
+const REQUIREMENTS_TERMS = [
+  'requirements gathering', 'gathered requirements', 'gathering requirements', 'client requirements',
+  'business requirements', 'requirements analysis', 'business module', 'business modules',
+  'user stories', 'uat', 'user acceptance testing', 'process mapping', 'module tracing',
+]
+const BUSINESS_DOMAIN_TERMS = ['erp', 'e-invoicing', 'einvoicing', 'zatca', 'fatoora', 'odoo', 'netsuite', 'sap', 'invoicing', 'accounting']
+const MODELLING_TERMS = ['dbt', 'data modelling', 'data modeling', 'dimensional modelling', 'dimensional modeling', 'star schema']
+
 function count(e: Evidence): number {
   return new Set([...e.profile, ...e.cv]).size
 }
@@ -138,6 +163,7 @@ const DISPLAY: Readonly<Record<string, string>> = {
   openai: 'OpenAI', openrouter: 'OpenRouter', llm: 'LLM', llms: 'LLMs', 'rest api': 'REST APIs',
   api: 'APIs', apis: 'APIs', xades: 'XAdES', en16931: 'EN16931', 'ci/cd': 'CI/CD', sql: 'SQL',
   'node.js': 'Node.js', node: 'Node.js', graphql: 'GraphQL', phpunit: 'PHPUnit',
+  'power bi': 'Power BI', erp: 'ERP', uat: 'UAT', kpi: 'KPI', kpis: 'KPIs', dbt: 'dbt', sap: 'SAP',
 }
 
 function show(term: string): string {
@@ -255,6 +281,34 @@ const RULES: readonly Rule[] = [
     id, family: id, label: roleFamilyLabel(id), priority: 'possible',
     test: (c) => { const fam = ROLE_FAMILIES.find((f) => f.id === id)!; const e = evidence(c, fam.skills); return count(e) >= 2 ? { e } : null },
   })),
+  {
+    // Data / analysis, from READY evidence only: SQL plus Python, reporting,
+    // statement exports, reconciliation or ledger work.
+    id: 'data_analyst', family: 'data_analyst', label: 'Data Analyst / BI (junior)', priority: 'possible',
+    test: (c) => {
+      const q = readyEvidence(c, SQL_TERMS)
+      const a = readyEvidence(c, ANALYSIS_TERMS)
+      return count(q) > 0 && count(a) > 0 ? { e: merge(q, a), extra: [READY_NOTE] } : null
+    },
+  },
+  {
+    // Requirements work with clients plus business modules or the ERP /
+    // e-invoicing domain, from READY evidence only.
+    id: 'business_analyst', family: 'business_analyst', label: 'Business / Systems Analyst (ERP, finance systems)', priority: 'possible',
+    test: (c) => {
+      const r = readyEvidence(c, REQUIREMENTS_TERMS)
+      const d = readyEvidence(c, BUSINESS_DOMAIN_TERMS)
+      return count(r) > 0 && count(d) > 0 ? { e: merge(r, d), extra: [READY_NOTE] } : null
+    },
+  },
+  {
+    id: 'analytics_eng', family: 'analytics_eng', label: 'Analytics Engineer (SQL modelling)', priority: 'stretch',
+    test: (c) => {
+      const m = readyEvidence(c, MODELLING_TERMS)
+      const q = readyEvidence(c, SQL_TERMS)
+      return count(m) > 0 && count(q) > 0 ? { e: merge(m, q), extra: [READY_NOTE] } : null
+    },
+  },
   {
     id: 'support_eng', family: 'support_eng', label: 'Application / Production Support Engineer (L2/L3)', priority: 'fallback',
     test: (c) => { const e = evidence(c, G.support); return count(e) > 0 && count(evidence(c, G.backend)) > 0 ? { e } : null },

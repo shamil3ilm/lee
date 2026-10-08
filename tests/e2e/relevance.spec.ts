@@ -21,28 +21,35 @@ test('search preferences filter Discovery, with reasons and "Show anyway"', asyn
   // Save preferences: backend / full-stack, junior + mid, default GCC + India.
   await page.goto('/settings/profile')
   const form = page.getByRole('form', { name: 'Search preferences' })
-  await form.getByText('Backend', { exact: true }).click()
-  await form.getByText('Full-stack', { exact: true }).click()
-  await form.getByText('Junior', { exact: true }).click()
-  await form.getByText('Mid-level', { exact: true }).click()
+  // check(), not click(): the seeded profile already targets Backend.
+  for (const name of ['Backend', 'Full-stack', 'Junior', 'Mid-level']) {
+    await form.getByRole('checkbox', { name, exact: true }).check({ force: true })
+  }
   await form.getByRole('button', { name: 'Save preferences' }).click()
   await expectToast(page, 'Search preferences saved')
+  // The re-check is visible: "Re-checking N jobs… M filtered out", then done.
+  await expect(form.getByTestId('recheck-progress')).toContainText(/Re-check(?:ed|ing) \d+ jobs/)
 
-  // The senior role left the inbox; the summary card replaced the prompt.
+  // A Senior title is a soft stretch now: it stays in the inbox with a chip;
+  // the summary card replaced the prompt.
   await page.goto('/discoveries')
   await expect(page.getByRole('heading', { name: 'What you’re looking for' })).toBeVisible()
-  await expect(page.locator('[data-slot="card"]').filter({ hasText: 'Senior Backend Engineer, Ledger' })).toHaveCount(0)
+  const senior = page.locator('[data-slot="card"]').filter({ hasText: 'Senior Backend Engineer, Ledger' })
+  await expect(senior).toBeVisible()
+  await expect(senior.getByTestId('relevance-chips')).toContainText('Senior title')
 
   // Filtered out, with the reason; "Show anyway" brings it back.
   await page.goto('/discoveries?status=filtered')
-  const row = page.locator('[data-slot="card"]').filter({ hasText: 'Senior Backend Engineer, Ledger' })
+  const row = page.locator('[data-slot="card"]').filter({ hasText: 'Payments Infrastructure (Contract' })
   await expect(row).toBeVisible()
-  await expect(row.getByTestId('relevance-chips')).toContainText('seniority: Senior')
-  await expect(page.locator('[data-slot="card"]').filter({ hasText: 'Payments Infrastructure (Contract' }).getByTestId('relevance-chips')).toContainText('contract / freelance')
+  await expect(row.getByTestId('relevance-chips')).toContainText('contract / freelance')
+  // Filtered rows still show their Match Score.
+  // (Its seeded JD is short, so the score is flagged "title only".)
+  await expect(row.getByTestId('match-badge')).toContainText(/Match ~?\d+/)
   await row.getByRole('button', { name: 'Show anyway' }).click()
   await expectToast(page, 'Moved to your inbox')
   await page.goto('/discoveries')
-  await expect(page.locator('[data-slot="card"]').filter({ hasText: 'Senior Backend Engineer, Ledger' })).toBeVisible()
+  await expect(page.locator('[data-slot="card"]').filter({ hasText: 'Payments Infrastructure (Contract' })).toBeVisible()
 
   // Page size is remembered.
   await page.getByRole('combobox', { name: 'Rows per page' }).first().selectOption('25')

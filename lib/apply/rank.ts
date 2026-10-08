@@ -1,11 +1,14 @@
 import { roleFamilyLabel } from '@/lib/discovery/relevance/roles'
+import { blendScores, scoreText } from '@/lib/discovery/match/blend'
 import type { FeedbackAdjust } from './feedback'
 
 /**
  * The daily shortlist's composite rank. Pure and explainable: the score is
  * a sum of listed parts (each one a reason chip), clamped to 0–100.
  *
- *   match       0.5 × AI match score (0–50); unscored → 25, "Not scored yet"
+ *   match       0.5 × the ranked match (0–50): the deterministic Match Score,
+ *               the AI score, or their mean when both exist
+ *               (lib/discovery/match/blend.ts); neither → 25, "Not scored yet"
  *   role fit    +12 when a role family is one of the user's targets
  *   region fit  +8 when a region tag is one of the user's targets
  *   reputation  (avg of the CONFIRMED company criteria − 50) / 5, −10…+10
@@ -37,7 +40,10 @@ export interface RankNotes {
 
 export interface RankCandidate {
   id: string
+  /** AI score (optional refinement). */
   matchScore: number | null
+  /** Deterministic Match Score (lib/discovery/match); null until computed. */
+  fitScore: number | null
   regions: readonly string[]
   families: readonly string[]
   notes: RankNotes
@@ -95,10 +101,16 @@ export function isEligible(c: Pick<RankCandidate, 'quarantined' | 'filtered'>): 
   return !c.quarantined && !c.filtered
 }
 
+/** The one match number the rank uses: Match, AI, or their mean. */
+export function rankedMatch(c: Pick<RankCandidate, 'matchScore' | 'fitScore'>): number | null {
+  const clamp = (n: number | null): number | null => (n === null ? null : Math.max(0, Math.min(100, n)))
+  return blendScores(clamp(c.fitScore), clamp(c.matchScore))
+}
+
 function matchReason(c: RankCandidate): RankReason {
-  if (c.matchScore === null) return { kind: 'match', label: 'Not scored yet', points: RANK_WEIGHTS.unscoredMatch }
-  const score = Math.max(0, Math.min(100, c.matchScore))
-  return { kind: 'match', label: `${score}% AI match`, points: Math.round(score * RANK_WEIGHTS.match) }
+  const ranked = rankedMatch(c)
+  if (ranked === null) return { kind: 'match', label: 'Not scored yet', points: RANK_WEIGHTS.unscoredMatch }
+  return { kind: 'match', label: scoreText(c.fitScore, c.matchScore), points: Math.round(ranked * RANK_WEIGHTS.match) }
 }
 
 function fitReasons(c: RankCandidate, ctx: RankContext): RankReason[] {
@@ -196,8 +208,8 @@ export function displayReasons(reasons: readonly RankReason[]): RankReason[] {
 }
 
 /**
- * Rank every eligible candidate and keep the top `n`. Ties: higher AI match,
- * then newer, then id (deterministic).
+ * Rank every eligible candidate and keep the top `n`. Ties: higher ranked
+ * match (Match / AI blend), then newer, then id (deterministic).
  */
 export function buildShortlist(
   candidates: readonly RankCandidate[],
@@ -212,8 +224,8 @@ export function buildShortlist(
       if (b.score !== a.score) return b.score - a.score
       const ca = byId.get(a.id)!
       const cb = byId.get(b.id)!
-      const ma = ca.matchScore ?? -1
-      const mb = cb.matchScore ?? -1
+      const ma = rankedMatch(ca) ?? -1
+      const mb = rankedMatch(cb) ?? -1
       if (mb !== ma) return mb - ma
       const ta = ca.createdAt.getTime()
       const tb = cb.createdAt.getTime()

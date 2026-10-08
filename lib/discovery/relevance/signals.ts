@@ -114,6 +114,15 @@ const PRESENCE_REQUIRED: readonly RegExp[] = [
   /\bimmediate joiners? (?:in|within) (?:the )?(?:uae|ksa|qatar|gcc)\b/,
 ]
 
+const GCC_NATIONALITY = '(?:uae|emirati|saudi|qatari|kuwaiti|bahraini|omani|gcc)'
+
+/** "UAE nationals preferred", "preference will be given to Saudi nationals": soft, not a skip. */
+const NATIONALS_PREFERRED: readonly RegExp[] = [
+  new RegExp(`\\b${GCC_NATIONALITY}? ?nationals? (?:are |is |will be )?(?:preferred|(?:given )?(?:preference|priority)|an advantage|a plus|desirable)\\b`),
+  new RegExp(`\\b(?:preference|priority) (?:will be |is )?given to ${GCC_NATIONALITY} nationals?\\b`),
+  new RegExp(`\\bpreferably (?:a |an )?${GCC_NATIONALITY} nationals?\\b`),
+]
+
 /** Nationals-only / nationalisation-quota roles: the one work-authorisation mismatch. */
 const NATIONALS_ONLY: readonly RegExp[] = [
   /\b(?:uae|emirati|saudi|qatari|kuwaiti|bahraini|omani|gcc) nationals?(?: only)?\b/,
@@ -133,10 +142,20 @@ export function detectPresenceRequired(description: string): boolean {
   return PRESENCE_REQUIRED.some((re) => re.test(d))
 }
 
-/** "UAE nationals only", "Saudization role"… */
+const EXPLICIT_ONLY = /\bnationals? only\b|\bonly (?:for |open to )?(?:uae|emirati|saudi|qatari|kuwaiti|bahraini|omani|gcc) nationals?\b|\b(?:emiratisation|emiratization|saudization|saudisation|nitaqat|qatarization|qatarisation|omanisation|omanization|kuwaitization|bahrainisation|bahrainization)\b/
+
+/** "UAE nationals preferred"… (a soft penalty). */
+export function detectNationalsPreferred(description: string): string | null {
+  const d = normalizeForMatch(description.slice(0, 8_000))
+  return NATIONALS_PREFERRED.some((re) => re.test(d)) ? 'nationals preferred' : null
+}
+
+/** "UAE nationals only", "Saudization role"… A "nationals preferred" phrase alone is not "only". */
 export function detectNationalsOnly(description: string): string | null {
   const d = normalizeForMatch(description.slice(0, 8_000))
-  return NATIONALS_ONLY.some((re) => re.test(d)) ? 'nationals only' : null
+  if (!NATIONALS_ONLY.some((re) => re.test(d))) return null
+  if (detectNationalsPreferred(description) && !EXPLICIT_ONLY.test(d)) return null
+  return 'nationals only'
 }
 
 // ---------------------------------------------------------------------------

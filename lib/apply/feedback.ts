@@ -14,11 +14,13 @@ import { roleFamilyLabel } from '@/lib/discovery/relevance/roles'
  *   3. repeated reasons become a suggested preference change.
  */
 
-export const DISMISS_REASONS = ['role', 'seniority', 'location', 'pay', 'stack', 'company', 'other'] as const
+export const DISMISS_REASONS = ['role', 'field', 'seniority', 'location', 'pay', 'stack', 'company', 'other'] as const
 export type DismissReason = (typeof DISMISS_REASONS)[number]
 
 export const DISMISS_REASON_LABELS: Readonly<Record<DismissReason, string>> = {
   role: 'Wrong kind of role',
+  // Teaches lee the title is unrelated (lib/discovery/relevance/learned.ts).
+  field: 'Not my field',
   seniority: 'Wrong seniority',
   location: 'Location or remote setup',
   pay: 'Pay too low',

@@ -1,0 +1,38 @@
+{
+  "name": "Abu Dhabi Emiratisation role: skipped by default with the reason",
+  "inputs": {
+    "profile": {
+      "discoveryPrefs": {
+        "basedIn": "IN",
+        "sponsorshipFor": [
+          "AE",
+          "SA",
+          "QA",
+          "KW",
+          "BH",
+          "OM"
+        ]
+      }
+    },
+    "job": {
+      "title": "Laravel Developer",
+      "location": "Abu Dhabi, AE",
+      "descriptionMd": "Emiratisation role. UAE nationals only."
+    }
+  },
+  "expect": {
+    "pass": false,
+    "reasons": [
+      "visa: nationals only"
+    ],
+    "regions": [
+      "ae",
+      "gcc"
+    ],
+    "match": {
+      "labels": [
+        "Visa: nationals only (e.g. Emiratisation, Saudization)"
+      ]
+    }
+  }
+}

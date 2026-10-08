@@ -104,6 +104,10 @@ export function discoveryPrefsFromForm(fd: FormData): DiscoveryPrefs {
     payFloors: payFloors(fd),
     languages: languages(fd),
     noticePeriods: all(fd, 'notice').filter((n) => (NOTICE_PERIODS as readonly string[]).includes(n)),
+    relocationIfSponsored: fd.get('relocationIfSponsored') === 'on',
+    relocationCountries: [
+      ...new Set(csv(fd, 'relocationCountries').map((c) => c.trim().toUpperCase()).filter((c) => /^[A-Z]{2}$/.test(c))),
+    ],
   })
 }
 

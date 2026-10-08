@@ -32,7 +32,7 @@ export function RuleSection({ values }: SectionProps) {
     <fieldset className="space-y-2">
       <legend className="text-sm font-medium">Exclusion rules</legend>
       <p className="text-xs text-muted-foreground">
-        “Filter out” moves a posting to Filtered out with the reason; “Rank lower” keeps it in your inbox with a chip.
+        “Filter out” moves a clear mismatch to Filtered out with the reason; “Rank lower” keeps it in your inbox with a chip. Rules read the whole job description, not just the title.
       </p>
       <div className="divide-y rounded-lg border">
         {EXCLUSION_RULES.map((r) => (

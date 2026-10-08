@@ -1,0 +1,22 @@
+{
+  "name": "Remote with no region: kept with an unclear-eligibility chip",
+  "inputs": {
+    "job": {
+      "title": "Backend Developer",
+      "location": "Remote",
+      "remoteType": "remote",
+      "descriptionMd": "Laravel APIs."
+    }
+  },
+  "expect": {
+    "pass": true,
+    "penalties": [
+      "remote: unclear eligibility"
+    ],
+    "match": {
+      "labels": [
+        "Remote, eligibility unclear"
+      ]
+    }
+  }
+}

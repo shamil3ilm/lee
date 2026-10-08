@@ -256,9 +256,28 @@ describe('soft rules in the gate', () => {
     expect(presence.infos).toContain('Needs presence in UAE — visit visa possible')
   })
 
-  it('treats nationals-only roles as a soft mismatch', () => {
-    const r = evaluateRelevance(job('Laravel Developer', 'UAE Nationals only.'), prefs)
-    expect(r).toMatchObject({ pass: true, penalties: ['visa: nationals only'] })
+  it('skips nationals-only roles by default (user-switchable) and only lowers "nationals preferred"', () => {
+    for (const text of [
+      'UAE Nationals only.',
+      'This is an Emiratisation role.',
+      'Saudi nationals only / Saudization.',
+      'Open to Qatari nationals only.',
+      'Kuwaiti nationals only.',
+      'Omanisation position.',
+      'GCC nationals only.',
+    ]) {
+      expect(evaluateRelevance(job('Laravel Developer', text), prefs), text).toMatchObject({ pass: false, reasons: ['visa: nationals only'] })
+    }
+    const preferred = evaluateRelevance(job('Laravel Developer', 'UAE nationals preferred.'), prefs)
+    expect(preferred).toMatchObject({ pass: true, penalties: ['visa: nationals preferred'] })
+    const soft = { ...prefs, extra: { ...prefs.extra, rules: { ...prefs.extra.rules, visa: 'soft' as const } } }
+    expect(evaluateRelevance(job('Laravel Developer', 'UAE Nationals only.'), soft)).toMatchObject({ pass: true, penalties: ['visa: nationals only'] })
+  })
+
+  it('keeps the visit-visa note for "must be in UAE"', () => {
+    const r = evaluateRelevance(job('Laravel Developer', 'Candidates must be based in the UAE.'), prefs)
+    expect(r.pass).toBe(true)
+    expect(r.infos.join(' ')).toMatch(/visit visa possible/)
   })
 
   it('handles required and preferred languages', () => {

@@ -105,7 +105,9 @@ describe('shortlist job after the polls', () => {
     expect(view.today).toBe(true)
     expect(view.entries.map((e) => e.matchScore)).toEqual([90, 75, 60])
     expect(view.entries.map((e) => e.rank)).toEqual([1, 2, 3])
-    expect(view.entries[0]?.reasons[0]).toMatchObject({ kind: 'match', label: '90% AI match' })
+    // Every ingested posting carries a Match Score; the chip shows both.
+    expect(view.entries.every((e) => typeof e.fitScore === 'number')).toBe(true)
+    expect(view.entries[0]?.reasons[0]).toMatchObject({ kind: 'match', label: expect.stringMatching(/^Match \d+ · AI 90$/) })
     expect(view.entries[0]?.reasons.some((x) => x.kind === 'fresh')).toBe(true)
 
     await flushSystemEvents()
@@ -155,6 +157,17 @@ describe('buildShortlistForUser', () => {
     const fresh = await disc('Fresh', 10)
     await buildShortlistForUser(u.id)
     expect((await readShortlist(u.id)).entries.map((e) => e.discoveryId)).toEqual([fresh.id])
+  })
+
+  it('ranks postings the AI never scored by their Match Score instead of a flat 25', async () => {
+    const { u, disc } = await setup()
+    const weak = await disc('Weak fit', 0, { matchScore: null, fitScore: 25 })
+    const strong = await disc('Strong fit', 0, { matchScore: null, fitScore: 88 })
+    const ai = await disc('AI scored', 60)
+    await buildShortlistForUser(u.id)
+    const entries = (await readShortlist(u.id)).entries
+    expect(entries.map((e) => e.discoveryId)).toEqual([strong.id, ai.id, weak.id])
+    expect(entries[0]?.reasons[0]).toEqual({ kind: 'match', label: 'Match 88', points: 44 })
   })
 
   it('is idempotent and keeps what the user acted on when rebuilt', async () => {

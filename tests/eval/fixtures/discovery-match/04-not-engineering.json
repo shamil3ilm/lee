@@ -1,11 +1,19 @@
 {
-  "name": "Remote non-engineering role",
+  "name": "Remote payroll role: filtered by the domain rule (HR), not by its title being unknown",
   "inputs": {
-    "job": { "title": "Junior Payroll Assistant", "remoteType": "remote", "location": "" }
+    "job": {
+      "title": "Junior Payroll Assistant",
+      "remoteType": "remote",
+      "location": ""
+    }
   },
   "expect": {
     "pass": false,
-    "reasons": ["role: not engineering"],
-    "regions": ["remote"]
+    "reasons": [
+      "domain: HR"
+    ],
+    "regions": [
+      "remote"
+    ]
   }
 }

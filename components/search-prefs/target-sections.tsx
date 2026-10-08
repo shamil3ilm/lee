@@ -14,7 +14,10 @@ interface SectionProps {
 export function TargetSections({ values }: SectionProps) {
   return (
     <div className="space-y-6">
-      <PrefsFieldset legend="Target roles" description="Postings outside these go to “Filtered out”.">
+      <PrefsFieldset
+        legend="Target roles"
+        description="lee ranks these highest. Jobs in clearly unrelated fields (judged from the job description, not just the title) go to Filtered out with the reason; unfamiliar titles that fit stay, marked Uncertain fit."
+      >
         {ROLE_FAMILIES.map((f) => (
           <ChoiceChip
             key={f.id}
@@ -32,13 +35,16 @@ export function TargetSections({ values }: SectionProps) {
         placeholder="e.g. Odoo Consultant"
       />
 
-      <PrefsFieldset legend="Seniority" description="Titles or “N+ years” above these are filtered, with the reason.">
+      <PrefsFieldset
+        legend="Seniority"
+        description="Titles or “N+ years” above these rank lower (a strong ready match halves that); Principal, Director, Head of and VP roles are filtered. Change it under Exclusion rules."
+      >
         {SENIORITY_LEVELS.map((l) => (
           <ChoiceChip
             key={l}
             name="seniority"
             value={l}
-            label={SENIORITY_LABELS[l]}
+            label={l === 'senior' ? 'Senior (stretch)' : SENIORITY_LABELS[l]}
             defaultChecked={values.seniority.includes(l)}
           />
         ))}
@@ -66,13 +72,34 @@ export function TargetSections({ values }: SectionProps) {
       />
 
       <PrefsFieldset legend="Remote roles">
-        <ChoiceChip type="radio" name="remoteScope" value="worldwide" label="Remote worldwide (open to me)" defaultChecked={values.remoteScope === 'worldwide'} />
+        <ChoiceChip type="radio" name="remoteScope" value="worldwide" label="Remote worldwide, workable from where I live" defaultChecked={values.remoteScope === 'worldwide'} />
         <ChoiceChip type="radio" name="remoteScope" value="regions" label="Remote in my regions only" defaultChecked={values.remoteScope === 'regions'} />
         <ChoiceChip type="radio" name="remoteScope" value="none" label="No remote" defaultChecked={values.remoteScope === 'none'} />
       </PrefsFieldset>
       <p className="-mt-3 text-xs text-muted-foreground">
-        “US only”, “EU only” or “must reside in X” is filtered when X is not one of your locations.
+        “US only”, “EU only”, “must reside in X” or “US time zones only” is filtered when it can’t be done from where you live; working hours within ±4 h of yours pass; a bare “Remote” gets an “unclear eligibility” chip.
       </p>
+
+      <div className="space-y-2 rounded-lg border p-3">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            name="relocationIfSponsored"
+            type="checkbox"
+            defaultChecked={values.relocationIfSponsored}
+            className="size-4 rounded border-input"
+          />
+          Open to relocation if the employer sponsors it
+        </label>
+        <p className="text-xs text-muted-foreground">
+          A posting outside your regions passes when it offers relocation or visa sponsorship, with a “Relocation offered” chip.
+        </p>
+        <TextField
+          name="relocationCountries"
+          label="Only these countries (ISO-2, empty = any)"
+          defaultValue={values.relocationCountries}
+          placeholder="e.g. DE, NL, GB"
+        />
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="flex items-center gap-2 text-sm sm:col-span-2">

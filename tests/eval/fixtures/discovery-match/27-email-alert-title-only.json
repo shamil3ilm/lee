@@ -1,0 +1,16 @@
+{
+  "name": "Email-alert posting with no JD: low confidence, title only",
+  "inputs": {
+    "job": {
+      "title": "PHP Developer",
+      "location": "Sharjah",
+      "descriptionMd": ""
+    }
+  },
+  "expect": {
+    "pass": true,
+    "match": {
+      "confidence": "title_only"
+    }
+  }
+}

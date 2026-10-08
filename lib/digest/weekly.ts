@@ -25,6 +25,7 @@ import {
 import { todoIsActiveSql } from '@/lib/db/queries/todos'
 import { usageWarningsForUser, type UsageWarning } from '@/lib/usage/alerts'
 import { shortlistForEmail, type EmailShortlistItem } from '@/lib/apply/email'
+import { domainFilterReview } from '@/lib/discovery/relevance/review'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -85,6 +86,9 @@ export interface PipelineSnapshot {
   // Apply faster — the latest shortlist's open picks, when the user keeps
   // "Include the shortlist in emails" on (lib/apply/email.ts).
   shortlist?: EmailShortlistItem[]
+  // "Did we filter something useful?" — the week's top titles the domain
+  // rule filtered (lib/discovery/relevance/review.ts). Titles only.
+  filterReview?: Array<{ title: string; domain: string; count: number }>
 }
 
 // ---------------------------------------------------------------------------
@@ -364,6 +368,7 @@ export async function gatherPipelineSnapshot(
   })
 
   const shortlist = await shortlistForEmail(userId, now)
+  const filterReview = (await domainFilterReview(userId, now).catch(() => [])).map(({ title, domain, count }) => ({ title, domain, count }))
 
   return {
     userId,
@@ -380,6 +385,7 @@ export async function gatherPipelineSnapshot(
     completedStagesThisWeek,
     usageWarnings,
     shortlist,
+    filterReview,
   }
 }
 

@@ -84,10 +84,10 @@ describe('role classification', () => {
 })
 
 describe('evaluateRelevance', () => {
-  it('filters nothing when preferences are not set', () => {
-    const r = evaluateRelevance(job('Senior Gardener', { location: 'Texas' }), EMPTY_PREFS)
-    expect(r.pass).toBe(true)
-    expect(r.reasons).toEqual([])
+  it('applies only the domain rule when preferences are not set', () => {
+    const tech = evaluateRelevance(job('Senior Backend Engineer', { location: 'Texas' }), EMPTY_PREFS)
+    expect(tech).toMatchObject({ pass: true, reasons: [] })
+    expect(evaluateRelevance(job('Senior Gardener', { location: 'Texas' }), EMPTY_PREFS).reasons).toEqual(['domain: Trades/Field work'])
   })
 
   it('passes a mid-level backend role in Dubai', () => {
@@ -98,12 +98,14 @@ describe('evaluateRelevance', () => {
   })
 
   it('gives seniority, role and location reasons', () => {
-    expect(evaluateRelevance(job('Senior Backend Engineer', { location: 'Dubai' }), USER).reasons).toEqual([
-      'seniority: Senior',
+    // Senior is a soft stretch (a chip, ranked lower); Director is still filtered.
+    const senior = evaluateRelevance(job('Senior Backend Engineer', { location: 'Dubai' }), USER)
+    expect(senior.pass).toBe(true)
+    expect(senior.penalties).toEqual(['Senior title'])
+    expect(evaluateRelevance(job('Director of Engineering', { location: 'Dubai' }), USER).reasons).toEqual([
+      'seniority: Director',
     ])
-    expect(evaluateRelevance(job('Payroll Specialist', { location: 'Dubai' }), USER).reasons).toEqual([
-      'role: not engineering',
-    ])
+    expect(evaluateRelevance(job('Payroll Specialist', { location: 'Dubai' }), USER).reasons).toEqual(['domain: HR'])
     expect(evaluateRelevance(job('Frontend Engineer', { location: 'Pune' }), USER).reasons).toEqual([
       'role: Frontend',
     ])
@@ -114,7 +116,8 @@ describe('evaluateRelevance', () => {
       'location: Berlin',
     ])
     const many = evaluateRelevance(job('Staff Frontend Engineer', { remoteType: 'remote', location: 'United States' }), USER)
-    expect(formatReasons(many.reasons)).toBe('role: Frontend · seniority: Staff · location: US-only')
+    expect(formatReasons(many.reasons)).toBe('role: Frontend · location: US-only')
+    expect(many.penalties).toEqual(['Staff title'])
   })
 
   it('keeps remote postings with an empty or worldwide location', () => {
@@ -221,7 +224,8 @@ describe('search prefs from the profile', () => {
 
   it('is inactive until preferences are saved (default location seeds alone do nothing)', () => {
     expect(searchPrefsFromProfile({ ...base, searchPrefsSavedAt: null }).active).toBe(false)
-    expect(relevanceKey(searchPrefsFromProfile({ ...base, searchPrefsSavedAt: null }))).toMatch(/:off$/)
+    // Unsaved: a provisional key (domain rule on provisional targets).
+    expect(relevanceKey(searchPrefsFromProfile({ ...base, searchPrefsSavedAt: null }))).toMatch(/^r\d+:p:/)
   })
 
   it('adds relocation targets only when relocation is accepted', () => {
@@ -256,20 +260,38 @@ describe('RemoteOK sample (99 real postings, 2026-09-27)', () => {
     techStack: j.tags,
   }))
 
-  it('lets every posting through with no preferences', () => {
-    expect(inputs.filter((j) => evaluateRelevance(j, EMPTY_PREFS).pass)).toHaveLength(99)
+  it('with no preferences, filters only unrelated fields (59 of 99 kept), each with a domain reason', () => {
+    const results = inputs.map((j) => evaluateRelevance(j, EMPTY_PREFS))
+    expect(results.filter((r) => r.pass)).toHaveLength(59)
+    for (const r of results.filter((x) => !x.pass)) expect(r.reasons[0]).toMatch(/^domain: /)
   })
 
-  it('keeps only the relevant few for this user', () => {
-    const passed = inputs.filter((j) => evaluateRelevance(j, USER).pass).map((j) => j.title)
-    expect(passed).toEqual([
+  it('keeps the relevant few for this user (16 of 99; Senior titles and unknown fields pass with a chip)', () => {
+    const passed = inputs.filter((j) => evaluateRelevance(j, USER).pass)
+    // (The Oracle Fusion title is served double-encoded; matched by prefix.)
+    expect(passed.map((j) => (j.title.startsWith('Oracle Fusion Cloud Lead') ? 'Oracle Fusion Cloud Lead' : j.title))).toEqual([
       'Software Engineer',
+      'Senior .NET Software Engineer',
       'Backend Software Engineer',
       'Golang Kubernetes Engineer',
       'Software Engineer',
+      'External Data Specialist',
+      'AI Response Analyst',
+      'Junior Crypto Analyst & Trader',
+      'Oracle Fusion Cloud Lead',
+      'Senior Backend Engineer Build AI Agents',
+      'Senior Specialist Global QMS',
       'DESARROLLADOR FULL STACK',
+      'Brand Protection & Marketplace Compliance Analyst',
+      'Real Time Drilling Ops Centre Analyst',
       'Software Engineer II Golang',
+      'Why do you want this new job',
     ])
+    // Unknown fields are never filtered on the title alone: they carry the review chip.
+    const uncertain = evaluateRelevance(inputs.find((j) => j.title === 'AI Response Analyst')!, USER)
+    expect(uncertain.penalties).toContain('Uncertain fit — review')
+    const senior = evaluateRelevance(inputs.find((j) => j.title === 'Senior .NET Software Engineer')!, USER)
+    expect(senior.penalties).toContain('Senior title')
   })
 
   it('explains every rejection', () => {
@@ -279,8 +301,11 @@ describe('RemoteOK sample (99 real postings, 2026-09-27)', () => {
     }
     const byTitle = (t: string): string | null =>
       formatReasons(evaluateRelevance(inputs.find((j) => j.title === t)!, USER).reasons)
-    expect(byTitle('Gardener Handyman Driver')).toBe('role: not engineering · location: Alice Springs-only')
-    expect(byTitle('Staff Software Engineer')).toBe('seniority: Staff · location: US-only')
+    expect(byTitle('Gardener Handyman Driver')).toBe('domain: Trades/Field work · location: Alice Springs-only')
+    expect(byTitle('Hotline Paralegal')).toBe('domain: Legal')
+    expect(byTitle('Marketing Student Assistant')).toBe('domain: Marketing')
+    expect(byTitle('Staff Software Engineer')).toBe('location: US-only')
+    expect(byTitle('Principal Engineer')).toBe('seniority: Principal')
     expect(byTitle('Frontend Engineer')).toBe('role: Frontend · location: Singapore-only')
     expect(byTitle('Java Developer')).toBe('location: US-only')
     // "Mostly remote (within Germany)" in the description.
@@ -313,9 +338,14 @@ describe('years of experience', () => {
     expect(detectYearsRequired('Founded 10 years ago, we have been remote for 7 years.')).toBeNull()
   })
 
-  it('filters an unmarked title that asks for more years than the selected levels', () => {
+  it('ranks an unmarked title that asks for more years than the selected levels lower, never filters it', () => {
     const five = job('Backend Developer', { location: 'Dubai', descriptionMd: 'You have 5+ years of experience.' })
-    expect(evaluateRelevance(five, USER).reasons).toEqual(['seniority: 5+ years required'])
+    const r = evaluateRelevance(five, USER)
+    expect(r.pass).toBe(true)
+    expect(r.penalties).toEqual(['5+ yrs asked'])
+    expect(evaluateRelevance(five, { ...USER, extra: { ...USER.extra, rules: { seniority: 'hard' } } }).reasons).toEqual([
+      'seniority: 5+ years required',
+    ])
     const two = job('Backend Developer', { location: 'Dubai', descriptionMd: 'You have 2-4 years of experience.' })
     expect(evaluateRelevance(two, USER).pass).toBe(true)
     // A title marker wins over the years line.

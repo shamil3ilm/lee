@@ -13,6 +13,9 @@ import { shortDay } from '@/lib/ui/date'
 import { AiModeDialog } from '@/components/discovery/ai-mode-dialog'
 import { PasteImportDialog } from '@/components/discovery/paste-import-dialog'
 import { loadAiModePrompts } from '@/lib/discovery/ai-mode/load'
+import { getProfile } from '@/lib/profile/service'
+import { defaultsBannerFamilies } from '@/lib/discovery/relevance/view'
+import { DefaultsBanner } from '@/components/discovery/defaults-banner'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -30,7 +33,8 @@ const STATE_BADGE: Record<Exclude<ShortlistEntryView['state'], 'open'>, { label:
  */
 export default async function ShortlistPage() {
   const userId = await requireUserId()
-  const data = await loadShortlistPage(userId)
+  const [data, profile] = await Promise.all([loadShortlistPage(userId), getProfile(userId)])
+  const bannerFamilies = defaultsBannerFamilies(profile)
   const promptSet = data.open.length === 0 ? await loadAiModePrompts(userId) : null
   const subtitle = data.day
     ? data.today
@@ -55,6 +59,8 @@ export default async function ShortlistPage() {
           </div>
         }
       />
+
+      {bannerFamilies ? <DefaultsBanner families={bannerFamilies} /> : null}
 
       {data.open.length === 0 ? (
         <EmptyState

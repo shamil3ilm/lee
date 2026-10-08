@@ -7,6 +7,7 @@ import {
   detectContract,
   detectLanguages,
   detectNationalsOnly,
+  detectNationalsPreferred,
   detectPresenceRequired,
   detectPureSupport,
   detectSales,
@@ -89,6 +90,10 @@ function presenceCountry(regions: ReadonlySet<RegionCode>): string {
 function visaRules(input: SoftRuleInput, prefs: SearchPrefs, add: Add, out: SoftRuleResult): void {
   const nationals = detectNationalsOnly(input.description)
   if (nationals) add('visa', `visa: ${nationals}`)
+  // "UAE nationals preferred" is a weaker signal: never a skip, only lower.
+  else if (detectNationalsPreferred(input.description) && ruleMode(prefs.extra, 'visa') !== 'off') {
+    out.penalties.push('visa: nationals preferred')
+  }
   const { sponsorshipFor, basedIn } = prefs.extra
   if (input.remote) return
   const needs = [...input.regions].some((r) => sponsorshipFor.includes(r) && r !== basedIn)

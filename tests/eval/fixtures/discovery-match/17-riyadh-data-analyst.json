@@ -1,0 +1,38 @@
+{
+  "name": "Data Analyst in Riyadh for a data-analyst target: Power BI missing",
+  "inputs": {
+    "profile": {
+      "roleTypes": [
+        "backend",
+        "data_analyst"
+      ],
+      "skills": [
+        "SQL",
+        "Excel",
+        "Python"
+      ]
+    },
+    "job": {
+      "title": "Data Analyst",
+      "location": "Riyadh, KSA",
+      "descriptionMd": "## Requirements\n- SQL\n- Power BI dashboards\n- Excel"
+    }
+  },
+  "expect": {
+    "pass": true,
+    "reasons": [],
+    "regions": [
+      "gcc"
+    ],
+    "match": {
+      "min": 55,
+      "missing": [
+        "Power BI (required)",
+        "KPI dashboards (required)"
+      ],
+      "labels": [
+        "Role: Data Analyst / BI"
+      ]
+    }
+  }
+}

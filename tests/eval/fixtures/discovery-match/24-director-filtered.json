@@ -1,0 +1,15 @@
+{
+  "name": "Director title: still filtered by default",
+  "inputs": {
+    "job": {
+      "title": "Director of Engineering",
+      "location": "Dubai"
+    }
+  },
+  "expect": {
+    "pass": false,
+    "reasons": [
+      "seniority: Director"
+    ]
+  }
+}

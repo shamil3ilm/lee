@@ -8,6 +8,7 @@ function cand(over: Partial<RankCandidate> = {}): RankCandidate {
   return {
     id: over.id ?? '00000000-0000-4000-8000-000000000001',
     matchScore: 80,
+    fitScore: null,
     regions: [],
     families: [],
     notes: {},
@@ -40,7 +41,7 @@ describe('rankCandidate (composite with reasons)', () => {
       CTX,
     )
     expect(labels(r)).toEqual([
-      '80% AI match',
+      'AI 80',
       'Role: Backend',
       'Region: UAE',
       'Company environment 80, stability 70',
@@ -53,9 +54,21 @@ describe('rankCandidate (composite with reasons)', () => {
     expect(r.reasons.reduce((s, x) => s + x.points, 0)).toBe(78)
   })
 
-  it('treats an unscored posting as neutral and says so', () => {
-    const r = rankCandidate(cand({ matchScore: null }), CTX)
+  it('treats a posting with neither score as neutral and says so', () => {
+    const r = rankCandidate(cand({ matchScore: null, fitScore: null }), CTX)
     expect(r.reasons[0]).toEqual({ kind: 'match', label: 'Not scored yet', points: RANK_WEIGHTS.unscoredMatch })
+  })
+
+  it('uses the deterministic Match Score when the AI score is absent (never the flat 25)', () => {
+    const r = rankCandidate(cand({ matchScore: null, fitScore: 72 }), CTX)
+    expect(r.reasons[0]).toEqual({ kind: 'match', label: 'Match 72', points: 36 })
+    const weak = rankCandidate(cand({ matchScore: null, fitScore: 20 }), CTX)
+    expect(weak.reasons[0]?.points).toBe(10)
+  })
+
+  it('blends Match and AI as their mean when both exist', () => {
+    const r = rankCandidate(cand({ matchScore: 80, fitScore: 72 }), CTX)
+    expect(r.reasons[0]).toEqual({ kind: 'match', label: 'Match 72 · AI 80', points: 38 })
   })
 
   it('lowers pay below the range once, not twice (the soft-rule chip is the same fact)', () => {
@@ -119,6 +132,19 @@ describe('buildShortlist', () => {
     expect(list.map((r) => r.id)).toEqual(['c'])
   })
 
+  it('ranks unscored-by-AI postings by their Match Score', () => {
+    const list = buildShortlist(
+      [
+        cand({ id: 'low', matchScore: null, fitScore: 30 }),
+        cand({ id: 'high', matchScore: null, fitScore: 85 }),
+        cand({ id: 'mid', matchScore: 60, fitScore: null }),
+      ],
+      CTX,
+      3,
+    )
+    expect(list.map((r) => r.id)).toEqual(['high', 'mid', 'low'])
+  })
+
   it('keeps the top n by score with ranks, and breaks ties deterministically', () => {
     const list = buildShortlist(
       [
@@ -137,7 +163,7 @@ describe('buildShortlist', () => {
     ])
   })
 
-  it('puts the AI match first among the display reasons, then the biggest effects', () => {
+  it('puts the match first among the display reasons, then the biggest effects', () => {
     const [top] = buildShortlist([cand({ families: ['backend'], riskLevel: 'caution' })], CTX, 1)
     expect(top?.reasons.map((r) => r.kind)).toEqual(['match', 'fit', 'risk'])
   })

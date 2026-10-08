@@ -15,6 +15,8 @@ import {
 import { focusRing } from '@/components/ui/focus-ring'
 import { ReasonChips } from '@/components/apply/reason-chips'
 import { VsCurrentChip } from '@/components/compare/vs-current-chip'
+import { MatchBadge } from '@/components/discovery/match-badge'
+import type { MatchDetail } from '@/lib/discovery/match/types'
 import { laterAction, notForMeAction, prepareAction } from '@/app/(authed)/shortlist/actions'
 import { DISMISS_REASONS, DISMISS_REASON_LABELS } from '@/lib/apply/feedback'
 import type { RankReason } from '@/lib/apply/rank'
@@ -33,6 +35,9 @@ export interface ShortlistCardItem {
   variantName: string | null
   /** Compact comparison with the current job, when one is saved. */
   vsCurrent?: string | null
+  matchScore?: number | null
+  fitScore?: number | null
+  fitDetail?: MatchDetail | null
 }
 
 interface ShortlistCardProps {
@@ -97,6 +102,7 @@ export function ShortlistCard({ item, selected, onSelectedChange, busy = false }
             {item.title}
           </label>
           <p className="truncate text-xs text-muted-foreground">{joinMeta([item.companyName, item.location])}</p>
+          <MatchBadge match={item.fitScore ?? null} ai={item.matchScore ?? null} detail={item.fitDetail ?? null} />
         </div>
         <Badge variant="info" className="tabular-nums" title="Composite shortlist score (0–100)">
           {item.score}

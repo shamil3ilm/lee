@@ -32,6 +32,9 @@ import { toastDismissedCompany, toastDismissedJobs } from '@/components/discover
 import { RiskBadge } from '@/components/scam/risk-badge'
 import { CallUsageBadge } from '@/components/ai/usage-badge'
 import type { RiskView } from '@/lib/scam/view'
+import type { MatchDetail } from '@/lib/discovery/match/types'
+import { MatchBadge } from '@/components/discovery/match-badge'
+import { JdPaste } from '@/components/discovery/jd-paste'
 
 /**
  * Only the fields a job row renders — the page never ships the full
@@ -58,8 +61,14 @@ export interface DiscoveryCompanySummary {
 export interface DiscoveryRowJob {
   id: string
   status: string
+  /** AI score (optional refinement). */
   matchScore: number | null
   benefitsScore: number | null
+  /** Deterministic Match Score and its explanation (every posting). */
+  fitScore?: number | null
+  fitDetail?: MatchDetail | null
+  /** The posting sits on an ATS with a public job API (Fetch the full JD). */
+  jdFetchable?: boolean
   createdAt: string
   sourceName: string
   normalized: DiscoveryJobSummary
@@ -107,17 +116,6 @@ function scoreLabel(score: number | null, prefix: string): string {
   return `${prefix} ${score}`
 }
 
-/** Match badge: "Not scored" instead of a bare dash, with a hint why. */
-function MatchBadge({ score, filtered }: { score: number | null; filtered: boolean }) {
-  if (score === null || score === undefined) {
-    return (
-      <Badge variant="neutral" title={filtered ? 'Filtered postings are not AI-scored' : 'Scored on the next discovery run'}>
-        Not scored
-      </Badge>
-    )
-  }
-  return <Badge variant={scoreVariant(score)}>{scoreLabel(score, 'Match')}</Badge>
-}
 
 /** Filter reason and soft-rule chips under a job row. */
 function RelevanceChips({ item }: { item: DiscoveryRowJob }) {
@@ -234,7 +232,12 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
             ) : null}
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               {item.risk ? <RiskBadge risk={item.risk} /> : null}
-              <MatchBadge score={item.matchScore} filtered={isFiltered} />
+              <MatchBadge
+                match={item.fitScore ?? null}
+                ai={item.matchScore}
+                detail={item.fitDetail ?? null}
+                filtered={isFiltered}
+              />
               <Badge variant={scoreVariant(item.benefitsScore)}>
                 {scoreLabel(item.benefitsScore, 'Benefits')}
               </Badge>
@@ -247,6 +250,9 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
               </span>
             </div>
             <RelevanceChips item={item} />
+            {item.fitDetail?.confidence === 'title_only' && item.status !== 'saved' && item.status !== 'dismissed' ? (
+              <JdPaste discoveryId={item.id} canFetch={item.jdFetchable ?? false} />
+            ) : null}
           </div>
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
@@ -468,8 +474,8 @@ function ReasoningBlock({
     return (
       <div className="mt-3 rounded-md border border-dashed p-3 text-xs text-muted-foreground">
         {filtered
-          ? 'Filtered postings are not AI-scored. Use “Show anyway” to move it to your inbox; it is scored on the next run.'
-          : 'Not yet scored. Discovery will re-score on the next cycle.'}
+          ? 'Filtered postings are not AI-scored; the Match badge explains their deterministic score. Use “Show anyway” to move it to your inbox.'
+          : 'No AI review yet; the Match badge explains the deterministic score. AI scoring runs on the next cycle.'}
       </div>
     )
   }

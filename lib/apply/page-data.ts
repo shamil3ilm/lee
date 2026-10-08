@@ -2,6 +2,8 @@ import * as profileQ from '@/lib/db/queries/profile'
 import * as feedbackQ from '@/lib/db/queries/discoveryFeedback'
 import { searchPrefsFromProfile } from '@/lib/discovery/relevance/prefs'
 import { repairMojibake } from '@/lib/discovery/relevance/text'
+import { toMatchDetail } from '@/lib/discovery/match/detail'
+import type { MatchDetail } from '@/lib/discovery/match/types'
 import type { ShortlistRow } from '@/lib/db/queries/shortlist'
 import { prefSuggestions, type PrefSuggestion } from './feedback'
 import { FEEDBACK_WINDOW_DAYS, readShortlist } from './shortlist'
@@ -29,6 +31,10 @@ export interface ShortlistEntryView {
   applicationId: string | null
   /** "vs current: pay ↑ 35% est. · …" when a current job is saved. */
   vsCurrent: string | null
+  /** AI score, deterministic Match Score and its explanation (the badge). */
+  matchScore: number | null
+  fitScore: number | null
+  fitDetail: MatchDetail | null
 }
 
 export interface ShortlistPageData {
@@ -53,6 +59,9 @@ function toView(r: ShortlistRow): ShortlistEntryView {
     reasons: r.reasons,
     variantName: r.variantName,
     applicationId: r.savedApplicationId,
+    matchScore: r.matchScore,
+    fitScore: r.fitScore,
+    fitDetail: toMatchDetail(r.fitDetail),
     vsCurrent: null,
   }
 }

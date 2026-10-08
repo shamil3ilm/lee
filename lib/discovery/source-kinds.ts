@@ -35,6 +35,14 @@ export const SOURCE_KINDS: readonly SourceKindMeta[] = [
     needs: 'none',
   },
   {
+    id: 'google_alerts',
+    label: 'Google Alerts',
+    description: 'Your Google Alerts for job searches, by email (Gmail) or RSS',
+    needs: 'none',
+    // Set up from the Google Alerts panel (optional RSS feed URL).
+    catalogOnly: true,
+  },
+  {
     id: 'himalayas',
     label: 'Himalayas',
     description: 'Remote jobs open to your countries (GCC, India) and worldwide',

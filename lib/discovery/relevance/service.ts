@@ -101,6 +101,12 @@ export async function reevaluateRelevance(
   return { evaluated, filtered, remaining: false }
 }
 
+/** Re-check progress for the Settings form: rows still waiting, rows filtered now. */
+export async function relevanceProgress(userId: string): Promise<{ remaining: number; filtered: number }> {
+  const ctx = relevanceContext(await profileQ.get(userId))
+  return relQ.progress(userId, ctx.key)
+}
+
 /** True when stored discoveries may be gated under stale preferences. */
 export function relevanceStale(profile: UserProfile | null): boolean {
   if (!profile) return false

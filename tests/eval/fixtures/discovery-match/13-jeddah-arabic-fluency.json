@@ -1,0 +1,38 @@
+{
+  "name": "Jeddah role requiring fluent Arabic, profile has basic: soft chip and a missing must-have",
+  "inputs": {
+    "profile": {
+      "discoveryPrefs": {
+        "languages": [
+          {
+            "name": "English",
+            "level": "fluent"
+          },
+          {
+            "name": "Arabic",
+            "level": "basic"
+          }
+        ]
+      }
+    },
+    "job": {
+      "title": "PHP Developer",
+      "location": "Jeddah",
+      "descriptionMd": "Fluent Arabic is required. PHP and Laravel."
+    }
+  },
+  "expect": {
+    "pass": true,
+    "penalties": [
+      "language: Arabic required (you: basic)"
+    ],
+    "match": {
+      "missing": [
+        "Arabic fluency (required)"
+      ],
+      "labels": [
+        "Language: Arabic required (you: basic)"
+      ]
+    }
+  }
+}

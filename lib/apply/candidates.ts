@@ -2,6 +2,7 @@ import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import { discoveries, jobRiskAssessments } from '@/lib/db/schema'
 import { discoveryNotQuarantinedSql, discoveryQuarantinedSql } from '@/lib/db/queries/riskAssessments'
+import { blendedSql } from '@/lib/db/queries/discoveries'
 import * as repQ from '@/lib/db/queries/companyReputation'
 import { classifyRole } from '@/lib/discovery/relevance/roles'
 import { companyStructureCriterion, environmentCriterion } from '@/lib/reputation/criteria'
@@ -81,6 +82,7 @@ export async function loadCandidates(
       .select({
         id: discoveries.id,
         matchScore: discoveries.matchScore,
+        fitScore: discoveries.fitScore,
         regions: discoveries.regions,
         notes: discoveries.relevanceNotes,
         createdAt: discoveries.createdAt,
@@ -112,7 +114,7 @@ export async function loadCandidates(
         ),
       )
       .orderBy(
-        desc(sql`(coalesce(${discoveries.matchScore}, 50) + ${discoveries.rankAdjust})`),
+        desc(sql`(coalesce(${blendedSql()}, 50) + ${discoveries.rankAdjust})`),
         desc(discoveries.createdAt),
       )
       .limit(MAX_CANDIDATES),
@@ -135,6 +137,7 @@ export async function loadCandidates(
         title,
         companyKey,
         matchScore: r.matchScore,
+        fitScore: r.fitScore,
         regions: r.regions ?? [],
         families,
         notes: (r.notes ?? {}) as RankCandidate['notes'],

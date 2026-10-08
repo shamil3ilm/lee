@@ -1,0 +1,17 @@
+{
+  "name": "Product Engineer – Treasury at a GCC fintech with a Laravel JD: kept",
+  "inputs": {
+    "job": {
+      "title": "Product Engineer – Treasury",
+      "location": "Abu Dhabi",
+      "descriptionMd": "## Responsibilities\n- Build REST APIs and payment webhooks in Laravel\n## Requirements\n- PHP and Laravel\n- MySQL and REST APIs\n- Git"
+    }
+  },
+  "expect": {
+    "pass": true,
+    "reasons": [],
+    "match": {
+      "min": 65
+    }
+  }
+}

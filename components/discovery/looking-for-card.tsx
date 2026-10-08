@@ -45,8 +45,8 @@ export function LookingForCard({ view, suggestionCount, sparse }: LookingForCard
             Tell {APP_NAME} what you’re looking for
           </h2>
           <p className="text-sm text-muted-foreground">
-            Nothing is filtered yet, so every posting from your sources lands here. Set target roles, seniority and
-            locations to hide the rest{sparse ? ', and import your CV so suggestions and scores have something to go on' : ''}.
+            Only jobs in clearly unrelated fields are filtered for now, using defaults from your profile. Set target roles,
+            seniority and locations to rank the rest{sparse ? ', and import your CV so suggestions and scores have something to go on' : ''}.
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">

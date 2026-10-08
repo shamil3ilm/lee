@@ -1,0 +1,18 @@
+{
+  "name": "MIS Executive (GCC wording) for a backend-only target: a role mismatch, not 'not engineering'",
+  "inputs": {
+    "job": {
+      "title": "MIS Executive",
+      "location": "Muscat, Oman"
+    }
+  },
+  "expect": {
+    "pass": false,
+    "reasons": [
+      "role: Data Analyst / BI"
+    ],
+    "regions": [
+      "gcc"
+    ]
+  }
+}

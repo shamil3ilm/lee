@@ -1,5 +1,5 @@
 {
-  "name": "Unmarked title asking for 5+ years",
+  "name": "Unmarked title asking for 5+ years: ranked lower, never filtered",
   "inputs": {
     "job": {
       "title": "Software Developer",
@@ -8,8 +8,18 @@
     }
   },
   "expect": {
-    "pass": false,
-    "reasons": ["seniority: 5+ years required"],
-    "regions": ["in"]
+    "pass": true,
+    "reasons": [],
+    "penalties": [
+      "5+ yrs asked"
+    ],
+    "regions": [
+      "in"
+    ],
+    "match": {
+      "labels": [
+        "Seniority: asks 5+ yrs, you have 1"
+      ]
+    }
   }
 }

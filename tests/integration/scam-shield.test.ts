@@ -117,7 +117,9 @@ describe('Scam Shield pipeline', () => {
     expect(await discQ.countNew(userId)).toBe(1)
     const all = await discQ.list(userId, { quarantine: 'include' })
     expect(all).toHaveLength(2)
-    expect(byId('scam-1').status).toBe('new')
+    // Never deleted. (This data-entry scam is also filtered by the domain rule.)
+    expect(byId('scam-1').status).toBe('filtered')
+    expect(byId('scam-1').filterReason).toBe('domain: Admin/Operations')
   })
 
   it('does not call the network when checks are off (the default)', async () => {

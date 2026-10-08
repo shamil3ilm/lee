@@ -75,6 +75,26 @@ const QA_SKILLS = [
   'test automation', 'automated testing', 'tdd', 'unit testing', 'integration testing',
   'e2e', 'qa', 'quality assurance', 'appium', 'postman tests',
 ]
+/** Data analysis / BI: querying, reporting and dashboards. */
+const DATA_ANALYST_SKILLS = [
+  'sql', 'postgresql', 'postgres', 'mysql', 'python', 'pandas', 'numpy', 'excel', 'advanced excel',
+  'power bi', 'powerbi', 'tableau', 'looker', 'looker studio', 'metabase', 'superset', 'dashboards',
+  'dashboard', 'reporting', 'reports', 'kpi', 'kpis', 'data analysis', 'data visualization',
+  'data visualisation', 'statistics', 'statement exports', 'reconciliation', 'ledger', 'mis reports',
+]
+/** Business / systems analysis: requirements and process work, often ERP or finance systems. */
+const BUSINESS_ANALYST_SKILLS = [
+  'requirements gathering', 'requirements analysis', 'business requirements', 'brd', 'frd',
+  'functional specifications', 'functional specification', 'user stories', 'acceptance criteria',
+  'uat', 'user acceptance testing', 'process mapping', 'process modelling', 'process modeling',
+  'bpmn', 'gap analysis', 'stakeholder management', 'business module', 'business modules',
+  'erp', 'e-invoicing', 'zatca', 'oracle ebs', 'oracle fusion', 'sap',
+]
+/** Analytics engineering: SQL modelling in the warehouse. */
+const ANALYTICS_ENG_SKILLS = [
+  'dbt', 'data modelling', 'data modeling', 'dimensional modelling', 'dimensional modeling',
+  'star schema', 'sql', 'snowflake', 'bigquery', 'redshift', 'data warehouse', 'elt', 'etl',
+]
 const SUPPORT_SKILLS = [
   'troubleshooting', 'debugging', 'production support', 'incident', 'incidents', 'on-call',
   'root cause', 'rca', 'customer support', 'customer issues', 'l2', 'l3', 'ticketing',
@@ -181,9 +201,37 @@ export const ROLE_FAMILIES: readonly RoleFamily[] = [
     skills: ['flutter', 'dart', 'react native', 'swift', 'swiftui', 'kotlin', 'android', 'ios', 'xamarin'],
   },
   {
+    id: 'data_analyst',
+    label: 'Data Analyst / BI',
+    titles: [
+      'data analyst', 'data analytics', 'bi analyst', 'bi developer', 'business intelligence',
+      'reporting analyst', 'reporting specialist', 'mis executive', 'mis analyst', 'mis specialist',
+      'mis officer', 'insights analyst', 'power bi developer', 'power bi analyst', 'tableau developer',
+      'dashboard developer', 'analytics analyst', 'product analyst', 'operations analyst',
+    ],
+    skills: DATA_ANALYST_SKILLS,
+  },
+  {
+    id: 'business_analyst',
+    label: 'Business / Systems Analyst',
+    titles: [
+      'business analyst', 'systems analyst', 'system analyst', 'business systems analyst',
+      'it business analyst', 'technical business analyst', 'erp analyst', 'functional analyst',
+      'functional consultant', 'oracle functional', 'sap functional', 'requirements analyst',
+      'process analyst', 'business process analyst',
+    ],
+    skills: BUSINESS_ANALYST_SKILLS,
+  },
+  {
+    id: 'analytics_eng',
+    label: 'Analytics Engineer',
+    titles: ['analytics engineer', 'data modeler', 'data modeller', 'dbt developer'],
+    skills: ANALYTICS_ENG_SKILLS,
+  },
+  {
     id: 'data',
-    label: 'Data Engineering',
-    titles: ['data engineer', 'etl developer', 'analytics engineer', 'data platform', 'big data', 'bi developer'],
+    label: 'Data Engineering / ETL',
+    titles: ['data engineer', 'etl developer', 'etl engineer', 'data platform', 'big data', 'data pipeline engineer'],
     skills: ['etl', 'airflow', 'spark', 'dbt', 'snowflake', 'bigquery', 'redshift', 'databricks', 'data pipeline', 'data pipelines', 'data warehouse', 'kafka streams'],
   },
   {
@@ -223,7 +271,7 @@ export const ROLE_FAMILIES: readonly RoleFamily[] = [
   {
     id: 'implementation',
     label: 'Implementation / Solutions Engineer (technical)',
-    titles: ['implementation engineer', 'implementation consultant', 'implementation specialist', 'implementation manager', 'onboarding engineer', 'deployment engineer', 'integration consultant', 'professional services engineer'],
+    titles: ['implementation engineer', 'implementation consultant', 'implementation specialist', 'implementation analyst', 'implementation manager', 'onboarding engineer', 'deployment engineer', 'integration consultant', 'professional services engineer'],
     skills: [...API_SKILLS, ...CLIENT_SKILLS],
   },
   {
@@ -309,6 +357,21 @@ function inferFamilies(evidence: string): string[] {
   return out
 }
 
+/**
+ * Families a job description reads as, from its stack and asks (not the
+ * title): backend / full-stack / frontend / DevOps as above, plus data
+ * analysis and business analysis when the JD names two of their skills.
+ */
+export function familiesFromEvidence(normalizedText: string): string[] {
+  const out = inferFamilies(normalizedText)
+  if (findTerms(normalizedText, DATA_ANALYST_SKILLS.filter((t) => !BACKEND_SKILLS.includes(t))).length >= 2) out.push('data_analyst')
+  if (findTerms(normalizedText, BUSINESS_ANALYST_SKILLS).length >= 2) out.push('business_analyst')
+  return out
+}
+
+/** Distinct software skills named in a description: strong JD evidence for an odd title. */
+const STRONG_JD_EVIDENCE = 3
+
 export function classifyRole(input: {
   title: string
   description?: string | null
@@ -321,10 +384,15 @@ export function classifyRole(input: {
   if (NON_ENGINEERING_TITLE(title) !== null || nonSoftware) {
     return { families: [], engineering: false, generic: false }
   }
-  if (GENERIC_SOFTWARE(title) === null) return { families: [], engineering: false, generic: false }
   const evidence = normalizeForMatch(
     [(input.techStack ?? []).join(' '), (input.description ?? '').slice(0, 2_000)].join(' '),
   )
+  if (GENERIC_SOFTWARE(title) === null) {
+    // An unusual title ("Ninja", "Product Builder") is judged by its JD: a
+    // description naming several software skills makes it a tech role.
+    const hits = new Set([...findTerms(evidence, BACKEND_SKILLS), ...findTerms(evidence, FRONTEND_SKILLS)]).size
+    if (hits < STRONG_JD_EVIDENCE) return { families: [], engineering: false, generic: false }
+  }
   return { families: inferFamilies(evidence), engineering: true, generic: true }
 }
 
@@ -353,5 +421,8 @@ export const SKILL_GROUPS = {
   platform: PLATFORM_SKILLS,
   einvoicing: EINVOICING_SKILLS,
   llm: LLM_SKILLS,
+  dataAnalyst: DATA_ANALYST_SKILLS,
+  businessAnalyst: BUSINESS_ANALYST_SKILLS,
+  analyticsEng: ANALYTICS_ENG_SKILLS,
   integrations: INTEGRATION_PLATFORMS,
 } as const
