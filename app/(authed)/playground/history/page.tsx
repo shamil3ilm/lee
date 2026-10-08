@@ -2,9 +2,10 @@ import { requireUserId } from '@/lib/auth/require-session'
 import { loadAcademyContent } from '@/lib/academy/content/catalog'
 import { attemptHistory } from '@/lib/academy/service/views'
 import { PageHeader, Toolbar } from '@/components/page-header'
-import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/ui/native-select'
 import { HistoryList } from '@/components/playground/history-list'
+import { AutoApplyForm } from '@/components/filters/auto-apply-form'
+import { plural } from '@/lib/ui/labels'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,8 +23,13 @@ export default async function PlaygroundHistoryPage({ searchParams }: { searchPa
   return (
     <div className="space-y-6">
       <PageHeader title="History" description="Every finished item, newest first. History is kept; nothing here is overwritten." />
-      <Toolbar label="Filter history">
-        <form method="get" className="flex flex-wrap items-center gap-2">
+      <Toolbar>
+        <AutoApplyForm
+          action="/playground/history"
+          label="Filter history"
+          status={plural(entries.length, 'finished item')}
+          className="flex flex-wrap items-center gap-2"
+        >
           <NativeSelect name="skill" defaultValue={skillId ?? ''} className="h-8 w-56 max-w-full" aria-label="Skill">
             <option value="">All skills</option>
             {content.graph.skills.map((s) => (
@@ -32,10 +38,7 @@ export default async function PlaygroundHistoryPage({ searchParams }: { searchPa
               </option>
             ))}
           </NativeSelect>
-          <Button type="submit" size="sm" variant="outline">
-            Filter
-          </Button>
-        </form>
+        </AutoApplyForm>
       </Toolbar>
       <HistoryList entries={entries} />
     </div>

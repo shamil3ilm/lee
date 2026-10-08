@@ -33,7 +33,7 @@ export default async function ProblemsPage({ searchParams }: { searchParams: Pro
         <SolvedCard summary={summarize(catalog.problems, progress)} />
         <DailyCard daily={daily} />
       </div>
-      <ProblemFiltersBar filters={filters} />
+      <ProblemFiltersBar filters={filters} total={page.total} />
       <ProblemTable page={page} filters={filters} />
     </div>
   )

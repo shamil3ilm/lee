@@ -6,10 +6,12 @@ import { CATEGORY_LABELS, EVENT_CATEGORIES } from '@/lib/logs/types'
 import { PageHeader } from '@/components/page-header'
 import { EmptyState } from '@/components/empty-state'
 import { Button } from '@/components/ui/button'
-import { FormActions, FormField } from '@/components/ui/form-field'
+import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/native-select'
 import { EventList } from '@/components/settings/event-list'
+import { AutoApplyForm } from '@/components/filters/auto-apply-form'
+import { plural } from '@/lib/ui/labels'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,11 +54,12 @@ export default async function LogsPage({ searchParams }: LogsPageProps) {
         description="Background runs, syncs and problems, kept after the server logs expire: info for 14 days, warnings and errors for 60. Secrets are removed and email addresses reduced to their domain."
       />
 
-      <form
-        method="get"
+      <AutoApplyForm
         action="/settings/logs"
-        role="search"
-        aria-label="Filter logs"
+        label="Filter logs"
+        status={hasNext ? `${plural(rows.length, 'event')} on this page` : plural(rows.length, 'event')}
+        clearHref="/settings/logs"
+        defaults={{ range: '7d' }}
         className="grid gap-3 sm:grid-cols-3 lg:grid-cols-[repeat(3,minmax(0,11rem))_minmax(0,1fr)_auto]"
       >
         <FormField htmlFor="logs-category" label="Category">
@@ -99,12 +102,7 @@ export default async function LogsPage({ searchParams }: LogsPageProps) {
         </FormField>
         {filters.sourceId ? <input type="hidden" name="source" value={filters.sourceId} /> : null}
         {filters.jobId ? <input type="hidden" name="job" value={filters.jobId} /> : null}
-        <FormActions>
-          <Button type="submit" className="w-full sm:w-auto">
-            Filter
-          </Button>
-        </FormActions>
-      </form>
+      </AutoApplyForm>
 
       <p className="text-xs text-muted-foreground">
         {scoped ? (

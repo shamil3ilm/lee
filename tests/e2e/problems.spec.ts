@@ -52,8 +52,8 @@ test('problem set lists, filters and opens a problem', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Problems', level: 1 })).toBeVisible()
   await expect(page.getByTestId('problem-row').first()).toBeVisible()
   const filters = page.getByRole('group', { name: 'Filter problems' })
+  // Filters apply on change: no Apply button.
   await filters.getByRole('combobox', { name: 'Difficulty' }).selectOption('hard')
-  await filters.getByRole('button', { name: 'Apply' }).click()
   await page.waitForURL(/difficulty=hard/)
   await expect(page.getByTestId('problem-row').first()).toContainText(/./)
   await expect(page.getByRole('table', { name: 'Problems' })).not.toContainText('Easy')

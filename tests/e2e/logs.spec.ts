@@ -40,23 +40,23 @@ test('settings: logs tab lists events and filters by category, level and text', 
   const rows = page.getByTestId('event-row')
   const form = page.getByRole('search', { name: 'Filter logs' })
   await expect(rows.filter({ hasText: 'Gmail synced: 40 checked · 2 matched' })).toHaveCount(1)
-  await expect(rows.filter({ hasText: 'Scheduled 9 job(s)' })).toHaveCount(1)
+  await expect(rows.filter({ hasText: 'Scheduled 9 jobs' })).toHaveCount(1)
 
-  // Category filter (plain GET form).
+  // Category filter: applies on change, no button.
   await form.getByLabel('Category').selectOption('gmail')
-  await form.getByRole('button', { name: 'Filter' }).click()
   await expect(page).toHaveURL(/category=gmail/)
   // Other specs may have logged more events: assert on what the filter keeps.
   await expect(rows.filter({ hasText: 'Gmail synced: 40 checked' })).toHaveCount(1)
-  await expect(rows.filter({ hasText: 'Scheduled 9 job(s)' })).toHaveCount(0)
+  await expect(rows.filter({ hasText: 'Scheduled 9 jobs' })).toHaveCount(0)
   expect(new Set(await rows.evaluateAll((els) => els.map((e) => e.getAttribute('data-category'))))).toEqual(
     new Set(['gmail']),
   )
 
   // Level filter: warnings and errors only.
   await form.getByLabel('Category').selectOption('')
+  await expect(page).not.toHaveURL(/category=/)
   await form.getByLabel('Level').selectOption('problems')
-  await form.getByRole('button', { name: 'Filter' }).click()
+  await expect(page).toHaveURL(/level=problems/)
   await expect(rows.filter({ hasText: 'Groq 429' })).toHaveCount(1)
   await expect(rows.filter({ hasText: 'Gmail synced' })).toHaveCount(0)
   for (const level of await rows.evaluateAll((els) => els.map((e) => e.getAttribute('data-level')))) {
@@ -65,8 +65,10 @@ test('settings: logs tab lists events and filters by category, level and text', 
 
   // Text search.
   await form.getByLabel('Level').selectOption('')
+  await expect(page).not.toHaveURL(/level=/)
+  // Text search applies once typing pauses.
   await form.getByLabel('Search').fill('groq')
-  await form.getByRole('button', { name: 'Filter' }).click()
+  await expect(page).toHaveURL(/q=groq/)
   const groq = rows.filter({ hasText: 'Groq 429' })
   await expect(groq).toHaveCount(1)
   await expect(rows.filter({ hasText: 'Gmail synced' })).toHaveCount(0)
