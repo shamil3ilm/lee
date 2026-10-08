@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { EmptyState } from '@/components/empty-state'
 import type { ProblemFilters, ProblemPage, ProblemStatus } from '@/lib/academy/coding/list'
 import { filterHref } from '@/lib/academy/coding/list'
+import { joinMeta } from '@/lib/ui/meta'
 import { DIFFICULTY_LABELS } from '@/lib/academy/problems/constants'
 import { DIFFICULTY_TONE, formatMs, ROLE_LABELS, STATUS_LABELS, TOPIC_LABELS } from './labels'
 
@@ -14,6 +15,9 @@ const STATUS_CLASS: Readonly<Record<ProblemStatus, string>> = {
   attempted: 'text-warning',
   solved: 'text-success',
 }
+
+/** Columns shown only when the content area is at least ~900px wide (@4xl = 56rem). */
+const WIDE = 'hidden @4xl/main:table-cell'
 
 /** The problem set table (server component); the wrapper scrolls on phones. */
 export function ProblemTable({ page, filters }: { page: ProblemPage; filters: ProblemFilters }) {
@@ -40,10 +44,10 @@ export function ProblemTable({ page, filters }: { page: ProblemPage; filters: Pr
               <span className="sr-only">Status</span>
             </TableHead>
             <TableHead>Problem</TableHead>
-            <TableHead className="hidden md:table-cell">Topics</TableHead>
-            <TableHead>Difficulty</TableHead>
-            <TableHead className="hidden text-right sm:table-cell">Acceptance</TableHead>
-            <TableHead className="hidden text-right sm:table-cell">Best runtime</TableHead>
+            <TableHead className={WIDE}>Topics</TableHead>
+            <TableHead className="w-24">Difficulty</TableHead>
+            <TableHead className={`${WIDE} w-28 text-right`}>Acceptance</TableHead>
+            <TableHead className={`${WIDE} w-28 text-right`}>Best runtime</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -54,10 +58,23 @@ export function ProblemTable({ page, filters }: { page: ProblemPage; filters: Pr
                 <TableCell>
                   <Icon className={`size-4 ${STATUS_CLASS[r.status]}`} aria-label={STATUS_LABELS[r.status]} role="img" />
                 </TableCell>
-                <TableCell className="min-w-0">
-                  <Link href={`/playground/problems/${r.slug}`} className="font-medium text-foreground underline-offset-4 hover:underline">
+                {/* w-full + max-w-0: the title cell takes the leftover width and
+                    truncates instead of wrapping to four lines on tablets. */}
+                <TableCell className="w-full max-w-0">
+                  <Link
+                    href={`/playground/problems/${r.slug}`}
+                    title={r.title}
+                    className="block truncate font-medium text-foreground underline-offset-4 hover:underline"
+                  >
                     {r.title}
                   </Link>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground tabular-nums @4xl/main:hidden" data-testid="problem-meta">
+                    {joinMeta([
+                      r.acceptance === null ? null : `${r.acceptance}% accepted`,
+                      r.bestRuntimeMs === null ? null : `Best ${formatMs(r.bestRuntimeMs)}`,
+                      r.topics.slice(0, 2).map((t) => TOPIC_LABELS[t]).join(', ') || null,
+                    ])}
+                  </p>
                   {r.roles.length > 0 ? (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {r.roles.map((role) => (
@@ -68,7 +85,7 @@ export function ProblemTable({ page, filters }: { page: ProblemPage; filters: Pr
                     </div>
                   ) : null}
                 </TableCell>
-                <TableCell className="hidden md:table-cell">
+                <TableCell className={WIDE}>
                   <div className="flex flex-wrap gap-1">
                     {r.topics.map((t) => (
                       <Link key={t} href={filterHref(filters, { topic: t })} className="rounded-sm">
@@ -82,11 +99,11 @@ export function ProblemTable({ page, filters }: { page: ProblemPage; filters: Pr
                 <TableCell>
                   <Badge variant={DIFFICULTY_TONE[r.difficulty]}>{DIFFICULTY_LABELS[r.difficulty]}</Badge>
                 </TableCell>
-                <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                <TableCell className={`${WIDE} text-right tabular-nums`}>
                   {r.acceptance === null ? '—' : `${r.acceptance}%`}
                   {r.submissions > 0 ? <span className="block text-[11px] text-muted-foreground">{r.accepted}/{r.submissions}</span> : null}
                 </TableCell>
-                <TableCell className="hidden text-right tabular-nums sm:table-cell">{formatMs(r.bestRuntimeMs)}</TableCell>
+                <TableCell className={`${WIDE} text-right tabular-nums`}>{formatMs(r.bestRuntimeMs)}</TableCell>
               </TableRow>
             )
           })}
