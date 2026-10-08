@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge'
 import { workModeLabel } from '@/lib/ui/labels'
 import { MatchBadge } from '@/components/discovery/match-badge'
 import type { MatchDetail } from '@/lib/discovery/match/types'
+import type { BestCv } from '@/lib/cv-fit/types'
+import { BestCvLine } from '@/components/cv-fit/best-cv-line'
 
 export type DiscoveryBoardColumn = 'new' | 'shortlisted' | 'saved' | 'dismissed'
 
@@ -24,6 +26,8 @@ export interface DiscoveryBoardItem {
   /** Deterministic Match Score and its explanation. */
   fitScore: number | null
   fitDetail: MatchDetail | null
+  /** Best CV for this posting (lib/cv-fit); shown in "Why this score". */
+  bestCv?: BestCv | null
   applyUrl: string | null
   savedApplicationId: string | null
 }
@@ -69,6 +73,7 @@ function renderCard(d: DiscoveryBoardItem): React.ReactNode {
           detail={d.fitDetail}
           interactive={!d.savedApplicationId}
           className="shrink-0"
+          extra={d.bestCv ? <BestCvLine className="border-t pt-2" bestCv={d.bestCv} target={{ kind: 'discovery', id: d.id }} /> : undefined}
         />
       </div>
       {d.location || workModeLabel(d.remoteType) ? (

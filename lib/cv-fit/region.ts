@@ -37,15 +37,19 @@ export interface RegionFit {
 
 const SHORT: Readonly<Record<Region, string>> = { gcc: 'GCC', india: 'India', remote: 'Remote' }
 
+/** "a GCC job", "an India job", "a remote / US / EU job". */
+function aJob(region: Region): string {
+  const word = region === 'remote' ? 'remote / US / EU' : SHORT[region]
+  return `${/^[AEIOU]/i.test(word) ? 'an' : 'a'} ${word} job`
+}
+
 export function regionFit(variant: Region, regions: readonly Region[]): RegionFit {
   if (regions.length === 0) return { points: 9, label: 'Job region not stated' }
-  if (regions.includes(variant)) {
-    return { points: REGION_FIT_MAX, label: `${SHORT[variant]} variant for a ${variant === 'remote' ? 'remote / US / EU' : SHORT[variant]} job` }
-  }
+  if (regions.includes(variant)) return { points: REGION_FIT_MAX, label: `${SHORT[variant]} variant for ${aJob(variant)}` }
   const local = regions.find((r) => r !== 'remote')
   if (variant === 'remote' && local) {
-    return { points: 6, label: `${REGION_LABELS[variant]} variant for a ${SHORT[local]} job (no ${SHORT[local]} fields)` }
+    return { points: 6, label: `${REGION_LABELS[variant]} variant for ${aJob(local)} (no ${SHORT[local]} fields)` }
   }
   if (variant !== 'remote' && !local) return { points: 4, label: `${SHORT[variant]} variant for a remote job` }
-  return { points: 0, label: `${SHORT[variant]} variant for a ${SHORT[local ?? 'remote']} job` }
+  return { points: 0, label: `${SHORT[variant]} variant for ${aJob(local ?? 'remote')}` }
 }

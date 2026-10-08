@@ -189,6 +189,18 @@ async function main(): Promise<void> {
     version: 1,
     recipe: buildRecipe(resume, { region: 'india', roleFamily: 'backend' }),
   })
+  // A second variant, so "Best CV" has a best and a runner-up to compare
+  // (tests/e2e/best-cv.spec.ts).
+  const [remoteVariant] = await db
+    .insert(s.resumeVariants)
+    .values({ userId, name: 'Remote · Backend', region: 'remote', roleFamily: 'backend', currentVersion: 1, createdAt: ago(4), updatedAt: ago(4) })
+    .returning()
+  await db.insert(s.resumeVariantVersions).values({
+    variantId: remoteVariant!.id,
+    userId,
+    version: 1,
+    recipe: buildRecipe(resume, { region: 'remote', roleFamily: 'backend' }),
+  })
 
   const interviewApp = appIds.get('postman')!
   const [tailored] = await db

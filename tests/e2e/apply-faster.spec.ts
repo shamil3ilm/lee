@@ -27,7 +27,8 @@ test('shortlist renders with reasons, and Not for me takes a reason', async ({ p
   await expect(why.getByRole('list', { name: 'Fit breakdown' })).toContainText('88')
   await expect(why.getByTestId('shortlist-reasons')).toContainText('on today’s shortlist')
   await page.keyboard.press('Escape')
-  await expect(payouts).toContainText('Suggested résumé')
+  // The best of the user's variants for this posting (lib/cv-fit).
+  await expect(payouts.getByTestId('best-cv')).toContainText('Best CV')
 
   const platform = cards.filter({ hasText: PLATFORM })
   await platform.getByRole('button', { name: 'Not for me' }).click()

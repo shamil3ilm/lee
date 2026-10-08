@@ -39,6 +39,8 @@ const ROUTES = [
   '/settings/profile',
   '/settings/search',
   '/settings/resume',
+  '/settings/variants',
+  '/settings/study',
   '/settings/current-job',
   '/settings/sources',
   '/settings/integrations',
@@ -49,7 +51,7 @@ const ROUTES = [
 ]
 
 /** Routes checked for 24px targets at phone width (WCAG 2.5.8). */
-const PHONE_ROUTES = ['/', '/discoveries', '/shortlist', '/settings/search', '/settings/sources', '/compare', '/applications', '/todos', '/analytics', '/radar/sources', '/settings/notifications']
+const PHONE_ROUTES = ['/', '/discoveries', '/shortlist', '/settings/search', '/settings/sources', '/compare', '/applications', '/todos', '/analytics', '/radar/sources', '/settings/notifications', '/settings/variants']
 
 interface Violation {
   id: string
@@ -60,6 +62,11 @@ interface Violation {
 
 async function scan(page: Page, url: string, rules?: string[]): Promise<Violation[]> {
   await page.goto(url)
+  return scanHere(page, rules)
+}
+
+/** Scan the page as it is now (after opening a section, for example). */
+async function scanHere(page: Page, rules?: string[]): Promise<Violation[]> {
   await page.waitForLoadState('networkidle').catch(() => undefined)
   // Charts and lazy boards settle after hydration.
   await page.waitForTimeout(500)
@@ -98,6 +105,35 @@ for (const theme of ['light', 'dark'] as const) {
   })
 }
 
+/**
+ * Best CV, photo advice and Tailor to this JD (lib/cv-fit) live on dynamic
+ * routes: the seeded application that is mid-preparation (the Swiggy
+ * posting, which no journey changes), its Prepare page and its detail page
+ * with the Tailor section open.
+ */
+async function preparingApplication(page: Page): Promise<string> {
+  await page.goto('/applications')
+  const href = await page.getByRole('link', { name: /Senior Data Engineer/ }).first().getAttribute('href')
+  expect(href).toMatch(/^\/applications\/[0-9a-f-]{36}$/)
+  return href!
+}
+
+for (const theme of ['light', 'dark'] as const) {
+  test.describe(`axe ${theme}: best CV and tailoring`, () => {
+    test.use({ viewport: { width: 1280, height: 900 }, colorScheme: theme })
+    test(`prepare and application detail have no serious or critical violations (${theme})`, async ({ page }) => {
+      const app = await preparingApplication(page)
+      const prepare = await scan(page, `${app}/prepare`)
+      expect(report(`${app}/prepare`, prepare.filter((v) => BLOCKING.has(v.impact ?? '')))).toEqual([])
+      await page.goto(app)
+      await page.getByRole('button', { name: /Tailor to this JD/ }).click()
+      await expect(page.getByTestId('tailor-panel')).toBeVisible()
+      const detail = await scanHere(page)
+      expect(report(app, detail.filter((v) => BLOCKING.has(v.impact ?? '')))).toEqual([])
+    })
+  })
+}
+
 test.describe('targets at phone width', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
   for (const url of PHONE_ROUTES) {
@@ -106,4 +142,9 @@ test.describe('targets at phone width', () => {
       expect(report(url, violations)).toEqual([])
     })
   }
+  test('prepare (best CV, photo advice, tailoring) has 24px targets', async ({ page }) => {
+    const app = await preparingApplication(page)
+    const violations = await scan(page, `${app}/prepare`, ['target-size'])
+    expect(report(`${app}/prepare`, violations)).toEqual([])
+  })
 })

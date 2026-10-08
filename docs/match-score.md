@@ -42,6 +42,10 @@ marked **Low confidence: title only**; "Fetch the full JD" (Greenhouse and
 Lever public APIs) or "Paste the JD to score properly" stores the JD and
 re-scores the row.
 
+The same parsed JD picks the **best résumé variant** per posting ("Best CV",
+`lib/cv-fit`, see [resume-and-portfolio.md](resume-and-portfolio.md#best-cv-for-each-job-libcv-fit))
+and drives "Tailor to this JD".
+
 ### Ranking with the AI score
 
 The AI score stays optional. One ranked number (`lib/discovery/match/blend.ts`,

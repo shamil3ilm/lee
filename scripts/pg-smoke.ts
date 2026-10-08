@@ -28,6 +28,19 @@ import { loadWhatsNew, rankedSince } from '@/lib/radar/new/view'
 import { NO_WAIT } from '@/lib/reputation/rate-limit'
 import { fixtureFetch } from '@/tests/fixtures/reputation/fetch'
 import { newRoutes } from '@/tests/fixtures/radar/new/fetch'
+import { makeDiscovery, makeSource } from '@/tests/factories'
+import { tailorProfile, TAILOR_JD } from '@/tests/fixtures/resume/tailor'
+import * as profileQ from '@/lib/db/queries/profile'
+import * as appsQ from '@/lib/db/queries/applications'
+import * as matchQ from '@/lib/db/queries/discoveryMatch'
+import { saveResumeProfile } from '@/lib/resume/service'
+import { createStarterVariants } from '@/lib/variants/service'
+import { confirmVariant, startPrepare } from '@/lib/apply/prepare'
+import { bestCvForApplication, bestCvStale, ensureBestCv, rescoreBestCv } from '@/lib/cv-fit/service'
+import { loadMatrix } from '@/lib/cv-fit/matrix'
+import { saveTailoredCopy } from '@/lib/cv-fit/tailor/save'
+import { loadTailorView } from '@/lib/cv-fit/tailor/service'
+import { coverTailoringFor } from '@/lib/cv-fit/tailor/cover'
 
 type Check = readonly [name: string, run: () => Promise<unknown>]
 
@@ -50,7 +63,50 @@ async function main(): Promise<void> {
   // The What's new fixtures are dated around this day.
   const fixtureNow = new Date('2026-10-08T09:00:00Z')
 
+  // Best CV per job and Tailor to this JD (lib/cv-fit): raw-SQL batch writes,
+  // jsonb reads and the cv_tailorings table.
+  await profileQ.upsert(id, { roleTypes: ['payments'] })
+  await saveResumeProfile(id, tailorProfile())
+  await createStarterVariants(id, [
+    { roleId: 'payments-backend', region: 'gcc' },
+    { roleId: 'payments-backend', region: 'remote' },
+  ])
+  const source = await makeSource(id, { kind: 'greenhouse' })
+  const posting = await makeDiscovery(id, source.id, {
+    status: 'new',
+    normalized: { kind: 'job', title: TAILOR_JD.title, companyName: 'Payco Gulf', location: TAILOR_JD.location, descriptionMd: TAILOR_JD.descriptionMd, applyUrl: 'https://boards.greenhouse.io/paycogulf/jobs/7' },
+  })
+
   const checks: readonly Check[] = [
+    [
+      'bestCv.rescore',
+      async () => {
+        const r = await rescoreBestCv(id)
+        if (r.computed < 1) throw new Error('no best CV computed')
+      },
+    ],
+    ['bestCv.stale', () => bestCvStale(id)],
+    [
+      'bestCv.jdReset',
+      async () => {
+        await matchQ.setDescription(id, posting.id, `${TAILOR_JD.descriptionMd}\n- Terraform is a plus.`, 'pasted')
+        if ((await ensureBestCv(id, [posting.id])).size !== 1) throw new Error('a new JD did not reset the best CV')
+      },
+    ],
+    ['bestCv.matrix', () => loadMatrix(id, now)],
+    [
+      'tailor.saveAndCover',
+      async () => {
+        const { applicationId } = await startPrepare(id, { discoveryId: posting.id })
+        const app = await appsQ.getById(id, applicationId)
+        const best = app ? await bestCvForApplication(id, app) : null
+        if (!best) throw new Error('no best CV for the application')
+        await confirmVariant(id, applicationId, best.best.variantId)
+        const view = await loadTailorView(id, applicationId)
+        await saveTailoredCopy(id, applicationId, { accepted: view.suggestions.map((s) => s.id), gaps: [] })
+        if (!(await coverTailoringFor(id, applicationId))) throw new Error('the cover letter cannot read the tailoring')
+      },
+    ],
     ['analytics.sourceFunnel', () => analytics.sourceFunnel(id)],
     ['analytics.responseTimeDistribution', () => analytics.responseTimeDistribution(id)],
     ['analytics.timeToOutcome', () => analytics.timeToOutcome(id)],

@@ -75,6 +75,85 @@ The profile photo is uploaded in Settings › Profile › Résumé and is **priv
 - **Compile.** `ats` and `brand` add `graphicx` and set the name block beside a 2.6 cm photo: plain in `ats`, framed in the brand colour in `brand`. `classic` puts a 2.5 cm photo at the top right and narrows the name block to 78% of the width. Without a photo, the header takes the full width. The existing pipeline packs the image into the latexonline.cc tarball, and its sha is part of the PDF cache key. Only lee's own file names are ever embedded in the source.
 - **Warn.** The variant preview warns when Photo is on but no photo is uploaded.
 
+## Starter CV set (`lib/variants/starter.ts`)
+
+Settings › Variants offers a starter set built from the role families the user **accepted** in Search preferences. Nothing is created automatically: the user ticks the role × region combinations they want and clicks **Create selected**.
+
+| Starter | Accepted families that offer it | Built for |
+|---|---|---|
+| Payments / Backend | payments, backend, API / integration | payments |
+| Full-stack TypeScript | full-stack, frontend | full-stack |
+| Data Analyst / BI | data analyst, analytics engineer, data | data analyst |
+| Business / Systems Analyst | business analyst, implementation, solutions | business analyst |
+| ERP / E-invoicing | ERP, e-invoicing | e-invoicing |
+
+An accepted family no starter covers gets its own row. Each row offers GCC, India and Remote; a combination that already exists (same region and role family) is shown as created.
+
+Each recipe only picks and orders **ready** items and **approved** wordings:
+
+- interview-ready items (the role preset), in the master text or an approved alternate that speaks the role's language better;
+- ERP / E-invoicing also adds domain-ready items, but only in their design or domain wording (number lock + domain lock); a design-only item with no such wording is left out.
+
+## Best CV for each job (`lib/cv-fit`)
+
+For every in-play discovery (new, shortlisted, saved) and every application, each of the user's variants is scored on what it **renders** against the job's **parsed JD** (`lib/discovery/match/jd.ts`). Deterministic, no AI, no network.
+
+| Part | Points | Rule |
+|---|---|---|
+| Requirement coverage | 0…60 | Every must-have and nice-to-have line, checked with the Match Score's line check: met 1, partial ½, missing 0, weighted must 2 · nice ½. "Not checked" lines are left out. A JD with no checkable line falls back to its skills (required 2 · mentioned 1 · nice ½). |
+| Responsibilities | 0…20 | The Match Score's responsibilities overlap × 2. |
+| Region | 0…15 | Variant region is one of the job's 15; job region not stated 9; Remote variant for a GCC or India job 6; GCC or India variant for a remote job 4; GCC vs India 0. A job in the US, Canada, the UK, Ireland, Europe or Australia reads as Remote. |
+| Quality | 0…5 | The variant's CV Score (general mode, `computeCvScore`) ÷ 20. |
+
+What a variant shows is what counts: skills come from fully presented lines (bullets, the skills line, project stacks), never from design-only bullets, which back a requirement only through content-word overlap (partial). Job keywords the résumé never prints do not count.
+
+**Best and runner-up.** Highest fit; ties go to the higher CV Score, then the variant built for the job's role family (a starter serves its whole family group), then the name. The reasons say what decided it ("Covers 5 of 6 must-haves", "GCC variant for a GCC job", "Only this one shows: …"; the runner-up gets "Misses: …").
+
+**Storage.** `best_cv` (jsonb, ≈ 0.5–1 KB: variant id, version, name, region, fit, must-have counts and reasons for the best and the runner-up) and `best_cv_key` on `discoveries` and `applications`. The key is the rules version (`BEST_CV_VERSION`) + a fingerprint of the master profile + the live variants (id, version, name, region). Applications add a hash of their JD, because a job is editable; on discoveries a pasted or fetched JD clears the key.
+
+**Recompute.** The `discovery-match:user` job recomputes stale in-play discoveries in batches after the Match Score backfill, queued after any résumé, profile or variant save. The shortlist, the Discovery list, a discovery's page and an application fill their own rows on read when stale. Rendering happens only when something is stale, so the steady state costs one query. Retention clears `best_cv` when a dismissed discovery is tombstoned.
+
+**Where.** Shortlist cards, the discovery "Why this score" popover (a bottom sheet on phones), the discovery page, the application page (Résumé variant card) and Prepare step 1: "Best CV: Data Analyst · GCC (fit 78) · runner-up Payments · GCC (71)" with **Use this CV** (on a discovery it starts Prepare with that variant).
+
+**Bulk view.** Settings › Variants shows the open postings (best Match Score first, up to 20) × variants with each fit, which variant is best for how many, and the **top recurring missing must-haves this month** (from the Match Score's missing list, at least 2 postings) as study suggestions with Playground skills.
+
+## Tailor to this JD (`lib/cv-fit/tailor`)
+
+Prepare step 2 and the application page. It starts from the application's variant version (or a master preset when none is chosen).
+
+**Requirement checklist.** Every must-have and nice-to-have of the parsed JD, met / partial / missing against the profile's **ready units** (interview-ready items in any fact-locked wording, domain-ready items in design wording, backed skills), with the unit that backs it and whether this CV already shows it.
+
+**Suggestions,** each accepted or rejected on its own; nothing changes until **Save tailored copy**:
+
+| Kind | When | Safeguard |
+|---|---|---|
+| Include a ready item | A ready unit backs a met or partial requirement but is not on this CV; for a partial, the related ready skill (MySQL ≈ PostgreSQL). | Only presentable units exist; render re-applies readiness. |
+| Lead with the evidence | The evidence bullet is not first in its job or project. | Reorder only. |
+| Reorder skills | Skills the JD asks for are not first. | Reorder only. |
+| Use an approved wording | An alternate of the same highlight uses more of the JD's terms. | Only stored alternates that pass the number lock (and the domain lock for design-only items). |
+| New wording (pending) | Optional AI: bullets backing met requirements, re-worded in the JD's terms. | Signal-gated. Refused unless every number is in the master highlight, a design-only item makes no implementation claim ("built", "implemented", …) and it uses more JD terms. Accepted wordings join the master highlight as approved alternates (source "ai") only on Save, through the profile's own validation. Client copies are re-locked on the server. |
+| Headline / Summary | JD keywords that fully ready evidence supports and the text does not name yet. | The user's own headline and summary plus those keywords only; number lock against the whole profile, domain lock. Never a partial or design-only keyword. |
+| Trim to the page target | The tailored CV runs over the region's page target. | Removes only: the lowest-relevance bullets that back no requirement, then unasked skills; a job keeps one bullet. Target: the variant's length in the GCC and India, one page for Remote under five years. |
+
+**Missing requirements are never added.** They are gaps with three options: **Add to study list** (a learning skill in the profile, never shown on a CV, mapped to the Playground skills it matches), **Mention adjacent experience in the cover letter** (offered only when a ready unit shares the skill family or two content words, with that source shown) or ignore. A property test checks over random profiles and JDs that every missing requirement is still missing on the tailored CV and that every printed line is presentable profile content.
+
+**Before / after.** Must-have coverage on the CV, the CV Score for this JD (deterministic, no AI) before → after, the page estimate and a side-by-side diff (added, removed, moved).
+
+**Save.** A `tailored_cv` document linked to the application plus a `cv_tailorings` row: the JD hash, the base variant and version, every accepted suggestion, the gap decisions and the checklist. Prepare step 2 is marked done with the CV Score delta. The cover-letter prompt (1.2.0) reads the same checklist and the adjacent evidence the user chose, never claims a missing requirement and mentions adjacent work only as adjacent.
+
+## Photo advice (`lib/cv-fit/photo`)
+
+"Photo: Recommended / Optional / Avoid" with the reasons, on Prepare step 1 and the application's variant picker. Explicit posting text decides first: "do not include photos" / "no photo" → Avoid; "attach photo", "passport-size photo(graph)", "recent photograph" → Recommended. Otherwise the factors add up (≥ +2 Recommended, ≤ −2 Avoid, else Optional):
+
+| Factor | Effect |
+|---|---|
+| Country (location and title) | UAE, Saudi Arabia, Qatar, Kuwait, Bahrain, Oman +1 · Germany, Austria, Switzerland 0 · other Europe −1 · remote −1 · India −2 (not needed) · US, UK, Canada, Australia / NZ, Ireland, the Netherlands −4 |
+| Employer type | Watch-list government or semi-government sectors +2 · banks and airlines +1 · startups, fintech, global tech −1. The positive leans count only in the GCC (or when the country is not stated). Names ("… Authority", "Ministry …", "… Bank", "… Airways") count when the employer is not on the watch list. |
+| Application channel | ATS form (Greenhouse, Lever, Workday, …) −1 · email to a recruiter +1 in the GCC |
+| Posting | An equal-opportunity statement −3 |
+
+The variant's region rules still apply: Remote / US / EU and India never show a photo. When the advice is Recommended and a photo is uploaded, **Use the photo version** switches to the best-fitting GCC variant with Photo on, or creates one ("… · Photo") from the best GCC variant. Without a photo it links to Settings › Résumé with guidance: a recent, professional head-and-shoulders shot on a plain background. When the advice is Avoid and the chosen variant shows the photo, it says so.
+
 ## Publish to portfolio (`lib/portfolio`)
 
 `profile.json` is JSON Resume v1.2.1 plus `meta.x-portfolio`, in the format described in the portfolio repo's README ("lee sync").

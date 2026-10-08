@@ -9,6 +9,7 @@ import { queueMatchRescore } from '@/lib/discovery/match/enqueue'
 import { parsePageSize } from '@/lib/discovery/pager'
 import { toMatchDetail } from '@/lib/discovery/match/detail'
 import { ensureBestCv } from '@/lib/cv-fit/service'
+import { toBestCv } from '@/lib/cv-fit/types'
 import type {
   DiscoveryRegionFilter,
   DiscoverySort,
@@ -184,6 +185,7 @@ export async function loadBoard(
           matchScore: d.matchScore,
           fitScore: d.fitScore,
           fitDetail: toMatchDetail(d.fitDetail),
+          bestCv: toBestCv(d.bestCv),
           applyUrl: d.applyUrl,
           savedApplicationId: d.savedApplicationId,
         }),
