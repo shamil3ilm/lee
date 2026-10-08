@@ -42,6 +42,10 @@ import { ApplicationVariantCard } from '@/components/variants/application-varian
 import { variantSummaries } from '@/lib/variants/service'
 import { jobSignals, suggestVariant } from '@/lib/variants/suggest'
 import * as prepsQ from '@/lib/db/queries/applicationPreps'
+import { loadComparisonCard } from '@/lib/compare/card-data'
+import { logger } from '@/lib/logger'
+import { opportunityKey } from '@/lib/compare/inputs'
+import { ComparisonCard } from '@/components/compare/comparison-card'
 import Link from 'next/link'
 import { Wand2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -101,6 +105,11 @@ export default async function ApplicationDetail({
   // not exist the page 404s and the other results are simply dropped.
   const appP = appsQ.getById(userId, id)
   const prepP = prepsQ.get(userId, id)
+  // Compare with my current job (private, DB-only rules; no AI).
+  const compareP = loadComparisonCard(userId, opportunityKey('application', id)).catch((err: unknown) => {
+    logger.warn('compare_card_failed', { err: err instanceof Error ? err.name : 'unknown' })
+    return null
+  })
   const restP = Promise.all([
     stagesQ.list(userId, id),
     actQ.list(userId, id, { limit: 50 }),
@@ -118,7 +127,7 @@ export default async function ApplicationDetail({
   // Keep a rejection of the batch from surfacing as unhandled while we wait
   // on the application row; it is re-thrown by the await below.
   restP.catch(() => undefined)
-  const [app, prep] = await Promise.all([appP, prepP])
+  const [app, prep, compareCard] = await Promise.all([appP, prepP, compareP])
   if (!app) notFound()
 
   // v17 §1 — Scam Shield: re-assessed here when missing, stale (rules
@@ -386,6 +395,15 @@ export default async function ApplicationDetail({
                 </dl>
               </CardContent>
             </Card>
+          ) : null}
+
+          {compareCard ? (
+            <ComparisonCard
+              comparison={compareCard.comparison}
+              hasCurrent={compareCard.hasCurrent}
+              saved={compareCard.saved}
+              citations={compareCard.citations}
+            />
           ) : null}
 
           {/* Outreach and prep are working tools with tabs and long titles:

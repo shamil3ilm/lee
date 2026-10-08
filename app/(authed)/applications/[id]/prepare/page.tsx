@@ -7,6 +7,10 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { PageHeader } from '@/components/page-header'
 import { Badge } from '@/components/ui/badge'
 import { PreparePanel } from '@/components/apply/prepare/prepare-panel'
+import { VsCurrentChip } from '@/components/compare/vs-current-chip'
+import { comparisonChips } from '@/lib/compare/service'
+import { opportunityKey } from '@/lib/compare/inputs'
+import { logger } from '@/lib/logger'
 import { STATUS_BADGE, STATUS_LABELS, APPLICATION_STATUSES, type ApplicationStatus } from '@/lib/ui/status'
 
 export const dynamic = 'force-dynamic'
@@ -18,8 +22,16 @@ function narrow(s: string): ApplicationStatus {
 export default async function PrepareApplicationPage({ params }: { params: Promise<{ id: string }> }) {
   const userId = await requireUserId()
   const { id } = await params
-  const view = await loadPrepareView(userId, id)
+  const key = opportunityKey('application', id)
+  const [view, chips] = await Promise.all([
+    loadPrepareView(userId, id),
+    comparisonChips(userId, [key]).catch((err: unknown) => {
+      logger.warn('compare_chips_failed', { err: err instanceof Error ? err.name : 'unknown' })
+      return new Map<string, string>()
+    }),
+  ])
   if (!view) notFound()
+  const vsCurrent = chips.get(key) ?? null
   const status = narrow(view.status)
   const name = view.companyName ? `${view.companyName} — ${view.jobTitle}` : view.jobTitle
 
@@ -44,6 +56,7 @@ export default async function PrepareApplicationPage({ params }: { params: Promi
         <Link href={`/applications/${view.applicationId}`} className="font-medium text-primary underline-offset-2 hover:underline">
           Application details
         </Link>
+        {vsCurrent ? <VsCurrentChip text={vsCurrent} href={`/applications/${view.applicationId}`} /> : null}
       </div>
       <PreparePanel view={view} />
     </div>

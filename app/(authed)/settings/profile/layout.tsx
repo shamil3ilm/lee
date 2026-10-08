@@ -4,6 +4,7 @@ const PROFILE_TABS: RouteTab[] = [
   { href: '/settings/profile', label: 'Preferences' },
   { href: '/settings/profile/resume', label: 'Résumé' },
   { href: '/settings/profile/study', label: 'Study list' },
+  { href: '/settings/profile/current-job', label: 'Current job' },
   { href: '/settings/profile/variants', label: 'Variants' },
   { href: '/settings/profile/publish', label: 'Publish' },
 ]

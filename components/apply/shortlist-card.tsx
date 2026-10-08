@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { focusRing } from '@/components/ui/focus-ring'
 import { ReasonChips } from '@/components/apply/reason-chips'
+import { VsCurrentChip } from '@/components/compare/vs-current-chip'
 import { laterAction, notForMeAction, prepareAction } from '@/app/(authed)/shortlist/actions'
 import { DISMISS_REASONS, DISMISS_REASON_LABELS } from '@/lib/apply/feedback'
 import type { RankReason } from '@/lib/apply/rank'
@@ -30,6 +31,8 @@ export interface ShortlistCardItem {
   applyUrl: string | null
   reasons: RankReason[]
   variantName: string | null
+  /** Compact comparison with the current job, when one is saved. */
+  vsCurrent?: string | null
 }
 
 interface ShortlistCardProps {
@@ -101,6 +104,8 @@ export function ShortlistCard({ item, selected, onSelectedChange, busy = false }
       </div>
 
       <ReasonChips reasons={item.reasons} className="mt-3" />
+
+      {item.vsCurrent ? <VsCurrentChip text={item.vsCurrent} href={`/discoveries/${item.discoveryId}`} className="mt-2" /> : null}
 
       <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
         <FileText className="size-3.5 shrink-0" aria-hidden="true" />

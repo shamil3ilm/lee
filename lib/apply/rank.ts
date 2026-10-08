@@ -14,12 +14,14 @@ import type { FeedbackAdjust } from './feedback'
  *   freshness   +10 ≤ 1 day, +7 ≤ 3, +4 ≤ 7, +1 ≤ 14 days old
  *   Scam Shield −5 at "caution"; quarantined postings are never eligible
  *   feedback    −15 a company you passed on, −8 a role / region passed on twice
+ *   vs current  OPTIONAL (Settings › Profile › Current job, off by default):
+ *               (weighted total − current job's total) / 5, −8…+8
  *
  * Eligibility (before ranking): passed the relevance gate (or "Show
  * anyway"), not in Scam Shield quarantine, still new or shortlisted.
  */
 
-export type ReasonKind = 'match' | 'fit' | 'reputation' | 'pay' | 'rule' | 'fresh' | 'risk' | 'feedback'
+export type ReasonKind = 'match' | 'fit' | 'reputation' | 'pay' | 'rule' | 'fresh' | 'risk' | 'feedback' | 'comparison'
 
 export interface RankReason {
   kind: ReasonKind
@@ -48,6 +50,11 @@ export interface RankCandidate {
   /** Confirmed reputation criteria (null = unknown); null when no record. */
   reputation: { environment: number | null; stability: number | null } | null
   feedback: readonly FeedbackAdjust[]
+  /**
+   * Weighted comparison total minus the current job's (lib/compare), only
+   * when the user opted in; undefined/null leaves the rank unchanged.
+   */
+  comparisonDelta?: number | null
 }
 
 export interface RankContext {
@@ -76,6 +83,7 @@ export const RANK_WEIGHTS = {
   boost: 3,
   boostMax: 6,
   caution: -5,
+  comparisonMax: 8,
 } as const
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -144,6 +152,14 @@ function ruleReasons(notes: RankNotes): RankReason[] {
   return out
 }
 
+function comparisonReason(c: RankCandidate): RankReason[] {
+  const d = c.comparisonDelta
+  if (d === undefined || d === null) return []
+  const max = RANK_WEIGHTS.comparisonMax
+  const points = Math.max(-max, Math.min(max, Math.round(d / 5)))
+  return [{ kind: 'comparison', label: `vs current job: ${d >= 0 ? '+' : ''}${d} weighted`, points }]
+}
+
 /** Freshness from the posting date (else when lee first saw it). */
 export function freshnessReason(postedAt: Date | null, createdAt: Date, now: Date): RankReason | null {
   const posted = postedAt && postedAt.getTime() <= now.getTime() ? postedAt : null
@@ -166,6 +182,7 @@ export function rankCandidate(c: RankCandidate, ctx: RankContext): RankedCandida
     ...(fresh ? [fresh] : []),
     ...(c.riskLevel === 'caution' ? [{ kind: 'risk' as const, label: 'Scam Shield: caution', points: RANK_WEIGHTS.caution }] : []),
     ...c.feedback.map((f) => ({ kind: 'feedback' as const, label: f.label, points: f.points })),
+    ...comparisonReason(c),
   ]
   const total = reasons.reduce((s, r) => s + r.points, 0)
   return { id: c.id, score: Math.max(0, Math.min(100, Math.round(total))), reasons }
