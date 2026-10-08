@@ -7,7 +7,9 @@
  *   2. a Playground route's own initial JavaScript (beyond the app shell
  *      every signed-in page shares) is over 200 KB gzipped;
  *   3. any reference solution or approach text appears anywhere in the
- *      client static output (they are server-only until unlocked).
+ *      client static output (they are server-only until unlocked);
+ *   4. fflate (the LaTeX project .zip import/export) is in any route's
+ *      initial JavaScript: it must load only when a zip is opened or built.
  */
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import path from 'node:path'
@@ -17,6 +19,8 @@ import { loadProblemCatalog } from '@/lib/academy/problems/catalog'
 
 const NEXT = path.resolve('.next')
 const BUDGET_KB = 200
+/** A string only fflate's unzip code contains. */
+const FFLATE_MARKER = 'invalid zip data'
 const RUNNER_MARKERS = [
   'Playground sandbox (no network)',
   'cdn.jsdelivr.net/pyodide',
@@ -118,6 +122,14 @@ function main(): void {
     console.log(`${route.padEnd(52)} ${kb.toFixed(1).padStart(7)} KB gzipped route JS (${gzKb(files).toFixed(1)} KB with the shell)`)
     if (kb > BUDGET_KB) failures.push(`${route}: route JS ${kb.toFixed(1)} KB gzipped > ${BUDGET_KB} KB budget`)
   }
+
+  for (const [route, files] of routes) {
+    const hit = files.find((f) => chunk(f).includes(FFLATE_MARKER))
+    if (hit) failures.push(`${route}: initial chunk ${hit} contains fflate (the zip import must be lazy)`)
+  }
+  const zipChunks = walk(path.join(NEXT, 'static'), (f) => f.endsWith('.js')).filter((f) => readFileSync(f, 'utf8').includes(FFLATE_MARKER))
+  console.log(`fflate chunks (lazy): ${zipChunks.length}`)
+  if (zipChunks.length === 0) failures.push('No fflate chunk found: the LaTeX zip import was not built.')
 
   const runnerChunks = walk(path.join(NEXT, 'static'), (f) => f.endsWith('.js')).filter((f) => {
     const src = readFileSync(f, 'utf8')

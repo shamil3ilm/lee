@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { strToU8, unzipSync, zipSync } from 'fflate'
 
@@ -54,7 +54,7 @@ test('LaTeX project zip: review, import, compile and export round trip', async (
   for (const name of ['main.tex', 'figures/', 'logo.png', 'sections/', 'intro.tex', 'refs.bib']) {
     await expect(tree.getByText(name, { exact: true })).toBeVisible()
   }
-  await expect(dialog).toContainText('compiles as main.tex')
+  await expect(dialog).toContainText('Compiles as main.tex')
   await expect(dialog.getByLabel('Compiler')).toHaveValue('pdflatex')
   await expect(dialog).toContainText('\\includegraphics{missing-chart} in main.tex, line 7: no such file in the project')
   await expect(dialog).toContainText('1 unsupported file will not be imported.')
@@ -106,4 +106,86 @@ test('LaTeX project zip: a zip-slip archive is refused before anything is stored
   const dialog = page.getByRole('dialog', { name: 'Import LaTeX project' })
   await expect(dialog.getByRole('alert')).toContainText('unsafe path')
   await expect(dialog.getByRole('button', { name: /^Import/ })).toBeDisabled()
+})
+
+/** Import a zip from the Documents page; returns the new document's id. */
+async function importAsNewDocument(page: Page, zip: Buffer, name: string): Promise<string> {
+  await page.goto('/documents')
+  await page.getByRole('button', { name: 'New', exact: true }).click()
+  const chooser = page.waitForEvent('filechooser')
+  await page.getByRole('menuitem', { name: /Import project \(\.zip\)/ }).click()
+  await (await chooser).setFiles({ name, mimeType: 'application/zip', buffer: zip })
+  await page.getByTestId('zip-import-confirm').click()
+  await page.waitForURL(/\/documents\/[0-9a-f-]{36}\/edit/)
+  await expect(page.locator('.cm-content')).toBeVisible()
+  return /documents\/([0-9a-f-]{36})\/edit/.exec(page.url())![1]!
+}
+
+/** Drop files on an element, as a browser drag-and-drop would. */
+async function dropFiles(page: Page, selector: string, files: { name: string; bytes: number[] }[]): Promise<void> {
+  await page.locator(selector).evaluate((el, list) => {
+    const data = new DataTransfer()
+    for (const f of list) data.items.add(new File([new Uint8Array(f.bytes)], f.name, { type: 'application/zip' }))
+    el.dispatchEvent(new DragEvent('dragover', { dataTransfer: data, bubbles: true, cancelable: true }))
+    el.dispatchEvent(new DragEvent('drop', { dataTransfer: data, bubbles: true, cancelable: true }))
+  }, files)
+}
+
+test('LaTeX project zip: add files by dropping on the file tree, then replace the project', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 900 })
+  const docId = await importAsNewDocument(page, Buffer.from(zipSync(FILES)), 'base.zip')
+  const files = page.getByRole('list', { name: 'Project files' })
+  await expect(files.getByRole('button', { name: 'sections/intro.tex', exact: true })).toBeVisible()
+
+  // Drop a zip on the file tree: "Add files" skips names already here.
+  const extra = zipSync({ 'appendix/a.tex': strToU8('Appendix A.\n'), 'figures/logo.png': PNG })
+  await dropFiles(page, 'section[aria-label="Files"]', [{ name: 'extra.zip', bytes: Array.from(extra) }])
+  const dialog = page.getByRole('dialog', { name: 'Import LaTeX project' })
+  await dialog.getByLabel(/Add files/).check()
+  await dialog.getByText(/^Skipped \(\d+\)$/).click()
+  await expect(dialog).toContainText('Already in this document')
+  await dialog.getByRole('button', { name: 'Add 1 file' }).click()
+  await expect(files.getByRole('button', { name: 'appendix/a.tex', exact: true })).toBeVisible()
+  await expect(page.locator('.cm-content')).toContainText('\\input{sections/intro}')
+
+  // More › Import project (.zip) › Replace project: files and main.tex replaced.
+  const replacement = zipSync({
+    'cv.tex': strToU8(String.raw`\documentclass{article}
+\usepackage{fontspec}
+\begin{document}
+Replaced \input{parts/one}
+\end{document}
+`),
+    'parts/one.tex': strToU8('One.\n'),
+  })
+  await page.getByRole('button', { name: 'More document actions' }).click()
+  const chooser = page.waitForEvent('filechooser')
+  await page.getByRole('menuitem', { name: /Import project \(\.zip\)/ }).click()
+  await (await chooser).setFiles({ name: 'replacement.zip', mimeType: 'application/zip', buffer: Buffer.from(replacement) })
+  await expect(dialog.getByLabel('Compiler')).toHaveValue('xelatex')
+  await expect(dialog).toContainText('fontspec')
+  const compile = page.waitForRequest((r) => r.url().endsWith('/api/latex/compile'))
+  await dialog.getByRole('button', { name: 'Replace with 2 files' }).click()
+  await expect(page.locator('.cm-content')).toContainText('Replaced')
+  await expect(files.getByRole('button', { name: 'parts/one.tex', exact: true })).toBeVisible()
+  await expect(files.getByRole('button', { name: 'appendix/a.tex', exact: true })).toBeHidden()
+  expect(((await compile).postDataJSON() as { settings: { engine: string } }).settings.engine).toBe('xelatex')
+
+  expect((await page.request.delete(`/api/documents/${docId}`)).ok()).toBe(true)
+})
+
+test('LaTeX editor on a phone: Recompile and the logs chip are in the top bar', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 900 })
+  const docId = await importAsNewDocument(page, Buffer.from(zipSync(FILES)), 'phone.zip')
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto(`/documents/${docId}/edit`)
+  await expect(page.locator('.cm-content')).toBeVisible()
+  const bar = page.getByRole('button', { name: 'Recompile' })
+  await expect(bar).toBeVisible()
+  await expect(page.getByRole('button', { name: /^Logs and errors/ })).toBeVisible()
+  // Compiling from the Editor view shows the PDF when it succeeds.
+  await bar.click()
+  await expect(page.getByTestId('pdf-viewer').getByRole('img', { name: 'Page 1' })).toBeVisible({ timeout: 30_000 })
+  await expect(page.locator('.cm-content')).toBeHidden()
+  expect((await page.request.delete(`/api/documents/${docId}`)).ok()).toBe(true)
 })

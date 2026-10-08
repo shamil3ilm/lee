@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { NativeSelect } from '@/components/ui/native-select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { AssetMetadata } from '@/lib/db/queries/documentAssets'
-import { COMPILE_ENGINES, ENGINE_LABELS, SERVICE_LABELS, type CompileEngine, type CompileService } from '@/lib/latex/compile-settings'
+import { COMPILE_ENGINES, ENGINE_LABELS, type CompileEngine, type CompileService } from '@/lib/latex/compile-settings'
 import { MAIN_FILE } from '@/lib/latex/file-kinds'
 import { formatBytes } from '@/lib/latex/project/format'
 import { MAX_ASSET_BYTES, MAX_ASSETS_PER_DOCUMENT, SERVER_UPLOAD_MAX_BYTES } from '@/lib/latex/project/limits'
@@ -57,9 +57,9 @@ type Phase =
   | { kind: 'importing'; scan: ZipScan; step: string; done: number; total: number }
 
 const REASON_TEXT: Record<string, string> = {
-  'root-setting': 'from the project’s root setting',
-  'main.tex': 'detected',
-  'only-candidate': 'the only file with \\documentclass',
+  'root-setting': 'Set by the project’s root setting',
+  'main.tex': 'Detected',
+  'only-candidate': 'The only file with \\documentclass',
 }
 
 function reportItems(plan: ImportPlan, failures: readonly StoreFailure[]): ImportReportItem[] {
@@ -313,7 +313,7 @@ function ReviewBody(p: ReviewBodyProps) {
               {plan.detection.reason === 'choose'
                 ? `${plan.detection.candidates.length} files have \\documentclass; pick the one to compile.`
                 : plan.main
-                  ? `${REASON_TEXT[plan.detection.reason] ?? 'chosen'}${plan.detection.rootSource ? ` (${plan.detection.rootSource})` : ''}; compiles as ${MAIN_FILE}.`
+                  ? `${REASON_TEXT[plan.detection.reason] ?? 'Chosen'}${plan.detection.rootSource ? ` (${plan.detection.rootSource})` : ''}. Compiles as ${MAIN_FILE}.`
                   : ''}
             </span>
           </label>
@@ -331,7 +331,6 @@ function ReviewBody(p: ReviewBodyProps) {
           {plan.bib.detail ? (
             <p className="text-xs text-muted-foreground sm:col-span-2">
               Bibliography: {plan.bib.detail}
-              {plan.settings?.service ? ` (${SERVICE_LABELS[plan.settings.service]})` : ''}
             </p>
           ) : null}
         </div>
