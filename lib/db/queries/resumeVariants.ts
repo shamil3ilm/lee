@@ -189,6 +189,7 @@ export interface CurrentRecipeRow {
   id: string
   name: string
   region: string
+  roleFamily: string | null
   version: number
   recipe: unknown
 }
@@ -200,6 +201,7 @@ export async function listCurrentRecipes(userId: string): Promise<CurrentRecipeR
       id: resumeVariants.id,
       name: resumeVariants.name,
       region: resumeVariants.region,
+      roleFamily: resumeVariants.roleFamily,
       version: resumeVariants.currentVersion,
       recipe: resumeVariantVersions.recipe,
     })

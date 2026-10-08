@@ -7,6 +7,7 @@ import { getResumeProfile } from '@/lib/resume/service'
 import type { ResumeProfile } from '@/lib/resume/types'
 import { buildRecipe, defaultVariantName } from './presets'
 import { renderVariant, type RenderedResume, type RenderOptions } from './render'
+import { starterOptions, starterRecipe } from './starter'
 import type { VariantSummary } from './suggest'
 import { parseRecipe, recipeSchema, type Recipe, type Region } from './types'
 
@@ -112,4 +113,34 @@ export async function chooseVariantForApplication(
   const choice = { variantId: variant.id, version: variant.currentVersion }
   if (!(await variantsQ.setApplicationVariant(userId, applicationId, choice))) throw new VariantError('Application not found.')
   return choice
+}
+
+/**
+ * Create the starter variants the user ticked (role × region), each from
+ * the starter recipe (ready items and approved wordings only). A role or
+ * region not offered for the accepted families, and a combination that
+ * already exists, is skipped. Returns the created rows.
+ */
+export async function createStarterVariants(
+  userId: string,
+  picks: ReadonlyArray<{ roleId: string; region: Region }>,
+): Promise<ResumeVariantRow[]> {
+  const [{ profile }, families, existing] = await Promise.all([
+    getResumeProfile(userId),
+    acceptedFamilies(userId),
+    variantsQ.list(userId),
+  ])
+  const offered = starterOptions(families.map((f) => f.id), existing)
+  const created: ResumeVariantRow[] = []
+  const made = new Set<string>()
+  for (const pick of picks.slice(0, 30)) {
+    const group = offered.find((g) => g.role.id === pick.roleId)
+    const option = group?.options.find((o) => o.region === pick.region)
+    const key = `${pick.roleId}:${pick.region}`
+    if (!group || !option || option.exists || made.has(key)) continue
+    made.add(key)
+    const recipe = starterRecipe(profile, group.role, pick.region)
+    created.push(await variantsQ.create(userId, { name: option.name, region: pick.region, roleFamily: group.role.recipeFamily, recipe }))
+  }
+  return created
 }

@@ -129,8 +129,10 @@ describe('the fact lock on every suggested wording', () => {
     expect(wordingIds.get('h-hooks')).toBe('w-new')
     const h = profile.work[0]!.highlights.find((x) => x.id === 'h-hooks')!
     expect(h.alternates.find((a) => a.id === 'w-new')).toMatchObject({ source: 'ai' })
-    const preview = previewTailoring(input(), withAi, [ai[0]!.id], { now: NOW, makeId: () => 'w-new' })
-    expect(preview.rendered.sections.find((s) => s.key === 'work')!.entries[0]!.bullets.map((b) => b.text)).toContain(ai[0]!.text)
+    const accepted = ai[0]!
+    if (accepted.kind !== 'ai_wording') throw new Error('expected an AI wording')
+    const preview = previewTailoring(input(), withAi, [accepted.id], { now: NOW, makeId: () => 'w-new' })
+    expect(preview.rendered.sections.find((s) => s.key === 'work')!.entries[0]!.bullets.map((b) => b.text)).toContain(accepted.text)
   })
 })
 

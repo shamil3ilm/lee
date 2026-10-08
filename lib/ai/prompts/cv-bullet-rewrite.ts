@@ -27,10 +27,7 @@ export function buildCvBulletRewritePrompt(input: {
   terms?: readonly string[]
 }): string {
   const terms = (input.terms ?? []).slice(0, 30)
-  const jobTerms = terms.length > 0 ? `
-
-${JOB_TERMS_RULES}
-${JSON.stringify(terms)}` : ''
+  const jobTerms = terms.length > 0 ? `\n\n${JOB_TERMS_RULES}\n${JSON.stringify(terms)}` : ''
   return `${CV_BULLET_REWRITE_SYSTEM}${jobTerms}
 
 --- BULLETS ---

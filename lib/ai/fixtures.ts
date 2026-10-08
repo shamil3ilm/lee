@@ -1,5 +1,6 @@
 import type { ResumeVariantInput, ResumeVariantResult } from './prompts/resume-variant'
 import type { TailorCVInput } from './prompts/tailor-cv'
+import type { CoverLetterTailoring } from './prompts/cover-letter'
 import type {
   AIProvider,
   BulletRewriteInput,
@@ -53,6 +54,7 @@ export class FixtureAIProvider implements AIProvider {
       draftCoverLetter?: (input: {
         master: MasterCV
         application: ApplicationWithJob
+        tailoring?: CoverLetterTailoring
       }) => CoverLetter
       distillGithubProjects?: (input: { repos: GitHubRepo[] }) => CvProjects
       draftOutreach?: (input: {
@@ -182,6 +184,7 @@ export class FixtureAIProvider implements AIProvider {
   async draftCoverLetter(input: {
     master: MasterCV
     application: ApplicationWithJob
+    tailoring?: CoverLetterTailoring
   }): Promise<CoverLetter> {
     if (this.fixtures.draftCoverLetter) return this.fixtures.draftCoverLetter(input)
     return pseudoCoverLetter(input)

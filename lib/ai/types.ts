@@ -22,6 +22,7 @@ import type { CompareNarrativeInput, CompareNarrativeResult } from './prompts/co
 import type { ReputationSummaryInput, ReputationSummaryResult } from './prompts/reputation-summary'
 import type { RadarBriefInput, RadarBriefResult } from './prompts/radar-brief'
 import type { ScoreJobContext } from './prompts/score-job'
+import type { CoverLetterTailoring } from './prompts/cover-letter'
 import type { SharedLink } from './prompts/shared-links'
 import type { SuggestRolesInput, SuggestRolesResult } from './prompts/suggest-roles'
 import type { ExtractOpeningsInput, ExtractOpeningsResult } from './prompts/extract-openings'
@@ -154,6 +155,9 @@ export interface AIProvider {
     master: MasterCV
     application: ApplicationWithJob
     links?: SharedLink[]
+    // The requirement checklist and adjacent evidence a saved "Tailor to
+    // this JD" recorded (lib/cv-fit/tailor); the prompt never claims a gap.
+    tailoring?: CoverLetterTailoring
   }): Promise<CoverLetter>
   distillGithubProjects(input: { repos: GitHubRepo[] }): Promise<CvProjects>
   // v4 additions — outreach + interview prep.

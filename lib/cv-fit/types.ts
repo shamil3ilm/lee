@@ -30,6 +30,8 @@ export interface VariantFit {
   covered: string[]
   /** CV Score (deterministic, general) of the variant: the tiebreaker. */
   quality: number
+  /** Built for one of the job's role families: the second tiebreaker. */
+  familyHit: boolean
 }
 
 /** What is stored per row: compact (≈ 0.5–1 KB). */

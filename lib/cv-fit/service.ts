@@ -27,7 +27,7 @@ export async function loadVariantsForFit(userId: string): Promise<VariantForFit[
       logger.warn('best_cv_recipe_unreadable', { userId, variantId: r.id })
       return []
     }
-    return [{ id: r.id, name: r.name, region: r.region, version: r.version, recipe: recipe.data }]
+    return [{ id: r.id, name: r.name, region: r.region, roleFamily: r.roleFamily, version: r.version, recipe: recipe.data }]
   })
 }
 

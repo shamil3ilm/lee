@@ -13,7 +13,7 @@ describe('links in drafts', () => {
     const p = withSharedLinks('PROMPT', [{ label: 'Case study: payment approvals', url: 'https://example.com/cs' }])
     expect(p).toContain('--- LINKS THE CANDIDATE CHOSE TO SHARE ---\n- Case study: payment approvals: https://example.com/cs')
     expect(p).toContain('never invent other links')
-    expect(COVER_LETTER_PROMPT_VERSION).toBe('1.1.0')
+    expect(COVER_LETTER_PROMPT_VERSION).toBe('1.2.0')
   })
 
   it('accepts only well-formed link ids from a request body', () => {

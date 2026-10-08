@@ -8,6 +8,7 @@ import { AISkippedError, checkCoverLetterSignal } from '@/lib/ai/signal'
 import { linkLatestCallToDocument, writeSkipLog } from '@/lib/ai/log'
 import type { AIProvider } from '@/lib/ai/types'
 import type { SharedLink } from '@/lib/ai/prompts/shared-links'
+import { coverTailoringFor } from '@/lib/cv-fit/tailor/cover'
 import type { Document } from '@/lib/db/queries/documents'
 
 export async function generateCoverLetter(input: {
@@ -32,7 +33,10 @@ export async function generateCoverLetter(input: {
     throw new AISkippedError(signal.code, signal.message, signal.fixHint)
   }
 
-  const letter = await input.ai.draftCoverLetter({ master, application, links: input.links })
+  // The requirement checklist and adjacent evidence a saved "Tailor to this
+  // JD" recorded: the letter cites what the tailored CV shows, never a gap.
+  const tailoring = await coverTailoringFor(input.userId, application.id)
+  const letter = await input.ai.draftCoverLetter({ master, application, links: input.links, ...(tailoring ? { tailoring } : {}) })
   const validated = coverLetterSchema.parse(letter)
 
   const version = await documentsQ.nextVersion(input.userId, input.applicationId, 'cover_letter')

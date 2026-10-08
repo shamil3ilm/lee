@@ -32,11 +32,11 @@ const GCC_JD: MatchJob = {
 function variant(region: Region, family: string | null, id = `v-${region}-${family ?? 'none'}`, quality = 70): FitVariantInput {
   const profile = syntheticProfile()
   const rendered = renderVariant(profile, buildRecipe(profile, { region, roleFamily: family }))
-  return { id, version: 1, name: `${region} · ${family ?? 'General'}`, region, evidence: renderedEvidence(rendered), quality }
+  return { id, version: 1, name: `${region} · ${family ?? 'General'}`, region, roleFamily: family, evidence: renderedEvidence(rendered), quality }
 }
 
 function job(m: MatchJob) {
-  return { job: m, jd: parseJd(m), regions: jobRegions(m) }
+  return { job: m, jd: parseJd(m), regions: jobRegions(m), families: ['payments'] }
 }
 
 describe('renderedEvidence', () => {
@@ -100,6 +100,8 @@ describe('regionFit', () => {
 describe('scoreVariant', () => {
   it('scores coverage, responsibilities, region and quality into 0–100', () => {
     const f = scoreVariant(variant('gcc', 'payments'), job(GCC_JD))
+    expect(f.familyHit).toBe(true)
+    expect(scoreVariant(variant('gcc', 'data_analyst'), job(GCC_JD)).familyHit).toBe(false)
     expect(f.fit).toBeGreaterThan(0)
     expect(f.fit).toBeLessThanOrEqual(100)
     expect(f.must.total).toBe(4)
@@ -140,6 +142,7 @@ function fit(over: Partial<VariantFit>): VariantFit {
     reasons: ['Covers 1 of 1 must-haves'],
     covered: [],
     quality: 60,
+    familyHit: false,
     ...over,
   }
 }
@@ -168,6 +171,10 @@ describe('pickBest', () => {
     expect(same[0]!.variantId).toBe('y')
     const r = pickBest([fit({ variantId: 'x', quality: 50 }), fit({ variantId: 'y', quality: 80 })])!
     expect(r.best.reasons.at(-1)).toBe('Tie on fit; higher CV Score (80 vs 50)')
+    const family = pickBest([fit({ variantId: 'x', name: 'A' }), fit({ variantId: 'y', name: 'Z', familyHit: true })])!
+    expect(family.best.variantId).toBe('y')
+    expect(family.best.reasons.at(-1)).toBe('Tie on fit; built for this kind of role')
+    expect(pickBest([fit({ variantId: 'x', name: 'A' }), fit({ variantId: 'y', name: 'Z' })])!.best.reasons.at(-1)).toBe('Tie on fit and CV Score')
   })
 
   it('round-trips through the stored reader and rejects junk', () => {

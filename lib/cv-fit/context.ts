@@ -1,4 +1,6 @@
 import { parseJd } from '@/lib/discovery/match/jd'
+import { jdFamilies } from '@/lib/discovery/match/role'
+import { classifyRole } from '@/lib/discovery/relevance/roles'
 import type { MatchJob } from '@/lib/discovery/match/types'
 import type { ResumeProfile } from '@/lib/resume/types'
 import { renderVariant } from '@/lib/variants/render'
@@ -22,6 +24,7 @@ export interface VariantForFit {
   id: string
   name: string
   region: Region
+  roleFamily: string | null
   version: number
   recipe: Recipe
 }
@@ -41,6 +44,7 @@ export function fitContext(profile: ResumeProfile, variants: readonly VariantFor
         version: v.version,
         name: v.name,
         region: v.region,
+        roleFamily: v.roleFamily,
         evidence: renderedEvidence(rendered),
         quality: variantQuality(rendered, v.region, now),
       }
@@ -51,7 +55,9 @@ export function fitContext(profile: ResumeProfile, variants: readonly VariantFor
 /** Every variant scored for one job, best first. */
 export function fitsFor(ctx: FitContext, job: MatchJob): VariantFit[] {
   if (ctx.variants.length === 0) return []
-  const input = { job, jd: parseJd(job), regions: jobRegions(job) }
+  const jd = parseJd(job)
+  const families = [...new Set([...classifyRole({ title: job.title }).families, ...jdFamilies(job, jd)])]
+  const input = { job, jd, regions: jobRegions(job), families }
   return rankFits(ctx.variants.map((v) => scoreVariant(v, input)))
 }
 

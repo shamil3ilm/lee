@@ -3,6 +3,7 @@ import type { JdLine, ParsedJd } from '@/lib/discovery/match/jd'
 import { extractRequirements, REQ_WEIGHTS } from '@/lib/discovery/match/requirements'
 import { creditFor } from '@/lib/discovery/match/skills'
 import type { MatchJob, RequirementCheck } from '@/lib/discovery/match/types'
+import { familiesServed } from '@/lib/variants/starter'
 import type { Region } from '@/lib/variants/types'
 import type { VariantEvidence } from './evidence'
 import { regionFit } from './region'
@@ -23,8 +24,9 @@ import { BEST_CV_VERSION } from './version'
  *   region           0…15  the variant's region vs the job's (./region.ts)
  *   quality          0…5   the variant's CV Score (general, deterministic) / 20
  *
- * Best and runner-up: highest fit; ties go to the higher CV Score, then the
- * name. Reasons say what decided it.
+ * Best and runner-up: highest fit; ties go to the higher CV Score, then to
+ * the variant built for the job's role family, then the name. Reasons say
+ * what decided it.
  */
 
 export const FIT_WEIGHTS = { coverage: 60, responsibilities: 20, region: 15, quality: 5 } as const
@@ -37,6 +39,7 @@ export interface FitVariantInput {
   version: number
   name: string
   region: Region
+  roleFamily: string | null
   evidence: VariantEvidence
   /** The variant's CV Score total (0–100). */
   quality: number
@@ -46,6 +49,8 @@ export interface FitJobInput {
   job: MatchJob
   jd: ParsedJd
   regions: readonly Region[]
+  /** The job's role families (title and JD). */
+  families: readonly string[]
 }
 
 export interface CheckedLine {
@@ -127,12 +132,21 @@ export function scoreVariant(v: FitVariantInput, input: FitJobInput): VariantFit
     reasons,
     covered: cov.covered,
     quality,
+    familyHit: familiesServed(v.roleFamily).some((f) => input.families.includes(f)),
   }
 }
 
-/** Highest fit first; ties: higher CV Score, then name. */
+/** Highest fit first; ties: higher CV Score, then the job's role family, then name. */
 export function rankFits(fits: readonly VariantFit[]): VariantFit[] {
-  return [...fits].sort((a, b) => b.fit - a.fit || b.quality - a.quality || a.name.localeCompare(b.name))
+  return [...fits].sort(
+    (a, b) => b.fit - a.fit || b.quality - a.quality || Number(b.familyHit) - Number(a.familyHit) || a.name.localeCompare(b.name),
+  )
+}
+
+function tieReason(best: VariantFit, second: VariantFit): string {
+  if (best.quality !== second.quality) return `Tie on fit; higher CV Score (${Math.round(best.quality)} vs ${Math.round(second.quality)})`
+  if (best.familyHit && !second.familyHit) return 'Tie on fit; built for this kind of role'
+  return 'Tie on fit and CV Score'
 }
 
 function short(text: string, max = 48): string {
@@ -156,7 +170,7 @@ export function pickBest(fits: readonly VariantFit[]): BestCv | null {
   if (second) {
     const lead = only(best, second)
     if (lead.length > 0) bestReasons.push(`Only this one shows: ${lead.join('; ')}`)
-    else if (best.fit === second.fit) bestReasons.push(`Tie on fit; higher CV Score (${Math.round(best.quality)} vs ${Math.round(second.quality)})`)
+    else if (best.fit === second.fit) bestReasons.push(tieReason(best, second))
     secondReasons = [...second.reasons]
     if (lead.length > 0) secondReasons.push(`Misses: ${lead.join('; ')}`)
   }
