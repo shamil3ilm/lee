@@ -23,6 +23,7 @@ export const BROWSE_GROUPS: ReadonlyArray<{ id: string; label: string }> = [
   { id: 'om', label: 'Oman' },
   { id: 'kerala', label: 'Kerala (parks and KSUM)' },
   { id: 'in', label: 'India' },
+  { id: 'events', label: 'Events, exhibitors and tenders' },
 ]
 
 export const BROWSE_DIRECTORIES: readonly BrowseDirectory[] = [
@@ -55,4 +56,19 @@ export const BROWSE_DIRECTORIES: readonly BrowseDirectory[] = [
   { id: 'nasscom', name: 'NASSCOM members', url: 'https://nasscom.in/members-listing', region: 'in', why: 'lee also reads it (members in your target cities, a few pages a week).' },
   { id: 'startup-india', name: 'Startup India search', url: 'https://www.startupindia.gov.in/content/sih/en/search.html', region: 'in', why: 'Its API host disallows all robots.' },
   { id: 'yc', name: 'Y Combinator companies', url: 'https://www.ycombinator.com/companies', region: 'in', why: 'lee reads the open yc-oss copy, never ycombinator.com.' },
+  // Official registers (audited 2026-10-09; docs/job-sources.md "Company sources for low-visibility companies")
+  { id: 'qfc', name: 'QFC public register (Doha)', url: 'https://www.qfc.qa/en/public-register', region: 'qa', why: 'A search form (ASP.NET postbacks), not a list lee can page politely.' },
+  { id: 'srtip', name: 'Sharjah Research Technology and Innovation Park', url: 'https://srtip.ae/', region: 'ae', why: 'Robots allow, but there is no public company directory.' },
+  { id: 'misa', name: 'Saudi Ministry of Investment (MISA)', url: 'https://misa.gov.sa/', region: 'sa', why: 'No public licensee list; robots ask for 30 s between requests.' },
+  { id: 'moci', name: 'Kuwait Ministry of Commerce and Industry', url: 'https://www.moci.gov.kw/', region: 'kw', why: 'Company lookups are e-services, not a public list.' },
+  { id: 'kdipa', name: 'Kuwait Direct Investment Promotion Authority (KDIPA)', url: 'https://kdipa.gov.kw/', region: 'kw', why: 'Licensed investors are announced in news posts, not a list.' },
+  { id: 'sijilat', name: 'Sijilat commercial registry (Bahrain)', url: 'https://www.sijilat.bh/', region: 'bh', why: 'A per-company search app; no bulk list.' },
+  { id: 'invest-easy', name: 'Invest Easy (Oman business registry)', url: 'https://www.investeasy.gov.om/', region: 'om', why: 'Did not answer automated clients (checked 2026-10-09).' },
+  { id: 'mca-ogd', name: 'India company master data (data.gov.in)', url: 'https://www.data.gov.in/', region: 'in', why: 'lee reads it weekly only with your free data.gov.in key (Settings › AI).' },
+  // Events, exhibitors and public tenders
+  { id: 'gitex', name: 'GITEX Global exhibitors (Dubai)', url: 'https://www.gitex.com/', region: 'events', why: 'Exhibitor lists change every edition and sit in an event app.' },
+  { id: 'leap', name: 'LEAP exhibitors (Riyadh)', url: 'https://onegiantleap.com/', region: 'events', why: 'The exhibitor pages are behind a bot wall (Cloudflare).' },
+  { id: 'web-summit-qatar', name: 'Web Summit Qatar startups and partners', url: 'https://qatar.websummit.com/', region: 'events', why: 'Its API path is disallowed in robots.txt.' },
+  { id: 'huddle-global', name: 'Huddle Global (Kerala Startup Mission)', url: 'https://huddleglobal.co.in/', region: 'events', why: 'No exhibitor list on the site.' },
+  { id: 'etimad', name: 'Etimad public tenders (Saudi Arabia)', url: 'https://www.etimad.sa/', region: 'events', why: 'Tender awards sit behind a sign-in portal.' },
 ]

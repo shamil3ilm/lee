@@ -18,6 +18,10 @@ const INTERVALS: Readonly<Record<string, number>> = {
   ...HOST_INTERVALS_MS,
   'query.wikidata.org': 2_000,
   'yc-oss.github.io': 1_000,
+  // Overpass: one query per run anyway; GLEIF allows 60 requests a minute.
+  'overpass-api.de': 10_000,
+  'api.gleif.org': 1_000,
+  'api.data.gov.in': 1_000,
 }
 
 export const companyLimiter: HostLimiter = createHostLimiter({ intervals: INTERVALS, defaultIntervalMs: 1_000 })

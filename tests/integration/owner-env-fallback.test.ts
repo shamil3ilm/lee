@@ -31,6 +31,7 @@ const ENV: Record<string, string> = {
   GITHUB_PORTFOLIO_TOKEN: 'env-gh-portfolio',
   GITHUB_TOKEN: 'env-gh-search',
   HF_TOKEN: 'env-hf',
+  DATA_GOV_IN_KEY: 'env-data-gov-in',
 }
 
 function stubAllEnv() {

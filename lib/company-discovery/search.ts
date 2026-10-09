@@ -1,6 +1,7 @@
 import { resolveLocation } from '@/lib/regions/normalize'
 import { countryOf } from '@/lib/regions/tree'
-import { companyGet, companyJson, type CompanyHttpDeps } from './http'
+import { companyJson, type CompanyHttpDeps } from './http'
+import { siteIsLive } from './site-live'
 import { WIKIDATA_INDUSTRIES } from './industry'
 import { deepestRegions, domainOf, sizeBandOf, stageOf, websiteOf } from './normalize'
 import { seedByName, seedFor } from './seed'
@@ -162,14 +163,8 @@ async function wikidataOptions(name: string, deps: ResolveDeps): Promise<Resolve
   })
 }
 
-async function reachable(domain: string, deps: ResolveDeps): Promise<boolean> {
-  try {
-    const res = await companyGet('company-guess', `https://${domain}/`, { ...deps, timeoutMs: deps.timeoutMs ?? 8_000 }, { accept: 'text/html', maxBytes: 256 * 1024, maxRedirects: 3 })
-    void res.body?.cancel().catch(() => undefined)
-    return res.status < 400 || res.status === 403
-  } catch {
-    return false
-  }
+function reachable(domain: string, deps: ResolveDeps): Promise<boolean> {
+  return siteIsLive(domain, deps)
 }
 
 /** The options for a typed name, best first: seed, Wikidata, then reachable guesses. */

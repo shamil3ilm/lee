@@ -1,4 +1,4 @@
-import { companyKey } from '@/lib/integrations/linkedin/company-key'
+import { companyKey, LEGAL_SUFFIXES } from '@/lib/integrations/linkedin/company-key'
 import { countryOf, isRegionId, withAncestors } from '@/lib/regions/tree'
 import { mergeIndustries } from './industry'
 import type { CompanyCandidate, CompanyEvidence, CompanyStage, SizeBand } from './types'
@@ -83,29 +83,86 @@ export function countryKey(regionIds: readonly string[]): string {
 /** Indian "(P) Ltd" / "Pvt. Ltd." forms the shared company key keeps as a word. */
 const INDIAN_PRIVATE = /\(\s*p\s*\)|\bpvt\b\.?|\bprivate\b/gi
 
+/** Kuwaiti "K.S.C. (Closed)" / "K.S.C. (Holding)": the bracketed word is part of the legal form, not the brand. */
+/** A Kuwaiti register's "…/With Limited Liability" (the W.L.L. form spelled out). */
+const WITH_LIMITED_LIABILITY = /[/,(\s-]*\bwith limited liability\b\)?\s*$/i
+
+const KSC_BRACKET = /\bk\.?\s?s\.?\s?c\.?\s*\(\s*(?:closed|holding|public)\s*\)/gi
+
+/**
+ * Legal forms beyond the shared company key's that GCC and Indian
+ * registers append to a name: Kuwait S.A.K. / S.A.K.P. / S.A.K.C., Qatar
+ * Q.S.C. / W.L.L., Saudi "Est." / "Establishment", the UAE free-zone forms
+ * (FZ-LLC, FZE, FZCO, DMCC), Indian "Private Limited", "Co." / "Company".
+ * Popped only from the END of a name and never the first word, so
+ * "Company Builder Labs" stays whole.
+ */
+const EXTRA_LEGAL: ReadonlySet<string> = new Set([
+  'sak', 'sakp', 'sakc', 'saq', 'saqc', 'wll', 'est', 'establishment', 'co', 'company', 'cos', 'ltd', 'limited', 'llc', 'fz', 'fze',
+  'fzco', 'fzc', 'fzllc', 'dmcc', 'spc', 'saog', 'saoc', 'pjsc', 'psc', 'ksc', 'kscc', 'kscp', 'kpsc', 'bsc', 'qsc', 'qpsc', 'jsc',
+])
+
+function isLegal(word: string): boolean {
+  return LEGAL_SUFFIXES.has(word) || EXTRA_LEGAL.has(word)
+}
+
+/** The name's words with every trailing legal form dropped ("Alghanim Industries W.L.L." → alghanim, industries). */
+function legalStrippedWords(name: string): string[] {
+  const words = companyKey(name.replace(KSC_BRACKET, ' KSC ').replace(WITH_LIMITED_LIABILITY, ' ').replace(INDIAN_PRIVATE, ' ')).split(' ').filter(Boolean)
+  while (words.length > 1 && isLegal(words[words.length - 1]!)) words.pop()
+  return words
+}
+
 /** Name reduced for matching: legal suffixes dropped, spaces removed ("Dinar Pay K.S.C." = "dinarpay", "QBurst Technologies (P) Ltd" = "qbursttechnologies"). */
 export function nameKey(name: string): string {
-  return companyKey(name.replace(INDIAN_PRIVATE, ' ')).replace(/ /g, '').slice(0, 120)
+  return legalStrippedWords(name).join('').slice(0, 120)
 }
 
 /** Generic trailing words park and chamber lists add to a brand ("Fingent Global Solutions"). */
 const GENERIC_TAIL = new Set([
   'technologies', 'technology', 'tech', 'solutions', 'solution', 'systems', 'software', 'services', 'service', 'labs', 'lab',
   'india', 'global', 'consulting', 'consultancy', 'infotech', 'infosystems', 'innovations', 'ventures', 'group', 'holding', 'holdings',
-  'engineering', 'international', 'digital', 'it', 'and', 'business', 'enterprises', 'networks',
+  'engineering', 'international', 'digital', 'it', 'and', 'business', 'enterprises', 'networks', 'industries', 'trading',
+  // A country after the brand in a GCC legal name ("Zain Kuwait K.S.C.P.", "National Bank of Kuwait").
+  'kuwait', 'qatar', 'bahrain', 'oman', 'ksa', 'uae', 'saudi', 'arabia', 'emirates', 'of',
 ])
 
 /**
- * The brand a name reduces to once generic tail words go too ("QBurst
- * Technologies (P) Ltd" = "QBURST" = "qburst"). Used only to join a
- * name-only listing to a company already known by its website, in the same
- * country, or to a seed alias — never to merge two companies that both
- * have a website. Keeps at least one word.
+ * The brand a name reduces to once legal forms and generic tail words go
+ * ("QBurst Technologies (P) Ltd" = "qburst", "National Bank of Kuwait
+ * S.A.K.P." = "National Bank of Kuwait" = "nationalbank", "Zain Kuwait
+ * K.S.C.P." = "Zain" = "zain"). Used only to join a name-only listing (a
+ * register's legal name) to a company already known by its website, in the
+ * same country, or to a seed alias — never to merge two companies that
+ * both have a website. Keeps at least one word.
  */
 export function brandKey(name: string): string {
-  const words = companyKey(name.replace(INDIAN_PRIVATE, ' ')).split(' ').filter(Boolean)
-  while (words.length > 1 && GENERIC_TAIL.has(words[words.length - 1]!)) words.pop()
+  const words = legalStrippedWords(name)
+  while (words.length > 1 && (GENERIC_TAIL.has(words[words.length - 1]!) || isLegal(words[words.length - 1]!))) words.pop()
   return words.join('').slice(0, 120)
+}
+
+/** Sources whose names are legal names (registers) or map labels, where a brand may be followed by a descriptor. */
+export function isLegalNameSource(sourceTags: readonly string[]): boolean {
+  return sourceTags.some((t) => t.startsWith('register:') || t.startsWith('map:'))
+}
+
+/**
+ * A register's legal name that STARTS with a known brand ("Agility Public
+ * Warehousing Company K.S.C.P." → the brand "agility"): the one known brand
+ * key (5+ characters, a whole-word prefix) that begins the legal name.
+ * Null when none, or more than one, fits.
+ */
+export function brandPrefixOf(legalName: string, knownBrandKeys: Iterable<string>): string | null {
+  const words = legalStrippedWords(legalName)
+  const prefixes = new Set(words.slice(0, -1).map((_, i) => words.slice(0, i + 1).join('')))
+  let hit: string | null = null
+  for (const k of knownBrandKeys) {
+    if (k.length < 5 || !prefixes.has(k)) continue
+    if (hit !== null && hit !== k) return null
+    hit = k
+  }
+  return hit
 }
 
 function uniq<T>(xs: readonly T[]): T[] {
@@ -143,6 +200,21 @@ export function mergeCandidate(a: CompanyCandidate, b: CompanyCandidate): Compan
   }
 }
 
+/**
+ * A register's legal name → the one known company (by website, same
+ * country) whose brand begins it: "Agility Public Warehousing Company
+ * K.S.C.P." joins agility.com's "Agility". `byBrand` maps
+ * "brand:country" to keys; only unique brands count.
+ */
+export function legalPrefixTarget(c: Pick<CompanyCandidate, 'name' | 'regionIds' | 'sourceTags'>, byBrand: ReadonlyMap<string, readonly string[]>): string | undefined {
+  if (!isLegalNameSource(c.sourceTags)) return undefined
+  const country = countryKey(c.regionIds)
+  const suffix = `:${country}`
+  const brands = [...byBrand.entries()].filter(([k, v]) => k.endsWith(suffix) && v.length === 1).map(([k]) => k.slice(0, -suffix.length))
+  const hit = brandPrefixOf(c.name, brands)
+  return hit ? byBrand.get(`${hit}${suffix}`)?.[0] : undefined
+}
+
 /** Trim names, drop empties, attach clean websites, and dedupe by `dedupeKey`. */
 export function normalizeCandidates(list: readonly CompanyCandidate[]): Map<string, CompanyCandidate> {
   const out = new Map<string, CompanyCandidate>()
@@ -178,7 +250,11 @@ export function normalizeCandidates(list: readonly CompanyCandidate[]): Map<stri
     const placeless = key.endsWith(':xx')
     const bare = byBareName.get(nameKey(c.name)) ?? []
     const brand = byBrand.get(`${brandKey(c.name)}:${countryKey(c.regionIds)}`) ?? []
-    const target = byName.get(key) ?? (brand.length === 1 ? brand[0] : undefined) ?? (placeless && bare.length === 1 ? bare[0] : undefined)
+    const target =
+      byName.get(key) ??
+      (brand.length === 1 ? brand[0] : undefined) ??
+      (placeless && bare.length === 1 ? bare[0] : undefined) ??
+      legalPrefixTarget(c, byBrand)
     if (target) {
       out.set(target, mergeCandidate(out.get(target)!, c))
       out.delete(key)

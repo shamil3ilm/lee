@@ -5,7 +5,8 @@ import { boardSource } from '@/lib/companies/ats-detect'
 import { logger } from '@/lib/logger'
 import { careersPageHash, findCareers, type CareersResult } from './careers'
 import { companyErrorText, type CompanyHttpDeps } from './http'
-import { domainOf, websiteOf } from './normalize'
+import { domainOf, isLegalNameSource, websiteOf } from './normalize'
+import { siteIsLive } from './site-live'
 import { fetchOrgDetails } from './sources/github'
 import { fetchParkProfileWebsite } from './sources/technopark'
 import { industriesFromText, mergeIndustries } from './industry'
@@ -51,6 +52,19 @@ async function defaultCountOpenRoles(kind: string, config: Record<string, unknow
   }
 }
 
+/** Every source of the row is a map or a register (OpenStreetMap, GLEIF, India MCA). */
+function onlyMapOrRegister(tags: readonly string[]): boolean {
+  return tags.length > 0 && isLegalNameSource(tags) && tags.every((t) => t.startsWith('map:') || t.startsWith('register:'))
+}
+
+function hostOf(website: string): string | null {
+  try {
+    return domainOf(website) ? new URL(website).hostname.toLowerCase() : null
+  } catch {
+    return null
+  }
+}
+
 interface Outcome {
   patch: companiesQ.CompanyPatch
   careers: CareersResult | null
@@ -82,6 +96,19 @@ async function enrichOne(userId: string, row: companiesQ.CompanyRow, deps: Enric
       delete evidence.profileUrl
     } catch (e) {
       evidence.careersNote = `Park profile: ${companyErrorText(e)}`
+    }
+  }
+  if (website && onlyMapOrRegister(row.sourceTags) && evidence.siteLive === undefined) {
+    // A website only a map or register listed is whatever someone typed: the liveness check first; a dead site is dropped.
+    const host = hostOf(website)
+    evidence.siteLive = host ? await siteIsLive(host, deps) : false
+    if (!evidence.siteLive) {
+      evidence.careersNote = 'The listed website did not answer.'
+      const rest = Object.fromEntries(Object.entries(normalized).filter(([k]) => k !== 'website' && k !== 'domain'))
+      return {
+        careers: null,
+        patch: { website: null, domain: null, evidence: evidence as never, industry, normalized: rest as never, enrichStatus: 'done', enrichedAt: new Date() },
+      }
     }
   }
   if (!website) {

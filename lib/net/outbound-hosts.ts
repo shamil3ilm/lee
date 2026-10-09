@@ -209,6 +209,28 @@ export const OUTBOUND_PARTIES: readonly OutboundParty[] = [
     group: 'jobs',
   },
   {
+    id: 'openstreetmap',
+    name: 'OpenStreetMap (public Overpass API)',
+    hosts: ['overpass-api.de'],
+    sends:
+      'At most one query every two weeks: the bounding box of one of your target cities (numbers only), to list named offices and large employers there. No personal data. Map data © OpenStreetMap contributors, ODbL.',
+    group: 'jobs',
+  },
+  {
+    id: 'gleif',
+    name: 'GLEIF (Legal Entity Identifier register)',
+    hosts: ['api.gleif.org'],
+    sends: 'Weekly: a country code and, for large countries, a target city name, to page through registered legal entities (data CC0). No personal data.',
+    group: 'jobs',
+  },
+  {
+    id: 'data-gov-in',
+    name: 'Open Government Data Platform India (Ministry of Corporate Affairs company data)',
+    hosts: ['api.data.gov.in'],
+    sends: 'Only if you save a data.gov.in key: your key and an Indian state name, weekly, to page through the company master data. No other personal data.',
+    group: 'jobs',
+  },
+  {
     id: 'company-logos',
     name: 'Company logos (Wikimedia Commons, GitHub avatars)',
     hosts: ['commons.wikimedia.org', 'avatars.githubusercontent.com'],

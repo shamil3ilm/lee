@@ -6,7 +6,7 @@
  * prefixes ("careem" ~ "careem networks"), see lib/db/queries/linkedin.ts.
  */
 
-const LEGAL = new Set([
+export const LEGAL_SUFFIXES: ReadonlySet<string> = new Set([
   'inc', 'incorporated', 'llc', 'l l c', 'ltd', 'limited', 'plc', 'gmbh', 'ag', 'sa', 'bv', 'nv', 'co', 'corp', 'corporation',
   'company', 'pvt', 'private', 'pte', 'fz', 'fze', 'fzco', 'fzc', 'fzllc', 'dmcc', 'wll', 'spc', 'llp', 'srl', 'oy', 'ab', 'as',
   // Gulf company forms: Kuwait (K.S.C., K.S.C.C., K.S.C.P.), Bahrain (B.S.C.), Qatar (Q.S.C., Q.P.S.C.), UAE (P.J.S.C.), Oman (S.A.O.C./G.)
@@ -25,7 +25,7 @@ export function companyKey(name: string): string {
     .trim()
     .split(' ')
     .filter(Boolean)
-  while (words.length > 1 && LEGAL.has(words[words.length - 1]!)) words.pop()
+  while (words.length > 1 && LEGAL_SUFFIXES.has(words[words.length - 1]!)) words.pop()
   if (words.length > 1 && words[0] === 'the') words.shift()
   return words.join(' ').slice(0, 200)
 }

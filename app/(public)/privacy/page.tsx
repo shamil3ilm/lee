@@ -3,6 +3,7 @@ import { env } from '@/lib/env'
 import { APP_NAME } from '@/lib/brand'
 import { formatDateTime } from '@/lib/ui/date'
 import { OUTBOUND_PARTIES, type OutboundParty } from '@/lib/net/outbound-hosts'
+import { OSM_ATTRIBUTION, OSM_COPYRIGHT_URL } from '@/lib/company-discovery/sources/osm-attribution'
 
 export const metadata: Metadata = { title: 'Privacy policy' }
 
@@ -176,6 +177,19 @@ export default function PrivacyPage() {
           don&rsquo;t add) receive nothing.
         </p>
         <ThirdParties />
+      </Section>
+
+      <Section title="Open data credits">
+        <p data-testid="privacy-osm-attribution">
+          Company discovery uses open data. Map data{' '}
+          <a className="underline underline-offset-4" href={OSM_COPYRIGHT_URL}>
+            {OSM_ATTRIBUTION}
+          </a>{' '}
+          (Open Database License 1.0). Legal entity data from GLEIF (CC0 1.0). Indian company data from the Ministry
+          of Corporate Affairs via data.gov.in (Government Open Data License – India), only if you add a data.gov.in key.
+          {APP_NAME} reads no Google Maps data: the per-company &ldquo;Look up on Google Maps&rdquo; link simply opens
+          Google Maps in your browser.
+        </p>
       </Section>
 
       <Section title="Where data is stored">

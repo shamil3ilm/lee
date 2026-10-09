@@ -7,7 +7,9 @@ import { sourceTagLabel, type CompanyCardData } from './types'
 /**
  * The secondary detail of a company row, shown on demand: what it does,
  * why it ranks where it does (each fit part with its points), why it is
- * under the radar, where lee found it, and Reach out.
+ * under the radar, where lee found it, whether it likely hires software and
+ * data people, a plain Google Maps search link (no API; nothing stored),
+ * and Reach out.
  */
 
 function chipTone(kind: string, warn?: boolean): 'warning' | 'success' | 'info' | 'neutral' {
@@ -58,6 +60,9 @@ export function CompanyDetails({ c }: { c: CompanyCardData }) {
             </a>
           ) : null}
         </Fact>
+        <Fact label="Hires software / data people?">
+          <span data-testid="company-hires">{c.hires.why}</span>
+        </Fact>
         {c.careersUrl || c.enrichStatus === 'pending' || c.careersNote ? (
           <Fact label="Careers">
             {c.careersUrl ? (
@@ -94,6 +99,16 @@ export function CompanyDetails({ c }: { c: CompanyCardData }) {
       ) : null}
       <div className="flex flex-wrap items-center gap-2">
         <ReachOutDialog companyId={c.id} companyName={c.name} tracked={c.tracked} />
+        <a
+          href={c.mapsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex h-8 items-center gap-1 text-xs text-muted-foreground underline underline-offset-4"
+          data-testid="company-maps-link"
+        >
+          <MapPin className="size-3.5" aria-hidden="true" />
+          Look up on Google Maps
+        </a>
         {c.githubLogin ? (
           <a href={`https://github.com/${c.githubLogin}`} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-1 text-xs text-muted-foreground underline underline-offset-4">
             <Building2 className="size-3.5" aria-hidden="true" />

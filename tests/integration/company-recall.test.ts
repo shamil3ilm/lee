@@ -18,7 +18,7 @@ import { fakeFetch, ROBOTS_ALLOW_ALL, type FakeRoute } from '@/tests/fixtures/co
 import { CYBERPARK_PAGE, INFOPARK_PAGE_1, TECHNOPARK_PAGES, UL_CYBERPARK_PAGE, technoparkProfile } from '@/tests/fixtures/company-discovery/recall'
 
 const NOW = new Date('2026-10-09T09:00:00Z')
-const SKIP_NETWORK_EXTRAS = ['github', 'wikidata', 'yc'] as const
+const SKIP_NETWORK_EXTRAS = ['github', 'wikidata', 'yc', 'map', 'register'] as const
 
 function parkRoutes(opts: { failTechnoparkPage?: number } = {}): FakeRoute[] {
   return [

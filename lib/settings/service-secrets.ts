@@ -14,6 +14,7 @@ export const SERVICE_SECRET_IDS = [
   'github_portfolio',
   'github_search',
   'huggingface',
+  'data_gov_in',
 ] as const
 
 export type ServiceSecretId = (typeof SERVICE_SECRET_IDS)[number]
@@ -31,6 +32,7 @@ export interface ServiceSecretInfo {
     | 'GITHUB_PORTFOLIO_TOKEN'
     | 'GITHUB_TOKEN'
     | 'HF_TOKEN'
+    | 'DATA_GOV_IN_KEY'
   keyUrl?: string
   /** True when a cheap authenticated call can verify the key. */
   testable: boolean
@@ -110,6 +112,15 @@ export const SERVICE_SECRETS: readonly ServiceSecretInfo[] = [
     envKey: 'HF_TOKEN',
     keyUrl: 'https://huggingface.co/settings/tokens',
     testable: true,
+  },
+  {
+    id: 'data_gov_in',
+    label: 'data.gov.in (India company register)',
+    description:
+      'Optional free key for the Open Government Data platform. With it, the weekly company search also reads the Ministry of Corporate Affairs company master data for your Indian target states (a few pages a week, Government Open Data License – India). Without it that register is skipped.',
+    envKey: 'DATA_GOV_IN_KEY',
+    keyUrl: 'https://www.data.gov.in/user/register',
+    testable: false,
   },
 ]
 

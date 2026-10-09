@@ -81,6 +81,8 @@ export async function checkServiceKey(
 ): Promise<CheckResult> {
   // Needs the repository: checked by lib/portfolio/token-check.ts from Settings › Portfolio.
   if (id === 'github_portfolio') return { ok: false, error: 'Test this token in Settings › Portfolio.', rejected: false }
+  // No test call: api.data.gov.in has no cheap key check, and lee reads it only in the weekly company search.
+  if (id === 'data_gov_in') return { ok: false, error: 'This key has no test; the weekly company search uses it.', rejected: false }
   if (id === 'neon') return checkNeon(key)
   if (id === 'google_places') return checkGooglePlaces(key, opts.fetchImpl)
   if (id === 'adzuna') return checkAdzuna(key, opts.fetchImpl)

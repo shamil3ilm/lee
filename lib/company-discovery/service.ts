@@ -5,6 +5,7 @@ import * as linkedinQ from '@/lib/db/queries/linkedin'
 import type { Source } from '@/lib/db/queries/sources'
 import { searchPrefsFromProfile, targetFamilies, type SearchPrefs } from '@/lib/discovery/relevance/prefs'
 import { getGitHubUserToken } from '@/lib/integrations/github/token'
+import { resolveServiceSecret } from '@/lib/settings/secrets'
 import { logger } from '@/lib/logger'
 import { withAncestors } from '@/lib/regions/tree'
 import { collectCandidates, type CompanySourceId, type SourceRun } from './collect'
@@ -48,6 +49,9 @@ export const NEW_PER_SOURCE: Readonly<Record<string, number>> = {
   yc: 40,
   paste: 40,
   search: 5,
+  // OpenStreetMap and the registers (GLEIF, India MCA): ranked by hiring likelihood before the cap.
+  map: 150,
+  register: 150,
 }
 export const MAX_COMPANIES_PER_USER = 3000
 
@@ -90,6 +94,18 @@ export interface RunDeps extends CompanyHttpDeps {
   skip?: readonly CompanySourceId[]
   /** Cooperative deadline (ms epoch). */
   deadline?: number
+  /** The data.gov.in key for the India MCA register (tests pass null; default: the user's saved key). */
+  dataGovInKey?: string | null
+}
+
+/** The user's own data.gov.in key (Settings › AI); null when none is saved. */
+async function dataGovKey(userId: string): Promise<string | null> {
+  try {
+    const { key, source } = await resolveServiceSecret(userId, 'data_gov_in')
+    return source === 'none' ? null : key
+  } catch {
+    return null
+  }
 }
 
 async function githubToken(userId: string): Promise<string | null> {
@@ -236,7 +252,8 @@ export async function runCompanyDiscovery(userId: string, deps: RunDeps = {}): P
   const { prefs, ctx } = await loadFitContext(userId)
   const source = await ensureLocalCompaniesSource(userId)
   const token = deps.githubToken !== undefined ? deps.githubToken : await githubToken(userId)
-  const { candidates, runs, counts, cursors } = await collectCandidates(userId, prefs, parseCursors(source.config), { ...deps, githubToken: token })
+  const dataGovInKey = deps.dataGovInKey !== undefined ? deps.dataGovInKey : await dataGovKey(userId)
+  const { candidates, runs, counts, cursors } = await collectCandidates(userId, prefs, parseCursors(source.config), { ...deps, githubToken: token, dataGovInKey })
   await sourcesQ.update(userId, source.id, { config: { ...((source.config ?? {}) as Record<string, unknown>), cursors }, lastPolledAt: deps.now ?? new Date() })
   const stored = await storeCandidates(userId, candidates, { counts, ctx })
   const summary: CompanyRunSummary = {

@@ -55,6 +55,9 @@ const NOT_CONTACTED = new Set([
   'my.gov.sa',
   'businessmap.moci.gov.qa',
   'en.wikipedia.org', // link shown on the reputation panel
+  // Company "Listing" links the user opens (OpenStreetMap element, GLEIF record page); never fetched.
+  'www.openstreetmap.org',
+  'search.gleif.org',
   'react.dev', // code comment
 ])
 

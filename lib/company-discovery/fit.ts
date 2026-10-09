@@ -16,12 +16,15 @@ import { STAGE_LABELS, type CompanyEvidence, type CompanyStage } from './types'
  *   preferred   +10 top priority / +6 preferred (a starred region)
  *   domain      0…22  an industry that serves your target role families:
  *                     specialist (payments, fintech, banking, e-invoicing,
- *                     ERP, data) 22 · general software 16 · other tech 7
+ *                     ERP, data) 22 · general software 16 · other 7 ·
+ *                     industry unknown 11 (neutral: banks, airlines and
+ *                     hospitals hire software and data people too)
  *   tech        0…13  GitHub languages you have ready (PHP/Laravel,
- *                     TypeScript, Python…): the top language 13 · any 9
+ *                     TypeScript, Python…): the top language 13 · any 9 ·
+ *                     no public code 6 (neutral, never 0)
  *   size/stage  0…8   your preferred stage 8 · no preference 4 · other 0
  *   hiring      0…15  open roles on its job board 15 · a job board 10 · a
- *                     careers page 6
+ *                     careers page 6 · postings lee saw from it 10
  *   warm intro  0…10  LinkedIn connections at the company
  *   growth      0…10  the growth score ÷ 10, pulled toward the neutral 5 by
  *                     its confidence (high full · medium 0.7 · low 0.4);
@@ -38,8 +41,10 @@ export const COMPANY_FIT_WEIGHTS = {
   domainSpecialist: 22,
   domainGeneral: 16,
   domainOther: 7,
+  domainNeutral: 11,
   techTop: 13,
   techAny: 9,
+  techNeutral: 6,
   stageMatch: 8,
   stageNeutral: 4,
   hiringOpen: 15,
@@ -134,7 +139,8 @@ function regionChips(c: FitCompany, ctx: FitContext): FitChip[] {
 function domainChip(c: FitCompany, ctx: FitContext): FitChip | null {
   const w = COMPANY_FIT_WEIGHTS
   const tags = c.industry.filter(isIndustry)
-  if (tags.length === 0) return null
+  // Unknown is neutral: a bank, airline or hospital with no tech industry tag is not a worse fit for it.
+  if (tags.length === 0) return { kind: 'domain', label: 'Industry not known (neutral)', points: w.domainNeutral }
   const targets = new Set(ctx.targetFamilies)
   const serving = (i: Industry): string | undefined => INDUSTRY_FAMILIES[i].find((f) => targets.has(f))
   const specialist = tags.find((i) => SPECIALIST.has(i) && serving(i))
@@ -149,7 +155,8 @@ function domainChip(c: FitCompany, ctx: FitContext): FitChip | null {
 
 function techChip(c: FitCompany, ctx: FitContext): FitChip | null {
   const langs = (c.evidence.languages ?? []).map((l) => l.toLowerCase())
-  if (langs.length === 0) return null
+  // No public GitHub code is not a signal against a company (most employers have none): neutral.
+  if (langs.length === 0) return { kind: 'tech', label: 'Tech stack not known (neutral)', points: COMPANY_FIT_WEIGHTS.techNeutral }
   const ready = new Set(ctx.readySkills.map((s) => s.toLowerCase()))
   const matches = langs.filter((l) => (LANGUAGE_SKILLS[l] ?? [l]).some((s) => ready.has(s)))
   if (matches.length === 0) return { kind: 'tech', label: `Tech: ${c.evidence.languages!.slice(0, 2).join(', ')}`, points: 0 }
@@ -174,6 +181,8 @@ function hiringChip(c: FitCompany): FitChip | null {
   if (typeof open === 'number' && open > 0) return { kind: 'hiring', label: `Hiring: ${open} open role${open === 1 ? '' : 's'}`, points: w.hiringOpen }
   if (c.atsKind) return { kind: 'hiring', label: typeof open === 'number' ? 'Job board, no openings now' : 'Has a job board', points: typeof open === 'number' ? w.hiringCareers : w.hiringBoard }
   if (c.careersUrl) return { kind: 'hiring', label: 'Careers page', points: w.hiringCareers }
+  const seen = c.evidence.jobsSeen ?? 0
+  if (seen > 0) return { kind: 'hiring', label: `Posted ${seen} job${seen === 1 ? '' : 's'} you saw`, points: w.hiringBoard }
   return null
 }
 

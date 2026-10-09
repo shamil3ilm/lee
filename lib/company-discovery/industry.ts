@@ -107,16 +107,17 @@ export function industriesFromYc(parts: readonly string[]): Industry[] {
  */
 export const INDUSTRY_FAMILIES: Readonly<Record<Industry, readonly string[]>> = {
   payments: ['payments', 'backend', 'api_integration'],
-  fintech: ['payments', 'backend', 'fullstack'],
-  banking: ['payments', 'backend'],
+  fintech: ['payments', 'backend', 'fullstack', 'data_analyst'],
+  // Banks, telecoms and retailers run large data, BI, ERP and analyst teams, not only engineering.
+  banking: ['payments', 'backend', 'data_analyst', 'business_analyst', 'erp', 'analytics_eng'],
   einvoicing: ['einvoicing', 'erp', 'backend'],
-  erp: ['erp', 'einvoicing', 'implementation'],
+  erp: ['erp', 'einvoicing', 'implementation', 'business_analyst'],
   saas: ['backend', 'fullstack', 'frontend', 'api_integration'],
   software: ['backend', 'fullstack', 'frontend', 'mobile', 'devops'],
   it_services: ['backend', 'fullstack', 'implementation', 'solutions'],
-  ecommerce: ['backend', 'fullstack', 'payments'],
-  data: ['data', 'data_analyst', 'analytics_eng', 'ml', 'llm_app'],
-  telecom: ['backend', 'devops'],
+  ecommerce: ['backend', 'fullstack', 'payments', 'data_analyst', 'analytics_eng'],
+  data: ['data', 'data_analyst', 'analytics_eng', 'ml', 'llm_app', 'business_analyst'],
+  telecom: ['backend', 'devops', 'data_analyst', 'business_analyst', 'data'],
 }
 
 /** Union in vocabulary order. */

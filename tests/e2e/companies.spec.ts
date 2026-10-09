@@ -77,6 +77,8 @@ test('browse directories lists the free zones, Kuwait and Kerala parks as links'
   await expect(panel.getByRole('link', { name: /Hub71 startups/ })).toHaveAttribute('href', 'https://www.hub71.com/startups')
   await expect(panel.getByRole('link', { name: /Central Bank of Kuwait/ })).toBeVisible()
   await expect(panel.getByRole('link', { name: /Infopark companies/ })).toBeVisible()
+  // ODbL: OpenStreetMap is credited wherever its data may show.
+  await expect(page.getByTestId('companies-attribution')).toContainText('© OpenStreetMap contributors, ODbL')
 })
 
 test('growth chip, its "Why" popover, sort by growth, minimum growth and "Under the radar"', async ({ page }) => {

@@ -8,6 +8,7 @@ import { shortName } from '@/lib/regions/tree'
 import { relativeFromNow } from '@/lib/ui/date'
 import { Button } from '@/components/ui/button'
 import { BrowseDirectories } from './browse-directories'
+import { DataCredits } from './data-credits'
 import { CompanyList } from './company-list'
 import { CompanySearch } from './company-search'
 import { CompanySegments } from './company-segments'
@@ -124,6 +125,7 @@ export async function CompaniesTab({
         </>
       )}
       <BrowseDirectories />
+      <DataCredits />
     </div>
   )
 }

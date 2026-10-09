@@ -1,5 +1,5 @@
 import * as companiesQ from '@/lib/db/queries/localCompanies'
-import { brandKey, countryKey } from './normalize'
+import { brandKey, countryKey, legalPrefixTarget } from './normalize'
 
 /**
  * Fold duplicate company rows that runs created at different times: a
@@ -57,7 +57,10 @@ export function findDuplicates(rows: readonly companiesQ.FoldRow[]): FoldPair[] 
  * row with a website (same country) takes that row's key, so the upsert
  * merges into it instead of creating a duplicate.
  */
-export function remapToKnown<T extends { sourceCompanyId: string; name: string; domain: string | null; regionIds: string[] }>(rows: readonly T[], index: readonly companiesQ.FoldRow[]): T[] {
+export function remapToKnown<T extends { sourceCompanyId: string; name: string; domain: string | null; regionIds: string[]; sourceTags?: string[] }>(
+  rows: readonly T[],
+  index: readonly companiesQ.FoldRow[],
+): T[] {
   const brands = new Map<string, string[]>()
   for (const r of index) {
     if (!r.domain) continue
@@ -67,7 +70,10 @@ export function remapToKnown<T extends { sourceCompanyId: string; name: string; 
   return rows.map((r) => {
     if (r.domain || !r.sourceCompanyId.startsWith('n:')) return r
     const hit = brands.get(`${brandKey(r.name)}:${countryKey(r.regionIds)}`) ?? []
-    return hit.length === 1 ? { ...r, sourceCompanyId: hit[0]! } : r
+    if (hit.length === 1) return { ...r, sourceCompanyId: hit[0]! }
+    // A register's legal name that begins with a known brand ("Agility Public Warehousing Company K.S.C.P.").
+    const prefix = legalPrefixTarget({ name: r.name, regionIds: r.regionIds, sourceTags: r.sourceTags ?? [] }, brands)
+    return prefix ? { ...r, sourceCompanyId: prefix } : r
   })
 }
 

@@ -6,7 +6,9 @@ import type { FitChip } from '@/lib/company-discovery/fit'
 import { STAGE_LABELS, type CompanyEvidence, type CompanyStage } from '@/lib/company-discovery/types'
 import { chainLabel, placeName } from '@/lib/regions/display'
 import { parseRegionParam } from '@/lib/regions/selection'
-import type { CompanyCardData, CompanyGrowthCard } from '@/components/companies/types'
+import { foundViaOf, type CompanyCardData, type CompanyGrowthCard } from '@/components/companies/types'
+import { hireLikelihood } from '@/lib/company-discovery/hire-likelihood'
+import { googleMapsSearchUrl } from '@/lib/company-discovery/maps-link'
 import { GROWTH_LABELS, MIN_GROWTH_STEPS, type GrowthSignal } from '@/lib/company-discovery/growth/types'
 
 /**
@@ -41,7 +43,7 @@ export interface CompanyParams {
   size: number
 }
 
-const SOURCE_TAG = /^(wikidata|github|yc|linkedin|paste|jobs|seed|search|directory:[a-z0-9-]{1,40})$/
+const SOURCE_TAG = /^(wikidata|github|yc|linkedin|paste|jobs|seed|search|(?:directory|map|register):[a-z0-9-]{1,40})$/
 
 /** The segment from `?view=`, or from the older `?status=` links (saved → watching). */
 function viewOf(sp: Record<string, string | undefined>): CompanyView {
@@ -82,9 +84,10 @@ function toCard(row: companiesQ.CompanyRow): CompanyCardData {
   const ev = (row.evidence ?? {}) as CompanyEvidence
   const deepest = deepestRegions(row.regionIds)
   const board = row.atsKind as BoardKind | null
+  const name = typeof n.name === 'string' ? n.name : 'Company'
   return {
     id: row.id,
-    name: typeof n.name === 'string' ? n.name : 'Company',
+    name,
     website: row.website,
     domain: row.domain,
     logoUrl: ev.logoUrl?.startsWith('https://') ? ev.logoUrl : null,
@@ -114,6 +117,11 @@ function toCard(row: companiesQ.CompanyRow): CompanyCardData {
     growth: toGrowthView(row),
     hiddenGem: row.hiddenGem,
     radarReasons: radarReasons(row.growthDetail),
+    foundVia: foundViaOf(row.sourceTags),
+    hires: (({ band, why }) => ({ band, why }))(
+      hireLikelihood({ sector: ev.sector, industries: row.industry, sizeBand: row.sizeBand, evidence: ev, careersUrl: row.careersUrl, atsKind: row.atsKind, website: row.website }),
+    ),
+    mapsUrl: googleMapsSearchUrl(name, deepest[0] ? placeName(deepest[0]) : null),
   }
 }
 

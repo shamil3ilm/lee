@@ -45,6 +45,12 @@ export interface CompanyCardData {
   /** "Under the radar": good fit, growing or hiring, little public visibility. */
   hiddenGem: boolean
   radarReasons: string[]
+  /** Listed only by a map or a register (OpenStreetMap, GLEIF, India MCA): why it appeared. */
+  foundVia: 'map' | 'register' | 'map and register' | null
+  /** Does it employ software / data / analyst people? ("Likely hires: data/IT (bank, 1,000+ staff)"). */
+  hires: { band: 'high' | 'medium' | 'low'; why: string }
+  /** A plain Google Maps search link (no API, nothing stored). */
+  mapsUrl: string
 }
 
 export const SOURCE_TAG_LABELS: Readonly<Record<string, string>> = {
@@ -64,8 +70,20 @@ export const SOURCE_TAG_LABELS: Readonly<Record<string, string>> = {
   'directory:flat6labs': 'Flat6Labs',
   'directory:startup-bahrain': 'StartUp Bahrain',
   'directory:nasscom': 'NASSCOM',
+  'map:osm': 'OpenStreetMap',
+  'register:gleif': 'GLEIF (LEI register)',
+  'register:mca': 'MCA company register (India)',
 }
 
 export function sourceTagLabel(tag: string): string {
-  return SOURCE_TAG_LABELS[tag] ?? tag.replace(/^directory:/, '')
+  return SOURCE_TAG_LABELS[tag] ?? tag.replace(/^(directory|map|register):/, '')
+}
+
+/** "Found via map/register" when only maps or registers listed the company (other sources explain themselves). */
+export function foundViaOf(tags: readonly string[]): CompanyCardData['foundVia'] {
+  const map = tags.some((t) => t.startsWith('map:'))
+  const register = tags.some((t) => t.startsWith('register:'))
+  const other = tags.some((t) => !t.startsWith('map:') && !t.startsWith('register:'))
+  if (other || (!map && !register)) return null
+  return map && register ? 'map and register' : map ? 'map' : 'register'
 }

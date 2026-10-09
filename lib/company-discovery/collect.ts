@@ -9,6 +9,7 @@ import { companyErrorText, type CompanyHttpDeps } from './http'
 import { weeklySlice, wikidataGroups } from './plan'
 import { applySeedAliases, seedCandidates } from './seed'
 import { searchOrgsPage } from './sources/github'
+import { runOsm, runRegisters, selectedPlaces } from './sources/map-register'
 import { employersFromPostings, employersFromTracked, JOBS_LOOKBACK_DAYS } from './sources/jobs'
 import { DIRECTORY_PAGES_PER_RUN, directoriesFor } from './sources/registry'
 import { fetchWikidataCompanies } from './sources/wikidata'
@@ -26,7 +27,7 @@ import { linkedinCandidates, type CompanyCount } from './warm'
  * listing that is a seed company under another name takes its website.
  */
 
-export type CompanySourceId = 'seed' | 'jobs' | 'linkedin' | 'directories' | 'github' | 'wikidata' | 'yc'
+export type CompanySourceId = 'seed' | 'jobs' | 'linkedin' | 'map' | 'register' | 'directories' | 'github' | 'wikidata' | 'yc'
 
 export interface SourceRun {
   source: CompanySourceId
@@ -44,6 +45,8 @@ export interface CollectDeps extends CompanyHttpDeps {
   now?: Date
   skip?: readonly CompanySourceId[]
   deadline?: number
+  /** The user's data.gov.in key (India MCA register); absent = that register is skipped. */
+  dataGovInKey?: string | null
 }
 
 export interface Collected {
@@ -102,6 +105,17 @@ export async function collectCandidates(userId: string, prefs: SearchPrefs, curs
   })
   const counts = await linkedinQ.companyCounts(userId).catch(() => [] as CompanyCount[])
   await run('linkedin', async () => ({ items: linkedinCandidates(counts) }))
+  // Map and registers: one area each per run (cursors), before the long park walks so they are not starved of time.
+  const selected = selectedPlaces(selection)
+  const areaDeps = { ...deps, now, timeLeft }
+  await run('map', async () => {
+    const r = await runOsm(selected, cursors, areaDeps)
+    return { items: r.items.filter((c) => inTargets(c, selection)), pages: r.pages, ...(r.error ? { error: r.error } : {}) }
+  })
+  await run('register', async () => {
+    const r = await runRegisters(selected, cursors, areaDeps)
+    return { items: r.items.filter((c) => inTargets(c, selection)), pages: r.pages, ...(r.error ? { error: r.error } : {}) }
+  })
   await run('directories', async () => {
     const items: CompanyCandidate[] = []
     const errors: string[] = []

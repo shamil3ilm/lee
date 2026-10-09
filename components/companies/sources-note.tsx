@@ -13,6 +13,10 @@ const SOURCES: ReadonlyArray<readonly [string, string]> = [
   ['IT parks and member lists', 'Technopark, Infopark, Kerala Cyberpark, UL Cyberpark, QSTP, NASSCOM, Flat6Labs, StartUp Bahrain: the full lists, weekly.'],
   ['Employers in your jobs', 'Every employer of a posting lee collected, your applications and your watch list.'],
   ['GitHub organisations', 'Organisations by city, a few pages a week.'],
+  [
+    'Maps and company registers',
+    'Offices and large employers of every kind (banks, hospitals, airlines, retailers…) on OpenStreetMap, legal entities in the GLEIF register and, with your data.gov.in key, the Indian company register: one area every week or two, ranked by how likely they hire software and data people. Marked “Found via map/register”.',
+  ],
   ['Wikidata and Y Combinator', 'Companies headquartered in your regions.'],
   ['Your LinkedIn connections', 'Companies where two or more of your connections work.'],
   ['Well-known employers', 'A short checked list so big names are never missed; it adds no points.'],
@@ -21,7 +25,7 @@ const SOURCES: ReadonlyArray<readonly [string, string]> = [
 export function SourcesNote({ lastRun }: { lastRun: string | null }) {
   return (
     <div className="flex flex-wrap items-center gap-x-1 text-sm text-muted-foreground" data-testid="companies-sources-note">
-      <span>From IT parks, member lists, employers in your jobs, GitHub and Wikidata, with a growth score.</span>
+      <span>From IT parks, member lists, employers in your jobs, GitHub, Wikidata, maps and company registers, with a growth score.</span>
       <span>{lastRun ? `Last search ${lastRun}.` : 'The first search runs this week.'}</span>
       <ResponsivePopover
         title="How lee finds companies"

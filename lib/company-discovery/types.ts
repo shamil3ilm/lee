@@ -5,7 +5,10 @@
  * the user's hidden "Local companies" source.
  */
 
-export const COMPANY_SOURCES = ['wikidata', 'github', 'yc', 'linkedin', 'paste', 'directory', 'jobs', 'seed', 'search'] as const
+export const COMPANY_SOURCES = ['wikidata', 'github', 'yc', 'linkedin', 'paste', 'directory', 'jobs', 'seed', 'search', 'map', 'register'] as const
+
+/** Source tags of the map and register sources (OpenStreetMap, GLEIF, India MCA): shown as "Found via map/register". */
+export const MAP_REGISTER_TAGS = ['map:osm', 'register:gleif', 'register:mca'] as const
 export type CompanySourceTag = (typeof COMPANY_SOURCES)[number]
 
 export const SIZE_BANDS = ['1-10', '11-50', '51-200', '201-1000', '1000+'] as const
@@ -65,6 +68,21 @@ export interface CompanyEvidence {
   careersNote?: string
   /** Public-sector / nationals-first employer (government ministry, state oil company…). */
   government?: boolean
+  /** What kind of organisation it is (lib/company-discovery/sectors), from a map tag, a register code or the name. */
+  sector?: string
+  /** OpenStreetMap element ("node/123") and the tag that listed it ("office=it"). */
+  osm?: { id: string; tag: string }
+  /** Legal Entity Identifier (GLEIF, CC0). */
+  lei?: string
+  /** India MCA: corporate identity number and its NIC activity code. */
+  cin?: string
+  nic?: string
+  /** Paid-up capital in INR (India MCA). */
+  paidUpCapital?: number
+  /** Branches seen on the map with the same name in the area. */
+  branches?: number
+  /** The website answered (or not) when enrichment checked it. */
+  siteLive?: boolean
 }
 
 export interface CompanyCandidate {

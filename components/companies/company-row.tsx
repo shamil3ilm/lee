@@ -2,7 +2,7 @@
 import { useId, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Bell, Briefcase, ChevronDown, Eye, MoreHorizontal, RotateCcw, Sparkles, Star, ThumbsDown } from 'lucide-react'
+import { Bell, Briefcase, ChevronDown, Eye, MapPin, MoreHorizontal, RotateCcw, Sparkles, Star, ThumbsDown } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -141,6 +141,17 @@ export function CompanyRow({ c, selected, onSelect }: CompanyRowProps) {
               <Badge variant="success" className="gap-1 font-normal" data-testid="under-the-radar">
                 <Sparkles className="size-3" aria-hidden="true" />
                 Under the radar
+              </Badge>
+            ) : null}
+            {c.foundVia ? (
+              <Badge
+                variant="neutral"
+                className="gap-1 font-normal"
+                data-testid="company-provenance"
+                title={`Only ${c.foundVia === 'register' ? 'a company register' : c.foundVia === 'map' ? 'OpenStreetMap' : 'OpenStreetMap and a company register'} listed it. ${c.hires.why}.`}
+              >
+                <MapPin className="size-3" aria-hidden="true" />
+                Found via {c.foundVia === 'map and register' ? 'map/register' : c.foundVia}
               </Badge>
             ) : null}
             {c.tracked ? <Badge variant="neutral" className="font-normal">Speculative application tracked</Badge> : null}

@@ -36,6 +36,37 @@ import {
 
 const NOW = new Date('2026-10-09T09:00:00Z')
 
+/** OpenStreetMap in Kuwait City: a hospital (a non-tech employer) and a restaurant (dropped). */
+const OVERPASS_INTEGRATION = {
+  elements: [
+    { type: 'way', id: 9001, center: { lat: 29.37, lon: 47.98 }, tags: { amenity: 'hospital', name: 'Example General Hospital' } },
+    { type: 'node', id: 9002, lat: 29.37, lon: 47.98, tags: { amenity: 'restaurant', name: 'Example Grill' } },
+  ],
+}
+
+/** GLEIF in Kuwait: Dinar Pay under its legal name (must fold into the known company). */
+const GLEIF_INTEGRATION = {
+  meta: { pagination: { currentPage: 1, lastPage: 1, total: 1 } },
+  data: [
+    {
+      type: 'lei-records',
+      id: '5493000EXAMPLE000077',
+      attributes: {
+        lei: '5493000EXAMPLE000077',
+        entity: {
+          legalName: { name: 'Dinar Pay K.S.C.C.', language: 'en' },
+          otherNames: [],
+          transliteratedOtherNames: [],
+          legalAddress: { city: 'Kuwait City', country: 'KW', addressLines: [] },
+          headquartersAddress: { city: 'Kuwait City', country: 'KW', addressLines: [] },
+          category: 'GENERAL',
+          status: 'ACTIVE',
+        },
+      },
+    },
+  ],
+}
+
 function routes(): FakeRoute[] {
   return [
     { match: (u) => u.host === 'api.github.com' && u.pathname === '/search/users' && (u.searchParams.get('q') ?? '').includes('Kuwait'), body: GITHUB_ORGS_KUWAIT },
@@ -66,6 +97,15 @@ function network(): typeof fetch & { calls: string[] } {
   const impl = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
     const href = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
     const u = new URL(href)
+    if (u.host === 'overpass-api.de') {
+      base.calls.push(href)
+      return new Response(JSON.stringify(OVERPASS_INTEGRATION), { status: 200, headers: { 'content-type': 'application/json' } })
+    }
+    if (u.host === 'api.gleif.org') {
+      base.calls.push(href)
+      const kw = u.searchParams.get('filter[entity.legalAddress.country]') === 'KW'
+      return new Response(JSON.stringify(kw ? GLEIF_INTEGRATION : { meta: { pagination: { lastPage: 1, total: 0 } }, data: [] }), { status: 200, headers: { 'content-type': 'application/vnd.api+json' } })
+    }
     if (u.host === 'query.wikidata.org') {
       base.calls.push(href)
       const q = u.searchParams.get('query') ?? ''
@@ -113,14 +153,21 @@ describe('weekly company discovery', () => {
     const net = network()
     const s = await runCompanyDiscovery(u.id, { fetchImpl: net, limiter: NO_WAIT, githubToken: null, now: NOW })
     expect(s.failed).toBe(0)
-    expect(s.sources.map((x) => x.source).sort()).toEqual(['directories', 'github', 'jobs', 'linkedin', 'seed', 'wikidata', 'yc'])
+    expect(s.sources.map((x) => x.source).sort()).toEqual(['directories', 'github', 'jobs', 'linkedin', 'map', 'register', 'seed', 'wikidata', 'yc'])
     const all = await rows(u.id)
     const names = all.map(nameOf).sort()
     // Dinar Pay came from Wikidata AND GitHub AND the user's connections: one row.
     expect(names.filter((n) => /dinar ?pay/i.test(n))).toHaveLength(1)
     expect(names).toEqual(expect.arrayContaining(['Dinar Pay', 'Gulf Ledger Bank', 'Falcon Invoicing', 'kw-devhouse', 'Kochi Ledger', 'Doha AI Example', 'Trivandrum Example Systems (P) Ltd']))
     const dinar = all.find((r) => nameOf(r) === 'Dinar Pay')!
-    expect(dinar.sourceTags.sort()).toEqual(['github', 'linkedin', 'wikidata'].sort())
+    // GLEIF's legal name "Dinar Pay K.S.C.C." folded into the same row.
+    expect(dinar.sourceTags.sort()).toEqual(['github', 'linkedin', 'register:gleif', 'wikidata'].sort())
+    expect((dinar.evidence as { lei?: string }).lei).toBe('5493000EXAMPLE000077')
+    // A non-tech employer from the map survives ingestion, marked by its source; the restaurant does not.
+    const hospital = all.find((r) => nameOf(r) === 'Example General Hospital')!
+    expect(hospital.sourceTags).toEqual(['map:osm'])
+    expect(hospital.regionIds).toEqual(expect.arrayContaining(['kuwait-city', 'kw']))
+    expect(names).not.toContain('Example Grill')
     expect(dinar.regionIds).toEqual(expect.arrayContaining(['kuwait-city', 'kw', 'gcc']))
     expect(dinar.domain).toBe('dinarpay.example')
     expect((dinar.evidence as { connections?: number }).connections).toBe(2)
@@ -233,6 +280,22 @@ describe('enrichment, watching and the speculative workflow', () => {
     // The follow-up cadence picks it up after five business days.
     const later = new Date('2026-10-19T09:00:00Z')
     expect((await findFollowupCandidates(u.id, later)).map((c) => c.applicationId)).toContain(applicationId)
+  })
+
+  it('a website only a map listed must pass the liveness check, else it is dropped (the company stays)', async () => {
+    const u = await setup()
+    await storeCandidates(u.id, [
+      { name: 'Dead Site Example Trading', website: 'https://dead-site.example', regionIds: ['kuwait-city'], industries: [], sourceTags: ['map:osm'], evidence: { sector: 'retail' } },
+      { name: 'KW Devhouse Map', website: 'https://kwdevhouse.example', regionIds: ['kuwait-city'], industries: [], sourceTags: ['map:osm'], evidence: { sector: 'it' } },
+    ])
+    await enrichPending(u.id, { fetchImpl: network(), limiter: NO_WAIT, limit: 200, countOpenRoles: async () => null })
+    const all = await rows(u.id)
+    const dead = all.find((r) => nameOf(r) === 'Dead Site Example Trading')!
+    expect(dead).toMatchObject({ website: null, domain: null, enrichStatus: 'done' })
+    expect(dead.evidence).toMatchObject({ siteLive: false, careersNote: 'The listed website did not answer.' })
+    const live = all.find((r) => nameOf(r) === 'KW Devhouse Map')!
+    expect(live).toMatchObject({ website: 'https://kwdevhouse.example', careersUrl: 'https://kwdevhouse.example/en/join-us' })
+    expect((live.evidence as { siteLive?: boolean }).siteLive).toBe(true)
   })
 
   it('retention tombstones dismissed companies but keeps the dedupe key', async () => {
