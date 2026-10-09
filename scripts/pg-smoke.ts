@@ -44,6 +44,11 @@ import { loadMatrix } from '@/lib/cv-fit/matrix'
 import { saveTailoredCopy } from '@/lib/cv-fit/tailor/save'
 import { loadTailorView } from '@/lib/cv-fit/tailor/service'
 import { coverTailoringFor } from '@/lib/cv-fit/tailor/cover'
+import { and, eq } from 'drizzle-orm'
+import { db } from '@/lib/db/client'
+import { accounts } from '@/lib/db/schema'
+import { encryptPlaintextAccountTokens } from '@/lib/auth/account-tokens'
+import { decryptToken, isEncrypted } from '@/lib/crypto/token-vault'
 
 type Check = readonly [name: string, run: () => Promise<unknown>]
 
@@ -135,6 +140,30 @@ async function main(): Promise<void> {
       async () => {
         const counts = await discQ.countByRegion(id, { status: 'all', quarantine: 'exclude' })
         if ((counts.get('gcc') ?? 0) < 1) throw new Error('no GCC count')
+      },
+    ],
+    // OAuth token encryption (lib/auth/account-tokens.ts): the one-time
+    // migration's raw-SQL filter and compare-and-set update, run twice.
+    [
+      'accounts.encryptTokens',
+      async () => {
+        await db.insert(accounts).values({
+          userId: id,
+          type: 'oidc',
+          provider: 'google',
+          providerAccountId: `smoke-${id}`,
+          access_token: 'ya29.smoke-plain',
+          refresh_token: '1//smoke-plain',
+          id_token: null,
+        })
+        const first = await encryptPlaintextAccountTokens()
+        if (first.updated < 1) throw new Error(`expected a row to encrypt, got ${JSON.stringify(first)}`)
+        const second = await encryptPlaintextAccountTokens()
+        if (second.updated !== 0) throw new Error(`second run changed ${second.updated} rows`)
+        const row = await db.query.accounts.findFirst({ where: and(eq(accounts.userId, id), eq(accounts.provider, 'google')) })
+        if (!row || !isEncrypted(row.refresh_token) || decryptToken(row.refresh_token) !== '1//smoke-plain' || row.id_token !== null) {
+          throw new Error('tokens not encrypted as expected')
+        }
       },
     ],
     ['analytics.sourceFunnel', () => analytics.sourceFunnel(id)],

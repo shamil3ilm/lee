@@ -62,6 +62,6 @@ describe('fetchPage', () => {
       headers: { location: 'https://10.0.0.1/admin' },
     })) as unknown as typeof fetch
 
-    await expect(fetchPage('https://start.example.com')).rejects.toThrow(/private ip/)
+    await expect(fetchPage('https://start.example.com')).rejects.toThrow(/unsafe url: private address 10\.0\.0\.1/)
   })
 })

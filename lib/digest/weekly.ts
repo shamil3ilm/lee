@@ -196,7 +196,10 @@ export async function gatherPipelineSnapshot(
       companyName: companies.name,
     })
     .from(interviewStages)
-    .innerJoin(applications, eq(interviewStages.applicationId, applications.id))
+    .innerJoin(
+      applications,
+      and(eq(interviewStages.applicationId, applications.id), eq(applications.userId, interviewStages.userId)),
+    )
     .innerJoin(jobs, eq(applications.jobId, jobs.id))
     .leftJoin(companies, eq(jobs.companyId, companies.id))
     .where(
@@ -328,7 +331,10 @@ export async function gatherPipelineSnapshot(
       companyName: companies.name,
     })
     .from(interviewStages)
-    .innerJoin(applications, eq(interviewStages.applicationId, applications.id))
+    .innerJoin(
+      applications,
+      and(eq(interviewStages.applicationId, applications.id), eq(applications.userId, interviewStages.userId)),
+    )
     .innerJoin(jobs, eq(applications.jobId, jobs.id))
     .leftJoin(companies, eq(jobs.companyId, companies.id))
     .where(

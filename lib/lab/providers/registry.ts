@@ -1,4 +1,5 @@
 import * as keysQ from '@/lib/db/queries/labProviderKeys'
+import { ownerEnvFallback } from '@/lib/auth/owner'
 import { getProviderInfo, OPENROUTER_APP_HEADERS } from './catalog'
 import { MissingKeyError, ProviderError } from './errors'
 import { parseModelList } from './models'
@@ -30,14 +31,14 @@ export interface ResolvedKey {
   source: KeySource
 }
 
-/** DB key (decrypted) → env fallback → none. */
+/** DB key (decrypted) → env fallback (owner only) → none. */
 export async function resolveKey(userId: string, provider: ProviderId): Promise<ResolvedKey> {
   const info = getProviderInfo(provider)
   if (!info.needsKey) return { key: null, source: 'none' }
   const stored = await keysQ.getDecrypted(userId, provider)
   if (stored) return { key: stored, source: 'db' }
   const envName = info.envKey
-  const envVal = envName ? process.env[envName] : undefined
+  const envVal = await ownerEnvFallback(userId, envName ? process.env[envName] : undefined)
   if (envVal) return { key: envVal, source: 'env' }
   return { key: null, source: 'none' }
 }

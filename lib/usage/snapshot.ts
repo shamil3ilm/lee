@@ -1,7 +1,8 @@
-import { desc, eq, gte, isNotNull, sql } from 'drizzle-orm'
+import { desc, eq, gte, sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
-import { labProviderKeys, usageSettings, usageSnapshots } from '@/lib/db/schema'
+import { usageSettings, usageSnapshots } from '@/lib/db/schema'
 import * as keysQ from '@/lib/db/queries/labProviderKeys'
+import { ownerUserId } from '@/lib/auth/owner'
 import { runRetention } from '@/lib/db/retention'
 import { logger } from '@/lib/logger'
 import { recordUsageAlerts } from './alerts'
@@ -24,37 +25,26 @@ export interface NeonCredentials {
 
 /**
  * The Neon key the snapshot uses. Usage meters are deployment-wide (one
- * Neon project), so the most recently saved `neon` key wins, with that
- * owner's project id; else the NEON_API_KEY env default with any saved
- * project id. Null when neither exists.
+ * Neon project, the owner's), so only the OWNER's saved `neon` key and
+ * project id count, else the NEON_API_KEY env default. Another user's saved
+ * key or project id is never used (invite-beta audit §1.3). Null when
+ * neither exists.
  */
 export async function resolveNeonCredentials(): Promise<NeonCredentials | null> {
-  const [owner] = await db
-    .select({ userId: labProviderKeys.userId })
-    .from(labProviderKeys)
-    .where(eq(labProviderKeys.provider, 'neon'))
-    .orderBy(desc(labProviderKeys.updatedAt))
-    .limit(1)
-  if (owner) {
-    const key = await keysQ.getDecrypted(owner.userId, 'neon')
-    if (key) {
-      const [s] = await db
-        .select({ projectId: usageSettings.neonProjectId })
-        .from(usageSettings)
-        .where(eq(usageSettings.userId, owner.userId))
-        .limit(1)
-      return { key, projectId: s?.projectId ?? null }
-    }
-  }
-  const envKey = process.env.NEON_API_KEY
-  if (!envKey) return null
-  const [s] = await db
-    .select({ projectId: usageSettings.neonProjectId })
-    .from(usageSettings)
-    .where(isNotNull(usageSettings.neonProjectId))
-    .orderBy(desc(usageSettings.updatedAt))
-    .limit(1)
-  return { key: envKey, projectId: s?.projectId ?? null }
+  const ownerId = await ownerUserId()
+  const [saved, settings] = ownerId
+    ? await Promise.all([
+        keysQ.getDecrypted(ownerId, 'neon'),
+        db
+          .select({ projectId: usageSettings.neonProjectId })
+          .from(usageSettings)
+          .where(eq(usageSettings.userId, ownerId))
+          .limit(1),
+      ])
+    : [null, []]
+  const key = saved ?? process.env.NEON_API_KEY
+  if (!key) return null
+  return { key, projectId: settings[0]?.projectId ?? null }
 }
 
 const EARLY_RETENTION_BUDGET_MS = 20_000

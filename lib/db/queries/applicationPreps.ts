@@ -88,7 +88,10 @@ export async function listDue(userId: string, until: Date, limit = 10, client: D
       status: applications.status,
     })
     .from(applicationPreps)
-    .innerJoin(applications, eq(applications.id, applicationPreps.applicationId))
+    .innerJoin(
+      applications,
+      and(eq(applications.id, applicationPreps.applicationId), eq(applications.userId, applicationPreps.userId)),
+    )
     .innerJoin(jobs, eq(jobs.id, applications.jobId))
     .leftJoin(companies, eq(companies.id, jobs.companyId))
     .where(

@@ -24,9 +24,11 @@ describe('token vault', () => {
     expect(enc).not.toContain('ghu_')
     expect(decryptToken(enc)).toBe('ghu_SYNTHETIC123')
     expect(isEncrypted('ghu_plain')).toBe(false)
-    const parts = enc.split(':')
-    parts[4] = Buffer.from('tampered').toString('base64')
-    expect(() => decryptToken(parts.join(':'))).toThrow()
+    // Legacy plaintext passes through (the shared vault re-encrypts it on read).
+    expect(decryptToken('ghu_plain')).toBe('ghu_plain')
+    // enc:v1:<iv>.<tag>.<ciphertext> (base64url): a tampered ciphertext fails authentication.
+    const [iv, tag] = enc.slice('enc:v1:'.length).split('.')
+    expect(() => decryptToken(`enc:v1:${iv}.${tag}.${Buffer.from('tampered').toString('base64url')}`)).toThrow()
   })
 })
 

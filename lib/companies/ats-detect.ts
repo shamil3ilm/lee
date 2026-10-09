@@ -17,6 +17,9 @@ const CANDIDATES: Candidate[] = [
 
 export async function detectATSFromDomain(domain: string): Promise<DetectedATS> {
   const slug = slugFromDomain(domain)
+  // The slug comes from a user-typed domain and goes into a fixed host's
+  // path: one DNS-label-shaped token only, never path syntax.
+  if (!/^[a-z0-9][a-z0-9-]{0,62}$/.test(slug)) return null
   for (const c of CANDIDATES) {
     try {
       const res = await fetchWithTimeout(

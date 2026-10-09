@@ -71,7 +71,10 @@ export async function getUpcomingStages(
       jobTitle: jobs.title,
     })
     .from(interviewStages)
-    .innerJoin(applications, eq(applications.id, interviewStages.applicationId))
+    .innerJoin(
+      applications,
+      and(eq(applications.id, interviewStages.applicationId), eq(applications.userId, interviewStages.userId)),
+    )
     .innerJoin(jobs, eq(jobs.id, applications.jobId))
     .leftJoin(companies, eq(companies.id, jobs.companyId))
     .where(
@@ -108,7 +111,10 @@ export async function getRecentActivity(
       companyName: companies.name,
     })
     .from(activities)
-    .leftJoin(applications, eq(applications.id, activities.applicationId))
+    .leftJoin(
+      applications,
+      and(eq(applications.id, activities.applicationId), eq(applications.userId, activities.userId)),
+    )
     .leftJoin(jobs, eq(jobs.id, applications.jobId))
     .leftJoin(companies, eq(companies.id, jobs.companyId))
     .where(and(eq(activities.userId, userId), gte(activities.createdAt, since)))

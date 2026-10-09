@@ -115,7 +115,7 @@ describe('saveServiceSecretAction', () => {
 
 describe('resolution: the UI value wins, env is the fallback', () => {
   it('uses env when nothing is saved, the saved key once saved, env again after removal', async () => {
-    const me = await makeUser()
+    const me = await makeUser(process.env.ALLOWED_EMAIL ?? 'test@example.com')  // the owner: env keys are owner-only
     sessionMock.mockResolvedValue(me.id)
     process.env.FIRECRAWL_API_KEY = 'env-firecrawl-key'
     expect(await resolveServiceSecret(me.id, 'firecrawl')).toEqual({
@@ -159,7 +159,7 @@ describe('resolution: the UI value wins, env is the fallback', () => {
   })
 
   it('app AI calls fall back to GROQ_API_KEY when no key is saved', async () => {
-    const me = await makeUser()
+    const me = await makeUser(process.env.ALLOWED_EMAIL ?? 'test@example.com')  // the owner: env keys are owner-only
     process.env.GROQ_API_KEY = 'env-groq-key'
     await profileQ.upsert(me.id, { aiProvider: 'groq', aiModel: 'openai/gpt-oss-20b' })
     const ai = await getAIProviderForUser(me.id)

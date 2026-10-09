@@ -4,6 +4,7 @@ import { db } from '@/lib/db/client'
 import { accounts } from '@/lib/db/schema'
 import { getGoogleTokens, NoGoogleAccountError } from '@/lib/google/tokens'
 import { makeUser } from '@/tests/factories'
+import { decryptToken } from '@/lib/crypto/token-vault'
 
 const originalFetch = globalThis.fetch
 
@@ -89,7 +90,9 @@ describe('getGoogleTokens', () => {
     const persisted = await db.query.accounts.findFirst({
       where: and(eq(accounts.userId, user.id), eq(accounts.provider, 'google')),
     })
-    expect(persisted?.access_token).toBe('refreshed-access')
+    // Stored encrypted at rest (lib/crypto/token-vault.ts).
+    expect(persisted?.access_token).not.toBe('refreshed-access')
+    expect(decryptToken(persisted?.access_token ?? null)).toBe('refreshed-access')
     expect(persisted?.expires_at).toBeGreaterThan(Math.floor(Date.now() / 1000) + 3500)
   })
 

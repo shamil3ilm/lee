@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { requireUserId } from '@/lib/auth/require-session'
 import { updateStatus } from '@/lib/applications/service'
 import { redirect } from 'next/navigation'
-import { createStage, deleteStage, updateStage } from '@/lib/stages/service'
+import { createStage, deleteStage, updateStage, ApplicationNotFoundError } from '@/lib/stages/service'
 import {
   deleteApplication as svcDeleteApplication,
   updateApplicationDetails,
@@ -44,7 +44,7 @@ export async function changeStatus(
 
 const addStageSchema = z.object({
   applicationId: z.string().uuid(),
-  kind: z.string().min(1),
+  kind: z.enum(STAGE_KIND_VALUES),
   title: z.string().optional(),
   scheduledAt: z.string().optional(),
   durationMinutes: z.coerce.number().int().positive().optional().or(z.literal('')),
@@ -138,6 +138,7 @@ export async function addStage(formData: FormData): Promise<ActionResult> {
     revalidatePath(`/applications/${parsed.data.applicationId}`)
     return { success: true }
   } catch (err) {
+    if (err instanceof ApplicationNotFoundError) return { error: 'Application not found.' }
     logger.error('addStage failed', {
       err: err instanceof Error ? err.message : String(err),
     })

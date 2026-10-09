@@ -136,7 +136,7 @@ describe('takeUsageSnapshot', () => {
   })
 
   it('with a saved Neon key: reads CU-hours, egress and compute state from the API', async () => {
-    const u = await makeUser()
+    const u = await makeUser(process.env.ALLOWED_EMAIL ?? 'test@example.com')  // the owner: env keys are owner-only
     await keysQ.upsert(u.id, 'neon', NEON_KEY)
     const fetchMock = stubNeon()
     await takeUsageSnapshot(new Date('2026-09-26T09:00:00Z'))
@@ -151,7 +151,7 @@ describe('takeUsageSnapshot', () => {
   })
 
   it('uses the saved project id and the env key fallback', async () => {
-    const u = await makeUser()
+    const u = await makeUser(process.env.ALLOWED_EMAIL ?? 'test@example.com')  // the owner: env keys are owner-only
     process.env.NEON_API_KEY = NEON_KEY
     await db.insert(usageSettings).values({ userId: u.id, neonProjectId: 'my-proj-42' })
     const fetchMock = stubNeon({ projects: [{ id: 'a' }, { id: 'b' }] })
@@ -162,7 +162,7 @@ describe('takeUsageSnapshot', () => {
   })
 
   it('a rejected key or several projects is a friendly note, never upstream text', async () => {
-    const u = await makeUser()
+    const u = await makeUser(process.env.ALLOWED_EMAIL ?? 'test@example.com')  // the owner: env keys are owner-only
     await keysQ.upsert(u.id, 'neon', NEON_KEY)
     stubNeon({ status: 401 })
     await takeUsageSnapshot()
@@ -178,7 +178,7 @@ describe('takeUsageSnapshot', () => {
   })
 
   it('at ≥90 % CU-hours turns on the pause throttle; the owner can resume it for the month', async () => {
-    const u = await makeUser()
+    const u = await makeUser(process.env.ALLOWED_EMAIL ?? 'test@example.com')  // the owner: env keys are owner-only
     await keysQ.upsert(u.id, 'neon', NEON_KEY)
     stubNeon({ project: { compute_time_seconds: 92 * 3600 } })
     const r = await takeUsageSnapshot()

@@ -1,4 +1,5 @@
 import * as keysQ from '@/lib/db/queries/labProviderKeys'
+import { isOwner } from '@/lib/auth/owner'
 import { PROVIDERS } from './providers/catalog'
 import { safeErrorMessage } from './providers/errors'
 import { classifyLabError, friendlyLabError } from './friendly-error'
@@ -43,14 +44,14 @@ export async function getProviderStatuses(
   userId: string,
   opts: { check?: boolean; fetchImpl?: typeof fetch } = {},
 ): Promise<ProviderStatus[]> {
-  const masked = await keysQ.listMasked(userId)
+  const [masked, owner] = await Promise.all([keysQ.listMasked(userId), isOwner(userId)])
   const byProvider = new Map(masked.map((m) => [m.provider, m]))
   return Promise.all(
     PROVIDERS.map(async (info) => {
       const m = byProvider.get(info.id)
       const keySource: KeySource = m
         ? 'db'
-        : info.envKey && process.env[info.envKey]
+        : owner && info.envKey && process.env[info.envKey]
           ? 'env'
           : 'none'
       let reachable: boolean | null = null

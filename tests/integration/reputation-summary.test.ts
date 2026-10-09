@@ -180,7 +180,7 @@ describe('Google Places (optional)', () => {
   })
 
   it('stores only the place id and stops at the monthly cap', async () => {
-    const u = await makeUser()
+    const u = await makeUser(process.env.ALLOWED_EMAIL ?? 'test@example.com')  // the owner: env keys are owner-only
     const c = await makeCompany(u.id, { name: 'Acme Payments' })
     vi.stubEnv('GOOGLE_PLACES_API_KEY', 'test-key')
     await settingsQ.savePlaces(u.id, { placesEnabled: true, placesMonthlyCap: 3 })

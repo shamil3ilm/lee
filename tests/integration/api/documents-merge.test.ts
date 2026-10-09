@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { PDFDocument, StandardFonts } from 'pdf-lib'
 import * as docsQ from '@/lib/db/queries/documents'
 import * as assetsQ from '@/lib/db/queries/documentAssets'
-import { makeUser } from '@/tests/factories'
+import { makeApplication, makeCompany, makeJob, makeUser } from '@/tests/factories'
 
 // Merge route drives real DB writes; auth is stubbed so we can flip users.
 const authMock = vi.hoisted(() => vi.fn())
@@ -115,6 +115,27 @@ describe('POST /api/documents/merge', () => {
     // (as here) every source is an asset with no document version.
     expect(content.stateSnapshot?.hashes.sources).toMatch(/^[a-f0-9]{64}$/)
     expect(content.stateSnapshot?.fields.sourceIds).toEqual([])
+  })
+
+  it("two users: 404 for another user's applicationId or source, nothing stored", async () => {
+    const victim = await makeUser()
+    const co = await makeCompany(victim.id)
+    const victimApp = await makeApplication(victim.id, (await makeJob(victim.id, co.id)).id)
+    const victimHost = await docsQ.create(victim.id, { applicationId: null, kind: 'latex_cv', version: 1, title: 'v', content: {} })
+    const victimAsset = await seedPdfAsset(victim.id, victimHost.id, 'v.pdf', ['V'])
+
+    const attacker = await makeUser()
+    const host = await docsQ.create(attacker.id, { applicationId: null, kind: 'latex_cv', version: 1, title: 'a', content: {} })
+    const own = await seedPdfAsset(attacker.id, host.id, 'a.pdf', ['A'])
+    authMock.mockResolvedValue({ user: { id: attacker.id } })
+    const { merge } = await importRoutes()
+    const post = (body: unknown) =>
+      merge.POST(new Request('http://localhost/api/documents/merge', { method: 'POST', body: JSON.stringify(body) }))
+
+    expect((await post({ applicationId: victimApp.id, sources: [{ kind: 'asset', id: own.id }] })).status).toBe(404)
+    expect((await post({ sources: [{ kind: 'asset', id: victimAsset.id }] })).status).toBe(422)
+    const mine = await docsQ.list(attacker.id)
+    expect(mine.filter((d) => d.kind === 'merged_pdf')).toEqual([])
   })
 
   it('returns 422 when a source id is unknown', async () => {
