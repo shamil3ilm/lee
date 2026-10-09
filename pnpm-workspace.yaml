@@ -1,3 +1,10 @@
 ignoredBuiltDependencies:
   - sharp
   - unrs-resolver
+
+# Security floors for transitive deps of `next` (pnpm audit --prod, 2026-10-09).
+# Both are within next's own semver ranges; the overrides only force the
+# patched minimum. Remove once `next` itself requires these versions.
+overrides:
+  sharp@^0.35.4: ^0.35.5
+  source-map-js@^1.2.1: ^1.2.2
