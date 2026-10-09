@@ -103,7 +103,7 @@ test('sources: job alerts by email panel shows every alert site with setup steps
     await expect(senders.getByText(site, { exact: true })).toBeVisible()
   }
   await panel.getByText('NaukriGulf', { exact: true }).last().click()
-  await expect(panel.getByText(/Pick Location UAE/)).toBeVisible()
+  await expect(panel.getByText(/Pick Location Kuwait \(repeat for UAE/)).toBeVisible()
 })
 
 test('application: edit job details, link and unlink a contact', async ({ page }) => {

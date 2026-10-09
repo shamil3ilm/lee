@@ -49,6 +49,8 @@ export const E2E_ENV: Readonly<Record<string, string>> = {
   FIRECRAWL_API_KEY: '',
   NEON_API_KEY: '',
   ADZUNA_KEY: '',
+  // India MCA company source (data.gov.in): never on in e2e, whatever the shell has.
+  DATA_GOV_IN_KEY: '',
   GITHUB_TOKEN: '',
   HF_TOKEN: '',
   GITHUB_PORTFOLIO_TOKEN: '',
