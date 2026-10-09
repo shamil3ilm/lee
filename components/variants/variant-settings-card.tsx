@@ -76,9 +76,9 @@ export function VariantSettingsCard({ name, onName, portfolio, recipe, onChange,
                 <option value="2">2 pages</option>
               </NativeSelect>
             </FormField>
-            <FormField htmlFor="variant-paper" label="Paper">
-              <NativeSelect id="variant-paper" value={recipe.paper ?? ''} onChange={(e) => set({ paper: isPaperSize(e.target.value) ? e.target.value : null })}>
-                <option value="">{`Region default (${PAPER_LABELS[REGION_PAPER[recipe.region]]})`}</option>
+            <FormField htmlFor="variant-paper" label="Paper" help="Auto: A4 for GCC and India, Letter for Remote.">
+              <NativeSelect id="variant-paper" aria-describedby="variant-paper-help" value={recipe.paper ?? ''} onChange={(e) => set({ paper: isPaperSize(e.target.value) ? e.target.value : null })}>
+                <option value="">{`Auto (${PAPER_LABELS[REGION_PAPER[recipe.region]]})`}</option>
                 {PAPER_SIZES.map((size) => (
                   <option key={size} value={size}>
                     {PAPER_LABELS[size]}
