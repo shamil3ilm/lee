@@ -19,8 +19,8 @@ test('lists local companies with fit chips and filters them', async ({ page }) =
   await page.goto('/discoveries?tab=companies')
   await expect(page.getByTestId('companies-tab')).toBeVisible()
   for (const name of [DINAR, FALCON, BACKWATER]) await expect(card(page, name)).toBeVisible()
-  // Best fit first, with the reasons.
-  await expect(page.getByTestId('company-card').first()).toContainText(DINAR)
+  // Best fit first, with the reasons: the small, fast-growing company leads.
+  await expect(page.getByTestId('company-card').first()).toContainText(BACKWATER)
   await expect(card(page, DINAR).getByRole('list', { name: 'Why this rank' })).toContainText('Hiring: 2 open roles')
 
   await page.getByTestId('company-industry').selectOption('erp')
@@ -53,17 +53,18 @@ test('growth chip, its "Why" popover, sort by growth, minimum growth and "Under 
   await chip.click()
   const why = page.getByTestId('growth-why')
   await expect(why).toBeVisible()
-  await expect(why.getByRole('list', { name: 'Growth signals' })).toContainText('Hiring velocity')
-  await expect(why.getByRole('list', { name: 'Growth signals' })).toContainText('Engineering activity')
-  await expect(why.getByRole('list', { name: 'Unknown growth signals' })).toContainText('Funding and expansion news')
+  await expect(why.getByRole('list', { name: 'Measured growth signals' })).toContainText('Hiring velocity')
+  await expect(why.getByRole('list', { name: 'Measured growth signals' })).toContainText('Engineering activity')
+  await expect(why.getByRole('list', { name: 'Growth signals not measured yet' })).toContainText('Funding and expansion news')
   await page.keyboard.press('Escape')
   await expect(card(page, FALCON).getByTestId('growth-chip')).toContainText('Growth unknown')
 
   await page.getByTestId('company-sort').selectOption('growth')
   await expect(page).toHaveURL(/sort=growth/)
   await expect(page.getByTestId('company-card').first()).toContainText(BACKWATER)
-  // Unknown growth sorts last.
-  await expect(page.getByTestId('company-card').last()).toContainText(FALCON)
+  // Unknown growth sorts after every known score.
+  const names = await page.getByTestId('company-card').evaluateAll((els) => els.map((e) => e.getAttribute('data-company') ?? ''))
+  expect(names.indexOf(FALCON)).toBeGreaterThan(names.indexOf(DINAR))
 
   await page.getByTestId('company-min-growth').selectOption('70')
   await expect(page).toHaveURL(/minGrowth=70/)

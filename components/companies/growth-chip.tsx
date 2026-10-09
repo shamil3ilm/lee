@@ -57,7 +57,7 @@ export function GrowthWhy({ g }: { g: CompanyGrowthCard }) {
         </p>
       </div>
       {known.length > 0 ? (
-        <ul className="divide-y" aria-label="Growth signals">
+        <ul className="divide-y" aria-label="Measured growth signals">
           {known.map((s) => (
             <SignalRow key={s.kind} s={s} />
           ))}
@@ -66,7 +66,7 @@ export function GrowthWhy({ g }: { g: CompanyGrowthCard }) {
       {unknown.length > 0 ? (
         <div>
           <p className="text-xs font-medium">Not measured yet</p>
-          <ul className="divide-y" aria-label="Unknown growth signals">
+          <ul className="divide-y" aria-label="Growth signals not measured yet">
             {unknown.map((s) => (
               <SignalRow key={s.kind} s={s} />
             ))}

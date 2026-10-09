@@ -433,7 +433,7 @@ export const LOCAL_COMPANIES = [
     website: 'https://backwater.example',
     domain: 'backwater.example',
     regionIds: ['kochi', 'kerala', 'in'],
-    industry: ['it_services'],
+    industry: ['payments', 'it_services'],
     sizeBand: '11-50',
     stage: 'startup',
     sourceTags: ['directory:technopark'],
@@ -441,7 +441,7 @@ export const LOCAL_COMPANIES = [
     atsSlug: null,
     careersUrl: null,
     /** A small company growing fast (new postings, active GitHub) with no Wikidata entry or press: "under the radar". */
-    evidence: { jobsRecent30: 5, jobsPrior60: 2, githubLogin: 'backwater-example', github: { at: '2026-10-01', c90: 140, cp90: 50, nr90: 2, nrp90: 0, stars: 3 } },
+    evidence: { jobsRecent30: 5, jobsPrior60: 2, languages: ['Go', 'TypeScript'], githubLogin: 'backwater-example', github: { at: '2026-10-01', c90: 140, cp90: 50, nr90: 2, nrp90: 0, stars: 3 } },
     fitScore: 52,
     snapshots: [],
   },

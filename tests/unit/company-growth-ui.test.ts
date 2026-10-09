@@ -60,9 +60,9 @@ describe('growth "Why" popover on company cards', () => {
       }),
     )
     expect(screen.getByText('Growth 81 · medium confidence')).toBeTruthy()
-    const known = screen.getByRole('list', { name: 'Growth signals' })
+    const known = screen.getByRole('list', { name: 'Measured growth signals' })
     expect(known.textContent).toContain('Hiring velocity')
     expect(known.textContent).toContain('Lever job board, weekly counts · 2026-10-08 · high confidence · weight 30')
-    expect(screen.getByRole('list', { name: 'Unknown growth signals' }).textContent).toContain('unknown')
+    expect(screen.getByRole('list', { name: 'Growth signals not measured yet' }).textContent).toContain('unknown')
   })
 })
