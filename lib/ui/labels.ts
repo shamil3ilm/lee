@@ -24,6 +24,8 @@ const LABELS: Readonly<Record<string, string>> = {
   job_comparison_narrative: 'Job comparison',
   radar_brief: 'AI Radar brief',
   suggest_roles: 'Role suggestions',
+  linkedin_post: 'LinkedIn post draft',
+  linkedin_profile: 'LinkedIn profile suggestions',
   distill_github: 'GitHub summary',
   discovery_scoring: 'Discovery scoring',
   lab_arena: 'Model arena',

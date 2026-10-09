@@ -1,5 +1,5 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
-import { and, eq, lt } from 'drizzle-orm'
+import { and, eq, lt, or } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { oauthStates } from '@/lib/db/schema'
 import { decryptToken, encryptToken } from '@/lib/crypto/token-vault'
@@ -66,8 +66,8 @@ export async function createOAuthState(
   now: Date = new Date(),
 ): Promise<string> {
   const state = randomToken()
-  // Housekeeping: this user's abandoned attempts.
-  await db.delete(oauthStates).where(and(eq(oauthStates.userId, userId), lt(oauthStates.expiresAt, now)))
+  // A new attempt supersedes this user's earlier ones for the provider; expired ones of any provider go too.
+  await db.delete(oauthStates).where(and(eq(oauthStates.userId, userId), or(eq(oauthStates.provider, provider), lt(oauthStates.expiresAt, now))))
   await db.insert(oauthStates).values({
     stateHash: hashState(state),
     userId,

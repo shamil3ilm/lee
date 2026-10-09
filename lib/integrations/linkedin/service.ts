@@ -43,6 +43,7 @@ export async function completeLinkedInConnect(
     return { ok: false, reason: 'state' }
   }
   if (input.error || !input.code) return { ok: false, reason: 'denied' }
+  if (!state.secrets.nonce) return { ok: false, reason: 'state' }
   let tokens
   try {
     tokens = await exchangeCode(cfg, { code: input.code, redirectUri: callbackUrl('linkedin') }, now)
@@ -57,7 +58,7 @@ export async function completeLinkedInConnect(
       keys,
       issuers: [cfg.webBase, `${cfg.webBase}/oauth`],
       audience: cfg.clientId,
-      nonce: state.secrets.nonce ?? null,
+      nonce: state.secrets.nonce,
       now,
     })
     const info = await fetchUserInfo(cfg, tokens.access)

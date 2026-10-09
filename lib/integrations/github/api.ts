@@ -21,7 +21,7 @@ const API_VERSION = '2022-11-28'
 const FULL_NAME = /^[A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100}$/
 
 export function isRepoFullName(v: unknown): v is string {
-  return typeof v === 'string' && FULL_NAME.test(v)
+  return typeof v === 'string' && FULL_NAME.test(v) && !/\/\.{1,2}$/.test(v)
 }
 
 function headers(token: string, extra: Record<string, string> = {}): Record<string, string> {
@@ -85,9 +85,19 @@ export async function listUserInstallations(cfg: Pick<GitHubAppConfig, 'apiBase'
   })
 }
 
-/** This app's installation among the user's, by App ID (or slug). */
-export function findAppInstallation(list: readonly Installation[], cfg: Pick<GitHubAppConfig, 'appId' | 'slug'>): Installation | null {
-  return list.find((i) => i.appId === cfg.appId || (i.appSlug !== null && i.appSlug === cfg.slug)) ?? null
+/**
+ * This app's installation among the user's, by App ID (or slug). The list
+ * also holds org installations the user can merely see, so the one on the
+ * user's own account (`preferAccount`) wins when there is one.
+ */
+export function findAppInstallation(
+  list: readonly Installation[],
+  cfg: Pick<GitHubAppConfig, 'appId' | 'slug'>,
+  preferAccount?: string | null,
+): Installation | null {
+  const mine = list.filter((i) => i.appId === cfg.appId || (i.appSlug !== null && i.appSlug === cfg.slug))
+  const own = preferAccount ? mine.find((i) => i.account?.toLowerCase() === preferAccount.toLowerCase()) : undefined
+  return own ?? mine[0] ?? null
 }
 
 export interface RepoSummary {

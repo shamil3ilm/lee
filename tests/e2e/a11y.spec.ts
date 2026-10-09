@@ -47,6 +47,8 @@ const ROUTES = [
   '/settings/current-job',
   '/settings/sources',
   '/settings/integrations',
+  '/settings/linkedin',
+  '/settings/publish',
   '/settings/ai',
   '/settings/notifications',
   '/settings/logs',
@@ -54,7 +56,7 @@ const ROUTES = [
 ]
 
 /** Routes checked for 24px targets at phone width (WCAG 2.5.8). */
-const PHONE_ROUTES = ['/', '/discoveries', '/shortlist', '/settings/search', '/settings/sources', '/compare', '/applications', '/todos', '/analytics', '/radar/sources', '/settings/notifications', '/settings/variants']
+const PHONE_ROUTES = ['/', '/discoveries', '/shortlist', '/settings/search', '/settings/sources', '/compare', '/applications', '/todos', '/analytics', '/radar/sources', '/settings/notifications', '/settings/variants', '/settings/integrations', '/settings/linkedin']
 
 interface Violation {
   id: string

@@ -4,6 +4,7 @@ import { logger } from '@/lib/logger'
 import { loadPersonalContext } from '@/lib/radar/new/personal'
 import { releaseProject } from '@/lib/radar/new/projects'
 import { IntegrationHttpError } from '../http'
+import { consumeRateLimit, RATE_RULES } from '../rate-limit'
 import { getFileText, listStarred } from './api'
 import { projectsFromComposerJson, projectsFromPackageJson, projectsFromStarred } from './dependencies'
 import { getGitHubUserToken } from './token'
@@ -28,6 +29,7 @@ export type FollowResult = { ok: true; suggestions: FollowSuggestion[]; starredU
 const MAX_DEP_REPOS = 5
 
 export async function suggestRadarFollows(userId: string, now: Date = new Date()): Promise<FollowResult> {
+  if (!(await consumeRateLimit(userId, 'github_follow', RATE_RULES.test, now))) return { ok: false, error: 'Too many requests. Please wait a few minutes.' }
   const token = await getGitHubUserToken(userId, now)
   if (!token.ok) return { ok: false, error: 'Connect GitHub first.' }
   const [conn, stats, personal] = await Promise.all([connQ.get(userId, 'github'), statsQ.list(userId), loadPersonalContext(userId)])

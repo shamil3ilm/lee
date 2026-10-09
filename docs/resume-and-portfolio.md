@@ -164,7 +164,9 @@ The variant's region rules still apply: Remote / US / EU and India never show a 
 4. **Write.** A PUT sends that sha with "chore(profile): sync from lee" and a summary. A 409 or 422 means the file changed in between: lee re-fetches it and shows the new diff.
 5. **Record.** The sha, content hash, version and commit URL are stored. The events `profile_published` and `profile_publish_conflict` are logged without the token or the file content.
 
-The token is the `github_portfolio` entry in the encrypted key store. Its Test does four checks:
+With **Connect GitHub** (Settings › Integrations, see [integrations-github-linkedin.md](integrations-github-linkedin.md)), Publish first uses a 1-hour installation token of the user's own lee GitHub App installation, narrowed to the configured repository (Contents write, Metadata read). When there is no connection or the repository is not in the installation, it falls back to the fine-grained token below. The sha and conflict flow is the same either way.
+
+The fallback token is the `github_portfolio` entry in the encrypted key store. Its Test does four checks:
 
 - the token is fine-grained;
 - the repository is readable;

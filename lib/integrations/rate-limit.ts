@@ -27,6 +27,7 @@ export type RateAction =
   | 'github_disconnect'
   | 'github_test'
   | 'github_refresh_repos'
+  | 'github_follow'
   | 'linkedin_connect'
   | 'linkedin_disconnect'
   | 'linkedin_post'

@@ -46,7 +46,8 @@ export function verifyIdToken(
   const [h, p, s] = parts as [string, string, string]
   const header = decodePart<{ alg?: string; kid?: string }>(h)
   if (header.alg !== 'RS256') throw new IdTokenError('signature')
-  const jwk = opts.keys.find((k) => (header.kid ? k.kid === header.kid : true) && k.kty === 'RSA')
+  if (!header.kid) throw new IdTokenError('signature')
+  const jwk = opts.keys.find((k) => k.kid === header.kid && k.kty === 'RSA')
   if (!jwk) throw new IdTokenError('signature')
   let valid = false
   try {

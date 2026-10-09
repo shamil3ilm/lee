@@ -56,7 +56,7 @@ export async function completeGitHubConnect(
   }
   try {
     const user = await getUser(cfg, tokens.access)
-    const installation = await findInstallation(cfg, tokens.access)
+    const installation = await findInstallation(cfg, tokens.access, user.login)
     await connQ.save(userId, 'github', {
       accountId: user.id,
       login: user.login,
@@ -68,6 +68,7 @@ export async function completeGitHubConnect(
       accessExpiresAt: tokens.accessExpiresAt,
       refreshExpiresAt: tokens.refreshExpiresAt,
       installationId: installation?.id ?? null,
+      settings: { installationAccount: installation?.account ?? null },
     })
     logger.info('github_connected', { userId, installed: installation !== null })
     return { ok: true, login: user.login }
@@ -77,8 +78,8 @@ export async function completeGitHubConnect(
   }
 }
 
-async function findInstallation(cfg: GitHubAppConfig, token: string): Promise<Installation | null> {
-  return findAppInstallation(await listUserInstallations(cfg, token), cfg)
+async function findInstallation(cfg: GitHubAppConfig, token: string, login: string | null): Promise<Installation | null> {
+  return findAppInstallation(await listUserInstallations(cfg, token), cfg, login)
 }
 
 /** "contents:write", "metadata:read", … from an installation's permission map. */
@@ -148,10 +149,12 @@ export async function getGitHubStatus(userId: string, now: Date = new Date()): P
   const token = await getGitHubUserToken(userId, now)
   if (!token.ok) return { ...base, needsReconnect: token.reason === 'expired', reposUnavailable: true }
   try {
-    const installation = await findInstallation(cfg, token.token)
+    const installation = await findInstallation(cfg, token.token, conn.login)
     const installationId = installation?.id ?? null
     const permissions = permissionList(installation)
-    if (installationId !== conn.installationId) await connQ.updateMeta(userId, 'github', { installationId })
+    if (installationId !== conn.installationId || (installation?.account ?? null) !== (conn.settings.installationAccount ?? null)) {
+      await connQ.updateMeta(userId, 'github', { installationId, settings: { installationAccount: installation?.account ?? null } })
+    }
     if (!installation) return { ...base, permissions }
     const repos = await listInstallationRepos(cfg, token.token, installation.id)
     return {
@@ -188,7 +191,7 @@ export async function testGitHub(userId: string, now: Date = new Date()): Promis
   }
   try {
     const user = await getUser(token.cfg, token.token)
-    const installation = await findInstallation(token.cfg, token.token)
+    const installation = await findInstallation(token.cfg, token.token, user.login)
     return installation
       ? { ok: true, message: `Connected as ${user.login}; the app is installed.` }
       : { ok: true, message: `Connected as ${user.login}. Install the app on your portfolio repository to publish with it.` }

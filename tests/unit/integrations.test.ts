@@ -5,7 +5,7 @@ import { githubAppConfig, linkedinAppConfig, normalizePem, safeBase } from '@/li
 import { assertAllowedUrl } from '@/lib/integrations/http'
 import { pkceChallenge } from '@/lib/integrations/oauth-state'
 import { createAppJwt } from '@/lib/integrations/github/app-jwt'
-import { lastPage } from '@/lib/integrations/github/api'
+import { findAppInstallation, isRepoFullName, lastPage } from '@/lib/integrations/github/api'
 import { applyRepoSuggestion, buildRepoSuggestion, reviewHint } from '@/lib/integrations/github/evidence'
 import { projectsFromComposerJson, projectsFromPackageJson, projectsFromStarred } from '@/lib/integrations/github/dependencies'
 import { cleanProjectIds, releaseProject } from '@/lib/radar/new/projects'
@@ -60,6 +60,13 @@ describe('PKCE and the app JWT', () => {
     expect(claims.iss).toBe('424242')
     expect(claims.exp - claims.iat).toBeLessThanOrEqual(600)
     expect(claims.iat).toBe(Date.parse('2026-10-09T00:00:00Z') / 1000 - 60)
+  })
+  it('validates repo names and prefers the installation on the user’s own account', () => {
+    expect(isRepoFullName('example-asha/portfolio')).toBe(true)
+    expect(isRepoFullName('example-asha/..')).toBe(false)
+    expect(isRepoFullName('a/b/c')).toBe(false)
+    const inst = (id: string, account: string) => ({ id, appId: '1', appSlug: 'lee', account, repositorySelection: 'selected' as const, permissions: {} })
+    expect(findAppInstallation([inst('9', 'some-org'), inst('7', 'Example-Asha')], { appId: '1', slug: 'lee' }, 'example-asha')?.id).toBe('7')
   })
   it('reads the commit count from the Link header', () => {
     expect(lastPage('<https://api.github.com/x?per_page=1&page=2>; rel="next", <https://api.github.com/x?per_page=1&page=37>; rel="last"')).toBe(37)

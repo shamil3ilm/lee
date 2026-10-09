@@ -11,7 +11,8 @@ import { createInstallationToken } from './api'
  *
  *   1. Connect GitHub (preferred): a 1-hour installation token for the
  *      user's OWN app installation (found with their user token at connect
- *      time), narrowed to the one configured repository with
+ *      time, on the account that owns the configured repository), narrowed
+ *      to that one repository with
  *      Contents: write + Metadata: read. GitHub refuses a repository the
  *      installation was not granted, and then…
  *   2. …the existing fine-grained token (service key `github_portfolio`).
@@ -38,6 +39,11 @@ async function appToken(userId: string, target: RepoTarget, now: Date): Promise<
   if (!cfg.ok) return null
   const conn = await connQ.get(userId, 'github')
   if (!conn?.installationId) return null
+  // Only the installation on the repository owner's account: an org
+  // installation the user can merely see must never mint a write token for
+  // that org's repositories.
+  const account = typeof conn.settings.installationAccount === 'string' ? conn.settings.installationAccount : null
+  if (!account || account.toLowerCase() !== target.owner.toLowerCase()) return null
   try {
     return await createInstallationToken(cfg.config, conn.installationId, target.repo, { contents: 'write', metadata: 'read' }, now)
   } catch (e) {

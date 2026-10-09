@@ -80,6 +80,18 @@ describe('Publish with the GitHub connection', () => {
     expect(contents.puts[0]!.authorization).toBe(`Bearer ${PAT}`)
   })
 
+  it('never mints an installation token for a repository owned by another account (e.g. an org)', async () => {
+    setup(PAT)
+    const userId = await userWithProfile()
+    await keysQ.upsert(userId, 'github_portfolio', PAT)
+    await connect(userId)
+    await publishQ.saveConfig(userId, { repo: 'example-org/portfolio', branch: 'main', path: 'profile.json' })
+    // The fake has no example-org repo: only which token was tried matters here.
+    await publishProfile(userId, { now: NOW }).catch(() => null)
+    expect(contents.requests.every((r) => r.authorization === `Bearer ${PAT}`)).toBe(true)
+    expect(app.installationTokenRequests).toHaveLength(0)
+  })
+
   it('without a connection, publishes with the fine-grained token as before', async () => {
     setup(PAT)
     const userId = await userWithProfile()

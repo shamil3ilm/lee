@@ -40,7 +40,7 @@ export async function refreshRepoStats(userId: string, opts: { force?: boolean; 
   if (!login) return { ok: false, error: 'Connect GitHub first.' }
   const { cfg } = token
   try {
-    const installation = findAppInstallation(await listUserInstallations(cfg, token.token), cfg)
+    const installation = findAppInstallation(await listUserInstallations(cfg, token.token), cfg, login)
     const granted = installation ? await listInstallationRepos(cfg, token.token, installation.id) : []
     const own = await listPublicRepos(cfg, token.token, login)
     const repos = merge(granted, own).slice(0, MAX_REPOS)

@@ -30,7 +30,9 @@ export default async function PublishPage() {
     connQ.get(userId, 'github'),
   ])
   // Connect GitHub is preferred: an installation token for this repo, else the fine-grained token.
-  const viaApp = githubAppConfig().ok && Boolean(github?.installationId)
+  const owner = (state?.repo ?? '').split('/')[0]?.toLowerCase() ?? ''
+  const account = typeof github?.settings.installationAccount === 'string' ? github.settings.installationAccount.toLowerCase() : null
+  const viaApp = githubAppConfig().ok && Boolean(github?.installationId) && account !== null && account === owner
   const token = statuses.find((s) => s.info.id === PORTFOLIO_TOKEN_ID)
   const config = { repo: state?.repo ?? '', branch: state?.branch ?? 'main', path: state?.path ?? 'profile.json' }
   const ready = isConfigured(config) && (viaApp || (token?.source ?? 'none') !== 'none')
