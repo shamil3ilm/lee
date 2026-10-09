@@ -90,3 +90,26 @@ How Google uses it (`lib/auth/account-tokens.ts`):
 For a new provider: encrypt on write (adapter `linkAccount` or your own
 insert), decrypt only at the point of use, and add a "stored value is not
 plaintext" test like `tests/integration/google-token-encryption.test.ts`.
+
+## Tenancy: ids from input (audit 2026-10-09)
+
+All 46 `'use server'` files and 72 route handlers were traced for ids taken
+from input. Rule: every id from a form, body, query or route param is looked
+up scoped by the session user (`eq(t.userId, userId)`, or the owned parent
+via `appsQ.getById(userId, id)` / `documentsQ.getById` / `companiesQ.getById`
+/ `todosQ.linksOwnedBy` …) before anything is written against it.
+
+- Fixed: `createStage` (`addStage` action) inserted a stage + activity for
+  any `applicationId`; it now requires `appsQ.getById(userId, id)` and the
+  action validates `kind` against `STAGE_KIND_VALUES`. Read joins from
+  stages/activities/preps to applications now also require
+  `applications.user_id` to match (digest, weekly digest, academy journey,
+  next-best-action, analytics, follow-ups). Two-user tests:
+  `tests/integration/stages-isolation.test.ts`.
+- Verified, already scoped: `app/api/documents/merge` (checks the
+  application since it was written; regression test added), every other
+  action and route (contacts/companies/todos/variants/documents/assets/
+  cv-score/lab/expenses/radar/shortlist links are all checked).
+- Hazard, not reachable from input: `labRuns.insertResults/updateResult`
+  take no user id; only `lib/lab/arena.ts` calls them, with a run it just
+  created for the caller.

@@ -150,7 +150,7 @@ export async function responseTimeDistribution(
         a.applied_at as applied_at,
         min(act.created_at) as first_at
       from ${applications} a
-      join ${activities} act on act.application_id = a.id
+      join ${activities} act on act.application_id = a.id and act.user_id = a.user_id
       where a.user_id = ${userId}
         and a.applied_at is not null
         and (
@@ -198,7 +198,7 @@ export async function timeToOutcome(userId: string): Promise<TimeToOutcomeStats>
       act.payload->>'to' as outcome,
       extract(day from (min(act.created_at) - a.applied_at))::int as days
     from ${applications} a
-    join ${activities} act on act.application_id = a.id
+    join ${activities} act on act.application_id = a.id and act.user_id = a.user_id
     where a.user_id = ${userId}
       and a.applied_at is not null
       and act.kind = 'status_change'

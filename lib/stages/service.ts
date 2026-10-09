@@ -59,6 +59,14 @@ async function findStageById(userId: string, id: string): Promise<InterviewStage
   })
 }
 
+/** The applicationId is not one of the caller's applications. */
+export class ApplicationNotFoundError extends Error {
+  constructor() {
+    super('Application not found.')
+    this.name = 'ApplicationNotFoundError'
+  }
+}
+
 export async function createStage(args: CreateStageArgs): Promise<InterviewStage> {
   const {
     userId,
@@ -73,6 +81,12 @@ export async function createStage(args: CreateStageArgs): Promise<InterviewStage
   } = args
 
   const stage = await db.transaction(async (tx) => {
+    // The applicationId comes from a form: it must be the caller's own
+    // application, or a stage + activity would be attached to another
+    // user's application (invite-beta audit §1.6).
+    const app = await appsQ.getById(userId, applicationId, tx)
+    if (!app) throw new ApplicationNotFoundError()
+
     const created = await stagesQ.create(
       userId,
       applicationId,
@@ -92,8 +106,7 @@ export async function createStage(args: CreateStageArgs): Promise<InterviewStage
     // value (or there is no current value). Later stages should not override
     // an existing sooner action.
     if (scheduledAt) {
-      const app = await appsQ.getById(userId, applicationId, tx)
-      if (app && (!app.nextActionAt || scheduledAt < app.nextActionAt)) {
+      if (!app.nextActionAt || scheduledAt < app.nextActionAt) {
         await appsQ.setNextAction(userId, applicationId, scheduledAt, tx)
       }
     }

@@ -19,7 +19,10 @@ export async function upcomingInterviews(
       company: companies.name,
     })
     .from(interviewStages)
-    .innerJoin(applications, eq(applications.id, interviewStages.applicationId))
+    .innerJoin(
+      applications,
+      and(eq(applications.id, interviewStages.applicationId), eq(applications.userId, interviewStages.userId)),
+    )
     .innerJoin(jobs, eq(jobs.id, applications.jobId))
     .leftJoin(companies, eq(companies.id, jobs.companyId))
     .where(

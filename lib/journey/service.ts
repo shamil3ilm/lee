@@ -145,7 +145,8 @@ export interface NextBestAction {
 // company name (never the job description) for the action copy.
 const STAGE_JOB_LABEL = {
   application: {
-    columns: { id: true },
+    // userId: a stage is only shown when its application is the user's own.
+    columns: { id: true, userId: true },
     with: {
       job: {
         columns: { title: true },
@@ -186,7 +187,7 @@ async function interviewPrepAction(userId: string, now: Date): Promise<NextBestA
     ),
     orderBy: (s, { asc: ascending }) => [ascending(s.scheduledAt)],
     with: STAGE_JOB_LABEL,
-  })
+  }).then((rows) => rows.filter((s) => s.application.userId === userId))
   if (upcoming.length === 0) return null
 
   const appIds = [...new Set(upcoming.map((s) => s.applicationId))]
@@ -222,7 +223,7 @@ async function debriefAction(userId: string, now: Date): Promise<NextBestAction 
     ),
     orderBy: (s, { desc: descending }) => [descending(s.updatedAt)],
     with: STAGE_JOB_LABEL,
-  })
+  }).then((rows) => rows.filter((s) => s.application.userId === userId))
   const stage = completed.find((s) => (s.debriefNotesMd ?? '').trim() === '')
   if (!stage) return null
   const job = stage.application.job
