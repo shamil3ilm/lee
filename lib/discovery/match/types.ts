@@ -88,6 +88,8 @@ export interface MatchProfile {
   seniority: readonly SeniorityLevel[]
   roleFamilies: readonly string[]
   customRoles: readonly string[]
+  /** Selected region-taxonomy nodes (lib/regions); optional for callers that only know countries. */
+  regionIds?: readonly string[]
   regions: readonly RegionCode[]
   otherCountries: readonly string[]
   remoteScope: RemoteScope

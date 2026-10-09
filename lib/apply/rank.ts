@@ -1,6 +1,8 @@
 import { roleFamilyLabel } from '@/lib/discovery/relevance/roles'
 import { blendScores, scoreText } from '@/lib/discovery/match/blend'
 import type { FeedbackAdjust } from './feedback'
+import { matchedVia, regionMatch } from '@/lib/regions/selection'
+import { shortName } from '@/lib/regions/tree'
 
 /**
  * The daily shortlist's composite rank. Pure and explainable: the score is
@@ -10,7 +12,9 @@ import type { FeedbackAdjust } from './feedback'
  *               the AI score, or their mean when both exist
  *               (lib/discovery/match/blend.ts); neither → 25, "Not scored yet"
  *   role fit    +12 when a role family is one of the user's targets
- *   region fit  +8 when a region tag is one of the user's targets
+ *   region fit  +8 when the posting lies within a targeted region (a parent
+ *               includes its cities: Kerala → Kochi); +4 when broader
+ *               than the targets ("India" for a Kerala-only search)
  *   reputation  (avg of the CONFIRMED company criteria − 50) / 5, −10…+10
  *   pay         −10 below the user's range; +3 when pay is stated and fits
  *   soft rules  −5 per other penalty chip (max −15), +3 per boost (max +6)
@@ -44,7 +48,10 @@ export interface RankCandidate {
   matchScore: number | null
   /** Deterministic Match Score (lib/discovery/match); null until computed. */
   fitScore: number | null
+  /** Coarse region tags ('ae' | 'gcc' | 'in' | 'remote'): feedback and the pre-hierarchy fallback. */
   regions: readonly string[]
+  /** Region-taxonomy ids of the posting (ancestors included); empty until the backfill reaches it. */
+  regionIds?: readonly string[]
   families: readonly string[]
   notes: RankNotes
   postedAt: Date | null
@@ -66,7 +73,10 @@ export interface RankCandidate {
 export interface RankContext {
   now: Date
   targetFamilies: readonly string[]
-  /** Region tags ('ae' | 'gcc' | 'in' | 'remote') the user targets. */
+  /**
+   * Region-taxonomy ids the user targets ("gcc", "kerala", "dubai",
+   * "remote"…). A parent includes its descendants (lib/regions/selection).
+   */
   targetRegions: readonly string[]
 }
 
@@ -81,6 +91,7 @@ export const RANK_WEIGHTS = {
   unscoredMatch: 25,
   roleFit: 12,
   regionFit: 8,
+  regionBroader: 4,
   reputationMax: 10,
   payBelow: -10,
   payStated: 3,
@@ -93,7 +104,6 @@ export const RANK_WEIGHTS = {
 } as const
 
 const DAY_MS = 24 * 60 * 60 * 1000
-const REGION_LABELS: Readonly<Record<string, string>> = { ae: 'UAE', gcc: 'GCC', in: 'India', remote: 'Remote' }
 
 const isPay = (s: string): boolean => s.toLowerCase().startsWith('pay:')
 
@@ -117,9 +127,28 @@ function fitReasons(c: RankCandidate, ctx: RankContext): RankReason[] {
   const out: RankReason[] = []
   const family = c.families.find((f) => ctx.targetFamilies.includes(f))
   if (family) out.push({ kind: 'fit', label: `Role: ${roleFamilyLabel(family)}`, points: RANK_WEIGHTS.roleFit })
-  const region = ctx.targetRegions.find((r) => c.regions.includes(r))
-  if (region) out.push({ kind: 'fit', label: `Region: ${REGION_LABELS[region] ?? region}`, points: RANK_WEIGHTS.regionFit })
+  const region = regionReason(c, ctx)
+  if (region) out.push(region)
   return out
+}
+
+/**
+ * +8 when the posting lies within a targeted region (Kochi for Kerala, any
+ * Gulf city for GCC); +4 when it is broader than the target ("India" for a
+ * Kerala-only search). Rows not yet re-tagged fall back to their coarse
+ * tags, which are valid region ids too.
+ */
+function regionReason(c: RankCandidate, ctx: RankContext): RankReason | null {
+  const ids = c.regionIds && c.regionIds.length > 0 ? c.regionIds : c.regions
+  const fit = regionMatch(ids, ctx.targetRegions)
+  if (fit === 'in') {
+    const via = matchedVia(ids, ctx.targetRegions)
+    return { kind: 'fit', label: `Region: ${via ? shortName(via) : 'your regions'}`, points: RANK_WEIGHTS.regionFit }
+  }
+  if (fit === 'partial') {
+    return { kind: 'fit', label: `Region: ${shortName(ids[0]!)} (broader than your regions)`, points: RANK_WEIGHTS.regionBroader }
+  }
+  return null
 }
 
 function reputationReason(c: RankCandidate): RankReason[] {

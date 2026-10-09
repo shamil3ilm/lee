@@ -10,6 +10,9 @@ import {
 } from './discovery-prefs'
 import { isRegionCode, REGION_CODES } from './places'
 import { isRemoteScope } from './prefs'
+import { migrateLegacyRegions, selectionCountries } from '@/lib/regions/selection'
+import { SETTINGS_ROOTS } from '@/lib/regions/taxonomy'
+import { anyWithin } from '@/lib/regions/tree'
 import { ROLE_FAMILY_IDS } from './roles'
 import { SENIORITY_LABELS, SENIORITY_LEVELS } from './seniority'
 import { isWorkMode } from './work-mode'
@@ -112,12 +115,22 @@ export function discoveryPrefsFromForm(fd: FormData): DiscoveryPrefs {
   })
 }
 
+/**
+ * Target regions posted as node ids ("gcc", "kerala", "dubai"); legacy
+ * country codes ("AE", "IN") still map. Only GCC and India nodes are
+ * target regions; other countries have their own field.
+ */
+export function targetRegionsFromForm(fd: FormData): string[] {
+  return migrateLegacyRegions(all(fd, 'region')).filter((id) => SETTINGS_ROOTS.some((root) => anyWithin([id], root)))
+}
+
 export function searchPrefsPatch(fd: FormData, existing: UserProfile | null, now: Date = new Date()): Partial<NewUserProfile> {
   const families = all(fd, 'roleFamily').filter((f) => ROLE_FAMILY_IDS.includes(f))
-  const regions = all(fd, 'region').filter(isRegionCode)
+  const targetRegions = targetRegionsFromForm(fd)
+  const touched = selectionCountries(targetRegions)
   const others = isoList(csv(fd, 'otherCountries')).filter((c) => !isRegionCode(c))
   const remote = fd.get('remoteScope')
-  const countries = [...REGION_CODES.filter((c) => regions.includes(c)), ...others]
+  const countries = [...REGION_CODES.filter((c) => touched.includes(c)), ...others]
   const levels = SENIORITY_LEVELS.filter((l) => all(fd, 'seniority').includes(l))
   const top = levels[levels.length - 1]
   const workMode = fd.get('remotePref')
@@ -129,6 +142,8 @@ export function searchPrefsPatch(fd: FormData, existing: UserProfile | null, now
     // so source queries and AI prompts that read it stay in step.
     seniority: top ? SENIORITY_LABELS[top] : null,
     remotePref: isWorkMode(workMode) ? workMode : 'any',
+    targetRegions,
+    // Country-level copy for the source queries and AI prompts that read countries.
     locationPrefs: mergeLocationPrefs(existing?.locationPrefs, countries) as NewUserProfile['locationPrefs'],
     remoteScope: isRemoteScope(remote) ? remote : 'worldwide',
     acceptRelocation: fd.get('acceptRelocation') === 'on',

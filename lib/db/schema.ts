@@ -342,6 +342,11 @@ export const userProfile = pgTable('user_profile', {
   // 'worldwide' (any remote role open to the user's location) · 'regions'
   // (remote only when tied to a selected region) · 'none'.
   remoteScope: text('remote_scope').notNull().default('worldwide'),
+  // Target regions as region-taxonomy node ids (lib/regions): "gcc",
+  // "kerala", "dubai"… A parent includes its descendants. Null until the
+  // first save under the region hierarchy: read through targetRegionIds()
+  // (lib/discovery/relevance/prefs.ts), which migrates location_prefs.
+  targetRegions: text('target_regions').array(),
   // Set when the user saves search preferences; null → the gate filters
   // nothing (the default location seeds alone never activate it).
   searchPrefsSavedAt: timestamp('search_prefs_saved_at', { withTimezone: true }),
@@ -506,8 +511,14 @@ export const discoveries = pgTable(
     filterOverride: boolean('filter_override').notNull().default(false),
     // Prefs + rules key the row was gated with (see relevanceKey()).
     relevanceKey: text('relevance_key'),
-    // Target-region tags for the Region filter: 'ae' | 'gcc' | 'in' | 'remote'.
+    // Coarse region tags ('ae' | 'gcc' | 'in' | 'remote'): shortlist feedback
+    // and variant suggestions. The Region filter reads region_ids.
     regions: text('regions').array().notNull().default([]),
+    // Region-taxonomy node ids (lib/regions) the posting lies in: the deepest
+    // places named plus every ancestor ("kochi", "kerala", "in"), and
+    // "remote" + its scopes. Written by the relevance gate; the Region
+    // filter is an array overlap on the GIN index.
+    regionIds: text('region_ids').array().notNull().default([]),
     // Soft rule outcomes shown as chips: { penalties: string[], boosts: string[] }.
     relevanceNotes: jsonb('relevance_notes').notNull().default({}),
     // Ranking nudge from soft rules (boosts minus penalties), added to the
@@ -537,6 +548,8 @@ export const discoveries = pgTable(
     srcJobUq: uniqueIndex('discoveries_source_job_uq').on(t.sourceId, t.sourceJobId),
     // "Best match" sort and the minimum-match filter.
     userStatusFitIx: index('discoveries_user_status_fit_idx').on(t.userId, t.status, t.fitScore),
+    // Region filter: region_ids && ARRAY[...] (hierarchical: ancestors are stored).
+    regionIdsGin: index('discoveries_region_ids_gin').using('gin', t.regionIds),
     userStatusScoreIx: index('discoveries_user_status_score_idx').on(
       t.userId,
       t.status,

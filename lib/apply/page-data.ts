@@ -13,6 +13,7 @@ import { applySettingsFrom } from './settings'
 import { comparisonChips } from '@/lib/compare/service'
 import { opportunityKey } from '@/lib/compare/inputs'
 import { logger } from '@/lib/logger'
+import { regionMatch } from '@/lib/regions/selection'
 
 /**
  * What the shortlist page renders, from the precomputed snapshot (plus the
@@ -27,6 +28,8 @@ export interface ShortlistEntryView {
   title: string
   companyName: string
   location: string | null
+  /** Region-taxonomy ids (ancestors included), for the Region filter. */
+  regionIds: readonly string[]
   applyUrl: string | null
   reasons: ShortlistRow['reasons']
   variantName: string | null
@@ -59,6 +62,7 @@ function toView(r: ShortlistRow): ShortlistEntryView {
     title: repairMojibake(r.title ?? 'Untitled'),
     companyName: repairMojibake(r.companyName ?? 'Unknown company'),
     location: r.location ? repairMojibake(r.location) : null,
+    regionIds: r.regionIds ?? [],
     applyUrl: r.applyUrl,
     reasons: r.reasons,
     variantName: r.variantName,
@@ -95,6 +99,12 @@ async function withChips(userId: string, entries: ShortlistEntryView[], now: Dat
     logger.warn('compare_chips_failed', { err: err instanceof Error ? err.name : 'unknown' })
     return entries
   }
+}
+
+/** Open picks in the selected regions (a parent includes its descendants; empty = all). */
+export function inRegions<T extends Pick<ShortlistEntryView, 'regionIds'>>(entries: readonly T[], selection: readonly string[]): T[] {
+  if (selection.length === 0) return [...entries]
+  return entries.filter((e) => regionMatch(e.regionIds, selection) === 'in')
 }
 
 export async function loadShortlistPage(userId: string, now: Date = new Date()): Promise<ShortlistPageData> {

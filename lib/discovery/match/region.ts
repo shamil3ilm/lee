@@ -1,26 +1,34 @@
 import { isRemotePosting, postingPlaces, scanRestrictions } from '../relevance/gate'
-import { hitsAccepted, locationOutcome, UNCLEAR_REMOTE } from '../relevance/location-rule'
+import { acceptance, acceptedFor, acceptedVia, locationOutcome, namesPlaces, UNCLEAR_REMOTE } from '../relevance/location-rule'
 import { openWorldwide } from '../relevance/remote'
-import { emptyScan, isRegionCode, mergeScans, regionLabel, type PlaceScan } from '../relevance/places'
+import { emptyScan, mergeScans } from '../relevance/places'
 import { EMPTY_PREFS, type SearchPrefs } from '../relevance/prefs'
+import { migrateLegacyRegions } from '@/lib/regions/selection'
+import { shortName } from '@/lib/regions/tree'
 import type { MatchComponent, MatchJob, MatchProfile } from './types'
 
 /**
- * Region fit (0–10), from the same location rule as the gate:
- *   on-site in your regions 10 · relocation offered elsewhere 6 ·
- *   worldwide 6 · not stated 5 · elsewhere 0;
+ * Region fit (0–10), from the same location rule as the gate, matched
+ * through the region hierarchy (lib/regions: Kerala includes Kochi, GCC
+ * every Gulf city):
+ *   on-site in your regions 10 · broader than your selection ("India" for
+ *   a Kerala-only search) 7 · relocation offered elsewhere 6 · worldwide 6 ·
+ *   not stated 5 · elsewhere 0;
  *   remote in your regions (or where you live) 10 · hours fit your time
  *   zone 9 · worldwide 8 · eligibility unclear 5 · restricted elsewhere 0.
  */
 
 export const REGION_MAX = 10
+export const REGION_BROADER = 7
 
-type RegionProfile = Pick<MatchProfile, 'regions' | 'otherCountries' | 'remoteScope' | 'extra'>
+type RegionProfile = Pick<MatchProfile, 'regionIds' | 'regions' | 'otherCountries' | 'remoteScope' | 'extra'>
 
 function asPrefs(p: RegionProfile): SearchPrefs {
+  const regionIds = p.regionIds && p.regionIds.length > 0 ? [...p.regionIds] : migrateLegacyRegions(p.regions)
   return {
     ...EMPTY_PREFS,
     active: true,
+    regionIds,
     regions: [...p.regions],
     otherCountries: [...p.otherCountries],
     remoteScope: p.remoteScope,
@@ -33,20 +41,15 @@ function asPrefs(p: RegionProfile): SearchPrefs {
   }
 }
 
-function placeLabel(places: PlaceScan, accepted: ReadonlySet<string>): string {
-  const code = [...places.regions, ...places.covered, ...places.foreign].find((x) => accepted.has(x))
-  if (!code) return 'your regions'
-  return isRegionCode(code) ? regionLabel(code) : code
-}
-
 export function regionComponent(job: MatchJob, p: RegionProfile): MatchComponent {
   const c = (points: number, label: string): MatchComponent => ({ key: 'region', label, points, max: REGION_MAX })
-  const targets = new Set<string>([...p.regions, ...p.otherCountries])
-  if (targets.size === 0) return c(5, 'Region: no target regions set')
+  const prefs = asPrefs(p)
+  const targets = acceptedFor(prefs)
+  if (targets.ids.length === 0 && targets.codes.size === 0) return c(5, 'Region: no target regions set')
   const located = postingPlaces(job)
   const remote = isRemotePosting(job)
   const restricted = remote ? scanRestrictions(job.descriptionMd) : emptyScan()
-  const outcome = locationOutcome(asPrefs(p), {
+  const outcome = locationOutcome(prefs, {
     located,
     restricted,
     remote,
@@ -59,14 +62,23 @@ export function regionComponent(job: MatchJob, p: RegionProfile): MatchComponent
     if (outcome.penalty === UNCLEAR_REMOTE) return c(5, 'Remote, eligibility unclear')
     if (located.worldwide || restricted.worldwide || openWorldwide(job.descriptionMd)) return c(8, 'Remote, worldwide')
     const eligible = mergeScans({ ...located, worldwide: false }, restricted)
-    const home = new Set([...targets, ...(p.extra.basedIn ? [p.extra.basedIn] : [])])
-    if (hitsAccepted(eligible, home)) return c(REGION_MAX, `Remote in ${placeLabel(eligible, home)}`)
+    const home = acceptedFor(prefs, p.extra.basedIn ? [p.extra.basedIn] : [])
+    // Remote work is done from home: "Remote, India" suits a Kerala-only search too.
+    const where = acceptance(eligible, home)
+    if (where === 'in' || where === 'partial') {
+      const label = acceptedVia(eligible, home) ?? ([...eligible.nodes][0] ? shortName([...eligible.nodes][0]!) : 'your regions')
+      return c(REGION_MAX, `Remote in ${label}`)
+    }
     return c(9, 'Remote, hours fit your time zone')
   }
   if (outcome.boost) return c(6, outcome.boost)
   if (outcome.reason) return c(0, `Region: ${what(outcome.reason)} (outside your regions)`)
-  const named = located.regions.size + located.covered.size + located.foreign.size > 0
-  if (hitsAccepted(located, targets)) return c(REGION_MAX, `Region: ${placeLabel(located, targets)}`)
+  const fit = acceptance(located, targets)
+  if (fit === 'in') return c(REGION_MAX, `Region: ${acceptedVia(located, targets) ?? 'your regions'}`)
+  if (fit === 'partial') {
+    const broad = [...located.nodes][0]
+    return c(REGION_BROADER, `Region: ${broad ? shortName(broad) : 'broader area'} (city not stated)`)
+  }
   if (located.worldwide) return c(6, 'Region: worldwide')
-  return named ? c(5, 'Region: partly stated') : c(5, 'Region: location not stated')
+  return namesPlaces(located) ? c(5, 'Region: partly stated') : c(5, 'Region: location not stated')
 }

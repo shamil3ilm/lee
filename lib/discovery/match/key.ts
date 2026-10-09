@@ -30,6 +30,7 @@ export function matchKey(p: MatchProfile): string {
     sorted(p.seniority),
     sorted(p.roleFamilies),
     sorted(p.customRoles.map((r) => r.toLowerCase())),
+    sorted(p.regionIds ?? []),
     sorted(p.regions),
     sorted(p.otherCountries),
     p.remoteScope,

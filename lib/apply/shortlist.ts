@@ -7,7 +7,7 @@ import { signalsFromTags, suggestVariant, type VariantSummary } from '@/lib/vari
 import { getUserTimeZone } from '@/lib/settings/timezone'
 import { logger } from '@/lib/logger'
 import { shortlistDeltas, shortlistFactorOn } from '@/lib/compare/service'
-import { loadCandidates, targetRegionTags, type Candidate } from './candidates'
+import { loadCandidates, targetRegionIds, type Candidate } from './candidates'
 import { buildShortlist } from './rank'
 import { localDay } from './dates'
 import { applySettingsFrom } from './settings'
@@ -64,7 +64,7 @@ export async function buildShortlistForUser(userId: string, now: Date = new Date
     variantSummaries(userId),
   ])
   const loaded = await loadCandidates(userId, { now, feedback, excludeIds: acted })
-  const ctx = { now, targetFamilies: prefs.roleFamilies, targetRegions: targetRegionTags(prefs) }
+  const ctx = { now, targetFamilies: prefs.roleFamilies, targetRegions: targetRegionIds(prefs) }
   const candidates = await withComparison(userId, loaded, ctx, settings.shortlistSize, now)
   const ranked = buildShortlist(candidates, ctx, settings.shortlistSize)
   const byId = new Map(candidates.map((c) => [c.id, c] as const))

@@ -69,6 +69,8 @@ export interface ShortlistRow {
   title: string | null
   companyName: string | null
   location: string | null
+  /** Region-taxonomy ids of the posting (ancestors included), for the Region filter. */
+  regionIds: string[]
   applyUrl: string | null
   matchScore: number | null
   fitScore: number | null
@@ -96,6 +98,7 @@ export async function listForDay(userId: string, day: string, client: DbClient =
       title: n('title'),
       companyName: n('companyName'),
       location: n('location'),
+      regionIds: discoveries.regionIds,
       applyUrl: n('applyUrl'),
       matchScore: discoveries.matchScore,
       fitScore: discoveries.fitScore,

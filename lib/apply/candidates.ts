@@ -7,7 +7,6 @@ import * as repQ from '@/lib/db/queries/companyReputation'
 import { classifyRole } from '@/lib/discovery/relevance/roles'
 import { companyStructureCriterion, environmentCriterion } from '@/lib/reputation/criteria'
 import type { SearchPrefs } from '@/lib/discovery/relevance/prefs'
-import { GCC_CODES } from '@/lib/discovery/relevance/places'
 import { companyKeyOf, feedbackAdjust, type FeedbackRow } from './feedback'
 import type { RankCandidate } from './rank'
 
@@ -47,14 +46,13 @@ function hostOf(url: string | null): string | null {
   }
 }
 
-/** Region tags the user targets, from their search preferences. */
-export function targetRegionTags(prefs: SearchPrefs): string[] {
-  const tags = new Set<string>()
-  if (prefs.regions.includes('AE')) tags.add('ae')
-  if (prefs.regions.some((r) => GCC_CODES.includes(r))) tags.add('gcc')
-  if (prefs.regions.includes('IN')) tags.add('in')
-  if (prefs.active && prefs.remoteScope !== 'none') tags.add('remote')
-  return [...tags]
+/**
+ * Region-taxonomy ids the user targets: their selection (a parent includes
+ * its descendants) plus "remote" while they accept remote roles.
+ */
+export function targetRegionIds(prefs: SearchPrefs): string[] {
+  const remote = prefs.active && prefs.remoteScope !== 'none' ? ['remote'] : []
+  return [...prefs.regionIds, ...remote]
 }
 
 type ReputationIndex = Map<string, { environment: number | null; stability: number | null }>
@@ -84,6 +82,7 @@ export async function loadCandidates(
         matchScore: discoveries.matchScore,
         fitScore: discoveries.fitScore,
         regions: discoveries.regions,
+        regionIds: discoveries.regionIds,
         notes: discoveries.relevanceNotes,
         createdAt: discoveries.createdAt,
         title: n('title'),
@@ -139,6 +138,7 @@ export async function loadCandidates(
         matchScore: r.matchScore,
         fitScore: r.fitScore,
         regions: r.regions ?? [],
+        regionIds: r.regionIds ?? [],
         families,
         notes: (r.notes ?? {}) as RankCandidate['notes'],
         postedAt: toDate(r.postedAt),

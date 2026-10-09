@@ -125,7 +125,7 @@ export async function progress(
 }
 
 function textArray(values: readonly string[]): string {
-  // Values come from a fixed tag set; quote anyway so the literal is always valid.
+  // Values come from fixed sets (tags, taxonomy ids); quote anyway so the literal is always valid.
   return `{${values.map((v) => `"${v.replace(/["\\]/g, '')}"`).join(',')}}`
 }
 
@@ -145,7 +145,7 @@ export async function applyGateBatch(
   const values = sql.join(
     rows.map(
       ({ id, gate }) =>
-        sql`(${id}::uuid, ${gate.status}::text, ${gate.filterReason}::text, ${textArray(gate.regions)}::text[], ${JSON.stringify(gate.relevanceNotes)}::jsonb, ${gate.rankAdjust}::smallint)`,
+        sql`(${id}::uuid, ${gate.status}::text, ${gate.filterReason}::text, ${textArray(gate.regions)}::text[], ${textArray(gate.regionIds)}::text[], ${JSON.stringify(gate.relevanceNotes)}::jsonb, ${gate.rankAdjust}::smallint)`,
     ),
     sql`, `,
   )
@@ -157,10 +157,11 @@ export async function applyGateBatch(
         else d.updated_at end,
       filter_reason = v.reason,
       regions = v.regions,
+      region_ids = v.region_ids,
       relevance_notes = v.notes,
       rank_adjust = v.adjust,
       relevance_key = ${key}
-    from (values ${values}) as v(id, status, reason, regions, notes, adjust)
+    from (values ${values}) as v(id, status, reason, regions, region_ids, notes, adjust)
     where d.id = v.id and d.user_id = ${userId}::uuid
   `)
 }
