@@ -15,9 +15,13 @@ export interface QueryInput {
   careersHosts: readonly string[]
   /** User needs an employer visa in the GCC. */
   needsVisa: boolean
+  /** Starred regions as ISO-2 codes, highest first: their places come before the rest. */
+  starred?: readonly string[]
+  /** Region playbook queries for starred regions (local language, districts; lib/coverage). */
+  localQueries?: readonly string[]
 }
 
-const ROLE_PHRASES: Readonly<Record<string, string>> = {
+export const ROLE_PHRASES: Readonly<Record<string, string>> = {
   backend: 'backend developer',
   fullstack: 'full stack developer',
   frontend: 'frontend developer',
@@ -57,7 +61,10 @@ export function suggestAlertQueries(input: QueryInput): string[] {
     ...input.customRoles.slice(0, 2),
   ]
   const roles = [...new Set(phrases.map((p) => p.trim()).filter(Boolean))].slice(0, 3)
-  const places = input.regions.map((r) => PLACES[r]).filter((p): p is string => Boolean(p)).slice(0, 2)
+  // Starred regions first, so a starred Kuwait is never cut by the two-place cap.
+  const starred = (input.starred ?? []).filter((r) => input.regions.includes(r) || PLACES[r])
+  const ordered = [...new Set([...starred, ...input.regions])]
+  const places = ordered.map((r) => PLACES[r]).filter((p): p is string => Boolean(p)).slice(0, 2)
   const out: string[] = []
   for (const role of roles.length > 0 ? roles : ['software developer']) {
     for (const place of places.length > 0 ? places : ['']) {
@@ -66,6 +73,7 @@ export function suggestAlertQueries(input: QueryInput): string[] {
   }
   if (input.needsVisa && roles[0] && places[0]) out.push(`${quoted(roles[0])} ${places[0]} "visa sponsorship"`)
   if (input.strengths.includes('payments')) out.push(`"payments" ("backend" OR "integration") jobs ${places[0] ?? ''}`.trim())
+  out.push(...(input.localQueries ?? []).slice(0, 3))
   for (const host of input.careersHosts.slice(0, 4)) out.push(`careers site:${host}`)
   return [...new Set(out)].slice(0, MAX_QUERIES)
 }

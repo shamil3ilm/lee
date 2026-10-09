@@ -1,4 +1,4 @@
-import { Bell, Building2, Eye, Mail, Rss } from 'lucide-react'
+import { Bell, Building2, Eye, Mail, MapPin, Rss } from 'lucide-react'
 import { requireUserId } from '@/lib/auth/require-session'
 import * as sourcesQ from '@/lib/db/queries/sources'
 import * as emailAlertsQ from '@/lib/db/queries/emailAlerts'
@@ -22,6 +22,9 @@ import { SectionNav } from '@/components/section-nav'
 import { ReturnLink } from '@/components/settings/return-link'
 import { PopularStarters } from './popular-starters'
 import { describePollStats, readSourceLastResult } from '@/lib/discovery/poll-stats'
+import { CoveragePanel } from '@/components/coverage/coverage-panel'
+import { userCoverage } from '@/lib/coverage/service'
+import { toRowViews } from '@/lib/coverage/view'
 
 export const dynamic = 'force-dynamic'
 
@@ -67,12 +70,15 @@ export default async function SourcesSettingsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }): Promise<React.ReactElement> {
   const userId = await requireUserId()
-  const [sources, alertStats, profile, sp] = await Promise.all([
+  const [sources, alertStats, profile, sp, coverage] = await Promise.all([
     sourcesQ.list(userId),
     emailAlertsQ.summaryBySite(userId),
     getProfile(userId),
     searchParams,
+    userCoverage(userId),
   ])
+  const coverageRows = toRowViews(coverage)
+  const weak = coverageRows.filter((r) => r.status !== 'green').length
   const googleAlerts = googleAlertsPanelData(profile, sources)
 
   const polled = sources.filter((s) => s.kind !== 'watch')
@@ -119,6 +125,7 @@ export default async function SourcesSettingsPage({
   ]
 
   const sections = [
+    { id: 'coverage', label: 'Coverage' },
     { id: 'your-sources', label: 'Your sources' },
     { id: 'email-alerts', label: 'Job alerts' },
     { id: 'google-alerts', label: 'Google Alerts' },
@@ -135,6 +142,16 @@ export default async function SourcesSettingsPage({
         actions={<AddSourceDialog />}
       />
       <SectionNav sections={sections} />
+
+      <CollapsibleSection
+        id="coverage"
+        title="Coverage"
+        icon={<MapPin />}
+        count={coverageRows.length}
+        summary={coverageRows.length === 0 ? 'No regions chosen' : weak === 0 ? 'Every region covered' : `${weak} of ${coverageRows.length} regions need more sources`}
+      >
+        <CoveragePanel rows={coverageRows} />
+      </CollapsibleSection>
 
       <CollapsibleSection id="your-sources" title="Your sources" icon={<Rss />} count={rows.length} summary={sourcesSummary(rows)}>
         {rows.length === 0 ? (

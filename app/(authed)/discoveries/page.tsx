@@ -10,6 +10,9 @@ import * as sourcesQ from '@/lib/db/queries/sources'
 import { toRiskView } from '@/lib/scam/view'
 import { getProfile } from '@/lib/profile/service'
 import { PageHeader } from '@/components/page-header'
+import { CoverageLine } from '@/components/coverage/coverage-line'
+import { userCoverage } from '@/lib/coverage/service'
+import { lineRegions, toRowViews } from '@/lib/coverage/view'
 import { DiscoveryInbox } from '@/components/discovery-inbox'
 import { DiscoveryFilters } from '@/components/discovery-filters'
 import type {
@@ -92,11 +95,13 @@ export default async function DiscoveriesPage({
   // re-check that is still running can be shown.
   const stale = p.tab === 'jobs' && relevanceStale(profile)
   if (p.tab === 'jobs') await catchUp(userId, profile)
-  const [sources, suggestions, promptSet] = await Promise.all([
+  const [sources, suggestions, promptSet, coverage] = await Promise.all([
     sourcesQ.list(userId),
     p.tab === 'jobs' ? loadRoleSuggestions(userId, profile) : Promise.resolve(null),
     loadAiModePrompts(userId, { profile }),
+    userCoverage(userId),
   ])
+  const coverageRows = lineRegions(toRowViews(coverage))
   const sourceOptions = sources.map((s) => ({ id: s.id, name: s.name }))
   const notices =
     p.tab === 'jobs'
@@ -132,6 +137,7 @@ export default async function DiscoveriesPage({
         />
         <TabBar tab={p.tab} />
         <NoticeArea notices={notices} />
+        <CoverageLine rows={coverageRows} />
         <DiscoveryFilters
           tab="jobs"
           status="new"
@@ -162,6 +168,7 @@ export default async function DiscoveriesPage({
           actions={<CompaniesHeaderActions prompts={prompts} />}
         />
         <TabBar tab={p.tab} />
+        <CoverageLine rows={coverageRows} what="companies" />
         <Suspense fallback={<CompaniesSkeleton />}>
           <CompaniesTab userId={userId} params={parseCompanyParams(sp, p.size)} prefs={prefs} searchParams={sp} lastRun={lastRun} />
         </Suspense>
@@ -190,6 +197,7 @@ export default async function DiscoveriesPage({
       />
       <TabBar tab={p.tab} />
       <NoticeArea notices={notices} />
+      <CoverageLine rows={coverageRows} />
       <DiscoveryFilters
         tab={p.tab}
         status={p.status}

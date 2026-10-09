@@ -4,6 +4,7 @@ import type { SearchPrefs } from '@/lib/discovery/relevance/prefs'
 import { scrubPii } from './pii'
 import { EXPAT_HINT, joinList, levelPhrase } from './phrases'
 import { MAX_PROMPT_LENGTH } from './url'
+import { getPlaybook } from '@/lib/coverage/playbooks'
 
 /**
  * Suggested prompts for Google AI Mode, built from the search preferences
@@ -18,8 +19,10 @@ import { MAX_PROMPT_LENGTH } from './url'
 
 export { AI_MODE_BASE_URL, AI_MODE_UDM, MAX_PROMPT_LENGTH, aiModeSearchUrl } from './url'
 const MAX_ROLES = 3
-/** Prompt families: GCC, India, other countries, remote-from-home, relocation. */
-const MAX_FAMILIES = 5
+/** Prompt families: starred regions, GCC, India, other countries, remote-from-home, relocation. */
+const MAX_FAMILIES = 7
+/** Starred regions that get a prompt of their own. */
+const MAX_STARRED = 2
 const FALLBACK_ROLE = 'software developer'
 
 function upperFirst(s: string): string {
@@ -67,13 +70,38 @@ function cap(prompt: string): string {
  * lee's target market (the GCC and India). The dialog shows a daily
  * rotation of these plus the employer-watch prompts (./daily.ts).
  */
+/** Employers of every kind hire software, data and analyst staff. */
+const ANY_EMPLOYER =
+  'at any employer that hires software, data or analyst staff (banks, insurers, telecoms, retail and logistics groups, hospitals, airlines, government-linked companies, consultancies and startups)'
+
+/**
+ * One prompt per starred region with a playbook (lib/coverage), first:
+ * a starred Kuwait gets its own search instead of one GCC-wide prompt.
+ */
+function starredPrompts(prefs: SearchPrefs, roles: string, level: string): AiModePrompt[] {
+  const starred = [...(prefs.extra.preferredRegions ?? [])].sort((a, b) => (a.level === 'top' ? 0 : 1) - (b.level === 'top' ? 0 : 1))
+  const out: AiModePrompt[] = []
+  for (const r of starred.slice(0, MAX_STARRED)) {
+    const p = getPlaybook(r.id)
+    if (!p) continue
+    const country = r.id.length === 2 ? r.id.toUpperCase() : null
+    const visa = country && prefs.extra.sponsorshipFor.includes(country) ? ', with visa sponsorship for candidates moving from abroad' : ''
+    out.push({
+      id: `starred-${p.id}`,
+      label: p.label,
+      prompt: cap(`Current ${roles} job openings in ${p.aiModePlaces}, ${ANY_EMPLOYER}: ${level}${visa}. ${ASK_FORMAT}`),
+    })
+  }
+  return out
+}
+
 export function buildAiModePrompts(prefs: SearchPrefs, piiTerms: readonly string[] = []): AiModePrompt[] {
   const roles = rolesText(prefs, piiTerms)
   const level = levelPhrase(prefs, piiTerms)
   const sponsorFor = prefs.extra.sponsorshipFor
   const regions: RegionCode[] = prefs.regions.length > 0 || prefs.otherCountries.length > 0 ? prefs.regions : [...GCC_CODES, 'IN']
   const gcc = regions.filter((r) => GCC_CODES.includes(r))
-  const out: AiModePrompt[] = []
+  const out: AiModePrompt[] = [...starredPrompts(prefs, roles, level)]
 
   if (gcc.length > 0) {
     const places = gcc.length === GCC_CODES.length ? 'the GCC (UAE, Saudi Arabia, Qatar, Kuwait, Bahrain, Oman)' : joinList(gcc.map(regionLabel))

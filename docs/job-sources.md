@@ -417,6 +417,183 @@ Excluded, nationals only (never added as sources or watch links): Jadarat
 (Saudi Arabia), Kawader (Qatar), Kuwait Civil Service Commission, the UAE
 federal government portal (FAHR) and Abu Dhabi government jobs.
 
+## Coverage audit: Kuwait as the canary (2026-10-09)
+
+With the Region filter on Kuwait, Discovery showed 0 new jobs out of 974.
+Kuwait was the canary: the same gaps cost every region some postings.
+
+### Root causes
+
+1. **No automatic Kuwait source.** Every Kuwait employer on the watch list
+   was a hand-checked link. The only Kuwait postings came from Tabby's
+   Pinpoint board: 4 senior commercial and compliance roles that the gate
+   rightly filtered. Search APIs (Himalayas, Jobicy) carry almost no Kuwait
+   jobs, and Adzuna covers no GCC country.
+2. **Region tagging missed most districts.** 119 of the ~250 place
+   spellings in the new fixture set resolved to no region, including
+   Mangaf, Fahaheel, Hawally, Mubarak Al-Kabeer, every Arabic Kuwait
+   district, Al Barsha, TECOM, KIZAD, West Bay, Seef, Qurum, Indian tech
+   areas (Marathahalli, Taramani, Hadapsar, Airoli) and Malayalam / Hindi /
+   Tamil names. An untagged posting is kept but is invisible to the Region
+   filter. "JP Nagar" (Bengaluru) was tagged Japan.
+3. **The job APIs' country filter** (`locationMatchesCountries`, used by
+   Workday and the enterprise adapters) knew only "kuwait" for Kuwait, so a
+   posting located "Shuwaikh" or "Salmiya" was dropped before the gate.
+4. **Nationals-only matched boilerplate.** "Kuwaiti nationals" anywhere in
+   the JD filtered the posting, including "60% of our workforce are Kuwaiti
+   nationals", "we support Kuwaitization" and "open to Kuwaiti nationals
+   and expatriates". It now reads sentence by sentence: requirement phrases
+   ("nationals only", "applicants must be Kuwaiti nationals", "reserved for
+   Saudi candidates") always count; bare mentions and programme names count
+   only in a sentence that is not about the company and does not welcome
+   other nationalities. Title segments ("BI Developer - UAE National") now
+   count. Same rules for all six GCC countries.
+5. **Gulf grade titles.** "Assistant / Deputy Manager" (a senior individual
+   grade in Gulf and Indian banks) read as Manager.
+6. **Dedupe across countries.** The cross-source dedupe matched employer and
+   title only, so a group's "Data Analyst" in Kuwait City was dropped as a
+   copy of its Dubai posting. It now needs the same country (or an unknown
+   location), and strips Gulf legal suffixes (W.L.L., K.S.C.P., S.A.O.G.).
+7. **Google Alerts kept two places.** Suggested queries named only the first
+   two target regions, so Kuwait (fourth) never got one. Starred regions now
+   come first, with Arabic and district queries from the region playbook.
+
+Stages checked and found sound (fixtures in `tests/unit/region-survival.test.ts`
+for every region): the location rule keeps on-site GCC and India postings
+that mention US or UK clients; remote eligibility keeps GCC / MENA / EMEA /
+India / UTC+3 roles and still drops US-only; analyst, ERP, BI, MIS and
+integration roles at banks, hospitals and logistics groups pass, while
+teller, cashier, nurse and sales roles are filtered; retention is
+status-based and region-neutral.
+
+### Kuwait and UAE job sources (checked 2026-10-09)
+
+One GET per board, honest User-Agent. Live counts are the day's totals.
+
+| Employer | Board | Jobs (Kuwait) | robots.txt / terms | Route |
+|---|---|---|---|---|
+| Gulf Bank | Oracle ORC `JobSearch-GulfBank` | 6 (6) | Oracle hosts serve no robots.txt (404) | automatic, on |
+| Kuwait Finance House | Oracle ORC `CX_1` (linked from kfh.com) | 0 | no robots.txt | automatic, on |
+| Boubyan Bank | Taleo Business Edition RSS (`org=BYBBANK`) | 0 | lde.tbe.taleo.net serves no robots.txt | automatic, on |
+| Tap Payments | Teamtailor RSS | 20 (3, Salmiya) | tenant robots: `User-agent: *` disallows `/app/ /messages/ /messenger/ /facebook/tab/ /jobs/internal/` only; `/jobs.rss` allowed | automatic, on |
+| Agility | Workable `agility` | 16 (0) | Workable widget API, as for other boards | automatic, on |
+| Tabby | Pinpoint `tabby` (since v2) | 43 (4) | as before | automatic, on |
+| Property Finder (UAE) | Teamtailor RSS | 32 (UAE 15) | as Tap | automatic, off (Coverage turns it on) |
+| Alghanim Industries | SuccessFactors | ~13 Kuwait | career host `Disallow: /services/` (the RSS path) | weekly check |
+| Kuwait Airways | Zoho Recruit | 0 | Zoho allows `/jobs`, but lee has no Zoho reader | weekly check |
+| Americana | Oracle ORC | 62 (0) | feed is a test ("dev7") host with 2022–25 postings | weekly check |
+| NBK | Oracle iRecruitment | — | careers.nbk.com `Disallow: /` | weekly check, AI search |
+| Zain · stc Kuwait · Alshaya · Jazeera · Boutiqaat · talabat | custom / Taleo Enterprise / SmartRecruiters | — | redirect loop, bot wall or 403; SmartRecruiters API disallowed | weekly check, AI search |
+| KOC · KNPC · KIPIC · KPC · PIC | KPC recruitment portal | — | KPC: "announces their career opportunities for nationals"; no listing | not added (nationals) |
+
+Plausible slugs that belong to someone else (do not add): Greenhouse
+`armada` (US edge-AI), Ashby `rain` (US), Pinpoint `gig` (Gaming Innovation
+Group), Workable `lean` (London) and `sabbar` (Saudi).
+
+Government and semi-government (Kuwait): CITRA has no careers listing
+(robots `Disallow: /private/`); PAAET lists no vacancies; KIA's careers page
+runs a "Kuwaiti Fresh Graduates" programme (nationals); KDIPA careers sit
+behind an Akamai 403. None is a source.
+
+### Job boards for Kuwait
+
+| Board | robots.txt | Terms | Route |
+|---|---|---|---|
+| LinkedIn | `User-agent: *` `Disallow: /` | §8.2 bans scraping | alert e-mails (parsed) + Kuwait search link |
+| Indeed (kw.indeed.com) | `Disallow: /*?rss`, `/alert`, `/jobs/KW/` | bans bots on Indeed Apply | alert e-mails (parsed) + search link |
+| Bayt | `Disallow: /en/jobs/?`, `/en/jobs/*-jobs/`; pages 403 | not readable (403) | alert e-mails (parsed) + search link |
+| NaukriGulf | unreadable (TLS loop) | Info Edge terms | alert e-mails (parsed) + search link |
+| GulfTalent | `Allow: /`, `Content-Signal: search=yes,ai-train=no,use=reference`; pages 403 | web terms 403 | alert e-mails (parsed) + search link |
+| Tanqeeb | `Disallow: /*?keywords`, `/*?countries`, `/*?job_id` | not read | browse link |
+| Akhtaboot | ends `User-agent: *` `Disallow: /` | — | not added (0 Kuwait jobs) |
+| Mourjan | `Disallow: /search/`, `/detail/` | "Use any robot, spider, scraper … without our express written permission" is prohibited | not added (mostly domestic work) |
+| Expatriates.com · dubizzle Kuwait (OLX) · 4Sale | Cloudflare / CloudFront 403 | — | not added |
+| Q8Jobs · kuwaitjobs.net | suspended / parked | — | — |
+
+### Region playbooks (the onboarding recipe)
+
+`lib/coverage/playbooks.ts` holds one entry per region: the taxonomy ids
+it covers, the place used in job-board searches, the AI Mode place phrase,
+the alert sites (with ready search links built in `lib/coverage/presets.ts`),
+local Google Alerts queries (English and Arabic), browse-only boards and the
+company-directory group. Employer boards come from the starter catalog
+(`regions` on each board). Adding a region is data: a taxonomy node, a
+playbook entry and its boards.
+
+Settings › Sources › **Coverage** lists every region in the preferences,
+starred first, as Good / Low / None (3+ region sources and 5+ jobs kept a
+week is Good), with one-click next steps: turn on the region's catalog
+boards, open a ready alert search, check the watched employers, add a
+Google Alert. Discovery (jobs and companies) shows a one-line summary for
+the starred regions. Starred regions also get their own Google AI Mode
+prompt, naming non-tech employers (banks, telecoms, retail, hospitals).
+
+### Coverage matrix
+
+Generated by `pnpm tsx scripts/coverage-matrix.ts --write` from the shipped
+data. "Fixture postings kept" runs one synthetic on-site posting per place
+spelling (`tests/fixtures/regions/places.ts`, plus the e2e region seeds)
+through the relevance gate. Status counts what ships by default; live yield
+is in the next table.
+
+<!-- coverage-matrix:start -->
+| Region | Status | Employer boards (on / off) | Broad & park sources | Alert links | Watched by hand | Browse boards | Company directories (auto) | Seed companies | Browse directories | Fixture postings kept |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Kuwait | green | 6 / 0 | himalayas | 5 | 12 | 4 | Flat6Labs | 11 | 3 | 35 / 35 |
+| UAE | green | 9 / 15 | himalayas, jobicy | 5 | 14 | 3 | Flat6Labs | 19 | 9 | 21 / 21 |
+| Saudi Arabia | green | 6 / 9 | himalayas | 5 | 5 | 1 | Flat6Labs | 17 | 3 | 16 / 16 |
+| Qatar | amber | 1 / 0 | himalayas | 5 | 4 | 1 | QSTP, Flat6Labs | 5 | 2 | 8 / 8 |
+| Bahrain | amber | 2 / 0 | himalayas | 5 | 1 | 1 | StartUp Bahrain, Flat6Labs | 0 | 2 | 8 / 8 |
+| Oman | amber | 1 / 0 | himalayas | 5 | 2 | 1 | Flat6Labs | 0 | 1 | 10 / 10 |
+| Kochi | amber | 2 / 0 | himalayas, adzuna, infopark, ksum | 3 | 0 | 0 | Technopark, Infopark, Kerala Cyberpark, UL Cyberpark, NASSCOM members | 14 | 6 | 9 / 9 |
+| Trivandrum | amber | 2 / 0 | himalayas, adzuna, technopark, ksum | 3 | 0 | 0 | Technopark, Infopark, Kerala Cyberpark, UL Cyberpark, NASSCOM members | 21 | 6 | 6 / 6 |
+| Calicut | amber | 0 / 2 | himalayas, adzuna, cyberpark, ul_cyberpark, ksum | 3 | 0 | 0 | Technopark, Infopark, Kerala Cyberpark, UL Cyberpark, NASSCOM members | 2 | 6 | 4 / 4 |
+| Bengaluru | green | 4 / 3 | himalayas, adzuna | 3 | 0 | 0 | NASSCOM members | 0 | 3 | 8 / 8 |
+| Hyderabad | amber | 0 / 1 | himalayas, adzuna | 3 | 0 | 0 | NASSCOM members | 0 | 3 | 6 / 6 |
+| Chennai | red | 0 / 0 | himalayas, adzuna | 3 | 0 | 0 | NASSCOM members | 0 | 3 | 5 / 5 |
+| Pune | red | 0 / 0 | himalayas, adzuna | 3 | 0 | 0 | NASSCOM members | 0 | 3 | 6 / 6 |
+| Delhi NCR | amber | 1 / 0 | himalayas, adzuna | 3 | 0 | 0 | NASSCOM members | 0 | 3 | 6 / 6 |
+| Mumbai | red | 0 / 0 | himalayas, adzuna | 3 | 0 | 0 | NASSCOM members | 0 | 3 | 6 / 6 |
+| Remote | green | 0 / 0 | himalayas, remoteok, weworkremotely, remotive, workingnomads, jobicy, hn_whoishiring | 1 | 0 | 0 | — | 0 | 0 | 9 / 9 |
+| Europe | amber | 0 / 1 | hn_whoishiring | 3 | 0 | 0 | — | 0 | 0 | 1 / 2 |
+| UK | amber | 0 / 1 | hn_whoishiring | 3 | 0 | 0 | — | 0 | 0 | 1 / 1 |
+| US | amber | 0 / 15 | hn_whoishiring | 3 | 0 | 0 | — | 0 | 0 | 1 / 1 |
+| Canada | red | 0 / 0 | — | 3 | 0 | 0 | — | 0 | 0 | 1 / 1 |
+| Australia | red | 0 / 0 | — | 3 | 0 | 0 | — | 0 | 0 | 1 / 1 |
+| Singapore | amber | 0 / 1 | — | 3 | 0 | 0 | — | 0 | 0 | 1 / 1 |
+| Malaysia | red | 0 / 0 | — | 3 | 0 | 0 | — | 0 | 0 | 1 / 1 |
+<!-- coverage-matrix:end -->
+
+### Live check (2026-10-09)
+
+`DATABASE_URL=pglite:memory:// pnpm tsx scripts/region-coverage-live-check.ts`
+reads every polled catalog source once (public sources only, nothing
+stored) and counts postings tagged to each region / kept by the gate for
+the owner's domains. Both columns use the new tagging, so "before" shows the
+source gap only.
+
+| Region | Before (v5 defaults) | After (v6 defaults) | After + Coverage one-click boards |
+|---|---|---|---|
+| Kuwait | 4 / 4 | 13 / 8 | 13 / 8 |
+| UAE | 143 / 78 | 147 / 81 | 879 / 401 |
+| Saudi Arabia | 54 / 24 | 69 / 30 | 184 / 74 |
+| Qatar | 2 / 1 | 3 / 2 | 3 / 2 |
+| Bahrain | 2 / 2 | 11 / 8 | 11 / 8 |
+| Oman | 4 / 1 | 4 / 1 | 4 / 1 |
+| Kochi | 62 / 30 | 62 / 30 | 62 / 30 |
+| Trivandrum | 100 / 47 | 100 / 47 | 100 / 47 |
+| Calicut | 0 / 0 | 0 / 0 | parks off by default |
+| Bengaluru | 86 / 39 | 86 / 39 | 114 / 51 |
+| Hyderabad · Chennai · Pune | 3 · 3 · 2 | 5 · 3 · 2 | 12 · 3 · 2 |
+| Delhi NCR · Mumbai | 102 · 25 | 102 · 25 | 102 · 25 |
+| Remote | 229 / 97 | 238 / 102 | 238 / 102 |
+
+Kuwait is still thin from feeds alone: most Kuwaiti employers publish no
+allowed feed. The rest comes from the user's own alerts (LinkedIn, Bayt,
+NaukriGulf, Indeed, GulfTalent with location Kuwait), Google Alerts and AI
+Mode, which the Coverage section sets up. Two sources were unreadable on the
+day (Meesho timed out; Deloitte's SuccessFactors feed exceeds 10 MB).
+
 ## Company discovery: local companies and startups (2026-10-09)
 
 Discovery › Companies lists companies that may never post on a job portal,

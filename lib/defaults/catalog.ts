@@ -233,11 +233,11 @@ export const DEFAULT_SOURCES: readonly DefaultSource[] = [
   },
 
   // Kerala IT parks — public listings, robots allow (see lib/discovery/adapters/kerala-parks.ts)
-  { key: 'technopark', name: 'Technopark (Trivandrum)', kind: 'technopark', config: {}, enabled: true, since: 2 }, // 362
-  { key: 'infopark', name: 'Infopark (Kochi)', kind: 'infopark', config: {}, enabled: true, since: 2 }, // ~466
-  { key: 'cyberpark', name: 'Kerala Cyberpark (Kozhikode)', kind: 'cyberpark', config: {}, enabled: false, since: 2 }, // 29
-  { key: 'ul-cyberpark', name: 'UL Cyberpark (Kozhikode)', kind: 'ul_cyberpark', config: {}, enabled: false, since: 2 }, // 26
-  { key: 'ksum', name: 'Kerala Startup Mission', kind: 'ksum', config: {}, enabled: false, since: 2 }, // 15
+  { key: 'technopark', name: 'Technopark (Trivandrum)', kind: 'technopark', config: {}, enabled: true, since: 2, regions: ['thiruvananthapuram'] }, // 362
+  { key: 'infopark', name: 'Infopark (Kochi)', kind: 'infopark', config: {}, enabled: true, since: 2, regions: ['kochi'] }, // ~466
+  { key: 'cyberpark', name: 'Kerala Cyberpark (Kozhikode)', kind: 'cyberpark', config: {}, enabled: false, since: 2, regions: ['kozhikode'] }, // 29
+  { key: 'ul-cyberpark', name: 'UL Cyberpark (Kozhikode)', kind: 'ul_cyberpark', config: {}, enabled: false, since: 2, regions: ['kozhikode'] }, // 26
+  { key: 'ksum', name: 'Kerala Startup Mission', kind: 'ksum', config: {}, enabled: false, since: 2, regions: ['kerala'] }, // 15
 
   // Enterprise careers backends (Oracle ORC / SuccessFactors / Phenom / Workday), GCC + India.
   // `// n` = jobs read in the target countries on 2026-09-27.

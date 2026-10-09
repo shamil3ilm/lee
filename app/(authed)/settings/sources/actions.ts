@@ -8,6 +8,7 @@ import { BOARD_SLUG_RE, getSourceKind, sourceKindNeeds } from '@/lib/discovery/s
 import { logger } from '@/lib/logger'
 import { queueFirstPoll } from '@/lib/queue/first-poll'
 import { nextWatchConfig } from '@/lib/defaults/watch-status'
+import { enableRegionBoards } from '@/lib/coverage/enable'
 
 export type ActionResult = { success: true } | { error: string }
 
@@ -116,6 +117,34 @@ export async function toggleSourceEnabled(
       err: err instanceof Error ? err.message : String(err),
     })
     return { error: 'Could not update source.' }
+  }
+}
+
+const regionIdSchema = z.string().regex(/^[a-z][a-z0-9-]{1,40}$/)
+
+/** Coverage › "Turn on N {region} employer boards". */
+export async function enableRegionSources(regionId: string): Promise<ActionResult & { count?: number }> {
+  try {
+    const userId = await requireUserId()
+    if (!regionIdSchema.safeParse(regionId).success) return { error: 'Unknown region.' }
+    const r = await enableRegionBoards(userId, regionId)
+    if (!r) return { error: 'Unknown region.' }
+    for (const id of r.sourceIds) {
+      await queueFirstPoll(userId, id).catch((err: unknown) =>
+        logger.warn('enableRegionSources first poll not queued', {
+          err: err instanceof Error ? err.message : String(err),
+        }),
+      )
+    }
+    revalidatePath('/settings/sources')
+    revalidatePath('/discoveries')
+    return { success: true, count: r.enabled + r.added }
+  } catch (err) {
+    logger.error('enableRegionSources failed', {
+      regionId,
+      err: err instanceof Error ? err.message : String(err),
+    })
+    return { error: 'Could not turn the boards on.' }
   }
 }
 
