@@ -147,7 +147,9 @@ describe('outbound timeouts', () => {
   // enrichment through discoveryFetch; it needs a user, so it is checked in
   // tests/unit/google-alerts.test.ts with stubbed deps.
   // `local_companies` holds company discovery's rows (filled by lib/company-discovery).
-  const noFetchKinds = ['watch', 'email_alert', 'manual_import', 'google_alerts', 'local_companies']
+  // `linkedin_post` reads LinkedIn notification emails through the same Gmail
+  // wrappers and never fetches linkedin.com (tests/integration/linkedin-posts.test.ts).
+  const noFetchKinds = ['watch', 'email_alert', 'manual_import', 'google_alerts', 'local_companies', 'linkedin_post']
 
   it('covers every registered discovery adapter', () => {
     expect([...Object.keys(adapterConfigs), ...noFetchKinds].sort()).toEqual(listAdapterKinds().sort())

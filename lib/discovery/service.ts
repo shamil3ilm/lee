@@ -33,7 +33,7 @@ import {
   reassessStaleDiscoveries,
   safely,
 } from '@/lib/scam/service'
-import { LINKEDIN_POST_APP_SOURCE } from '@/lib/linkedin-posts/types'
+import { LINKEDIN_POST_APP_SOURCE, UNNAMED_COMPANY } from '@/lib/linkedin-posts/types'
 
 export interface DiscoveryCycleResult {
   sourcesPolled: number
@@ -371,9 +371,12 @@ export async function promoteJobDiscovery(args: {
   if (!domain && !isPost) throw new Error('cannot derive company domain from discovery')
 
   const application = await db.transaction(async (tx) => {
+    // An unnamed employer gets its own row per post, never one shared placeholder.
     const company = domain
       ? await companiesQ.findOrCreateByDomain(userId, domain, normalized.companyName, tx)
-      : await companiesQ.findOrCreateByName(userId, normalized.companyName, tx)
+      : normalized.companyName === UNNAMED_COMPANY
+        ? await companiesQ.createWithoutDomain(userId, normalized.post?.posterName ? `Company of ${normalized.post.posterName} (LinkedIn post)` : UNNAMED_COMPANY, tx)
+        : await companiesQ.findOrCreateByName(userId, normalized.companyName, tx)
     const job = await jobsQ.upsertBySourceUrl(
       userId,
       company.id,

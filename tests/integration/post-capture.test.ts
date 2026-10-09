@@ -66,6 +66,32 @@ describe('POST /api/capture', () => {
     expect((await capturesQ.latestPending(u.id))?.text).toHaveLength(MAX_CAPTURE_TEXT)
   })
 
+  it('caps a chunked body without a Content-Length and strips tokens from the page link', async () => {
+    const u = await makeUser()
+    const k = captureKey(u.id, 1)
+    const big = new URLSearchParams({ k, text: 'z'.repeat(60_000) }).toString()
+    const stream = new ReadableStream<Uint8Array>({
+      start(c) {
+        const bytes = new TextEncoder().encode(big)
+        for (let i = 0; i < bytes.length; i += 8_000) c.enqueue(bytes.slice(i, i + 8_000))
+        c.close()
+      },
+    })
+    const chunked = new Request(`${ORIGIN}/api/capture`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: stream,
+      duplex: 'half',
+    } as RequestInit)
+    expect((await handleCapture(chunked)).status).toBe(413)
+
+    const res = await handleCapture(post({ k, text: TEXT, url: `${PAGE.replace(/\/$/, '')}?midToken=secret&trk=x#c` }))
+    expect(res.headers.get('cross-origin-opener-policy')).toBe('same-origin')
+    expect((await capturesQ.latestPending(u.id))?.url).toBe(PAGE)
+    await handleCapture(post({ k, text: TEXT, url: 'https://careers.example/jobs/1?token=abc#x' }))
+    expect((await capturesQ.latestPending(u.id))?.url).toBe('https://careers.example/jobs/1')
+  })
+
   it('keeps at most five pending captures, expires them after 30 minutes and is user-scoped', async () => {
     const u = await makeUser()
     const other = await makeUser()

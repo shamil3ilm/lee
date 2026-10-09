@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { z } from 'zod'
+import { canonicalPostUrl } from './urls'
 
 /**
  * SERVER-ONLY. "Send to lee" bookmarklet: the per-user capture key it
@@ -75,12 +76,28 @@ export interface CapturePayload {
   url: string | null
 }
 
+/**
+ * The page link as it may be kept: a LinkedIn post in its canonical form,
+ * any other page without its query and fragment (they can carry tracking
+ * or sign-in tokens).
+ */
+export function storableUrl(raw: string): string {
+  const post = canonicalPostUrl(raw)
+  if (post) return post.url
+  const u = new URL(raw)
+  u.search = ''
+  u.hash = ''
+  u.username = ''
+  u.password = ''
+  return u.toString()
+}
+
 /** Form fields → a capture, or null when invalid or empty. Text beyond the cap is cut. */
 export function parseCaptureForm(fields: Record<string, unknown>): CapturePayload | null {
   const parsed = captureFormSchema.safeParse(fields)
   if (!parsed.success) return null
   const text = parsed.data.text.replace(/\r\n/g, '\n').trim().slice(0, MAX_CAPTURE_TEXT)
-  const url = parsed.data.url || null
+  const url = parsed.data.url ? storableUrl(parsed.data.url) : null
   if (!text && !url) return null
   return { key: parsed.data.k, text, url }
 }

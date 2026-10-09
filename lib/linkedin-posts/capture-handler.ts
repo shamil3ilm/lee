@@ -34,20 +34,43 @@ export async function handleCapture(req: Request, deps: CaptureDeps = defaultDep
   if (type !== 'application/x-www-form-urlencoded') return fail(415, 'Send the form from the bookmarklet.')
   const declared = Number(req.headers.get('content-length') ?? '0')
   if (declared > MAX_CAPTURE_BODY_BYTES) return fail(413, 'That selection is too long. Select just the post.')
-  const body = await req.text()
-  if (Buffer.byteLength(body) > MAX_CAPTURE_BODY_BYTES) return fail(413, 'That selection is too long. Select just the post.')
+  const body = await readCapped(req, MAX_CAPTURE_BODY_BYTES)
+  if (body === null) return fail(413, 'That selection is too long. Select just the post.')
   const capture = parseCaptureForm(Object.fromEntries(new URLSearchParams(body)))
   if (!capture) return fail(400, 'Select the post text first, then click Send to lee.')
-  const owner = verifyCaptureKey(capture.key)
-  if (!owner || owner.version !== (await deps.keyVersion(owner.userId))) {
-    return fail(401, 'This bookmarklet is no longer valid. Drag the new one from Settings › LinkedIn.')
-  }
   try {
+    const owner = verifyCaptureKey(capture.key)
+    if (!owner || owner.version !== (await deps.keyVersion(owner.userId))) {
+      return fail(401, 'This bookmarklet is no longer valid. Drag the new one from Settings › LinkedIn.')
+    }
     await deps.create(owner.userId, { text: capture.text, url: capture.url, expiresAt: new Date(deps.now().getTime() + CAPTURE_TTL_MS) })
+    logger.info('post_capture_received', { userId: owner.userId, chars: capture.text.length, hasUrl: Boolean(capture.url) })
   } catch (err) {
     logger.error('post_capture_failed', { err: err instanceof Error ? err.name : 'unknown' })
     return fail(500, 'Could not keep that capture. Try again, or copy and paste the post.')
   }
-  logger.info('post_capture_received', { userId: owner.userId, chars: capture.text.length, hasUrl: Boolean(capture.url) })
-  return new Response(null, { status: 303, headers: { location: new URL(CAPTURE_PAGE, req.url).toString(), ...NO_STORE } })
+  return new Response(null, {
+    status: 303,
+    // A new browsing context group: the page the bookmarklet ran on can't script or redirect lee's window.
+    headers: { location: new URL(CAPTURE_PAGE, req.url).toString(), 'cross-origin-opener-policy': 'same-origin', ...NO_STORE },
+  })
+}
+
+/** The body as text, or null once it passes `max` bytes (a chunked body has no Content-Length). */
+async function readCapped(req: Request, max: number): Promise<string | null> {
+  if (!req.body) return ''
+  const reader = req.body.getReader()
+  const chunks: Uint8Array[] = []
+  let size = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    size += value.byteLength
+    if (size > max) {
+      await reader.cancel().catch(() => undefined)
+      return null
+    }
+    chunks.push(value)
+  }
+  return Buffer.concat(chunks).toString('utf8')
 }
