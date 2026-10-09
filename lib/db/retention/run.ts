@@ -16,6 +16,7 @@ import { pruneApplyHistory } from './apply'
 import { compactAcademyHistory, pruneCodingSubmissions } from './academy'
 import { pruneRadarItems } from './radar'
 import { pruneRadarWhatsNew } from './radar-new'
+import { pruneGitHubRepoStats, pruneIntegrationScratch } from './github'
 import { pruneAiCallLogs, pruneProcessedGmailThreads, pruneQueueJobs, pruneSystemEvents, pruneWebVitals } from './logs'
 import {
   EMPTY_GLOBAL_COUNTS,
@@ -77,6 +78,7 @@ export async function runUserCleanup(
     applyHistory: await pruneApplyHistory(now, o),
     codingSubmissions: await pruneCodingSubmissions(o),
     radarItems: await pruneRadarItems(now, o),
+    githubRepoStats: await pruneGitHubRepoStats(now, o),
   }
 }
 
@@ -91,6 +93,7 @@ export async function runGlobalCleanup(now: Date, opts: StepOpts = {}): Promise<
     scamDomains: await pruneScamDomainCache(now, opts),
     systemEvents: await pruneSystemEvents(now, opts),
     radarWhatsNew: await pruneRadarWhatsNew(now, opts),
+    integrationScratch: await pruneIntegrationScratch(now, opts),
   }
 }
 

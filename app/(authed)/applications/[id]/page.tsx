@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { requireUserId } from '@/lib/auth/require-session'
+import { ReferralHint } from '@/components/linkedin/referral-hint'
 import * as appsQ from '@/lib/db/queries/applications'
 import * as actQ from '@/lib/db/queries/activities'
 import * as stagesQ from '@/lib/db/queries/stages'
@@ -283,6 +284,7 @@ export default async function ApplicationDetail({
       <SectionNav sections={sections} />
 
       <ApplicationSummaryCard id="overview" className={SECTION_ANCHOR} status={status} risk={risk} job={app.job} />
+      <ReferralHint userId={userId} company={app.job.company?.name} role={app.job.title} myName={null} />
 
       <ShareLinksProvider suggestions={linkSuggestions}>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

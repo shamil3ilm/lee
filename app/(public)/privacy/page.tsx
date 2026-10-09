@@ -104,6 +104,27 @@ export default function PrivacyPage() {
         </p>
       </Section>
 
+      <Section title="GitHub and LinkedIn">
+        <p>
+          Both connections are optional, yours alone, and removable in Settings › Integrations. Connect GitHub uses
+          the {APP_NAME} GitHub App: {APP_NAME} reads your login, avatar, the repositories you installed the app on
+          (private ones only if you chose them), their languages and stars, and your own commit and pull request
+          counts, and writes only your portfolio file when you click Publish. Connect LinkedIn signs you in with
+          LinkedIn (name, photo, email) and, only if you allow posting, publishes a post when you click Post;{' '}
+          {APP_NAME} never posts on a schedule, likes, comments or sends connection requests. Access and refresh
+          tokens for both are encrypted at rest and deleted on Disconnect (GitHub&rsquo;s authorization is also
+          revoked; for LinkedIn, also remove {APP_NAME} under LinkedIn&rsquo;s Permitted services). Cached GitHub
+          repository counts are deleted after 30 days unless you linked the repository to a project.
+        </p>
+        <p className="mt-3">
+          A LinkedIn data export you upload is read in your browser; only your profile fields, positions,
+          education, skills, certifications, projects, languages and, if you choose, your connections are sent to{' '}
+          {APP_NAME}. Connections are stored as name, company, position and the date you connected (email
+          addresses only if you opt in), are visible only to you, are used only for referral hints, and can be
+          deleted at once in Settings › LinkedIn. Messages and other export files are never read.
+        </p>
+      </Section>
+
       <Section title="Where data is stored">
         <p>
           Application data is stored in a hosted PostgreSQL database (Neon), and the app is hosted on Vercel.

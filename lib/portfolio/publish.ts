@@ -2,9 +2,9 @@ import * as publishQ from '@/lib/db/queries/portfolioPublish'
 import { logger } from '@/lib/logger'
 import { getResumeProfile, saveResumeProfile } from '@/lib/resume/service'
 import type { ResumeProfile } from '@/lib/resume/types'
-import { resolveServiceSecret } from '@/lib/settings/secrets'
+import { resolvePortfolioToken, type PortfolioTokenVia } from '@/lib/integrations/github/publish-token'
 import { checkPortfolioProfile } from './checks'
-import { PORTFOLIO_TOKEN_ID, publishConfigSchema, toTarget, type RepoTarget } from './config'
+import { publishConfigSchema, toTarget, type RepoTarget } from './config'
 import { diffDocuments, type Choices, type DiffSection, type SectionDiff } from './diff'
 import { getFile, putFile, type RemoteFile } from './github'
 import {
@@ -51,6 +51,8 @@ export interface PublishContext {
   userId: string
   target: RepoTarget
   token: string
+  /** Connect GitHub's installation token ('app') or the fine-grained token ('token'). */
+  via: PortfolioTokenVia
   state: publishQ.PortfolioPublishRow
   now: Date
 }
@@ -60,9 +62,10 @@ export async function loadPublishContext(userId: string, now: Date): Promise<Pub
   const state = await publishQ.get(userId)
   const config = state ? publishConfigSchema.safeParse(state) : null
   if (!state || !config?.success) return { error: 'Set the repository, branch and path first.' }
-  const { key } = await resolveServiceSecret(userId, PORTFOLIO_TOKEN_ID)
-  if (!key) return { error: 'Save a GitHub token first.' }
-  return { userId, target: toTarget(config.data), token: key, state, now }
+  const target = toTarget(config.data)
+  const resolved = await resolvePortfolioToken(userId, target, now)
+  if (!resolved) return { error: 'Connect GitHub or save a GitHub token first.' }
+  return { userId, target, token: resolved.token, via: resolved.via, state, now }
 }
 
 export function parseRepo(remote: RemoteFile): JsonDoc | null {
@@ -170,6 +173,6 @@ export async function publishProfile(
     lastCommitUrl: put.commitUrl,
     publishedAt: ctx.now,
   })
-  logger.info('profile_published', { version, sections: changed.length, created: !remote.exists })
+  logger.info('profile_published', { version, sections: changed.length, created: !remote.exists, via: ctx.via })
   return { status: 'published', version, commitUrl: put.commitUrl, commitSha: put.commitSha, publishedAt: ctx.now.toISOString() }
 }

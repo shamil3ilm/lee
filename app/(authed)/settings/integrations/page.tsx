@@ -16,6 +16,10 @@ import { PLACES_HARD_MONTHLY_CAP } from '@/lib/reputation/places'
 import { listServiceSecretStatuses } from '@/lib/settings/secrets'
 import { latestUserEvent, type EventView } from '@/lib/logs/queries'
 import type { LastActivityItem } from '@/components/settings/last-activity'
+import { GitHubCard } from '@/components/integrations/github-card'
+import { LinkedInCard } from '@/components/integrations/linkedin-card'
+import { getGitHubStatus } from '@/lib/integrations/github/service'
+import { getLinkedInStatus } from '@/lib/integrations/linkedin/service'
 
 function activity(e: EventView | null): LastActivityItem | null {
   return e ? { at: e.createdAt.toISOString(), message: e.message, level: e.level } : null
@@ -28,8 +32,19 @@ export const dynamic = 'force-dynamic'
 // "Move existing files to Drive" runs as a server action on this page.
 export const maxDuration = 30
 
-export default async function IntegrationsSettingsPage() {
+const CALLBACK_CODE = /^[a-z_]{1,20}$/
+
+function callbackParam(v: string | string[] | undefined): string | null {
+  return typeof v === 'string' && CALLBACK_CODE.test(v) ? v : null
+}
+
+export default async function IntegrationsSettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   const userId = await requireUserId()
+  const sp = await searchParams
   const session = await auth()
   const [
     account,
@@ -43,6 +58,8 @@ export default async function IntegrationsSettingsPage() {
     driveLast,
     places,
     secrets,
+    github,
+    linkedin,
   ] = await Promise.all([
     db.query.accounts.findFirst({
       where: and(eq(accounts.userId, userId), eq(accounts.provider, 'google')),
@@ -58,6 +75,8 @@ export default async function IntegrationsSettingsPage() {
     latestUserEvent(userId, 'drive', DRIVE_EVENTS),
     repSettingsQ.get(userId),
     listServiceSecretStatuses(userId),
+    getGitHubStatus(userId),
+    getLinkedInStatus(userId),
   ])
   const month = new Date().toISOString().slice(0, 7)
   // Google returns granted scopes space-delimited in the `scope` column. Some
@@ -69,7 +88,7 @@ export default async function IntegrationsSettingsPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <PageHeader
         title="Integrations"
-        description="Google account access for Gmail sync, Calendar events and Drive file storage."
+        description="Google (Gmail sync, Calendar events, Drive storage), GitHub and LinkedIn connections. Every connection is yours alone and can be removed here."
       />
       <IntegrationsPanel
         email={session?.user?.email ?? null}
@@ -89,6 +108,8 @@ export default async function IntegrationsSettingsPage() {
         pendingFiles={pendingFiles}
         lastActivity={activity(driveLast)}
       />
+      <GitHubCard status={github} callback={callbackParam(sp.github)} />
+      <LinkedInCard status={linkedin} callback={callbackParam(sp.linkedin)} />
       <PlacesSettingsCard
         enabled={places.placesEnabled}
         cap={places.placesMonthlyCap}

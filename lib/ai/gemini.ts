@@ -76,6 +76,18 @@ import {
   type ReputationSummaryResult,
 } from './prompts/reputation-summary'
 import {
+  buildLinkedInPostPrompt,
+  buildLinkedInProfilePrompt,
+  LINKEDIN_POST_PROMPT_VERSION,
+  LINKEDIN_PROFILE_PROMPT_VERSION,
+  linkedinPostResultSchema,
+  linkedinProfileResultSchema,
+  type LinkedInPostInput,
+  type LinkedInPostResult,
+  type LinkedInProfileInput,
+  type LinkedInProfileResult,
+} from './prompts/linkedin'
+import {
   buildRadarBriefPrompt,
   RADAR_BRIEF_PROMPT_VERSION,
   radarBriefResultSchema,
@@ -434,6 +446,24 @@ export class GeminiProvider implements AIProvider {
       promptVersion: COMPARE_NARRATIVE_PROMPT_VERSION,
     })
     return compareNarrativeResultSchema.parse(JSON.parse(raw))
+  }
+
+  async draftLinkedInPost(input: LinkedInPostInput, meta: CallMeta = {}): Promise<LinkedInPostResult> {
+    const raw = await this.generate(buildLinkedInPostPrompt(input), {
+      ...meta,
+      kind: 'linkedin_post',
+      promptVersion: LINKEDIN_POST_PROMPT_VERSION,
+    })
+    return linkedinPostResultSchema.parse(JSON.parse(raw))
+  }
+
+  async suggestLinkedInProfile(input: LinkedInProfileInput, meta: CallMeta = {}): Promise<LinkedInProfileResult> {
+    const raw = await this.generate(buildLinkedInProfilePrompt(input), {
+      ...meta,
+      kind: 'linkedin_profile',
+      promptVersion: LINKEDIN_PROFILE_PROMPT_VERSION,
+    })
+    return linkedinProfileResultSchema.parse(JSON.parse(raw))
   }
 
   async writeRadarBrief(input: RadarBriefInput, meta: CallMeta = {}): Promise<RadarBriefResult> {

@@ -21,6 +21,12 @@ import type { CallMeta } from './log'
 import type { CompareNarrativeInput, CompareNarrativeResult } from './prompts/compare-narrative'
 import type { ReputationSummaryInput, ReputationSummaryResult } from './prompts/reputation-summary'
 import type { RadarBriefInput, RadarBriefResult } from './prompts/radar-brief'
+import type {
+  LinkedInPostInput,
+  LinkedInPostResult,
+  LinkedInProfileInput,
+  LinkedInProfileResult,
+} from './prompts/linkedin'
 import type { ScoreJobContext } from './prompts/score-job'
 import type { CoverLetterTailoring } from './prompts/cover-letter'
 import type { SharedLink } from './prompts/shared-links'
@@ -216,6 +222,12 @@ export interface AIProvider {
   // AI Radar — grounded brief draft; the caller drops every sentence whose
   // quote is not verbatim in its fetched source, and the user confirms.
   writeRadarBrief(input: RadarBriefInput, meta?: CallMeta): Promise<RadarBriefResult>
+  // LinkedIn post composer — a draft from given facts only; the caller
+  // fact-locks it and the user edits it and clicks Post.
+  draftLinkedInPost(input: LinkedInPostInput, meta?: CallMeta): Promise<LinkedInPostResult>
+  // LinkedIn profile optimizer — headline / About suggestions from the CV;
+  // the caller drops any that fail the fact lock; copied by hand.
+  suggestLinkedInProfile(input: LinkedInProfileInput, meta?: CallMeta): Promise<LinkedInProfileResult>
 }
 
 export const latexCVResultSchema = z.object({ source: z.string().min(1) })

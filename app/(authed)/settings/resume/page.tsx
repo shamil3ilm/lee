@@ -6,6 +6,9 @@ import { PhotoCard } from '@/components/resume/photo-card'
 import { ResumeEditor } from '@/components/resume/resume-editor'
 import { SectionNav, SECTION_ANCHOR } from '@/components/section-nav'
 import { ReturnLink } from '@/components/settings/return-link'
+import { GitHubEvidencePanel, type RepoRow } from '@/components/resume/github-evidence-panel'
+import * as connQ from '@/lib/db/queries/integrationConnections'
+import * as statsQ from '@/lib/db/queries/githubRepoStats'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,6 +20,7 @@ const SECTIONS = [
   { id: 'resume-skills', label: 'Skills' },
   { id: 'resume-education', label: 'Education' },
   { id: 'resume-portfolio', label: 'Portfolio' },
+  { id: 'resume-github', label: 'From GitHub' },
 ]
 
 export default async function ResumeSettingsPage({
@@ -25,11 +29,27 @@ export default async function ResumeSettingsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const userId = await requireUserId()
-  const [{ profile, stored }, photo, sp] = await Promise.all([
+  const [{ profile, stored }, photo, sp, github, stats] = await Promise.all([
     getResumeProfile(userId),
     getProfilePhoto(userId),
     searchParams,
+    connQ.get(userId, 'github'),
+    statsQ.list(userId),
   ])
+  const repos: RepoRow[] = stats.map((r) => ({
+    fullName: r.fullName,
+    htmlUrl: r.htmlUrl,
+    isPrivate: r.isPrivate,
+    description: r.description,
+    topics: r.topics,
+    languages: r.languages,
+    stars: r.stars,
+    lastCommitAt: r.lastCommitAt?.toISOString() ?? null,
+    userCommits: r.userCommits,
+    userPrs: r.userPrs,
+    linkedProjectId: r.linkedProjectId,
+    followDeps: r.followDeps,
+  }))
   return (
     <div className="space-y-6">
       <ReturnLink from={sp.from} />
@@ -42,6 +62,7 @@ export default async function ResumeSettingsPage({
         <PhotoCard photoVersion={photo?.sha256 ?? null} />
       </div>
       <ResumeEditor initial={profile} stored={stored} />
+      <GitHubEvidencePanel connected={github !== null} repos={repos} projects={profile.projects} />
     </div>
   )
 }

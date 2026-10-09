@@ -6,6 +6,8 @@ import {
   E2E_GITHUB_STUB_PORT,
   E2E_GITHUB_STUB_URL,
   E2E_LATEX_STUB_PORT,
+  E2E_LINKEDIN_STUB_PORT,
+  E2E_LINKEDIN_STUB_URL,
   E2E_LATEX_STUB_URL,
   E2E_PORT,
 } from './tests/e2e/env'
@@ -37,6 +39,16 @@ export default defineConfig({
       command: 'node tests/e2e/github-stub.mjs',
       url: `${E2E_GITHUB_STUB_URL}/health`,
       env: { GITHUB_STUB_PORT: String(E2E_GITHUB_STUB_PORT) },
+      reuseExistingServer: process.env.E2E_REUSE_SERVER === '1',
+      timeout: 30_000,
+      stdout: 'ignore',
+      stderr: 'pipe',
+    },
+    // Connect LinkedIn and the post composer talk to this stand-in, never to LinkedIn.
+    {
+      command: 'node tests/e2e/linkedin-stub.mjs',
+      url: `${E2E_LINKEDIN_STUB_URL}/health`,
+      env: { LINKEDIN_STUB_PORT: String(E2E_LINKEDIN_STUB_PORT) },
       reuseExistingServer: process.env.E2E_REUSE_SERVER === '1',
       timeout: 30_000,
       stdout: 'ignore',

@@ -1,5 +1,10 @@
 import { z } from 'zod'
 
+/** Optional env var where an empty string (a CI placeholder) means "not set". */
+function optional<T extends z.ZodTypeAny>(schema: T) {
+  return z.preprocess((v) => (v === '' ? undefined : v), schema.optional())
+}
+
 // Provider API keys (GEMINI / GROQ / FIRECRAWL / LAYA) are optional at boot:
 // each user can save their own in Settings › AI (encrypted in the key store)
 // and the env values are only fallback defaults. A missing key surfaces as a
@@ -52,6 +57,20 @@ export const envSchema = z
     // Optional Hugging Face read token for the AI Radar. A key saved in
     // Settings › AI › Service keys wins over this default.
     HF_TOKEN: z.string().optional(),
+    // Connect GitHub (a GitHub App) and Connect LinkedIn (a LinkedIn
+    // developer app): deployment-level app credentials, all optional. When
+    // a set is incomplete, Settings › Integrations shows "not configured"
+    // with the setup steps (docs/integrations-github-linkedin.md). Each
+    // user's own connection (tokens) lives encrypted in the database.
+    GITHUB_APP_ID: optional(z.string().regex(/^\d+$/, 'GITHUB_APP_ID is the numeric App ID')),
+    GITHUB_APP_CLIENT_ID: optional(z.string()),
+    GITHUB_APP_CLIENT_SECRET: optional(z.string()),
+    GITHUB_APP_PRIVATE_KEY: optional(
+      z.string().refine((v) => v.includes('PRIVATE KEY'), { message: 'GITHUB_APP_PRIVATE_KEY must be the PEM private key' }),
+    ),
+    GITHUB_APP_SLUG: optional(z.string().regex(/^[a-z0-9-]{1,100}$/, 'GITHUB_APP_SLUG is the app URL name')),
+    LINKEDIN_CLIENT_ID: optional(z.string()),
+    LINKEDIN_CLIENT_SECRET: optional(z.string()),
   })
 
 export type Env = z.infer<typeof envSchema>

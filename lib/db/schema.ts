@@ -1644,3 +1644,5 @@ export * from './schema-radar'
 export * from './schema-radar-new'
 // Best CV per job: tailored copies with their accepted suggestions.
 export * from './schema-cv-fit'
+// Connect GitHub / LinkedIn: connections, OAuth states, repo stats, LinkedIn import.
+export * from './schema-integrations'
