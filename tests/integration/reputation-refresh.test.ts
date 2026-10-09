@@ -127,4 +127,14 @@ describe('reputation refresh job', () => {
     expect(await refreshNow(u.id, c.id, new Date(NOW.getTime() + 60_000))).toEqual({ status: 'recent' })
     expect((await repQ.get(u.id, c.id))?.facts?.label).toBe('Acme Payments')
   })
+
+  it('on demand: "once an hour" is a rolling hour, not the clock hour', async () => {
+    const { u, c } = await acme()
+    stubNetwork()
+    expect(await refreshNow(u.id, c.id, NOW)).toEqual({ status: 'done', failed: false })
+    // 59 minutes later is always a different clock hour, yet within the hour.
+    expect(await refreshNow(u.id, c.id, new Date(NOW.getTime() + 59 * 60_000))).toEqual({ status: 'recent' })
+    // 61 minutes later is allowed again.
+    expect(await refreshNow(u.id, c.id, new Date(NOW.getTime() + 61 * 60_000))).not.toEqual({ status: 'recent' })
+  })
 })

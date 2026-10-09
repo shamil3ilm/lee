@@ -2,6 +2,9 @@ import * as repQ from '@/lib/db/queries/companyReputation'
 import { drain } from '@/lib/queue/drain'
 import { JOB_PRIORITY, JOB_TYPES, jobKeys } from '@/lib/queue/job-types'
 import { enqueueMany } from '@/lib/queue/queue'
+import { and, eq, gt, sql } from 'drizzle-orm'
+import { db } from '@/lib/db/client'
+import { queueJobs } from '@/lib/db/schema'
 
 /**
  * Reputation refresh planning. Weekly: watched companies whose signals are
@@ -51,11 +54,34 @@ export async function scheduleReputationRefresh(
 export type ManualRefresh = { status: 'done'; failed: boolean } | { status: 'recent' } | { status: 'queued' }
 
 /**
- * Enqueue an on-demand refresh and run it now. `recent` when this hour's
- * refresh was already queued; `queued` when the drain ran out of budget
+ * Enqueue an on-demand refresh and run it now. `recent` when a manual
+ * refresh of this company was queued in the last 60 minutes; `queued` when the drain ran out of budget
  * (the job then runs on the next drain).
  */
+const MANUAL_REFRESH_WINDOW_MS = 60 * 60 * 1000
+
+/** A manual refresh of this company was queued within the last hour (rolling, not the clock hour). */
+async function refreshedWithinHour(userId: string, companyId: string, now: Date): Promise<boolean> {
+  const since = new Date(now.getTime() - MANUAL_REFRESH_WINDOW_MS)
+  const [row] = await db
+    .select({ id: queueJobs.id })
+    .from(queueJobs)
+    .where(
+      and(
+        eq(queueJobs.userId, userId),
+        eq(queueJobs.type, JOB_TYPES.companyReputation),
+        sql`${queueJobs.payload}->>'companyId' = ${companyId}`,
+        sql`${queueJobs.payload}->>'trigger' = 'manual'`,
+        gt(queueJobs.runAfter, since),
+      ),
+    )
+    .limit(1)
+  return row !== undefined
+}
+
 export async function refreshNow(userId: string, companyId: string, now: Date = new Date()): Promise<ManualRefresh> {
+  if (await refreshedWithinHour(userId, companyId, now)) return { status: 'recent' }
+  // The clock-hour key stays as a backstop against concurrent double clicks.
   const hour = now.toISOString().slice(0, 13)
   const { created } = await enqueueMany([
     {
