@@ -1,0 +1,17 @@
+{
+  "name": "Service charge after selection, collected over WhatsApp",
+  "label": "scam",
+  "inputs": {
+    "title": "Data Analyst - Doha",
+    "company": "Qatar Job Point",
+    "location": "Doha, Qatar",
+    "description": "Data analysts for Doha. Service charge of INR 40,000 after selection. Contact on WhatsApp and transfer the payment to our account to confirm."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "money.gulf_agency_fee",
+      "channel.messaging_payment"
+    ]
+  }
+}

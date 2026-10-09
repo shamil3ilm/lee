@@ -68,9 +68,10 @@ describe('seniorityComponent', () => {
     const ok = seniorityComponent(matchJob({ descriptionMd: '2+ years of experience with Laravel' }), matchProfile({ years: 2 }))
     expect(ok).toMatchObject({ points: FIT_MAX.seniority, label: 'Seniority: asks 2+ yrs, you have 2' })
     const stretch = seniorityComponent(matchJob({ descriptionMd: 'Minimum 5 years experience' }), matchProfile({ years: 2 }))
-    expect(stretch.points).toBe(7)
+    // In proportion, falling faster than the ratio: 15 × (2/5)^1.5 ≈ 4; 15 × (2/8)^1.5 ≈ 2.
+    expect(stretch.points).toBe(4)
     const far = seniorityComponent(matchJob({ descriptionMd: '8+ years of backend experience' }), matchProfile({ years: 2 }))
-    expect(far.points).toBe(0)
+    expect(far.points).toBe(2)
   })
 
   it('is mildly positive when neither title nor description states a level', () => {

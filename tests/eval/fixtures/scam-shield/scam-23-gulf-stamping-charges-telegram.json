@@ -1,0 +1,17 @@
+{
+  "name": "Visa stamping charges on Telegram",
+  "label": "scam",
+  "inputs": {
+    "title": "PHP Developer - Bahrain",
+    "company": "Manama Overseas Agency",
+    "location": "Manama, Bahrain",
+    "description": "PHP developers for Bahrain. Visa stamping charges INR 18,000 and emigration fee INR 2,000 to be paid by the candidate. Message us on Telegram @gulfjobs and pay the amount to book the stamping slot."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "money.gulf_agency_fee",
+      "channel.messaging_payment"
+    ]
+  }
+}

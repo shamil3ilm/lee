@@ -1,29 +1,27 @@
 import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
-import { activities, applications, documents } from '@/lib/db/schema'
+import { activities, applications, documents, userProfile } from '@/lib/db/schema'
+import { applySettingsFrom } from '@/lib/apply/settings'
+import { businessDaysBetween, cadenceFor, isGccAgencyPosting, stepDue, stepOfDraft, type FollowupStep } from './cadence'
 
 /**
- * v4.2 — follow-up nudges.
+ * Follow-up nudges (cadence: lib/followups/cadence.ts).
  *
  * At each cron tick we look for applications that:
  *   1. have `appliedAt` set
- *   2. are still in-flight (status in 'applied' or 'screen' — not interview,
- *      offer, rejected, or withdrawn; those need different handling)
- *   3. crossed one of the canonical 7/14/21/30-day marks since appliedAt
- *   4. have no follow-up email drafted yet for THAT interval
+ *   2. are still in-flight (status 'applied' or 'screen'; interview, offer,
+ *      rejected and withdrawn have their own cadence or need none)
+ *   3. crossed a follow-up mark in BUSINESS days since appliedAt: step 1
+ *      (default 5; 3 for a GCC posting through an agency), step 2 (default
+ *      10), then nothing more
+ *   4. have no follow-up drafted yet for that step (or a later one)
  *   5. have no inbound email activity in the last 3 days (a live conversation
  *      trumps a nudge)
  *
- * The candidate carries the *suggested* interval (the highest bucket already
- * passed) so the UI can jump straight to the right quick-action button.
+ * The candidate carries the step due so the UI can draft the right note.
  */
 
-export const FOLLOWUP_INTERVALS = [7, 14, 21, 30] as const
-export type FollowupInterval = (typeof FOLLOWUP_INTERVALS)[number]
-
-// Statuses where a follow-up nudge still makes sense. Once you're in the
-// interview loop the conversation has its own cadence; rejected/withdrawn
-// obviously don't need chasing.
+// Statuses where a follow-up nudge still makes sense.
 const ACTIVE_STATUSES = ['applied', 'screen'] as const
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
@@ -33,18 +31,9 @@ export interface FollowupCandidate {
   applicationId: string
   jobTitle: string
   companyName: string | null
+  /** Business days since applying. */
   daysSince: number
-  suggestedInterval: FollowupInterval
-}
-
-function bucketFor(daysSince: number): FollowupInterval | null {
-  // Highest crossed threshold wins so day 30+ gets the "close the loop"
-  // framing, not another day-7 check-in.
-  if (daysSince >= 30) return 30
-  if (daysSince >= 21) return 21
-  if (daysSince >= 14) return 14
-  if (daysSince >= 7) return 7
-  return null
+  step: FollowupStep
 }
 
 /**
@@ -55,36 +44,49 @@ export async function findFollowupCandidates(
   userId: string,
   now: Date = new Date(),
 ): Promise<FollowupCandidate[]> {
-  // Pull all in-flight applications, do the interval math in memory, then
-  // check drafts and live email threads for all due apps in two batched
-  // queries — three queries total regardless of how many apps are due.
-  const rows = await db.query.applications.findMany({
-    where: and(
-      eq(applications.userId, userId),
-      inArray(applications.status, ACTIVE_STATUSES as unknown as string[]),
-    ),
-    with: { job: { with: { company: true } } },
-  })
+  // Pull all in-flight applications (and the user's cadence), do the math in
+  // memory, then check drafts and live email threads for all due apps in two
+  // batched queries — four queries total regardless of how many apps are due.
+  const [rows, profile] = await Promise.all([
+    db.query.applications.findMany({
+      where: and(
+        eq(applications.userId, userId),
+        inArray(applications.status, ACTIVE_STATUSES as unknown as string[]),
+      ),
+      with: { job: { with: { company: true } } },
+    }),
+    db.query.userProfile.findFirst({
+      where: eq(userProfile.userId, userId),
+      columns: { followupDays: true, followupSecondDays: true },
+    }),
+  ])
+  const settings = applySettingsFrom(profile)
 
   const due = rows.flatMap((app) => {
     if (!app.appliedAt) return []
-    const daysSince = Math.floor((now.getTime() - app.appliedAt.getTime()) / MS_PER_DAY)
-    const suggested = bucketFor(daysSince)
-    return suggested ? [{ app, daysSince, suggested }] : []
+    const daysSince = businessDaysBetween(app.appliedAt, now)
+    const gccAgency = isGccAgencyPosting({
+      title: app.job.title,
+      location: app.job.location,
+      companyName: app.job.company?.name ?? null,
+      descriptionMd: app.job.descriptionMd,
+    })
+    const step = stepDue(daysSince, cadenceFor(settings, gccAgency))
+    return step ? [{ app, daysSince, step }] : []
   })
   if (due.length === 0) return []
   const appIds = due.map((d) => d.app.id)
 
   // Two batched lookups instead of two queries per application.
-  const [draftedDays, liveThreads] = await Promise.all([
-    draftedFollowupDays(userId, appIds),
+  const [draftedSteps, liveThreads] = await Promise.all([
+    draftedFollowupSteps(userId, appIds),
     appsWithRecentEmail(userId, appIds, new Date(now.getTime() - RECENT_EMAIL_LOOKBACK_MS)),
   ])
 
   return due
-    // A drafted follow-up for this specific interval means the user is
-    // already handling this bucket — don't re-nudge.
-    .filter((d) => !(draftedDays.get(d.app.id) ?? []).includes(d.suggested))
+    // A follow-up drafted for this step (or the final one) means the user is
+    // already handling it; after step 2 lee stops.
+    .filter((d) => !(draftedSteps.get(d.app.id) ?? []).some((s) => s >= d.step))
     // Skip if there's a live inbound conversation (`kind='email'` is
     // written by the Gmail sync when a matched thread lands in the app).
     .filter((d) => !liveThreads.has(d.app.id))
@@ -93,22 +95,22 @@ export async function findFollowupCandidates(
       jobTitle: d.app.job.title,
       companyName: d.app.job.company?.name ?? null,
       daysSince: d.daysSince,
-      suggestedInterval: d.suggested,
+      step: d.step,
     }))
 }
 
 /**
- * `daysSince` values of every follow-up draft per application, in one
- * grouped query. Only that JSON field is read — never the document body.
+ * The follow-up steps already drafted per application, in one grouped
+ * query. Only the step and days fields are read — never the document body.
  */
-async function draftedFollowupDays(
+async function draftedFollowupSteps(
   userId: string,
   appIds: readonly string[],
-): Promise<Map<string, unknown[]>> {
+): Promise<Map<string, FollowupStep[]>> {
   const rows = await db
     .select({
       applicationId: documents.applicationId,
-      days: sql<unknown[]>`jsonb_agg(distinct ${documents.content} -> 'daysSince')`,
+      drafts: sql<unknown[]>`jsonb_agg(jsonb_build_object('followupStep', ${documents.content} -> 'followupStep', 'daysSince', ${documents.content} -> 'daysSince'))`,
     })
     .from(documents)
     .where(
@@ -119,9 +121,12 @@ async function draftedFollowupDays(
       ),
     )
     .groupBy(documents.applicationId)
-  return new Map(
-    rows.flatMap((r) => (r.applicationId ? [[r.applicationId, parseJsonArray(r.days)] as const] : [])),
-  )
+  const stepsOf = (v: unknown): FollowupStep[] =>
+    parseJsonArray(v).flatMap((d) => {
+      const step = d && typeof d === 'object' ? stepOfDraft(d as Record<string, unknown>) : null
+      return step ? [step] : []
+    })
+  return new Map(rows.flatMap((r) => (r.applicationId ? [[r.applicationId, stepsOf(r.drafts)] as const] : [])))
 }
 
 function parseJsonArray(v: unknown): unknown[] {
@@ -192,7 +197,7 @@ export async function recordFollowupNudges(userId: string, now: Date = new Date(
       userId,
       applicationId: c.applicationId,
       kind: 'followup_recommended',
-      payload: { daysSince: c.daysSince, suggestedInterval: c.suggestedInterval },
+      payload: { daysSince: c.daysSince, step: c.step },
     })),
   )
   return toNudge.length
@@ -201,8 +206,8 @@ export async function recordFollowupNudges(userId: string, now: Date = new Date(
 /**
  * Idempotency guard for the cron sweep: within a 24h window, don't emit the
  * same `followup_recommended` activity twice for the same application. We key
- * ONLY on applicationId (not interval) because the user only needs one nudge
- * per app per day even if they cross the 14→21 boundary overnight.
+ * ONLY on applicationId (not step) because the user only needs one nudge
+ * per app per day.
  */
 export async function alreadyNudgedRecently(
   userId: string,

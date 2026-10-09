@@ -121,6 +121,10 @@ export const currentJobSchema = z.object({
     .default({ growth: null, techStack: null, manager: null, workLife: null, security: null, culture: null }),
   /** Criteria to weight higher (up to three). */
   wantMore: z.array(z.enum(CRITERIA)).max(MAX_WANT_MORE).default([]),
+  /** Expected yearly gross in `currency` (Indian "expected CTC"); null = not entered. */
+  expectedAnnual: z.number().positive().max(1_000_000_000_000).nullable().default(null),
+  /** Opt-in: state current and expected CTC in Indian applications. Never on by default. */
+  shareCtc: z.boolean().default(false),
 })
 export type CurrentJob = z.infer<typeof currentJobSchema>
 

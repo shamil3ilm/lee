@@ -1,0 +1,22 @@
+{
+  "name": "Riyadh data analyst: 'Power BI or Tableau' is one requirement; '2+ years as a data analyst' is read",
+  "inputs": {
+    "profile": {
+      "roleTypes": ["backend", "data_analyst"],
+      "skills": ["SQL", "Python", "Tableau"],
+      "yearsExperience": 2
+    },
+    "job": {
+      "title": "Data Analyst",
+      "location": "Riyadh, KSA",
+      "descriptionMd": "## Requirements\n- 2+ years as a data analyst\n- Strong SQL\n- Power BI or Tableau\n- Advanced Excel"
+    }
+  },
+  "expect": {
+    "pass": true,
+    "match": {
+      "missing": ["Excel (required)"],
+      "labels": ["Seniority: asks 2+ yrs, you have 2"]
+    }
+  }
+}

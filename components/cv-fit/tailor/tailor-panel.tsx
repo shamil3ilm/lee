@@ -109,7 +109,11 @@ export function TailorPanel({ view }: { view: TailorView }) {
             Last saved copy:{' '}
             <Link href={`/documents/${view.saved.documentId}`} className="font-medium text-primary underline underline-offset-2">
               open it
-            </Link>
+            </Link>{' '}
+            or{' '}
+            <a href={`/api/documents/${view.saved.documentId}/docx`} download className="font-medium text-primary underline underline-offset-2">
+              download .docx
+            </a>
             .
           </>
         ) : null}

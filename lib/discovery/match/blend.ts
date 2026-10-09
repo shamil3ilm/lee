@@ -22,6 +22,17 @@ export function blendScores(match: number | null, ai: number | null): number | n
   return Math.round(BLEND_WEIGHTS.match * match + BLEND_WEIGHTS.ai * ai)
 }
 
+/**
+ * The Fit a card shows: the blend, held under the Match detail's ceiling
+ * (a mandatory language you lack → weak; title only → low confidence).
+ * The SQL twin is `blendedSql` (it reads the ceiling from fit_detail).
+ */
+export function cappedFit(match: number | null, ai: number | null, detail: { ceiling?: { score: number } } | null | undefined): number | null {
+  const fit = blendScores(match, ai)
+  if (fit === null || !detail?.ceiling) return fit
+  return Math.min(fit, detail.ceiling.score)
+}
+
 export type ScoreBand = 'strong' | 'good' | 'fair' | 'weak'
 
 export const BAND_LABELS: Readonly<Record<ScoreBand, string>> = {
@@ -46,8 +57,8 @@ export function scoreBand(score: number): ScoreBand {
  * The one number on every card: "Fit 76" (the blend), "Fit ~45" when it
  * rests on the job title alone (no AI score to refine it), or "Not scored".
  */
-export function fitText(match: number | null, ai: number | null, opts: { titleOnly?: boolean } = {}): string {
-  const fit = blendScores(match, ai)
+export function fitText(match: number | null, ai: number | null, opts: { titleOnly?: boolean; ceiling?: number } = {}): string {
+  const fit = cappedFit(match, ai, opts.ceiling === undefined ? null : { ceiling: { score: opts.ceiling } })
   if (fit === null) return 'Not scored'
   return opts.titleOnly && ai === null ? `Fit ~${fit}` : `Fit ${fit}`
 }

@@ -1,0 +1,34 @@
+{
+  "name": "Kochi role with CTC opted in: India region block",
+  "notes": "Expected: current and expected CTC and notice in one line near the end.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": {
+      "@factory": "application",
+      "overrides": {
+        "role": "Backend Developer",
+        "company": "Example Kochi Tech",
+        "location": "Kochi, Kerala",
+        "remoteType": "onsite",
+        "descriptionMd": "PHP and Laravel backend role in Infopark, Kochi."
+      }
+    },
+    "facts": {
+      "region": "india",
+      "lines": [
+        {
+          "label": "Current CTC",
+          "value": "₹7.2 LPA"
+        },
+        {
+          "label": "Expected CTC",
+          "value": "₹9 LPA"
+        },
+        {
+          "label": "Notice period",
+          "value": "1 month"
+        }
+      ]
+    }
+  }
+}

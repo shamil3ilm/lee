@@ -42,6 +42,18 @@ export function creditFor(canonical: string, skills: ReadonlySet<string>): { cre
   return { credit: 0, via: label }
 }
 
+/** A requirement's credit: an any-of group takes its best member. */
+export function requirementCredit(req: Requirement, skills: ReadonlySet<string>): { credit: number; via: string } {
+  if (!req.anyOf) return creditFor(req.canonical, skills)
+  const best = req.anyOf.map((m) => creditFor(m, skills)).sort((a, b) => b.credit - a.credit)[0]
+  return best && best.credit > 0 ? best : { credit: 0, via: requirementLabel(req) }
+}
+
+/** "Kubernetes" or "Power BI or Tableau". */
+export function requirementLabel(req: Requirement): string {
+  return req.anyOf ? req.anyOf.map(skillLabel).join(' or ') : skillLabel(req.canonical)
+}
+
 export interface SkillsOutcome {
   component: MatchComponent
   matched: string[]
@@ -67,7 +79,7 @@ export function skillsComponent(
       missing: [],
     }
   }
-  const credits: SkillCredit[] = reqs.map((req) => ({ req, ...creditFor(req.canonical, profile.skills) }))
+  const credits: SkillCredit[] = reqs.map((req) => ({ req, ...requirementCredit(req, profile.skills) }))
   const total = credits.reduce((s, c) => s + REQ_WEIGHTS[c.req.weight], 0)
   const earned = credits.reduce((s, c) => s + REQ_WEIGHTS[c.req.weight] * c.credit, 0)
   const points = Math.round((SKILLS_MAX * earned) / total)
@@ -75,7 +87,7 @@ export function skillsComponent(
   const matched = credits.filter((c) => c.credit > 0).sort((a, b) => order(a) - order(b)).map((c) => c.via)
   const missing = credits
     .filter((c) => c.credit === 0 && c.req.weight === 'required')
-    .map((c) => `${skillLabel(c.req.canonical)} (required)`)
+    .map((c) => `${requirementLabel(c.req)} (required)`)
   const have = credits.filter((c) => c.credit > 0).length
   const shown = matched.slice(0, 3).join(', ')
   return {

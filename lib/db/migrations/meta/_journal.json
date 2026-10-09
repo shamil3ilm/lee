@@ -295,6 +295,13 @@
       "when": 1791537470762,
       "tag": "0041_github_linkedin",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1791543985828,
+      "tag": "0042_followup_cadence",
+      "breakpoints": true
     }
   ]
 }

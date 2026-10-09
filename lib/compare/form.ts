@@ -40,6 +40,10 @@ export interface CurrentJobForm {
   commuteNotes: string
   ratings: Record<RatingKey, string>
   wantMore: Criterion[]
+  /** Expected yearly gross (Indian "expected CTC"). */
+  expectedAnnual: string
+  /** Opt-in: state current and expected CTC in Indian applications. */
+  shareCtc: boolean
 }
 
 const triOf = (v: boolean | null): Tri => (v === null ? '' : v ? 'yes' : 'no')
@@ -79,6 +83,8 @@ export function toForm(job: CurrentJob | null, prefill?: { employer: string; tit
       culture: r.culture === null ? '' : String(r.culture),
     },
     wantMore: [...j.wantMore],
+    expectedAnnual: j.expectedAnnual === null ? '' : String(j.expectedAnnual),
+    shareCtc: j.shareCtc,
   }
 }
 
@@ -121,5 +127,7 @@ export function fromForm(f: CurrentJobForm): unknown {
     commuteNotes: f.commuteNotes,
     ratings: Object.fromEntries(Object.entries(f.ratings).map(([k, v]) => [k, v === '' ? null : Number(v)])),
     wantMore: f.wantMore,
+    expectedAnnual: parseAmount(f.expectedAnnual),
+    shareCtc: f.shareCtc,
   }
 }

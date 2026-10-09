@@ -1,7 +1,7 @@
 'use client'
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { ClipboardCopy, Cloud, FileText, Gauge, Loader2 } from 'lucide-react'
+import { ClipboardCopy, Cloud, FileDown, FileText, Gauge, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { scoreVariantAction, variantDriveAction } from '@/app/(authed)/settings/variants/actions'
 import { variantPdfUrl } from '@/lib/variants/pdf-client'
@@ -51,13 +51,24 @@ export function VariantOutputs({ variantId, plainText, dirty }: VariantOutputsPr
     <Card>
       <CardHeader>
         <CardTitle>Outputs</CardTitle>
-        <CardDescription>{dirty ? 'Save first: PDF, Drive and score use the saved version.' : 'From the saved version.'}</CardDescription>
+        <CardDescription>{dirty ? 'Save first: PDF, Word, Drive and score use the saved version.' : 'From the saved version.'}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">
           <Button type="button" size="sm" variant="outline" disabled={dirty || busy !== null || pdf.busy} onClick={() => void pdf.make()}>
             {pdf.busy ? <Loader2 className="animate-spin" /> : <FileText />} Make PDF
           </Button>
+          {dirty ? (
+            <Button type="button" size="sm" variant="outline" disabled>
+              <FileDown /> Download .docx
+            </Button>
+          ) : (
+            <Button asChild size="sm" variant="outline">
+              <a href={`/api/variants/${encodeURIComponent(variantId)}/docx`} download data-testid="variant-docx">
+                <FileDown /> Download .docx
+              </a>
+            </Button>
+          )}
           <Button
             type="button"
             size="sm"

@@ -1,0 +1,12 @@
+{
+  "name": "Follow-up email — step 2 final note (10 business days)",
+  "notes": "Is the role still open / am I still under consideration; thanks; close the loop. Last follow-up.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": "@factory:application",
+    "kind": "followup_email",
+    "tone": "friendly",
+    "daysSince": 10,
+    "step": 2
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "Offer letter fee before the interview",
+  "label": "scam",
+  "inputs": {
+    "title": "Java Developer - Abu Dhabi",
+    "company": "Emirates Career Link",
+    "location": "Abu Dhabi, UAE",
+    "description": "Java developers wanted in Abu Dhabi. Pay the offer letter fee of AED 500 to receive your offer letter. Selection is guaranteed, no interview."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "money.offer_letter_fee",
+      "channel.offer_without_interview"
+    ]
+  }
+}

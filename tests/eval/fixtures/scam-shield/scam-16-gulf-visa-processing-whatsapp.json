@@ -1,0 +1,17 @@
+{
+  "name": "Visa processing fee paid over WhatsApp before the ticket",
+  "label": "scam",
+  "inputs": {
+    "title": "Laravel Developer - Dubai",
+    "company": "Star Gulf Recruitment",
+    "location": "Dubai, UAE",
+    "description": "Laravel developers needed in Dubai, salary AED 7000. Visa processing fee AED 2500 payable by the candidate. Contact on WhatsApp +971 55 xxx xxxx and pay the amount via UPI to confirm your seat."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "money.gulf_agency_fee",
+      "channel.messaging_payment"
+    ]
+  }
+}

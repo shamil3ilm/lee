@@ -13,8 +13,12 @@
  *         inversions; prose-only keyword stuffing; region-aware phone and
  *         page-length advice; scope vs outcome numbers; impact recalibrated
  *         (outcome component, weak openers weigh double); findings cite lines.
+ * 1.1.1 — LaTeX sources: `\hfill {\small location · dates}` keeps the
+ *         group (the ATS and Brand variant templates lost every role date,
+ *         so no work experience was found). DOCX uploads: Word list
+ *         paragraphs read as bullets ("• ").
  */
-export const SCORER_VERSION = '1.1.0'
+export const SCORER_VERSION = '1.1.1'
 
 /**
  * True when a stored score was computed by an older rule set — the UI shows

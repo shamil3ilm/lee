@@ -248,15 +248,17 @@ describe('getNextBestAction', () => {
 
   it('suggests a follow-up for a stale applied application', async () => {
     const u = await makeUser()
-    const now = new Date()
+    // A Monday; applied on the Monday before = 5 business days: the check-in is due.
+    const now = new Date('2026-10-19T10:00:00Z')
     const app = await makeApp(u.id, {
       status: 'applied',
-      appliedAt: new Date(now.getTime() - 8 * D),
+      appliedAt: new Date(now.getTime() - 7 * D),
     })
     const res = await getNextBestAction(u.id, now)
     expect(res.kind).toBe('follow_up')
     expect(res.href).toBe(`/applications/${app.id}`)
-    expect(res.description).toContain('8 days')
+    expect(res.description).toContain('5 business days')
+    expect(res.description).toContain('check-in')
   })
 
   it('surfaces a high-match unreviewed discovery above the profile threshold', async () => {

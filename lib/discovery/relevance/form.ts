@@ -1,6 +1,7 @@
 import type { NewUserProfile, UserProfile } from '@/lib/db/queries/profile'
 import {
   discoveryPrefsSchema,
+  SHARE_FACTS,
   EXCLUSION_RULES,
   LANGUAGE_LEVELS,
   NOTICE_PERIODS,
@@ -112,6 +113,8 @@ export function discoveryPrefsFromForm(fd: FormData): DiscoveryPrefs {
     relocationCountries: [
       ...new Set(csv(fd, 'relocationCountries').map((c) => c.trim().toUpperCase()).filter((c) => /^[A-Z]{2}$/.test(c))),
     ],
+    // Checkboxes: an unchecked box is absent, so it reads as "don't share".
+    share: Object.fromEntries(SHARE_FACTS.map((f) => [f, fd.get(`share_${f}`) === 'on'])),
   })
 }
 

@@ -1,0 +1,17 @@
+{
+  "name": "Title-only email alert 'PHP Developer, Dubai': low confidence, capped at 55 until a JD arrives",
+  "inputs": {
+    "job": {
+      "title": "PHP Developer",
+      "location": "Dubai",
+      "descriptionMd": ""
+    }
+  },
+  "expect": {
+    "pass": true,
+    "match": {
+      "max": 55,
+      "confidence": "title_only"
+    }
+  }
+}

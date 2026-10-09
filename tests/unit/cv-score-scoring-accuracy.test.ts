@@ -252,7 +252,7 @@ describe('fact-lock — suggestions never invent numbers', () => {
 
 describe('scorer version', () => {
   it('is bumped, and older stored scores are marked as such', () => {
-    expect(SCORER_VERSION).toBe('1.1.0')
+    expect(SCORER_VERSION).toBe('1.1.1')
     const row = (id: string, overall: number, v: string) => ({
       id, overall, grade: 'C', mode: 'general', sourceLabel: 'CV', scores: {}, createdAt: new Date(NOW), scorerVersion: v,
     })

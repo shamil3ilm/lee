@@ -28,7 +28,7 @@ function preamble(r: RenderedResume, compact: boolean, photo: boolean): string {
   const margin = compact ? '0.6in' : '0.75in'
   const brand = r.template === 'brand'
   return [
-    `\\documentclass[${compact ? '10pt' : '11pt'},a4paper]{article}`,
+    `\\documentclass[${compact ? '10pt' : '11pt'},${r.paper === 'letter' ? 'letterpaper' : 'a4paper'}]{article}`,
     `\\usepackage[margin=${margin}]{geometry}`,
     '\\usepackage[utf8]{inputenc}',
     '\\usepackage[T1]{fontenc}',

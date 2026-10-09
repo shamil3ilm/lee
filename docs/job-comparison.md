@@ -52,6 +52,9 @@ user (`lib/db/schema-compare.ts`).
 | **FX table** | INR, EUR and GBP per US dollar, with the date you last changed it. GCC currencies need no rate. |
 | **Tax and living costs per place** | Effective tax %, monthly housing and other living costs, in each place's own currency. |
 | Shortlist factor | Off by default (below). |
+| Expected yearly pay + **Share current and expected CTC in India applications** | Off by default. When on, cover letters and recruiter messages for Indian postings state "Current CTC ₹7.2 LPA · Expected CTC ₹9 LPA" (the region block, `lib/apply/application-facts.ts`). Never used otherwise. |
+
+**Region block in drafts.** Cover letters, LinkedIn messages, recruiter replies and follow-ups get the facts a screener in that region looks for, taken only from your private settings and only what you opted to share: GCC (visa status, notice period, availability to relocate; nationality only when you turn it on in Settings › Search › Share in cover letters and outreach), India (current and expected CTC only with the opt-in above, notice period), Remote (your time zone, for the overlap sentence). LinkedIn connection notes never carry it. The prompt is told to use only those facts and invent nothing.
 
 ### Assumptions the user must set
 

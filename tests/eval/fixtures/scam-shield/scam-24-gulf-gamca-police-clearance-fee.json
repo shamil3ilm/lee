@@ -1,0 +1,17 @@
+{
+  "name": "GAMCA medical and PCC fees collected by the agent",
+  "label": "scam",
+  "inputs": {
+    "title": "Network Engineer - Riyadh",
+    "company": "Sahara Recruiting Agency",
+    "location": "Riyadh, KSA",
+    "description": "Network engineers for a Riyadh telecom project. GAMCA fee and police clearance fee INR 9,500 payable to the agent. Send your original passport along with the payment by courier."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "money.gulf_agency_fee",
+      "identity.passport_with_fee"
+    ]
+  }
+}

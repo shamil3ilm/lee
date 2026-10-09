@@ -105,6 +105,32 @@ export const languageSchema = z.object({
 })
 export type SpokenLanguage = z.infer<typeof languageSchema>
 
+/**
+ * Facts the user lets lee state in cover letters and outreach (region block,
+ * lib/ai/prompts/application-facts.ts). Visa status, notice, relocation and
+ * time zone are what they entered here for the search, so they default on;
+ * nationality is off until they opt in. Pay (CTC) lives with the private
+ * current job (lib/compare/types.ts `shareCtc`) and is never on by default.
+ */
+export const SHARE_FACTS = ['visa', 'notice', 'relocation', 'timezone', 'nationality'] as const
+export type ShareFact = (typeof SHARE_FACTS)[number]
+export const SHARE_FACT_LABELS: Readonly<Record<ShareFact, string>> = {
+  visa: 'Visa status (GCC)',
+  notice: 'Notice period',
+  relocation: 'Availability to relocate (GCC)',
+  timezone: 'Time zone (remote roles)',
+  nationality: 'Nationality (GCC)',
+}
+export const shareSchema = z.object({
+  visa: z.boolean().catch(true).default(true),
+  notice: z.boolean().catch(true).default(true),
+  relocation: z.boolean().catch(true).default(true),
+  timezone: z.boolean().catch(true).default(true),
+  nationality: z.boolean().catch(false).default(false),
+})
+export type ShareSettings = z.infer<typeof shareSchema>
+export const DEFAULT_SHARE: ShareSettings = { visa: true, notice: true, relocation: true, timezone: true, nationality: false }
+
 export const discoveryPrefsSchema = z.object({
   rules: ruleModes.catch({}),
   /** ISO-2 country the user lives in. */
@@ -123,6 +149,7 @@ export const discoveryPrefsSchema = z.object({
   relocationIfSponsored: z.boolean().catch(true),
   /** ISO-2 countries or place groups (EU, AU…); empty = any country. */
   relocationCountries: z.array(z.string().regex(/^[A-Z_]{2,10}$/)).max(30).catch([]),
+  share: shareSchema.catch(DEFAULT_SHARE).default(DEFAULT_SHARE),
 })
 export type DiscoveryPrefs = z.infer<typeof discoveryPrefsSchema>
 
@@ -135,6 +162,7 @@ export const EMPTY_DISCOVERY_PREFS: DiscoveryPrefs = {
   noticePeriods: [],
   relocationIfSponsored: true,
   relocationCountries: [],
+  share: DEFAULT_SHARE,
 }
 
 /** Parse the stored jsonb leniently: unknown or broken parts fall back to defaults. */

@@ -1,0 +1,17 @@
+{
+  "name": "Review B.10 example: Kochi agency charges medical, attestation and a service charge after visa stamping",
+  "label": "scam",
+  "inputs": {
+    "title": "PHP Developer – Riyadh",
+    "company": "Overseas Manpower Consultants",
+    "location": "Riyadh, KSA",
+    "description": "Urgent requirement for PHP Developers for a reputed company in Riyadh. Salary SAR 6000 + accommodation. Candidates must pay medical test charges INR 6,500 and attestation charges INR 12,000 to our Kochi office. Service charge after visa stamping. Offer letter after payment."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "money.gulf_agency_fee",
+      "money.offer_letter_fee"
+    ]
+  }
+}

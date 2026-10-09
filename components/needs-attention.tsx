@@ -40,8 +40,10 @@ export interface FollowupNudge {
   applicationId: string
   jobTitle: string
   companyName: string | null
+  /** Business days since applying. */
   daysSince: number
-  suggestedInterval: 7 | 14 | 21 | 30
+  /** 1 = check-in, 2 = final note (lib/followups/cadence.ts). */
+  step: 1 | 2
   recommendedAt: string
 }
 
@@ -125,7 +127,7 @@ export function NeedsAttention({
               </li>
             ))}
             {followups.map((f) => (
-              <FollowupRow key={`fup-${f.applicationId}-${f.suggestedInterval}`} nudge={f} />
+              <FollowupRow key={`fup-${f.applicationId}-${f.step}`} nudge={f} />
             ))}
             {todos.map((t) => (
               <TodoNudgeRow key={`todo-${t.id}`} todo={t} now={now} />
@@ -149,7 +151,7 @@ function FollowupRow({ nudge }: { nudge: FollowupNudge }): React.ReactElement {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ daysSince: nudge.suggestedInterval }),
+          body: JSON.stringify({ step: nudge.step }),
         },
       )
       const json = (await res.json().catch(() => ({}))) as {
@@ -166,7 +168,7 @@ function FollowupRow({ nudge }: { nudge: FollowupNudge }): React.ReactElement {
             : 'Follow-up skipped.',
         )
       } else if (res.ok && json.documentId) {
-        toast.success(`Day ${nudge.suggestedInterval} follow-up drafted`)
+        toast.success(nudge.step === 2 ? 'Final follow-up drafted' : 'Follow-up drafted')
         router.refresh()
       } else {
         toast.error(json.error ?? 'Could not draft follow-up.')
@@ -190,7 +192,7 @@ function FollowupRow({ nudge }: { nudge: FollowupNudge }): React.ReactElement {
             Follow up: {nudge.companyName ?? 'Unknown'}
           </div>
           <div className="truncate text-xs text-muted-foreground">
-            {nudge.jobTitle} · day {nudge.daysSince}
+            {nudge.jobTitle} · {nudge.step === 2 ? 'final note' : 'check-in'} · {nudge.daysSince} business days
           </div>
         </Link>
         <Button

@@ -9,6 +9,7 @@ import { linkLatestCallToDocument, writeSkipLog } from '@/lib/ai/log'
 import type { AIProvider } from '@/lib/ai/types'
 import type { SharedLink } from '@/lib/ai/prompts/shared-links'
 import { coverTailoringFor } from '@/lib/cv-fit/tailor/cover'
+import { loadApplicationFacts } from '@/lib/apply/application-facts-service'
 import type { Document } from '@/lib/db/queries/documents'
 
 export async function generateCoverLetter(input: {
@@ -36,7 +37,15 @@ export async function generateCoverLetter(input: {
   // The requirement checklist and adjacent evidence a saved "Tailor to this
   // JD" recorded: the letter cites what the tailored CV shows, never a gap.
   const tailoring = await coverTailoringFor(input.userId, application.id)
-  const letter = await input.ai.draftCoverLetter({ master, application, links: input.links, ...(tailoring ? { tailoring } : {}) })
+  // GCC / India / Remote facts the user opted to share (Settings › Search, Current job).
+  const facts = await loadApplicationFacts(input.userId, application.job)
+  const letter = await input.ai.draftCoverLetter({
+    master,
+    application,
+    links: input.links,
+    ...(tailoring ? { tailoring } : {}),
+    ...(facts ? { facts } : {}),
+  })
   const validated = coverLetterSchema.parse(letter)
 
   const version = await documentsQ.nextVersion(input.userId, input.applicationId, 'cover_letter')

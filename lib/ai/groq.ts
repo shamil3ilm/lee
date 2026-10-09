@@ -1,3 +1,4 @@
+import type { FollowupStep } from '@/lib/followups/cadence'
 import {
   buildResumeVariantPrompt,
   RESUME_VARIANT_PROMPT_VERSION,
@@ -11,6 +12,7 @@ import { buildParseProfilePrompt, PARSE_PROFILE_PROMPT_VERSION } from './prompts
 import { buildScoreJobPrompt, SCORE_JOB_PROMPT_VERSION, type ScoreJobContext } from './prompts/score-job'
 import { buildScoreCompanyPrompt, SCORE_COMPANY_PROMPT_VERSION } from './prompts/score-company'
 import { buildTailorCVPrompt, TAILOR_CV_PROMPT_VERSION } from './prompts/tailor-cv'
+import { withApplicationFacts, type ApplicationFacts } from './prompts/application-facts'
 import { buildCoverLetterPrompt, COVER_LETTER_PROMPT_VERSION, type CoverLetterTailoring } from './prompts/cover-letter'
 import { buildDistillGithubPrompt, DISTILL_GITHUB_PROMPT_VERSION } from './prompts/distill-github'
 import {
@@ -327,8 +329,9 @@ export class GroqProvider implements AIProvider {
     application: ApplicationWithJob
     links?: SharedLink[]
     tailoring?: CoverLetterTailoring
+    facts?: ApplicationFacts | null
   }): Promise<CoverLetter> {
-    const raw = await this.generate(withSharedLinks(buildCoverLetterPrompt(input), input.links), {
+    const raw = await this.generate(withApplicationFacts(withSharedLinks(buildCoverLetterPrompt(input), input.links), input.facts), {
       kind: 'cover_letter',
       promptVersion: COVER_LETTER_PROMPT_VERSION,
     })
@@ -359,9 +362,13 @@ export class GroqProvider implements AIProvider {
     kind: OutreachKind
     tone: OutreachTone
     daysSince?: number
+    step?: FollowupStep
     links?: SharedLink[]
+    facts?: ApplicationFacts | null
   }): Promise<OutreachDraft> {
-    const prompt = withSharedLinks(buildOutreachPromptGroq(input), input.links)
+    // A LinkedIn connection note (≤300 chars) never carries the region block.
+    const facts = input.kind === 'linkedin_connection' ? null : input.facts
+    const prompt = withApplicationFacts(withSharedLinks(buildOutreachPromptGroq(input), input.links), facts)
     const raw = await this.generate(prompt, {
       kind: `outreach_${input.kind}`,
       promptVersion: outreachPromptVersionGroq(input.kind),
@@ -523,6 +530,7 @@ function buildOutreachPromptGroq(input: {
   kind: OutreachKind
   tone: OutreachTone
   daysSince?: number
+  step?: FollowupStep
 }): string {
   switch (input.kind) {
     case 'linkedin_connection':
@@ -540,6 +548,7 @@ function buildOutreachPromptGroq(input: {
         application: input.application,
         tone: input.tone,
         daysSince: input.daysSince,
+        step: input.step ?? 1,
       })
   }
 }

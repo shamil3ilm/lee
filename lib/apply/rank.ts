@@ -1,5 +1,5 @@
 import { roleFamilyLabel } from '@/lib/discovery/relevance/roles'
-import { blendScores, scoreText } from '@/lib/discovery/match/blend'
+import { cappedFit, scoreText } from '@/lib/discovery/match/blend'
 import type { FeedbackAdjust } from './feedback'
 import { matchedVia, regionMatch } from '@/lib/regions/selection'
 import { shortName } from '@/lib/regions/tree'
@@ -48,6 +48,8 @@ export interface RankCandidate {
   matchScore: number | null
   /** Deterministic Match Score (lib/discovery/match); null until computed. */
   fitScore: number | null
+  /** The Match detail's ceiling (mandatory language unmet, title only); null/absent = none. */
+  fitCeiling?: number | null
   /** Coarse region tags ('ae' | 'gcc' | 'in' | 'remote'): feedback and the pre-hierarchy fallback. */
   regions: readonly string[]
   /** Region-taxonomy ids of the posting (ancestors included); empty until the backfill reaches it. */
@@ -112,9 +114,10 @@ export function isEligible(c: Pick<RankCandidate, 'quarantined' | 'filtered'>): 
 }
 
 /** The one match number the rank uses: Match, AI, or their mean. */
-export function rankedMatch(c: Pick<RankCandidate, 'matchScore' | 'fitScore'>): number | null {
+export function rankedMatch(c: Pick<RankCandidate, 'matchScore' | 'fitScore' | 'fitCeiling'>): number | null {
   const clamp = (n: number | null): number | null => (n === null ? null : Math.max(0, Math.min(100, n)))
-  return blendScores(clamp(c.fitScore), clamp(c.matchScore))
+  const ceiling = typeof c.fitCeiling === 'number' ? { ceiling: { score: c.fitCeiling } } : null
+  return cappedFit(clamp(c.fitScore), clamp(c.matchScore), ceiling)
 }
 
 function matchReason(c: RankCandidate): RankReason {

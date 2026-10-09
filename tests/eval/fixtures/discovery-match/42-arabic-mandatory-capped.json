@@ -1,0 +1,30 @@
+{
+  "name": "Doha backend with MANDATORY fluent Arabic, user basic: soft by default, strong penalty, capped at weak",
+  "inputs": {
+    "profile": {
+      "yearsExperience": 2,
+      "discoveryPrefs": {
+        "basedIn": "IN",
+        "sponsorshipFor": ["AE", "SA", "QA", "KW", "BH", "OM"],
+        "languages": [
+          { "name": "English", "level": "fluent" },
+          { "name": "Arabic", "level": "basic" }
+        ]
+      }
+    },
+    "job": {
+      "title": "Backend Developer",
+      "location": "Doha, Qatar",
+      "descriptionMd": "## Requirements\n- PHP and Laravel, 2+ years\n- MySQL and REST APIs\n- Must be fluent in Arabic (spoken and written)."
+    }
+  },
+  "expect": {
+    "pass": true,
+    "penalties": ["language: Arabic required (you: basic)"],
+    "match": {
+      "max": 34,
+      "missing": ["Arabic fluency (required)"],
+      "labels": ["Language: Arabic required (you: basic)"]
+    }
+  }
+}

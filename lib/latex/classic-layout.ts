@@ -1,9 +1,9 @@
 import { escapeLatex } from './escape'
 
 /**
- * The "Classic" résumé layout (RenderCV-style): article 10pt on letter
- * paper with 2 cm margins, Charter, titlesec section headings over a
- * full-width rule, `onecolentry` / `twocolentry` (right-aligned italic dates
+ * The "Classic" résumé layout (RenderCV-style): article 10pt on A4 (US
+ * Letter for a US variant, via classicPreamble) with 2 cm margins,
+ * Charter, titlesec section headings over a full-width rule, `onecolentry` / `twocolentry` (right-aligned italic dates
  * via paracol) / `highlights` (tight itemize), the name in large caps at the
  * top left with a bold title line and contact lines below, and an optional
  * photo at the top right. Standard packages only: every one of them is on
@@ -14,7 +14,7 @@ import { escapeLatex } from './escape'
  * unit test keeps identical to CLASSIC_PREAMBLE).
  */
 
-export const CLASSIC_PREAMBLE = String.raw`\documentclass[10pt, letterpaper]{article}
+export const CLASSIC_PREAMBLE = String.raw`\documentclass[10pt, a4paper]{article}
 
 % Packages:
 \usepackage[
@@ -123,6 +123,11 @@ export const CLASSIC_PREAMBLE = String.raw`\documentclass[10pt, letterpaper]{art
     \end{paracol}
     \endonecolentry
 }`
+
+/** The Classic preamble on the given paper (A4 is the default). */
+export function classicPreamble(paper: 'a4' | 'letter'): string {
+  return paper === 'a4' ? CLASSIC_PREAMBLE : CLASSIC_PREAMBLE.replace('[10pt, a4paper]', '[10pt, letterpaper]')
+}
 
 /** Contact separator; the space after the bar is where a long line wraps. */
 export const CLASSIC_SEPARATOR = String.raw`\kern 5pt | \kern 5pt `

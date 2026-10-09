@@ -242,7 +242,9 @@ async function followUpAction(userId: string, now: Date): Promise<NextBestAction
   return {
     kind: 'follow_up',
     title: `Follow up on ${roleLabel(candidate.jobTitle, candidate.companyName)}`,
-    description: `Applied ${candidate.daysSince} days ago with no reply. A short nudge keeps you visible.`,
+    description: candidate.step === 2
+      ? `Applied ${candidate.daysSince} business days ago with no reply. One short, final note, then let it go.`
+      : `Applied ${candidate.daysSince} business days ago with no reply. A short, polite check-in keeps you visible.`,
     href: `/applications/${candidate.applicationId}`,
     ctaLabel: 'Draft follow-up',
   }

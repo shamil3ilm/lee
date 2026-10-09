@@ -1,0 +1,26 @@
+{
+  "name": "Native Arabic speaker required with the language rule set to hard: filtered",
+  "inputs": {
+    "profile": {
+      "discoveryPrefs": {
+        "rules": { "language": "hard" },
+        "languages": [
+          { "name": "English", "level": "fluent" },
+          { "name": "Arabic", "level": "basic" }
+        ]
+      }
+    },
+    "job": {
+      "title": "Laravel Developer",
+      "location": "Jeddah",
+      "descriptionMd": "Native Arabic speaker. PHP, Laravel and MySQL."
+    }
+  },
+  "expect": {
+    "pass": false,
+    "reasons": ["language: Arabic required (you: basic)"],
+    "match": {
+      "max": 34
+    }
+  }
+}

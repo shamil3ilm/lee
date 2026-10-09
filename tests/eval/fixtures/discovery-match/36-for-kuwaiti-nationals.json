@@ -1,0 +1,20 @@
+{
+  "name": "Kuwait City role 'for Kuwaiti nationals': filtered",
+  "inputs": {
+    "profile": {
+      "discoveryPrefs": {
+        "basedIn": "IN",
+        "sponsorshipFor": ["AE", "SA", "QA", "KW", "BH", "OM"]
+      }
+    },
+    "job": {
+      "title": "Backend Developer",
+      "location": "Kuwait City, Kuwait",
+      "descriptionMd": "This opening is for Kuwaiti nationals. Laravel, MySQL and REST APIs."
+    }
+  },
+  "expect": {
+    "pass": false,
+    "reasons": ["visa: nationals only"]
+  }
+}

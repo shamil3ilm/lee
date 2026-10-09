@@ -53,6 +53,11 @@ export function TailorStep({ view, state }: { view: PrepareView; state: StepStat
     state === 'done' && t ? (
       <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <DocLink view={view} id={t.documentId} />
+        {t.documentId ? (
+          <a href={`/api/documents/${t.documentId}/docx`} download className="text-primary underline-offset-2 hover:underline" data-testid="tailored-docx">
+            Download .docx
+          </a>
+        ) : null}
         {typeof t.scoreBefore === 'number' && typeof t.scoreAfter === 'number' ? (
           <span data-testid="cv-score-delta">
             CV Score {t.scoreBefore} → {t.scoreAfter}

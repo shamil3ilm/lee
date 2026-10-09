@@ -127,6 +127,23 @@ describe('latexToText', () => {
     expect(text).toContain('• Latency p99 < 200ms')
   })
 
+  it('keeps the group after \\hfill (location and dates on the right)', () => {
+    const src = String.raw`\begin{document}
+\textbf{Backend Developer} --- Example Payments \hfill {\small Kochi \textperiodcentered{} Apr 2023 – Present}
+\begin{itemize}
+  \item Built a thing
+\end{itemize}
+\end{document}`
+    const text = latexToText(src)
+    expect(text).toContain('Backend Developer — Example Payments | Kochi | Apr 2023 – Present')
+    expect(text).toContain('• Built a thing')
+  })
+
+  it('treats spacing and symbol macros as taking no arguments', () => {
+    const text = latexToText(String.raw`A \quad {B} \qquad{C} \cdot{} D \textperiodcentered{} E`)
+    expect(text).toBe('A | B | C | D | E')
+  })
+
   it('reads moderncv identity macros from the preamble', () => {
     const text = latexToText(fillTemplate('moderncv-classic', makeMasterCV()))
     expect(text).toContain('shamil@example.com')

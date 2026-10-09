@@ -141,13 +141,14 @@ describe('outputs', () => {
   it('LaTeX: ATS-plain has no colour; the designed one uses the brand tokens; text is escaped', () => {
     const tricky = { ...out, name: 'Asha & Co_50%' }
     const ats = variantToLatex(tricky, 1)
-    expect(ats).toContain('\\documentclass[10pt,a4paper]{article}')
+    // A Remote / US variant defaults to US Letter (GCC and India: A4).
+    expect(ats).toContain('\\documentclass[10pt,letterpaper]{article}')
     expect(ats).toContain('Asha \\& Co\\_50\\%')
     expect(ats).not.toContain('xcolor')
     expect(ats).not.toContain('includegraphics')
     const brand = variantToLatex({ ...tricky, template: 'brand' }, 2)
     expect(brand).toContain('\\definecolor{leetile}{HTML}{1A2B4C}')
-    expect(brand).toContain('\\documentclass[11pt,a4paper]{article}')
+    expect(brand).toContain('\\documentclass[11pt,letterpaper]{article}')
   })
 })
 

@@ -1,0 +1,20 @@
+{
+  "name": "Unmarked title asking 5+ years, profile has 2: proportional seniority (not a light penalty)",
+  "inputs": {
+    "profile": {
+      "yearsExperience": 2,
+      "skills": ["Python", "Django"]
+    },
+    "job": {
+      "title": "Backend Developer",
+      "location": "Bengaluru, Karnataka",
+      "descriptionMd": "## Requirements\n- 5+ years of backend experience\n- Python and Django"
+    }
+  },
+  "expect": {
+    "pass": true,
+    "match": {
+      "labels": ["Seniority: asks 5+ yrs, you have 2"]
+    }
+  }
+}

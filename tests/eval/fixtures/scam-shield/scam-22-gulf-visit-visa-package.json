@@ -1,0 +1,16 @@
+{
+  "name": "Visit visa package with a job guarantee",
+  "label": "scam",
+  "inputs": {
+    "title": "IT Jobs in Dubai",
+    "company": "Dream Dubai Careers",
+    "location": "Dubai, UAE",
+    "description": "Come to Dubai on visit visa, 100% job guarantee! Package AED 5,000 includes visa and accommodation. Limited seats."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "money.gulf_agency_fee"
+    ]
+  }
+}

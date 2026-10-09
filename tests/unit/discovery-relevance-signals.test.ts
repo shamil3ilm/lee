@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   detectContract,
   detectLanguages,
+  detectMandatoryLanguages,
   detectNationalsOnly,
   detectPresenceRequired,
   detectPureSupport,
@@ -119,6 +120,76 @@ describe('work authorisation wording (GCC)', () => {
     expect(detectVisaOffered('Build Laravel APIs for our fintech platform.')).toBeNull()
     expect(detectPresenceRequired('Build Laravel APIs for our fintech platform.')).toBe(false)
   })
+})
+
+describe('work authorisation wording: review 2026-10-09 probes', () => {
+  it.each([
+    'Experience integrating with Saudi National Bank (SNB) and Al Rajhi payment APIs.',
+    'Integrations with UAE national carriers and airlines.',
+    'Our client is a leading Saudi national company.',
+    'Kuwaiti national oil company partner integrations.',
+    'Built for the Qatar National Bank card programme.',
+  ])('does not read "%s" as nationals only', (desc) => {
+    expect(detectNationalsOnly(desc)).toBeNull()
+  })
+
+  it.each([
+    'Saudi nationals only.',
+    'This role is for UAE nationals.',
+    'Emirati candidates only.',
+    'Open to Kuwaiti nationals.',
+    'For Kuwaiti nationals.',
+    'Only Bahraini applicants will be considered.',
+    'Omani national candidates only.',
+  ])('reads "%s" as nationals only', (desc) => {
+    expect(detectNationalsOnly(desc)).not.toBeNull()
+  })
+
+  it.each([
+    'Visa will be provided.',
+    'Company visa.',
+    'Benefits: employment visa, medical insurance and annual air ticket provided.',
+    'Visa + medical + annual ticket.',
+    'Visa + accommodation.',
+    'Company provides visa, accommodation and transportation.',
+    'Sponsorship available for the right candidate.',
+    'Residence visa sponsored by the company.',
+    'Visa & air ticket.',
+    'Iqama provided.',
+    'Transferable iqama not required.',
+    'Employment visa provided.',
+  ])('reads "%s" as visa offered', (desc) => {
+    expect(detectVisaOffered(desc)).not.toBeNull()
+  })
+
+  it.each([
+    'Visa is not provided.',
+    'No visa sponsorship.',
+    'We are unable to provide visa sponsorship.',
+    'Candidates must have a valid visa; the company does not sponsor visas.',
+    'Medical insurance provided.',
+  ])('does not read "%s" as visa offered', (desc) => {
+    expect(detectVisaOffered(desc)).toBeNull()
+  })
+})
+
+describe('mandatory languages', () => {
+  it.each([
+    'Arabic fluency required.',
+    'Must be fluent in Arabic.',
+    'Native Arabic speaker.',
+    'Fluent Arabic is required for client meetings.',
+    'Arabic is mandatory.',
+  ])('"%s" makes Arabic mandatory', (desc) => {
+    expect(detectMandatoryLanguages(t('Backend Developer', desc))).toEqual(['arabic'])
+  })
+
+  it.each(['Arabic is a plus.', 'Arabic preferred.', 'Strong communication skills; Arabic an advantage.', 'Excellent English.'])(
+    '"%s" makes no language mandatory',
+    (desc) => {
+      expect(detectMandatoryLanguages(t('Backend Developer', desc))).toEqual([])
+    },
+  )
 })
 
 describe('languages', () => {

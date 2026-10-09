@@ -1,0 +1,25 @@
+{
+  "name": "Dubai fintech listing the visa among benefits: visa offered (boost and +5)",
+  "inputs": {
+    "profile": {
+      "yearsExperience": 2,
+      "discoveryPrefs": {
+        "basedIn": "IN",
+        "sponsorshipFor": ["AE", "SA", "QA", "KW", "BH", "OM"]
+      }
+    },
+    "job": {
+      "title": "Laravel Developer",
+      "location": "Dubai, UAE",
+      "descriptionMd": "## Requirements\n- 2–4 years of experience with PHP and Laravel\n- Payment gateway integrations\n- MySQL and REST APIs\n## Benefits\nBenefits: employment visa, medical insurance and annual air ticket provided."
+    }
+  },
+  "expect": {
+    "pass": true,
+    "boosts": ["visa / relocation offered"],
+    "match": {
+      "min": 75,
+      "labels": ["Visa: offered for UAE", "Seniority: asks 2+ yrs, you have 2"]
+    }
+  }
+}

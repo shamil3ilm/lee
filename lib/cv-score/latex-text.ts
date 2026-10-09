@@ -37,8 +37,14 @@ const SYMBOLS: Record<string, string> = {
   textasciicircum: '^', textendash: '–', textemdash: '—', ldots: '…', dots: '…',
   textdollar: '$', textpercent: '%', LaTeX: 'LaTeX', TeX: 'TeX', textregistered: '®',
   texttrademark: '™', copyright: '©', textquoteright: "'", textquoteleft: "'",
-  textbar: ' | ', cdot: ' | ', textbullet: ' | ', times: '×', rightarrow: '→', to: '→',
+  textbar: ' | ', cdot: ' | ', textbullet: ' | ', textperiodcentered: ' | ', times: '×',
+  rightarrow: '→', to: '→',
 }
+/**
+ * Spacing primitives that take no argument. `\hfill {\small Kochi · 2023}`
+ * must not read the group as \hfill's argument (it would be dropped with it).
+ */
+const SPACING_CMDS = new Set(['hfill', 'quad', 'qquad', 'allowbreak', 'noindent', 'centering', 'raggedright', 'raggedleft'])
 const LITERAL: Record<string, string> = {
   '&': '&', '%': '%', '$': '$', '#': '#', '_': '_', '{': '{', '}': '}',
   ' ': ' ', ',': ' ', ';': ' ', '!': '', '/': '',
@@ -75,7 +81,7 @@ function arityOf(name: string): number {
   if (name === 'href' || name === 'textcolor' || name === 'cvitem') return 2
   if (name === 'item' || name === 'resumeItem') return 0
   if (SECTION_CMDS.has(name) || FORMAT_CMDS.has(name) || name === 'url') return 1
-  if (LINE_BREAK_CMDS.has(name)) return 0
+  if (LINE_BREAK_CMDS.has(name) || SPACING_CMDS.has(name) || name in SYMBOLS) return 0
   return Infinity
 }
 
@@ -192,6 +198,7 @@ function convert(src: string): string {
         out += ' | '
         continue
       }
+      if (SPACING_CMDS.has(name)) continue
       if (name in SYMBOLS) {
         out += SYMBOLS[name]
         continue

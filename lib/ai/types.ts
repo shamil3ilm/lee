@@ -1,3 +1,4 @@
+import type { FollowupStep } from '@/lib/followups/cadence'
 import type { ResumeVariantInput, ResumeVariantResult } from './prompts/resume-variant'
 import type { TailorCVInput } from './prompts/tailor-cv'
 import { z } from 'zod'
@@ -29,6 +30,7 @@ import type {
 } from './prompts/linkedin'
 import type { ScoreJobContext } from './prompts/score-job'
 import type { CoverLetterTailoring } from './prompts/cover-letter'
+import type { ApplicationFacts } from './prompts/application-facts'
 import type { SharedLink } from './prompts/shared-links'
 import type { SuggestRolesInput, SuggestRolesResult } from './prompts/suggest-roles'
 import type { ExtractOpeningsInput, ExtractOpeningsResult } from './prompts/extract-openings'
@@ -164,6 +166,8 @@ export interface AIProvider {
     // The requirement checklist and adjacent evidence a saved "Tailor to
     // this JD" recorded (lib/cv-fit/tailor); the prompt never claims a gap.
     tailoring?: CoverLetterTailoring
+    // GCC / India / Remote facts the user opted to share (region block).
+    facts?: ApplicationFacts | null
   }): Promise<CoverLetter>
   distillGithubProjects(input: { repos: GitHubRepo[] }): Promise<CvProjects>
   // v4 additions — outreach + interview prep.
@@ -175,7 +179,9 @@ export interface AIProvider {
     kind: OutreachKind
     tone: OutreachTone
     daysSince?: number
+    step?: FollowupStep
     links?: SharedLink[]
+    facts?: ApplicationFacts | null
   }): Promise<OutreachDraft>
   generateInterviewPrepPack(input: {
     master: MasterCV

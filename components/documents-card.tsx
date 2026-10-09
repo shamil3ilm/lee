@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   Download,
+  FileDown,
   FileText,
   Layers,
   Loader2,
@@ -36,6 +37,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { relativeFromNow } from '@/lib/ui/date'
+import { hasWordExport } from '@/lib/docx/kinds'
 import { StalenessBadge } from '@/components/staleness-badge'
 import { CvScoreBadge } from '@/components/cv-score/cv-score-badge'
 import type { DocScore } from '@/lib/cv-score/fit'
@@ -309,6 +311,14 @@ export function DocumentsCard({
                           Download PDF
                         </Link>
                       </DropdownMenuItem>
+                      {hasWordExport(kind) ? (
+                        <DropdownMenuItem asChild>
+                          <a href={`/api/documents/${doc.id}/docx`} download>
+                            <FileDown className="size-4" />
+                            Download .docx
+                          </a>
+                        </DropdownMenuItem>
+                      ) : null}
                       {generateEndpoint(applicationId, kind) ? (
                         <DropdownMenuItem
                           onSelect={(e) => {

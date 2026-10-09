@@ -1,0 +1,19 @@
+{
+  "name": "Dubai fintech: medical insurance and visa provided (Greenhouse)",
+  "label": "legit",
+  "inputs": {
+    "title": "Backend Engineer (Laravel)",
+    "company": "Example Pay FZ-LLC",
+    "applyUrl": "https://boards.greenhouse.io/examplepay/jobs/123",
+    "location": "Dubai, UAE",
+    "description": "Build payment APIs in Laravel. Benefits: employment visa, medical insurance and annual air ticket provided. Interview stages: recruiter call, technical interview, team interview."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "money.gulf_agency_fee",
+      "money.offer_letter_fee",
+      "channel.messaging_payment"
+    ]
+  }
+}

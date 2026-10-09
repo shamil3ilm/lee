@@ -4,6 +4,7 @@ import { assessPay, floorFor, parsePostedPay } from '../relevance/pay'
 import { GCC_CODES, regionLabel, type RegionCode } from '../relevance/places'
 import {
   detectLanguages,
+  detectMandatoryLanguages,
   detectNationalsOnly,
   detectNationalsPreferred,
   detectPresenceRequired,
@@ -14,14 +15,14 @@ import { EINVOICING_TERMS, PAYMENTS_TERMS } from './profile'
 import type { MatchComponent, MatchJob, MatchProfile } from './types'
 
 /**
- * Soft signals: pay (−5…+5), languages (−10…+3), visa / sponsorship for
+ * Soft signals: pay (−5…+5), languages (−25…+3), visa / sponsorship for
  * GCC postings (−15…+5) and the domain bonus (0…+10). Each always returns
  * a component, at 0 points when the posting says nothing.
  */
 
 export const SIGNAL_LIMITS = {
   pay: { min: -5, max: 5 },
-  language: { min: -10, max: 3 },
+  language: { min: -25, max: 3 },
   visa: { min: -15, max: 5 },
   domain: { min: 0, max: 10 },
 } as const
@@ -44,9 +45,14 @@ const PROFESSIONAL = LEVEL_RANK.get('professional') ?? 2
 
 const title = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1)
 
+/** A required language you do not speak well; a MANDATORY one ("must be fluent") costs more and caps the band. */
+export const LANGUAGE_PENALTY = { required: -10, mandatory: -25, preferred: -2 } as const
+
 export interface LanguageOutcome {
   component: MatchComponent
   missing: string[]
+  /** Mandatory languages the user does not speak well: "Arabic". */
+  mandatoryUnmet: string[]
 }
 
 export function languageComponent(job: MatchJob, p: Pick<MatchProfile, 'languages'>): LanguageOutcome {
@@ -55,11 +61,13 @@ export function languageComponent(job: MatchJob, p: Pick<MatchProfile, 'language
     (m) => m.language !== 'english',
   )
   if (mentions.length === 0) {
-    return { component: { key: 'language', label: 'Language: English only', points: 0, max }, missing: [] }
+    return { component: { key: 'language', label: 'Language: English only', points: 0, max }, missing: [], mandatoryUnmet: [] }
   }
+  const mandatory = new Set(detectMandatoryLanguages({ title: job.title, description: job.descriptionMd ?? '' }))
   let points = 0
   const parts: string[] = []
   const missing: string[] = []
+  const mandatoryUnmet: string[] = []
   for (const m of mentions) {
     const level = p.languages.get(m.language) ?? null
     const fluent = level !== null && (LEVEL_RANK.get(level) ?? 0) >= PROFESSIONAL
@@ -67,17 +75,18 @@ export function languageComponent(job: MatchJob, p: Pick<MatchProfile, 'language
     if (fluent) {
       points += max
       parts.push(`${name} (you: ${level})`)
-    } else if (m.required) {
-      points += min
+    } else if (m.required || mandatory.has(m.language)) {
+      points += mandatory.has(m.language) ? LANGUAGE_PENALTY.mandatory : LANGUAGE_PENALTY.required
+      if (mandatory.has(m.language)) mandatoryUnmet.push(name)
       parts.push(`${name} required (you: ${level ?? 'none'})`)
       missing.push(`${name} fluency (required)`)
     } else {
-      points -= 2
+      points += LANGUAGE_PENALTY.preferred
       parts.push(`${name} preferred (you: ${level ?? 'none'})`)
     }
   }
   const clamped = Math.max(min, Math.min(max, points))
-  return { component: { key: 'language', label: `Language: ${parts.join(', ')}`, points: clamped, max }, missing }
+  return { component: { key: 'language', label: `Language: ${parts.join(', ')}`, points: clamped, max }, missing, mandatoryUnmet }
 }
 
 /** GCC countries the posting is located in where the user needs an employer visa. */

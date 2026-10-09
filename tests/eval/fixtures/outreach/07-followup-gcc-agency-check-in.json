@@ -1,0 +1,20 @@
+{
+  "name": "Follow-up email — GCC agency check-in (3 business days)",
+  "notes": "Agency posting in Dubai: the earlier first nudge; concise and polite.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": {
+      "@factory": "application",
+      "overrides": {
+        "role": "Laravel Developer",
+        "company": "Example Gulf Recruitment LLC",
+        "location": "Dubai, UAE",
+        "remoteType": "onsite"
+      }
+    },
+    "kind": "followup_email",
+    "tone": "formal",
+    "daysSince": 3,
+    "step": 1
+  }
+}

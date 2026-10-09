@@ -146,17 +146,49 @@ async function extractPdf(bytes: Uint8Array): Promise<ExtractedUpload> {
   }
 }
 
+const LI_RE = /<li>([\s\S]*?)<\/li>/gi
+const ENTITIES: Record<string, string> = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'" }
+const BULLET_LEAD = /^\s*[•\-*·▪◦]/
+
+/** Texts of Word list paragraphs (mammoth renders them as <li>). */
+export function listItemsFromHtml(html: string): Set<string> {
+  const out = new Set<string>()
+  for (const m of html.matchAll(LI_RE)) {
+    const text = m[1]!
+      .replace(/<[^>]+>/g, '')
+      .replace(/&(?:amp|lt|gt|quot|#39);/g, (e) => ENTITIES[e] ?? e)
+      .trim()
+    if (text) out.add(text)
+  }
+  return out
+}
+
+/**
+ * Raw text drops Word's list bullets (they are numbering, not characters);
+ * put a "• " back on list paragraphs so they read as bullets, like a PDF.
+ */
+export function markListItems(text: string, items: ReadonlySet<string>): string {
+  if (items.size === 0) return text
+  return text
+    .split('\n')
+    .map((line) => (items.has(line.trim()) && !BULLET_LEAD.test(line) ? `• ${line.trim()}` : line))
+    .join('\n')
+}
+
 async function extractDocx(bytes: Uint8Array): Promise<ExtractedUpload> {
   const mod = await import('mammoth')
   const buffer = Buffer.from(bytes)
   const result = await mod.extractRawText({ buffer })
   let links: string[] = []
+  let items = new Set<string>()
   try {
-    links = hrefsFromHtml((await mod.convertToHtml({ buffer })).value)
+    const html = (await mod.convertToHtml({ buffer })).value
+    links = hrefsFromHtml(html)
+    items = listItemsFromHtml(html)
   } catch {
     links = []
   }
-  return { text: result.value, fileType: 'docx', ...(links.length ? { links } : {}) }
+  return { text: markListItems(result.value, items), fileType: 'docx', ...(links.length ? { links } : {}) }
 }
 
 export async function extractUpload(file: { name: string; bytes: Uint8Array }): Promise<ExtractedUpload> {

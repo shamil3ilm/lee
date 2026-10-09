@@ -1,0 +1,18 @@
+{
+  "name": "Kuwait: company visa, HR shares updates on WhatsApp (no payment)",
+  "label": "legit",
+  "inputs": {
+    "title": "IT Support Engineer",
+    "company": "Example Kuwait Trading",
+    "applyUrl": "https://example-kuwait.com/careers/it",
+    "location": "Kuwait City, Kuwait",
+    "description": "Company visa and accommodation. Apply on our careers page; our HR team may call or WhatsApp shortlisted candidates. Attractive pay package."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "money.gulf_agency_fee",
+      "channel.messaging_payment"
+    ]
+  }
+}

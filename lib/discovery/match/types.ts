@@ -55,6 +55,16 @@ export interface MatchDetail {
   missing: string[]
   /** Posting skills the profile's ready evidence covers. */
   matched: string[]
+  /**
+   * Highest Fit this posting may show, whatever the AI says: 34 (weak) when
+   * a mandatory language is unmet, 55 when only the title is known.
+   */
+  ceiling?: MatchCeiling
+}
+
+export interface MatchCeiling {
+  score: number
+  reason: string
 }
 
 /** The posting fields the score reads (a subset of NormalizedJob). */

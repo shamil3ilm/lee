@@ -90,14 +90,24 @@ export function detectPureSupport(t: SignalText): string | null {
 
 const VISA_OFFERED = [
   /\bvisa (?:will be )?(?:provided|sponsored|sponsorship|offered|included|support)\b/,
-  /\b(?:employment|work) visa (?:provided|sponsored|included)\b/,
+  /\b(?:employment|work|residence|residency) visa (?:will be |is )?(?:provided|sponsored|included|offered)\b/,
   /\b(?:we|company will) (?:sponsor|provide) (?:the |your )?(?:work |employment )?visa\b/,
-  /\bvisa sponsorship (?:is )?(?:available|provided|offered)\b/,
+  /\b(?:visa )?sponsorship (?:is )?(?:available|provided|offered)\b/,
   /\brelocation (?:package|assistance|support|allowance|provided|bonus)\b/,
   /\bopen to (?:candidates|applicants) (?:from|based in) (?:india|abroad|overseas|outside)\b/,
   /\b(?:international|overseas) (?:candidates|applicants) (?:are )?(?:welcome|considered|encouraged)\b/,
-  /\bflights? (?:and|&) visa\b|\bvisa (?:and|&) (?:flights?|accommodation|medical)\b/,
+  /\bflights? (?:and|&) visa\b/,
+  // Benefit lists: "visa + medical", "visa & air ticket", "visa, accommodation and transport".
+  /\bvisa ?(?:\+|&|and|,) ?(?:annual )?(?:accommodation|air ?tickets?|tickets?|flights?|medical|insurance|transport(?:ation)?|housing)\b/,
+  /\bcompany (?:provided |sponsored )?visa\b|\bcompany provides? (?:a |the |your )?(?:work |employment )?visa\b/,
+  // "Benefits: employment visa, medical insurance and annual air ticket provided."
+  /\b(?:employment |work |residence )?visa\b[^.;]{0,80}\b(?:provided|included|offered|covered|sponsored)\b/,
+  /\biqama (?:will be |is )?(?:provided|sponsored|included|offered|issued)\b|\bcompany iqama\b/,
+  /\btransferr?able (?:iqama|visa) (?:is )?not (?:required|needed|necessary)\b/,
 ]
+
+/** "Visa is not provided", "no visa sponsorship", "does not sponsor": never an offer. */
+const VISA_DENIED = /\b(?:no|not|never|without|unable to|cannot|can't|won't|don't|do not|does not|doesn't|will not)\b(?: \w+){0,3} (?:visa|sponsor(?:ship|s)?)\b|\bvisa (?:is |will )?not (?:be )?(?:provided|sponsored|offered|included|available)\b/
 
 /**
  * "Be in the country" wording. Not a mismatch: a candidate can travel on a
@@ -115,6 +125,8 @@ const PRESENCE_REQUIRED: readonly RegExp[] = [
 ]
 
 const GCC_NATIONALITY = '(?:uae|emirati|saudi|qatari|kuwaiti|bahraini|omani|gcc)'
+/** Words that make a nationality about people, not an employer ("Saudi National Bank"). */
+const WHO = '(?:candidates?|applicants?|citizens?|jobseekers?|job seekers?|graduates?|talent|hires?)'
 
 /** "UAE nationals preferred", "preference will be given to Saudi nationals": soft, not a skip. */
 const NATIONALS_PREFERRED: readonly RegExp[] = [
@@ -123,17 +135,29 @@ const NATIONALS_PREFERRED: readonly RegExp[] = [
   new RegExp(`\\bpreferably (?:a |an )?${GCC_NATIONALITY} nationals?\\b`),
 ]
 
-/** Nationals-only / nationalisation-quota roles: the one work-authorisation mismatch. */
+/**
+ * Nationals-only / nationalisation-quota roles: the one work-authorisation
+ * mismatch. The phrase must be about candidates: plural "nationals" ("Saudi
+ * nationals only", "for Kuwaiti nationals"), or a nationality followed by
+ * "only" or a people word ("Emirati candidates only"). A singular "national"
+ * before anything else is a proper name: "Saudi National Bank", "UAE
+ * national carriers".
+ */
 const NATIONALS_ONLY: readonly RegExp[] = [
-  /\b(?:uae|emirati|saudi|qatari|kuwaiti|bahraini|omani|gcc) nationals?(?: only)?\b/,
-  /\bnationals only\b|\bfor (?:uae|saudi|qatari|kuwaiti|bahraini|omani) nationals\b/,
+  new RegExp(`\\b${GCC_NATIONALITY} nationals\\b`),
+  new RegExp(`\\b${GCC_NATIONALITY} (?:national|${WHO}) only\\b`),
+  new RegExp(`\\b${GCC_NATIONALITY} national ${WHO}\\b`),
+  new RegExp(`\\bonly (?:for |open to )?${GCC_NATIONALITY} (?:nationals?|${WHO})\\b`),
+  /\bnationals only\b/,
   /\b(?:emiratisation|emiratization|saudization|saudisation|nitaqat|qatarization|qatarisation|omanisation|omanization|kuwaitization|bahrainisation|bahrainization)\b/,
 ]
 
 /** A GCC-style "visa provided / relocation / open to candidates from abroad" phrase. */
 export function detectVisaOffered(description: string): string | null {
   const d = normalizeForMatch(description.slice(0, 8_000))
-  return VISA_OFFERED.some((re) => re.test(d)) ? 'visa / relocation offered' : null
+  // Read sentence by sentence so "no visa sponsorship" in one does not hide an offer in another.
+  const offered = d.split(/(?<=[.;!?])\s+/).some((s) => !VISA_DENIED.test(s) && VISA_OFFERED.some((re) => re.test(s)))
+  return offered ? 'visa / relocation offered' : null
 }
 
 /** "Must be in UAE", "residence visa", "own visa", "local candidates"… (info only). */
@@ -142,7 +166,7 @@ export function detectPresenceRequired(description: string): boolean {
   return PRESENCE_REQUIRED.some((re) => re.test(d))
 }
 
-const EXPLICIT_ONLY = /\bnationals? only\b|\bonly (?:for |open to )?(?:uae|emirati|saudi|qatari|kuwaiti|bahraini|omani|gcc) nationals?\b|\b(?:emiratisation|emiratization|saudization|saudisation|nitaqat|qatarization|qatarisation|omanisation|omanization|kuwaitization|bahrainisation|bahrainization)\b/
+const EXPLICIT_ONLY = /\bnationals? only\b|\b(?:candidates?|applicants?) only\b|\bonly (?:for |open to )?(?:uae|emirati|saudi|qatari|kuwaiti|bahraini|omani|gcc) (?:nationals?|candidates?|applicants?)\b|\b(?:emiratisation|emiratization|saudization|saudisation|nitaqat|qatarization|qatarisation|omanisation|omanization|kuwaitization|bahrainisation|bahrainization)\b/
 
 /** "UAE nationals preferred"… (a soft penalty). */
 export function detectNationalsPreferred(description: string): string | null {
@@ -201,4 +225,27 @@ export function detectLanguages(t: SignalText): LanguageMention[] {
     out.push({ language: lang, required })
   }
   return out
+}
+
+function mandatoryRe(lang: string): RegExp {
+  const must = '(?:required|mandatory|a must|essential|compulsory)'
+  return new RegExp(
+    `\\b${lang} (?:language )?(?:fluency |proficiency |speaking |skills? )?(?:is |are )?${must}\\b` +
+      `|\\b(?:fluent|native|fluency in)[^.]{0,15}\\b${lang}\\b[^.]{0,30}\\b${must}\\b` +
+      `|\\bmust (?:be )?(?:fluent|able to (?:speak|read|write)|speak|read|write)[^.]{0,20}\\b${lang}\\b` +
+      `|\\bnative ${lang} speaker\\b|\\b${lang} native speaker\\b|\\b${lang} speakers? only\\b`,
+  )
+}
+
+/**
+ * Languages a posting makes MANDATORY ("Arabic fluency required", "must be
+ * fluent in Arabic", "native Arabic speaker"), sentence by sentence; a
+ * sentence that also says "preferred / a plus" does not count.
+ */
+export function detectMandatoryLanguages(t: SignalText): string[] {
+  const text = `${normalizeForMatch(t.title)}. ${normalizeForMatch(t.description.slice(0, 8_000))}`
+  const sentences = text.split(/(?<=[.;!?])\s+/)
+  return KNOWN_LANGUAGES.filter((lang) =>
+    sentences.some((s) => new RegExp(`\\b${lang}\\b`).test(s) && mandatoryRe(lang).test(s) && !preferredRe(lang).test(s)),
+  )
 }

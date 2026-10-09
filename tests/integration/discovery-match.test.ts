@@ -1,4 +1,4 @@
-import { blendScores } from '@/lib/discovery/match/blend'
+import { blendScores, cappedFit } from '@/lib/discovery/match/blend'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
@@ -136,6 +136,12 @@ describe('title-only postings and a pasted JD', () => {
     await runDiscoveryCycleForUser({ userId, ai: new FixtureAIProvider({ scoreJob: () => scoreResult }) })
     const [row] = await discQ.list(userId, { status: 'new' })
     expect(toMatchDetail(row!.fitDetail)?.confidence).toBe('title_only')
+    // Capped at 55 until a JD arrives, in the card and in the SQL Fit filter alike.
+    expect(toMatchDetail(row!.fitDetail)?.ceiling?.score).toBe(55)
+    expect(row!.fitScore!).toBeLessThanOrEqual(55)
+    expect(cappedFit(row!.fitScore, row!.matchScore, toMatchDetail(row!.fitDetail))).toBeLessThanOrEqual(55)
+    expect(await discQ.countList(userId, { status: 'new', minScore: 56 })).toBe(0)
+    expect(await discQ.countList(userId, { status: 'new', minScore: 55 })).toBe(1)
 
     expect(await saveJd(userId, row!.id, 'too short', 'pasted')).toEqual({ ok: false, error: expect.stringMatching(/whole job description/) })
     const jd = '## Responsibilities\n- Build REST APIs in Laravel\n## Requirements\n- PHP and Laravel\n- MySQL\n- Git and code review\n'.repeat(2)

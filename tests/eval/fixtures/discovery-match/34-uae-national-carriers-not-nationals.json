@@ -1,0 +1,21 @@
+{
+  "name": "Dubai travel-tech JD about UAE national carriers: not nationals-only",
+  "inputs": {
+    "profile": {
+      "discoveryPrefs": {
+        "basedIn": "IN",
+        "sponsorshipFor": ["AE", "SA", "QA", "KW", "BH", "OM"]
+      }
+    },
+    "job": {
+      "title": "Laravel Developer",
+      "location": "Dubai, UAE",
+      "descriptionMd": "Build booking integrations with UAE national carriers and airlines. PHP, Laravel and MySQL."
+    }
+  },
+  "expect": {
+    "pass": true,
+    "reasons": [],
+    "penalties": []
+  }
+}

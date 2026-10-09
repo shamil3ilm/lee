@@ -16,6 +16,9 @@ import {
 import type { StateSnapshot } from '@/lib/staleness/types'
 import type { AIProvider } from '@/lib/ai/types'
 import type { SharedLink } from '@/lib/ai/prompts/shared-links'
+import type { FollowupStep } from '@/lib/followups/cadence'
+import { followupPlan } from '@/lib/followups/plan'
+import { loadApplicationFacts } from '@/lib/apply/application-facts-service'
 import type { Document, DocumentKind } from '@/lib/db/queries/documents'
 
 const KIND_LABELS: Record<OutreachKind, string> = {
@@ -38,15 +41,6 @@ function toDocumentKind(kind: OutreachKind): DocumentKind {
   }
 }
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000
-
-function daysBetween(from: Date, to: Date): number {
-  const diff = to.getTime() - from.getTime()
-  // Floor so a not-quite-7-days-ago application reports 6 (matching human
-  // intuition — "one week later" means ~168 hours have passed).
-  return Math.max(0, Math.floor(diff / MS_PER_DAY))
-}
-
 /**
  * Generates an outreach draft (LinkedIn connection / message / recruiter reply
  * / follow-up email) grounded in the master CV + application context. Persists
@@ -65,6 +59,8 @@ export async function generateOutreachDraft(input: {
   tone: OutreachTone
   ai: AIProvider
   daysSince?: number
+  /** Follow-up step (1 check-in, 2 final note); computed from the cadence when omitted. */
+  step?: FollowupStep
   /** Profile links the user confirmed for this draft. */
   links?: SharedLink[]
 }): Promise<Document> {
@@ -75,12 +71,16 @@ export async function generateOutreachDraft(input: {
   if (!application) throw new ApplicationNotFoundError(input.applicationId)
 
   let daysSince: number | undefined = input.daysSince
-  if (input.kind === 'followup_email' && daysSince === undefined) {
-    if (application.appliedAt) {
-      daysSince = daysBetween(application.appliedAt, new Date())
+  let step: FollowupStep | undefined
+  if (input.kind === 'followup_email') {
+    // Business days since applying and the step due (lib/followups/cadence.ts).
+    // If appliedAt is missing the plan is null, daysSince stays undefined and
+    // the signal check below produces a proper AISkippedError with a fixHint.
+    const plan = await followupPlan(input.userId, application, input.step ? { step: input.step } : {})
+    if (plan) {
+      daysSince = daysSince ?? plan.daysSince
+      step = plan.step
     }
-    // If appliedAt is missing we leave daysSince undefined and let the
-    // signal check below produce a proper AISkippedError with a fixHint.
   }
 
   // Signal-check gate: outreach requires sender name, job title, company name,
@@ -119,19 +119,23 @@ export async function generateOutreachDraft(input: {
     }
   }
 
+  // GCC / India / Remote facts the user opted to share; never on a connection note.
+  const facts = input.kind === 'linkedin_connection' ? null : await loadApplicationFacts(input.userId, application.job)
   const draft = await input.ai.draftOutreach({
     master,
     application,
     kind: input.kind,
     tone: input.tone,
     daysSince,
+    ...(step ? { step } : {}),
     links: input.links,
+    ...(facts ? { facts } : {}),
   })
   // The prompt asks the model to echo daysSince back on the draft; some models
   // will drop it. Server-side truth wins so the UI can group by day reliably.
   const draftWithMeta =
     input.kind === 'followup_email' && daysSince !== undefined
-      ? { ...draft, daysSince }
+      ? { ...draft, daysSince, ...(step ? { followupStep: step } : {}) }
       : draft
   const validated = outreachDraftSchema.parse(draftWithMeta)
 
@@ -139,7 +143,7 @@ export async function generateOutreachDraft(input: {
   const version = await documentsQ.nextVersion(input.userId, input.applicationId, documentKind)
   const company = application.job.company?.name ?? 'unknown'
   const daySuffix =
-    input.kind === 'followup_email' && daysSince !== undefined ? ` (day ${daysSince})` : ''
+    input.kind === 'followup_email' && step ? (step === 2 ? ' (final note)' : ' (check-in)') : ''
   const title =
     `${KIND_LABELS[input.kind]}${daySuffix} - ${application.job.title} @ ${company}`.slice(0, 200)
 
