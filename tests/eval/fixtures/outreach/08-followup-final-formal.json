@@ -1,0 +1,12 @@
+{
+  "name": "Follow-up email — step 2 final note, formal",
+  "notes": "Formal final note; no promise of another follow-up.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": "@factory:application",
+    "kind": "followup_email",
+    "tone": "formal",
+    "daysSince": 10,
+    "step": 2
+  }
+}

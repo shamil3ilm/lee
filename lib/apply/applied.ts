@@ -10,12 +10,14 @@ import { appliedInstant, followupDue, isDayString, localDay } from './dates'
 import { PrepareError, saveProgress } from './prepare'
 import type { PrepProgress } from './progress'
 import { applySettingsFrom } from './settings'
+import { cadenceFor, isGccAgencyPosting } from '@/lib/followups/cadence'
 
 /**
  * "Mark applied" — records what the user did themselves (lee never submits
  * or sends anything): moves the application from Saved to Applied with the
  * date they picked, records the résumé variant/version and the document
- * versions used, and schedules the follow-up nudge `followupDays` later.
+ * versions used, and schedules the first follow-up nudge (business days,
+ * lib/followups/cadence.ts).
  * Idempotent: marking again keeps one status change and reschedules a
  * still-pending nudge to the new date.
  */
@@ -90,7 +92,12 @@ export async function markApplied(
     },
   }
   const reschedule = prep.followupStatus === null || prep.followupStatus === 'pending'
-  const followupDueAt = reschedule ? followupDue(appliedAt, settings.followupDays, tz) : prep.followupDueAt
+  // Business days; a GCC posting through an agency gets the earlier first nudge.
+  const marks = cadenceFor(
+    settings,
+    isGccAgencyPosting({ title: app.job.title, location: app.job.location, companyName: app.job.company?.name ?? null, descriptionMd: app.job.descriptionMd }),
+  )
+  const followupDueAt = reschedule ? followupDue(appliedAt, marks.first, tz) : prep.followupDueAt
   await saveProgress(userId, prep, progress, now)
   await prepsQ.save(userId, applicationId, {
     appliedAt,
@@ -100,7 +107,7 @@ export async function markApplied(
     userId,
     applicationId,
     documents: used.length,
-    followupDays: reschedule ? settings.followupDays : 0,
+    followupDays: reschedule ? marks.first : 0,
   })
   return { appliedAt, followupDueAt: followupDueAt ?? null, progress }
 }

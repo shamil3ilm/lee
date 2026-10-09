@@ -439,7 +439,10 @@ export const userProfile = pgTable('user_profile', {
   // the follow-up nudge after "Mark applied", and whether the shortlist is
   // added to the weekly digest and the discovery email.
   shortlistSize: smallint('shortlist_size').notNull().default(5),
-  followupDays: smallint('followup_days').notNull().default(7),
+  // Follow-ups (lib/followups/cadence.ts): business days after applying for
+  // the first nudge and for the second, last one.
+  followupDays: smallint('followup_days').notNull().default(5),
+  followupSecondDays: smallint('followup_second_days').notNull().default(10),
   shortlistInEmails: boolean('shortlist_in_emails').notNull().default(true),
   // AI Radar (lib/radar/settings.ts): how new watch-term matches reach the
   // user — 'instant' | 'daily' | 'weekly' | 'off' (Settings › Notifications);

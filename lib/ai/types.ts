@@ -1,3 +1,4 @@
+import type { FollowupStep } from '@/lib/followups/cadence'
 import type { ResumeVariantInput, ResumeVariantResult } from './prompts/resume-variant'
 import type { TailorCVInput } from './prompts/tailor-cv'
 import { z } from 'zod'
@@ -172,6 +173,7 @@ export interface AIProvider {
     kind: OutreachKind
     tone: OutreachTone
     daysSince?: number
+    step?: FollowupStep
     links?: SharedLink[]
     facts?: ApplicationFacts | null
   }): Promise<OutreachDraft>

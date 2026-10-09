@@ -163,15 +163,15 @@ export function checkFollowupSignal(
       ok: false,
       code: 'followup_missing_days_since',
       message: 'Follow-up needs a days-since value.',
-      fixHint: 'Pick a 7/14/21/30-day interval, or backfill applied-at so it can be computed.',
+      fixHint: 'Pick the check-in or the final note, or backfill applied-at so it can be computed.',
     }
   }
   if (d < FOLLOWUP_MIN_DAYS_SINCE) {
     return {
       ok: false,
       code: 'followup_too_soon',
-      message: `Only ${d} days since applying — following up now looks impatient.`,
-      fixHint: 'Wait until at least day 7 before the first nudge.',
+      message: `Only ${d} business days since applying — following up now looks impatient.`,
+      fixHint: 'Wait at least 3 business days before the first nudge (5 by default).',
     }
   }
   return { ok: true }

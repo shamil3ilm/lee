@@ -130,7 +130,7 @@ describe('GET /api/cron/sync-all', () => {
     expect(reminders).toHaveLength(1)
   })
 
-  it('emits followup_recommended activities for applications past the 7-day mark', async () => {
+  it('emits followup_recommended activities for applications past the first follow-up mark (5 business days)', async () => {
     const u = await makeUser('cron-followup@x.com')
     const co = await makeCompany(u.id)
     const j = await makeJob(u.id, co.id)
@@ -153,8 +153,9 @@ describe('GET /api/cron/sync-all', () => {
       .where(eq(activities.applicationId, app.id))
     const nudge = acts.find((a) => a.kind === 'followup_recommended')
     expect(nudge).toBeDefined()
-    const payload = nudge?.payload as { daysSince?: number; suggestedInterval?: number }
-    expect(payload?.suggestedInterval).toBe(7)
+    const payload = nudge?.payload as { daysSince?: number; step?: number }
+    // 10 calendar days = 6 to 8 business days: the check-in (step 1) is due.
+    expect(payload?.step).toBe(1)
   })
 
   it('does not double-emit followup_recommended on consecutive runs', async () => {

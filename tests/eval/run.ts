@@ -209,6 +209,7 @@ async function runFixture(
         kind: inputs.kind as never,
         tone: inputs.tone as never,
         daysSince: inputs.daysSince as number | undefined,
+        step: inputs.step as 1 | 2 | undefined,
         facts: (inputs.facts as never) ?? null,
       })
     case 'prep-pack':

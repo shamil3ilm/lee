@@ -1,3 +1,4 @@
+import type { FollowupStep } from '@/lib/followups/cadence'
 import {
   buildResumeVariantPrompt,
   RESUME_VARIANT_PROMPT_VERSION,
@@ -349,6 +350,7 @@ export class GroqProvider implements AIProvider {
     kind: OutreachKind
     tone: OutreachTone
     daysSince?: number
+    step?: FollowupStep
     links?: SharedLink[]
     facts?: ApplicationFacts | null
   }): Promise<OutreachDraft> {
@@ -498,6 +500,7 @@ function buildOutreachPromptGroq(input: {
   kind: OutreachKind
   tone: OutreachTone
   daysSince?: number
+  step?: FollowupStep
 }): string {
   switch (input.kind) {
     case 'linkedin_connection':
@@ -515,6 +518,7 @@ function buildOutreachPromptGroq(input: {
         application: input.application,
         tone: input.tone,
         daysSince: input.daysSince,
+        step: input.step ?? 1,
       })
   }
 }

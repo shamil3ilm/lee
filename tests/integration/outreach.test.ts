@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { generateOutreachDraft } from '@/lib/documents/outreach'
+import { businessDaysBetween } from '@/lib/followups/cadence'
 import { saveMasterCV } from '@/lib/documents/master'
 import { MasterCVNotFoundError, ApplicationNotFoundError } from '@/lib/documents/errors'
 import { AISkippedError } from '@/lib/ai/signal'
@@ -183,13 +184,15 @@ describe('generateOutreachDraft', () => {
       kind: 'followup_email',
       tone: 'friendly',
       daysSince: 7,
+      step: 1,
       ai,
     })
     expect(doc.kind).toBe('outreach_followup_email')
-    expect(doc.title).toContain('day 7')
+    expect(doc.title).toContain('(check-in)')
     const content = doc.content as OutreachDraft
     expect(content.kind).toBe('followup_email')
     expect(content.daysSince).toBe(7)
+    expect(content.followupStep).toBe(1)
     expect(content.subject).toBeDefined()
     expect(content.body.length).toBeGreaterThan(0)
   })
@@ -198,7 +201,7 @@ describe('generateOutreachDraft', () => {
     const u = await makeUser('outreach-followup-compute@x.com')
     const co = await makeCompany(u.id, { name: 'Stripe' })
     const j = await makeJob(u.id, co.id, { title: 'Staff Payments Engineer' })
-    // Applied 14 days ago exactly — expect the doc title to say day 14.
+    // Applied 14 calendar days ago = 10 business days: the final note is due.
     const appliedAt = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
     const app = await makeApplication(u.id, j.id, { status: 'applied', appliedAt })
     await saveMasterCV(u.id, makeCv())
@@ -211,8 +214,10 @@ describe('generateOutreachDraft', () => {
       ai,
     })
     const content = doc.content as OutreachDraft
-    expect(content.daysSince).toBe(14)
-    expect(doc.title).toContain('day 14')
+    expect(content.daysSince).toBe(businessDaysBetween(appliedAt, new Date()))
+    expect(content.daysSince).toBe(10)
+    expect(content.followupStep).toBe(2)
+    expect(doc.title).toContain('(final note)')
   })
 
   it('throws when kind=followup_email and appliedAt is null', async () => {

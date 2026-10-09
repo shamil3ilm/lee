@@ -8,6 +8,7 @@ import { accounts, activities } from '@/lib/db/schema'
 import { mapForTargets } from '@/lib/db/queries/riskAssessments'
 import { toRiskView } from '@/lib/scam/view'
 import { getProfile } from '@/lib/profile/service'
+import { stepOfDraft } from '@/lib/followups/steps'
 import { getJourneyCounts, getNextBestAction } from '@/lib/journey/service'
 import { buildFunnelCounts } from '@/lib/dashboard/funnel'
 import {
@@ -125,15 +126,16 @@ export async function ThisWeekWidget({ userId, now }: WidgetProps) {
     if (scheduled.has(applicationId)) continue
     const app = rowById.get(applicationId)
     if (!app) continue
-    const payload = row.payload as { daysSince?: number; suggestedInterval?: number }
-    const interval = payload?.suggestedInterval
-    if (interval !== 7 && interval !== 14 && interval !== 21 && interval !== 30) continue
+    const payload = row.payload as { daysSince?: number; step?: number; suggestedInterval?: number }
+    // Nudges from the old 7/14/21/30 cadence carry an interval: day 14+ was the later note.
+    const step = payload?.step === 1 || payload?.step === 2 ? payload.step : stepOfDraft({ daysSince: payload?.suggestedInterval })
+    if (!step) continue
     followups.push({
       applicationId,
       jobTitle: app.job.title,
       companyName: app.job.company?.name ?? null,
-      daysSince: payload?.daysSince ?? interval,
-      suggestedInterval: interval,
+      daysSince: payload?.daysSince ?? 0,
+      step,
       recommendedAt: row.createdAt.toISOString(),
     })
   }

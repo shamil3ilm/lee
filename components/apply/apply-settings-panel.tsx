@@ -8,7 +8,7 @@ import { FormActions, FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/native-select'
 import { saveApplySettingsAction } from '@/app/(authed)/shortlist/actions'
-import { FOLLOWUP_DAYS, SHORTLIST_SIZE, type ApplySettings } from '@/lib/apply/settings'
+import { FOLLOWUP_DAYS, FOLLOWUP_SECOND_DAYS, SHORTLIST_SIZE, type ApplySettings } from '@/lib/apply/settings'
 import { Checkbox } from '@/components/ui/checkbox'
 
 const SIZES = Array.from({ length: SHORTLIST_SIZE.max - SHORTLIST_SIZE.min + 1 }, (_, i) => SHORTLIST_SIZE.min + i)
@@ -17,12 +17,18 @@ const SIZES = Array.from({ length: SHORTLIST_SIZE.max - SHORTLIST_SIZE.min + 1 }
 export function ApplySettingsPanel({ initial }: { initial: ApplySettings }) {
   const [size, setSize] = useState(String(initial.shortlistSize))
   const [days, setDays] = useState(String(initial.followupDays))
+  const [secondDays, setSecondDays] = useState(String(initial.followupSecondDays))
   const [inEmails, setInEmails] = useState(initial.shortlistInEmails)
   const [saving, startSave] = useTransition()
 
   const save = (): void =>
     startSave(async () => {
-      const r = await saveApplySettingsAction({ shortlistSize: Number(size), followupDays: Number(days), shortlistInEmails: inEmails })
+      const r = await saveApplySettingsAction({
+        shortlistSize: Number(size),
+        followupDays: Number(days),
+        followupSecondDays: Number(secondDays),
+        shortlistInEmails: inEmails,
+      })
       if ('error' in r) toast.error(r.error)
       else toast.success('Shortlist settings saved')
     })
@@ -35,12 +41,13 @@ export function ApplySettingsPanel({ initial }: { initial: ApplySettings }) {
           Shortlist & follow-ups
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          The daily shortlist is built after the morning discovery run. Follow-up nudges are scheduled when you mark an
-          application applied; lee drafts the email, you send it.
+          The daily shortlist is built after the morning discovery run. When you mark an application applied, lee
+          nudges you twice: a short check-in, then a final note, in business days (a GCC posting through an agency
+          gets the check-in after 3). lee drafts the email, you send it.
         </p>
       </CardHeader>
       <CardContent className="space-y-4 pt-0">
-        <div className="grid gap-4 sm:grid-cols-[1fr_1fr_auto]">
+        <div className="grid gap-4 sm:grid-cols-[1fr_1fr_1fr_auto]">
           <FormField htmlFor="shortlist-size" label="Postings per day">
             <NativeSelect id="shortlist-size" value={size} onChange={(e) => setSize(e.target.value)} disabled={saving}>
               {SIZES.map((n) => (
@@ -52,8 +59,8 @@ export function ApplySettingsPanel({ initial }: { initial: ApplySettings }) {
           </FormField>
           <FormField
             htmlFor="followup-days"
-            label="Follow up after (days)"
-            help={`${FOLLOWUP_DAYS.min} to ${FOLLOWUP_DAYS.max} days.`}
+            label="Check-in after"
+            help={`Business days, ${FOLLOWUP_DAYS.min} to ${FOLLOWUP_DAYS.max}.`}
           >
             <Input
               id="followup-days"
@@ -65,6 +72,23 @@ export function ApplySettingsPanel({ initial }: { initial: ApplySettings }) {
               onChange={(e) => setDays(e.target.value)}
               disabled={saving}
               aria-describedby="followup-days-help"
+            />
+          </FormField>
+          <FormField
+            htmlFor="followup-second-days"
+            label="Final note after"
+            help={`Business days, ${FOLLOWUP_SECOND_DAYS.min} to ${FOLLOWUP_SECOND_DAYS.max}; then lee stops.`}
+          >
+            <Input
+              id="followup-second-days"
+              type="number"
+              inputMode="numeric"
+              min={FOLLOWUP_SECOND_DAYS.min}
+              max={FOLLOWUP_SECOND_DAYS.max}
+              value={secondDays}
+              onChange={(e) => setSecondDays(e.target.value)}
+              disabled={saving}
+              aria-describedby="followup-second-days-help"
             />
           </FormField>
           <FormActions>

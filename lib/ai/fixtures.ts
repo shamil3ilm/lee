@@ -1,3 +1,4 @@
+import type { FollowupStep } from '@/lib/followups/cadence'
 import type { ResumeVariantInput, ResumeVariantResult } from './prompts/resume-variant'
 import type { TailorCVInput } from './prompts/tailor-cv'
 import type { CoverLetterTailoring } from './prompts/cover-letter'
@@ -64,6 +65,7 @@ export class FixtureAIProvider implements AIProvider {
         kind: OutreachKind
         tone: OutreachTone
         daysSince?: number
+        step?: FollowupStep
       }) => OutreachDraft
       generateInterviewPrepPack?: (input: {
         master: MasterCV
@@ -203,6 +205,7 @@ export class FixtureAIProvider implements AIProvider {
     kind: OutreachKind
     tone: OutreachTone
     daysSince?: number
+    step?: FollowupStep
     facts?: ApplicationFacts | null
   }): Promise<OutreachDraft> {
     if (this.fixtures.draftOutreach) return this.fixtures.draftOutreach(input)
@@ -483,9 +486,11 @@ function pseudoOutreach(input: {
   kind: OutreachKind
   tone: OutreachTone
   daysSince?: number
+  step?: FollowupStep
   facts?: ApplicationFacts | null
 }): OutreachDraft {
   const { master, application, kind, tone, daysSince } = input
+  const step = input.step ?? 1
   const facts = kind === 'linkedin_connection' ? '' : factsSentence(input.facts)
   const company = application.job.company?.name ?? 'your team'
   const role = application.job.title
@@ -504,13 +509,7 @@ function pseudoOutreach(input: {
     },
     followup_email: {
       subject: `Following up: ${role}`,
-      body: pseudoFollowupBody({
-        role,
-        company,
-        anchor,
-        daysSince: daysSince ?? 7,
-        senderName: master.basics.name,
-      }),
+      body: pseudoFollowupBody({ role, company, anchor, step, senderName: master.basics.name }),
     },
   }
   const base = bodies[kind]
@@ -524,30 +523,26 @@ function pseudoOutreach(input: {
     tone,
     wordCount: draft.body.trim().split(/\s+/).length,
     notes: `pseudo-outreach ${kind} tone=${tone}`,
-    ...(kind === 'followup_email' ? { daysSince: daysSince ?? 7 } : {}),
+    ...(kind === 'followup_email' ? { daysSince: daysSince ?? 5, followupStep: step } : {}),
   }
 }
 
-function pseudoFollowupBody(x: {
-  role: string
-  company: string
-  anchor: string
-  daysSince: number
-  senderName: string
-}): string {
-  const { role, company, anchor, daysSince, senderName } = x
-  switch (daysSince) {
-    case 7:
-      return `Hi,\n\nQuick check-in — I applied for the ${role} role at ${company} a week ago and wanted to see if there's any update on next steps. Happy to re-send anything or answer questions.\n\nThanks,\n${senderName}`
-    case 14:
-      return `Hi,\n\nStill very interested in the ${role} role. Two weeks in, I wanted to share something concrete: in ${anchor} I worked on directly relevant systems and would be glad to walk through the design if useful.\n\nNo pressure — I know these loops take time.\n\nThanks,\n${senderName}`
-    case 21:
-      return `Hi,\n\nThree weeks since I applied for the ${role} role at ${company}. The work I did in ${anchor} lines up closely with the JD, and I remain very interested.\n\nCould you let me know if the role is still open and roughly when you expect to move to next-round decisions?\n\nThanks,\n${senderName}`
-    case 30:
-      return `Hi,\n\nA month on and I haven't heard back, so wanted to close the loop rather than keep either of us guessing. If the role is still active I'd love a quick note; if it's moved on, please keep me in mind for future openings.\n\nThanks for your time,\n${senderName}`
-    default:
-      return `Hi,\n\nFollowing up on my application for the ${role} role at ${company} (${daysSince} days ago). Let me know if there's an update on next steps.\n\nThanks,\n${senderName}`
+function pseudoFollowupBody(x: { role: string; company: string; anchor: string; step: FollowupStep; senderName: string }): string {
+  const { role, company, anchor, step, senderName } = x
+  if (step === 2) {
+    return [
+      'Hi,',
+      `A short final note on my application for the ${role} role at ${company}. I remain interested; my work in ${anchor} is close to what the role describes.`,
+      'Could you let me know whether the role is still open and whether I am still under consideration? Thank you for your time either way.',
+      `Thanks,\n${senderName}`,
+    ].join('\n\n')
   }
+  return [
+    'Hi,',
+    `I applied for the ${role} role at ${company} last week and wanted to check in briefly. My work in ${anchor} lines up with the posting, and I am happy to send anything else that helps.`,
+    'Is there an update on next steps?',
+    `Thanks,\n${senderName}`,
+  ].join('\n\n')
 }
 
 function pseudoDebrief(input: {

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { generateOutreachDraft } from '@/lib/documents/outreach'
-import { outreachToneSchema } from '@/lib/documents/types'
+import { followupStepSchema, outreachToneSchema } from '@/lib/documents/types'
 import {
   ApplicationNotFoundError,
   MasterCVNotFoundError,
@@ -17,14 +17,13 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 export const maxDuration = 30
 
-// Both tone and daysSince are optional so the client can fire "quick action"
-// buttons with just an interval, or omit both and let the server default
-// tone=friendly and compute daysSince from appliedAt.
+// Both tone and step are optional so the client can fire "quick action"
+// buttons with just a step, or omit both and let the server default
+// tone=friendly and pick the step due from the cadence (business days since
+// appliedAt; lib/followups/cadence.ts).
 const bodySchema = z.object({
   tone: outreachToneSchema.optional(),
-  // Only the four canonical intervals are useful — anything else means a
-  // programmer error client-side.
-  daysSince: z.union([z.literal(7), z.literal(14), z.literal(21), z.literal(30)]).optional(),
+  step: followupStepSchema.optional(),
 })
 
 export async function POST(
@@ -51,7 +50,7 @@ export async function POST(
       applicationId,
       kind: 'followup_email',
       tone: parsed.data.tone ?? 'friendly',
-      daysSince: parsed.data.daysSince,
+      ...(parsed.data.step ? { step: parsed.data.step } : {}),
       ai,
       links,
     }))

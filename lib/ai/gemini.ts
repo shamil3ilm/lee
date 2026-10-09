@@ -1,3 +1,4 @@
+import type { FollowupStep } from '@/lib/followups/cadence'
 import {
   buildResumeVariantPrompt,
   RESUME_VARIANT_PROMPT_VERSION,
@@ -333,6 +334,7 @@ export class GeminiProvider implements AIProvider {
     kind: OutreachKind
     tone: OutreachTone
     daysSince?: number
+    step?: FollowupStep
     links?: SharedLink[]
     facts?: ApplicationFacts | null
   }): Promise<OutreachDraft> {
@@ -484,6 +486,7 @@ function buildOutreachPrompt(input: {
   kind: OutreachKind
   tone: OutreachTone
   daysSince?: number
+  step?: FollowupStep
 }): string {
   switch (input.kind) {
     case 'linkedin_connection':
@@ -504,6 +507,7 @@ function buildOutreachPrompt(input: {
         application: input.application,
         tone: input.tone,
         daysSince: input.daysSince,
+        step: input.step ?? 1,
       })
   }
 }

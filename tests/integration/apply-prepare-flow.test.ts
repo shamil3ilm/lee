@@ -13,6 +13,7 @@ import { buildShortlistForUser } from '@/lib/apply/shortlist'
 import { confirmVariant, coverStep, saveChecklist, skipStep, startPrepare, tailorStep } from '@/lib/apply/prepare'
 import { markApplied } from '@/lib/apply/applied'
 import { completeFollowup, dueFollowups } from '@/lib/apply/followups'
+import { addBusinessDays } from '@/lib/followups/cadence'
 import { prepareBatch } from '@/lib/apply/batch'
 import { weekFunnel } from '@/lib/apply/funnel'
 import { syncGmail } from '@/lib/gmail/sync'
@@ -35,7 +36,7 @@ async function setup() {
     timezone: 'UTC',
     headline: 'Backend Engineer',
     skills: ['PHP', 'Laravel', 'MySQL'],
-    followupDays: 7,
+    followupDays: 5,
     links: [{ id: 'gh', label: 'GitHub', url: 'https://github.com/example', kind: 'github' }],
   })
   await saveResumeProfile(u.id, syntheticProfile())
@@ -137,7 +138,8 @@ describe('prepare application, end to end (AI fixtures)', () => {
         { id: c.documentId, kind: 'cover_letter', version: 1 },
       ],
     })
-    const dueDay = new Date(new Date(`${day}T12:00:00Z`).getTime() + 7 * DAY).toISOString().slice(0, 10)
+    // The first nudge: 5 business days after the applied day (lib/followups/cadence.ts).
+    const dueDay = addBusinessDays(new Date(`${day}T12:00:00Z`), 5).toISOString().slice(0, 10)
     expect(applied.followupDueAt?.toISOString()).toBe(`${dueDay}T09:00:00.000Z`)
     expect((await prepsQ.get(u.id, appId))?.followupStatus).toBe('pending')
 
@@ -149,7 +151,7 @@ describe('prepare application, end to end (AI fixtures)', () => {
       .where(and(eq(activities.applicationId, appId), eq(activities.kind, 'status_change')))
     expect(changes.filter((a) => (a.payload as { to?: string }).to === 'applied')).toHaveLength(1)
 
-    // Due after 7 days, not before.
+    // Due after 5 business days, not before.
     expect(await dueFollowups(u.id, now)).toEqual([])
     const due = await dueFollowups(u.id, new Date(now.getTime() + 8 * DAY))
     expect(due.map((d) => d.applicationId)).toEqual([appId])
@@ -202,9 +204,15 @@ describe('prepare application, end to end (AI fixtures)', () => {
     await expect(markApplied(u.id, applicationId, tomorrow)).rejects.toThrow(/future/)
     const today = new Date().toISOString().slice(0, 10)
     const first = await markApplied(u.id, applicationId, today)
+    // Completing the check-in schedules the final note (10 business days), then stops.
     expect(await completeFollowup(u.id, applicationId)).toBe(1)
+    const afterFirst = await prepsQ.get(u.id, applicationId)
+    expect(afterFirst?.followupStatus).toBe('pending')
+    expect(afterFirst!.followupDueAt!.getTime()).toBeGreaterThan(first.followupDueAt!.getTime())
+    expect(await completeFollowup(u.id, applicationId)).toBe(1)
+    expect((await prepsQ.get(u.id, applicationId))?.followupStatus).toBe('done')
     const second = await markApplied(u.id, applicationId, today)
-    expect(second.followupDueAt?.getTime()).toBe(first.followupDueAt?.getTime())
+    expect(second.followupDueAt?.getTime()).toBe(afterFirst?.followupDueAt?.getTime())
     expect((await prepsQ.get(u.id, applicationId))?.followupStatus).toBe('done')
   })
 

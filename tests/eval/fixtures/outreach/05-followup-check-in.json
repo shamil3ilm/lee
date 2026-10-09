@@ -1,0 +1,12 @@
+{
+  "name": "Follow-up email — step 1 check-in (5 business days)",
+  "notes": "Short check-in: one CV match, one question. No CV rehash, no artefacts.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": "@factory:application",
+    "kind": "followup_email",
+    "tone": "friendly",
+    "daysSince": 5,
+    "step": 1
+  }
+}

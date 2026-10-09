@@ -140,15 +140,9 @@ export type OutreachKind = z.infer<typeof outreachKindSchema>
 export const outreachToneSchema = z.enum(['formal', 'friendly', 'enthusiastic'])
 export type OutreachTone = z.infer<typeof outreachToneSchema>
 
-// v4.2 — timed follow-ups after applying. Only these intervals get pre-crafted
-// framings; the number is captured on the draft so the UI can group by day.
-export const followupIntervalSchema = z.union([
-  z.literal(7),
-  z.literal(14),
-  z.literal(21),
-  z.literal(30),
-])
-export type FollowupInterval = z.infer<typeof followupIntervalSchema>
+// Follow-ups after applying (lib/followups/cadence.ts): step 1 (check-in)
+// and step 2 (final note), counted in business days.
+export const followupStepSchema = z.union([z.literal(1), z.literal(2)])
 
 export const outreachDraftSchema = z.object({
   kind: outreachKindSchema,
@@ -158,9 +152,11 @@ export const outreachDraftSchema = z.object({
   tone: outreachToneSchema,
   wordCount: z.number().int().nonnegative(),
   notes: z.string().optional(),
-  // Present only when kind='followup_email'. Not enforced against
-  // followupIntervalSchema so a stale draft with an odd number still round-trips.
+  // Present only when kind='followup_email': business days since applying
+  // (calendar days on drafts from the old 7/14/21/30 cadence).
   daysSince: z.number().int().nonnegative().optional(),
+  // Follow-up step (1 check-in, 2 final note); absent on old drafts.
+  followupStep: followupStepSchema.optional(),
 })
 
 export type OutreachDraft = z.infer<typeof outreachDraftSchema>

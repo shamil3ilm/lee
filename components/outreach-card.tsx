@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Clock, Copy, Loader2, MessageSquare, RefreshCw, Sparkles } from 'lucide-react'
 import type { Document } from '@/lib/db/queries/documents'
+import { stepOfDraft, type FollowupStep } from '@/lib/followups/steps'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -33,7 +34,6 @@ type OutreachKind =
   | 'followup_email'
 type OutreachTone = 'formal' | 'friendly' | 'enthusiastic'
 type TabValue = 'connection' | 'message' | 'recruiter' | 'followup'
-type FollowupInterval = 7 | 14 | 21 | 30
 
 interface OutreachCardProps {
   applicationId: string
@@ -65,16 +65,17 @@ const TAB_LABEL: Record<TabValue, string> = {
   followup: 'Follow-up',
 }
 
-const FOLLOWUP_INTERVALS: ReadonlyArray<{
-  days: FollowupInterval
+/** Two short notes, then stop (lib/followups/cadence.ts; marks editable in Settings › Notifications). */
+const FOLLOWUP_BUTTONS: ReadonlyArray<{
+  step: FollowupStep
   label: string
   hint: string
 }> = [
-  { days: 7, label: '7-day check-in', hint: 'Gentle nudge' },
-  { days: 14, label: '14-day value-add', hint: 'Share a relevant artefact' },
-  { days: 21, label: '21-day reiteration', hint: 'Ask about timeline' },
-  { days: 30, label: '30-day close-loop', hint: 'Ask for a decision' },
+  { step: 1, label: 'Check-in', hint: 'After 5 business days (3 for GCC agencies)' },
+  { step: 2, label: 'Final note', hint: 'After 10 business days, then stop' },
 ]
+
+const STEP_BADGE: Readonly<Record<FollowupStep, string>> = { 1: 'check-in', 2: 'final note' }
 
 interface OutreachContent {
   body?: string
@@ -83,6 +84,7 @@ interface OutreachContent {
   wordCount?: number
   notes?: string
   daysSince?: number
+  followupStep?: number
 }
 
 function readContent(doc: Document): OutreachContent {
@@ -99,22 +101,14 @@ function latestForTab(docs: Document[], tab: TabValue): Document | null {
   return null
 }
 
-function followupDocsByInterval(docs: Document[]): Record<FollowupInterval, Document | null> {
-  // Latest doc per interval bucket. Docs are pre-sorted desc so first match
-  // per bucket wins.
-  const out: Record<FollowupInterval, Document | null> = {
-    7: null,
-    14: null,
-    21: null,
-    30: null,
-  }
+function followupDocsByStep(docs: Document[]): Record<FollowupStep, Document | null> {
+  // Latest doc per step. Docs are pre-sorted desc so first match per step
+  // wins; drafts from the old 7/14/21/30 cadence map by their day.
+  const out: Record<FollowupStep, Document | null> = { 1: null, 2: null }
   for (const d of docs) {
     if (KIND_TO_TAB[d.kind] !== 'followup') continue
-    const content = readContent(d)
-    const bucket = content.daysSince
-    if (bucket === 7 || bucket === 14 || bucket === 21 || bucket === 30) {
-      if (!out[bucket]) out[bucket] = d
-    }
+    const step = stepOfDraft(readContent(d))
+    if (step && !out[step]) out[step] = d
   }
   return out
 }
@@ -133,13 +127,13 @@ export function OutreachCard({
   const [activeTab, setActiveTab] = useState<TabValue>('connection')
   const [tone, setTone] = useState<OutreachTone>('friendly')
   const [busyTab, setBusyTab] = useState<TabValue | null>(null)
-  // For the follow-up tab we need per-interval busy tracking so only the
+  // For the follow-up tab we need per-step busy tracking so only the
   // clicked button spins.
-  const [busyFollowup, setBusyFollowup] = useState<FollowupInterval | null>(null)
+  const [busyFollowup, setBusyFollowup] = useState<FollowupStep | null>(null)
   // Per-tab local edits so switching tabs preserves any in-progress tweaks.
   const [drafts, setDrafts] = useState<Partial<Record<TabValue, string>>>({})
   const [followupDrafts, setFollowupDrafts] = useState<
-    Partial<Record<FollowupInterval, string>>
+    Partial<Record<FollowupStep, string>>
   >({})
 
   const latestByTab = useMemo(
@@ -151,10 +145,7 @@ export function OutreachCard({
     [outreachDocs],
   )
 
-  const followupsByInterval = useMemo(
-    () => followupDocsByInterval(outreachDocs),
-    [outreachDocs],
-  )
+  const followupsByStep = useMemo(() => followupDocsByStep(outreachDocs), [outreachDocs])
 
   async function generate(
     tab: Exclude<TabValue, 'followup'>,
@@ -207,10 +198,10 @@ export function OutreachCard({
   }
 
   async function generateFollowup(
-    days: FollowupInterval,
+    step: FollowupStep,
     priorDocId?: string,
   ): Promise<void> {
-    setBusyFollowup(days)
+    setBusyFollowup(step)
     if (priorDocId) void logImplicitAction(priorDocId, 'regenerated')
     try {
       const res = await fetch(
@@ -218,7 +209,7 @@ export function OutreachCard({
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tone, daysSince: days, linkIds }),
+          body: JSON.stringify({ tone, step, linkIds }),
         },
       )
       const json = (await res.json().catch(() => ({}))) as {
@@ -235,10 +226,10 @@ export function OutreachCard({
             : 'Follow-up skipped.',
         )
       } else if (res.ok && json.documentId) {
-        toast.success(`Day ${days} follow-up drafted`)
+        toast.success(step === 2 ? 'Final follow-up drafted' : 'Follow-up drafted')
         setFollowupDrafts((prev) => {
           const next = { ...prev }
-          delete next[days]
+          delete next[step]
           return next
         })
         router.refresh()
@@ -393,19 +384,19 @@ export function OutreachCard({
 
     return (
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {FOLLOWUP_INTERVALS.map(({ days, label, hint }) => {
-            const existing = followupsByInterval[days]
-            const busy = busyFollowup === days
+        <div className="grid grid-cols-2 gap-2">
+          {FOLLOWUP_BUTTONS.map(({ step, label, hint }) => {
+            const existing = followupsByStep[step]
+            const busy = busyFollowup === step
             return (
               <Button
-                key={days}
+                key={step}
                 type="button"
                 variant={existing ? 'outline' : 'default'}
                 size="sm"
                 className="flex h-auto flex-col items-start gap-0.5 px-3 py-2 text-left"
                 onClick={() => {
-                  void generateFollowup(days)
+                  void generateFollowup(step)
                 }}
                 disabled={busy}
                 title={hint}
@@ -423,19 +414,19 @@ export function OutreachCard({
         </div>
 
         <div className="space-y-3">
-          {FOLLOWUP_INTERVALS.map(({ days }) => {
-            const doc = followupsByInterval[days]
+          {FOLLOWUP_BUTTONS.map(({ step }) => {
+            const doc = followupsByStep[step]
             if (!doc) return null
             const content = readContent(doc)
-            const currentBody = followupDrafts[days] ?? content.body ?? ''
+            const currentBody = followupDrafts[step] ?? content.body ?? ''
             const wordCount = currentBody.trim().length
               ? currentBody.trim().split(/\s+/).length
               : 0
             return (
-              <div key={days} className="rounded-md border bg-muted/20 p-3">
+              <div key={step} className="rounded-md border bg-muted/20 p-3">
                 <div className="mb-2 flex items-center justify-between">
                   <Badge variant="violet" className="text-[10px]">
-                    day {days}
+                    {STEP_BADGE[step]}
                   </Badge>
                   <span className="text-[10px] text-muted-foreground">
                     v{doc.version} · {relativeFromNow(doc.createdAt)}
@@ -443,7 +434,7 @@ export function OutreachCard({
                 </div>
                 <StalenessBanner
                   documentId={doc.id}
-                  onRegenerate={() => generateFollowup(days)}
+                  onRegenerate={() => generateFollowup(step)}
                   className="mb-2"
                 />
                 {content.subject ? (
@@ -455,16 +446,16 @@ export function OutreachCard({
                   </div>
                 ) : null}
                 <Textarea
-                  key={`${doc.id}-followup-${days}`}
+                  key={`${doc.id}-followup-${step}`}
                   value={currentBody}
                   onChange={(e) =>
                     setFollowupDrafts((prev) => ({
                       ...prev,
-                      [days]: e.currentTarget.value,
+                      [step]: e.currentTarget.value,
                     }))
                   }
                   className="min-h-[140px] font-mono text-xs"
-                  aria-label={`Day ${days} follow-up draft`}
+                  aria-label={`${STEP_BADGE[step]} follow-up draft`}
                 />
                 <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
                   <span>{wordCount} words</span>
@@ -474,9 +465,9 @@ export function OutreachCard({
                       ariaLabel="Append voice note to follow-up"
                       onTranscribed={(text) => {
                         setFollowupDrafts((prev) => {
-                          const existing = prev[days] ?? content.body ?? ''
+                          const existing = prev[step] ?? content.body ?? ''
                           const merged = existing ? `${existing} ${text}` : text
-                          return { ...prev, [days]: merged }
+                          return { ...prev, [step]: merged }
                         })
                       }}
                     />

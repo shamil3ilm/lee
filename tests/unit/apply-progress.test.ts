@@ -39,8 +39,11 @@ describe('apply dates (user timezone)', () => {
     expect(appliedInstant('2026-10-06', tz, now).toISOString()).toBe('2026-10-06T08:00:00.000Z')
   })
 
-  it('schedules the follow-up N days later at 09:00 local', () => {
-    expect(followupDue(new Date('2026-10-06T08:00:00Z'), 7, tz).toISOString()).toBe('2026-10-13T05:00:00.000Z')
+  it('schedules the follow-up N business days later at 09:00 local', () => {
+    // Tuesday + 5 business days = the next Tuesday.
+    expect(followupDue(new Date('2026-10-06T08:00:00Z'), 5, tz).toISOString()).toBe('2026-10-13T05:00:00.000Z')
+    // Friday + 3 business days skips the weekend: Wednesday.
+    expect(followupDue(new Date('2026-10-09T08:00:00Z'), 3, tz).toISOString()).toBe('2026-10-14T05:00:00.000Z')
   })
 
   it('starts the week on the local Monday', () => {
@@ -50,10 +53,11 @@ describe('apply dates (user timezone)', () => {
 
 describe('apply settings', () => {
   it('falls back to defaults and clamps stored values', () => {
-    expect(applySettingsFrom(null)).toEqual({ shortlistSize: 5, followupDays: 7, shortlistInEmails: true })
-    expect(applySettingsFrom({ shortlistSize: 99, followupDays: 1, shortlistInEmails: false })).toEqual({
+    expect(applySettingsFrom(null)).toEqual({ shortlistSize: 5, followupDays: 5, followupSecondDays: 10, shortlistInEmails: true })
+    expect(applySettingsFrom({ shortlistSize: 99, followupDays: 1, followupSecondDays: 99, shortlistInEmails: false })).toEqual({
       shortlistSize: 10,
-      followupDays: 3,
+      followupDays: 2,
+      followupSecondDays: 30,
       shortlistInEmails: false,
     })
   })
