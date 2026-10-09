@@ -58,7 +58,8 @@ test('pick Dubai only (by search) → Dubai only', async ({ page }) => {
   await page.goto('/discoveries?status=dismissed')
   const dialog = await openPicker(page)
   await dialog.getByRole('searchbox').fill('dubai')
-  await dialog.getByRole('checkbox', { name: 'Dubai', exact: true }).check()
+  // Search results name the place and its chain ("Dubai › United Arab Emirates › GCC").
+  await dialog.getByRole('checkbox', { name: /^Dubai Dubai ›/ }).check()
   await expect(page).toHaveURL(/region=dubai(&|$)/)
   await page.keyboard.press('Escape')
   await expectOnly(page, [DUBAI])
@@ -121,10 +122,13 @@ test('the Shortlist has the same Region filter', async ({ page }) => {
 test('Settings › Search picks regions hierarchically (not saved)', async ({ page }) => {
   await page.goto('/settings/search')
   const picker = page.getByTestId('target-regions')
-  await expect(picker.getByTestId('target-regions-picker')).toContainText('GCC, India')
   await picker.getByTestId('target-regions-picker').click()
   const dialog = page.getByRole('dialog', { name: 'Target regions' })
-  // The Kerala quick pick narrows India to Kerala; GCC stays.
+  // Start from GCC + India, then the Kerala quick pick narrows India to Kerala; GCC stays.
+  if (await dialog.getByRole('button', { name: 'Clear' }).isVisible()) await dialog.getByRole('button', { name: 'Clear' }).click()
+  await dialog.getByRole('button', { name: 'GCC', exact: true }).click()
+  await dialog.getByRole('button', { name: 'India', exact: true }).click()
+  await expect(picker.getByTestId('target-regions-picker')).toContainText('GCC, India')
   await dialog.getByRole('button', { name: 'Kerala', exact: true }).click()
   const hidden = picker.locator('input[type="hidden"][name="region"]')
   await expect.poll(() => hidden.evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value))).toEqual(['gcc', 'kerala'])

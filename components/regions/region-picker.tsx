@@ -75,14 +75,17 @@ export function RegionPicker({
   return (
     <div className={cn('flex flex-wrap items-center gap-1.5', className)}>
       <ResponsivePopover trigger={trigger} title={label} contentClassName="w-[min(22rem,calc(100vw-2rem))] space-y-3">
-        <Input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search: Kochi, Cochin, DIFC, Technopark…"
-          aria-label={`Search ${label.toLowerCase()}`}
-          className="h-8"
-        />
+        {/* On phones the sheet's close button sits top-right: keep the field clear of it. */}
+        <div className="max-sm:pr-8">
+          <Input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search: Kochi, Cochin, DIFC, Technopark…"
+            aria-label={`Search ${label.toLowerCase()}`}
+            className="h-8"
+          />
+        </div>
         {quickPicks.length > 0 && !query ? (
           <div role="group" aria-label="Quick picks" className="flex flex-wrap gap-1.5">
             {quickPicks.map((id) => {
