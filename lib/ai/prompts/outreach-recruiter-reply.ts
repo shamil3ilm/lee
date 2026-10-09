@@ -2,7 +2,8 @@ import type { MasterCV, OutreachTone } from '@/lib/documents/types'
 import type { ApplicationWithJob } from '@/lib/db/queries/applications'
 
 // v10.1 — bump on intentional edits; see lib/ai/prompts/hash.ts for rationale.
-export const OUTREACH_RECRUITER_REPLY_PROMPT_VERSION = '1.1.0'
+// 1.2.0 — region block (lib/ai/prompts/application-facts.ts).
+export const OUTREACH_RECRUITER_REPLY_PROMPT_VERSION = '1.2.0'
 
 export const OUTREACH_RECRUITER_REPLY_SYSTEM = `You draft an email reply to an INBOUND recruiter message about the role in the JOB block.
 

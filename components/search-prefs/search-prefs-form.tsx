@@ -13,6 +13,7 @@ import { TargetSections } from './target-sections'
 import { LearnedTitles } from './learned-titles'
 import { RecheckProgress, type RecheckStart } from './recheck-progress'
 import { LanguagesSection, NoticeSection, PaySection, RuleSection, WorkAuthSection } from './rule-sections'
+import { ShareSection } from './share-section'
 
 interface SearchPrefsFormProps {
   values: SearchPrefsFormValues
@@ -66,6 +67,7 @@ export function SearchPrefsForm({ values }: SearchPrefsFormProps) {
           <PaySection values={values} />
           <LanguagesSection values={values} />
           <NoticeSection values={values} />
+          <ShareSection values={values} />
           <LearnedTitles titles={values.learnedTitles} />
           {/* One Save for the whole form, kept in reach on a long page. */}
           <div

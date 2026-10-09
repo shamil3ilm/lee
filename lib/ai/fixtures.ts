@@ -1,6 +1,7 @@
 import type { ResumeVariantInput, ResumeVariantResult } from './prompts/resume-variant'
 import type { TailorCVInput } from './prompts/tailor-cv'
 import type { CoverLetterTailoring } from './prompts/cover-letter'
+import { factsSentence, type ApplicationFacts } from './prompts/application-facts'
 import type {
   AIProvider,
   BulletRewriteInput,
@@ -185,6 +186,7 @@ export class FixtureAIProvider implements AIProvider {
     master: MasterCV
     application: ApplicationWithJob
     tailoring?: CoverLetterTailoring
+    facts?: ApplicationFacts | null
   }): Promise<CoverLetter> {
     if (this.fixtures.draftCoverLetter) return this.fixtures.draftCoverLetter(input)
     return pseudoCoverLetter(input)
@@ -201,6 +203,7 @@ export class FixtureAIProvider implements AIProvider {
     kind: OutreachKind
     tone: OutreachTone
     daysSince?: number
+    facts?: ApplicationFacts | null
   }): Promise<OutreachDraft> {
     if (this.fixtures.draftOutreach) return this.fixtures.draftOutreach(input)
     return pseudoOutreach(input)
@@ -444,9 +447,12 @@ function pseudoTailor(input: {
 function pseudoCoverLetter(input: {
   master: MasterCV
   application: ApplicationWithJob
+  facts?: ApplicationFacts | null
 }): CoverLetter {
   const { master, application } = input
   const company = application.job.company?.name ?? 'your company'
+  // The region block, stated deterministically (the real prompt asks for it near the end).
+  const facts = factsSentence(input.facts)
   return {
     applicationId: application.id,
     greeting: 'Dear Hiring Manager,',
@@ -454,6 +460,7 @@ function pseudoCoverLetter(input: {
       `I am writing to apply for the ${application.job.title} role at ${company}.`,
       `Recent work: ${master.experience[0]?.bullets[0] ?? 'various engineering projects'}.`,
       'I would welcome the chance to discuss how my background aligns with your team.',
+      ...(facts ? [facts] : []),
     ],
     closing: `Sincerely,\n${master.basics.name}`,
     senderName: master.basics.name,
@@ -476,8 +483,10 @@ function pseudoOutreach(input: {
   kind: OutreachKind
   tone: OutreachTone
   daysSince?: number
+  facts?: ApplicationFacts | null
 }): OutreachDraft {
   const { master, application, kind, tone, daysSince } = input
+  const facts = kind === 'linkedin_connection' ? '' : factsSentence(input.facts)
   const company = application.job.company?.name ?? 'your team'
   const role = application.job.title
   const first = master.experience[0]
@@ -504,7 +513,9 @@ function pseudoOutreach(input: {
       }),
     },
   }
-  const draft = bodies[kind]
+  const base = bodies[kind]
+  // The region block goes just before the sign-off ("Thanks,\nName").
+  const draft = facts ? { ...base, body: base.body.replace(/\n\n([^\n]*\n[^\n]*)$/, `\n\n${facts}\n\n$1`) } : base
   return {
     kind,
     applicationId: application.id,

@@ -1,5 +1,5 @@
 import type { UserProfile } from '@/lib/db/queries/profile'
-import { EXCLUSION_RULES, noticeLabel, RULE_LABELS, ruleMode } from './discovery-prefs'
+import { EXCLUSION_RULES, noticeLabel, RULE_LABELS, ruleMode, type ShareSettings } from './discovery-prefs'
 import { searchPrefsFromProfile, targetFamilies, targetRegionIds, type RemoteScope } from './prefs'
 import { SETTINGS_ROOTS } from '@/lib/regions/taxonomy'
 import { shortName } from '@/lib/regions/tree'
@@ -73,6 +73,8 @@ export interface SearchPrefsFormValues {
   payIndiaLpa: string
   languages: Array<{ name: string; level: string }>
   notice: string[]
+  /** What drafts may state (region block). */
+  share: ShareSettings
   saved: boolean
   /** Titles lee learned, newest first. */
   learnedTitles: Array<{ key: string; related: boolean; family: string | null; at: string }>
@@ -105,6 +107,7 @@ export function searchPrefsFormValues(profile: UserProfile | null): SearchPrefsF
     payIndiaLpa: india ? String(india.amount / 100_000) : '',
     languages: p.extra.languages.map((l) => ({ name: l.name, level: l.level })),
     notice: p.extra.noticePeriods,
+    share: p.extra.share,
     saved: p.active,
     learnedTitles: Object.entries(parseLearnedTitles(profile?.learnedTitles))
       .map(([key, v]) => ({ key, ...v }))

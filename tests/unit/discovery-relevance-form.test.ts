@@ -50,6 +50,8 @@ describe('search preferences form', () => {
         ['notice', 'never'],
         ['relocationIfSponsored', 'on'],
         ['relocationCountries', 'de, uk, eu, x1'],
+        ['share_visa', 'on'],
+        ['share_notice', 'on'],
       ]),
       null,
       now,
@@ -79,6 +81,7 @@ describe('search preferences form', () => {
       noticePeriods: ['immediate', '1_month'],
       relocationIfSponsored: true,
       relocationCountries: ['DE', 'UK', 'EU'],
+      share: { visa: true, notice: true, relocation: false, timezone: false, nationality: false },
     })
   })
 

@@ -7,6 +7,7 @@ import { FixtureAIProvider } from '@/lib/ai/fixtures'
 import * as documentsQ from '@/lib/db/queries/documents'
 import { makeUser, makeCompany, makeJob, makeApplication } from '@/tests/factories'
 import type { MasterCV } from '@/lib/documents/types'
+import * as profileQ from '@/lib/db/queries/profile'
 
 function makeCv(): MasterCV {
   return {
@@ -128,5 +129,30 @@ describe('generateCoverLetter', () => {
     await expect(
       generateCoverLetter({ userId: u.id, applicationId: app.id, ai }),
     ).rejects.toBeInstanceOf(MasterCVNotFoundError)
+  })
+})
+
+describe('region block from private settings', () => {
+  it('a Dubai cover letter states visa, notice and relocation; nationality and CTC only on opt-in', async () => {
+    const u = await makeUser('cover-gcc@x.com')
+    const co = await makeCompany(u.id, { name: 'Example Gulf Co' })
+    const j = await makeJob(u.id, co.id, { title: 'Laravel Developer', location: 'Dubai, UAE', remoteType: 'onsite' })
+    const app = await makeApplication(u.id, j.id)
+    await saveMasterCV(u.id, makeCv())
+    await profileQ.upsert(u.id, {
+      discoveryPrefs: { basedIn: 'IN', sponsorshipFor: ['AE'], noticePeriods: ['1_month'], relocationIfSponsored: true },
+    })
+    const doc = await generateCoverLetter({ userId: u.id, applicationId: app.id, ai: new FixtureAIProvider() })
+    const last = (doc.content as { paragraphs: string[] }).paragraphs.at(-1)
+    expect(last).toBe('Visa: Requires employment visa sponsorship for UAE. Notice period: 1 month. Relocation: Available to relocate to UAE.')
+    expect(last).not.toMatch(/Nationality|CTC/)
+  })
+
+  it('a posting outside GCC / India / remote gets no block', async () => {
+    const { u, app } = await seed('cover-none@x.com')
+    await saveMasterCV(u.id, makeCv())
+    await profileQ.upsert(u.id, { discoveryPrefs: { basedIn: 'IN', sponsorshipFor: ['AE'], noticePeriods: ['1_month'] } })
+    const doc = await generateCoverLetter({ userId: u.id, applicationId: app.id, ai: new FixtureAIProvider() })
+    expect((doc.content as { paragraphs: string[] }).paragraphs.join(' ')).not.toContain('Notice period')
   })
 })

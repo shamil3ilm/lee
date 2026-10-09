@@ -1,0 +1,34 @@
+{
+  "name": "Dubai role: GCC region block (visa, notice, relocation; no nationality, no pay)",
+  "notes": "Synthetic facts as lib/apply/application-facts.ts builds them. Expected: one short closing line with exactly these facts; nothing about salary or nationality.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": {
+      "@factory": "application",
+      "overrides": {
+        "role": "Laravel Developer",
+        "company": "Example Gulf Co",
+        "location": "Dubai, UAE",
+        "remoteType": "onsite",
+        "descriptionMd": "Laravel and MySQL for a payments platform in Dubai."
+      }
+    },
+    "facts": {
+      "region": "gcc",
+      "lines": [
+        {
+          "label": "Visa",
+          "value": "Requires employment visa sponsorship for UAE"
+        },
+        {
+          "label": "Notice period",
+          "value": "1 month"
+        },
+        {
+          "label": "Relocation",
+          "value": "Available to relocate to UAE"
+        }
+      ]
+    }
+  }
+}

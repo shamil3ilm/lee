@@ -199,6 +199,8 @@ async function runFixture(
       return ai.draftCoverLetter({
         master: inputs.master as never,
         application: inputs.application as never,
+        // Region block (GCC / India / Remote facts the user opted to share).
+        facts: (inputs.facts as never) ?? null,
       })
     case 'outreach':
       return ai.draftOutreach({
@@ -207,6 +209,7 @@ async function runFixture(
         kind: inputs.kind as never,
         tone: inputs.tone as never,
         daysSince: inputs.daysSince as number | undefined,
+        facts: (inputs.facts as never) ?? null,
       })
     case 'prep-pack':
       return ai.generateInterviewPrepPack({

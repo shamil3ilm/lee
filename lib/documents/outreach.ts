@@ -16,6 +16,7 @@ import {
 import type { StateSnapshot } from '@/lib/staleness/types'
 import type { AIProvider } from '@/lib/ai/types'
 import type { SharedLink } from '@/lib/ai/prompts/shared-links'
+import { loadApplicationFacts } from '@/lib/apply/application-facts-service'
 import type { Document, DocumentKind } from '@/lib/db/queries/documents'
 
 const KIND_LABELS: Record<OutreachKind, string> = {
@@ -119,6 +120,8 @@ export async function generateOutreachDraft(input: {
     }
   }
 
+  // GCC / India / Remote facts the user opted to share; never on a connection note.
+  const facts = input.kind === 'linkedin_connection' ? null : await loadApplicationFacts(input.userId, application.job)
   const draft = await input.ai.draftOutreach({
     master,
     application,
@@ -126,6 +129,7 @@ export async function generateOutreachDraft(input: {
     tone: input.tone,
     daysSince,
     links: input.links,
+    ...(facts ? { facts } : {}),
   })
   // The prompt asks the model to echo daysSince back on the draft; some models
   // will drop it. Server-side truth wins so the UI can group by day reliably.

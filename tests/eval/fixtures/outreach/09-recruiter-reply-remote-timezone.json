@@ -1,0 +1,27 @@
+{
+  "name": "Remote role recruiter reply: time-zone overlap from the region block",
+  "notes": "Expected: short, link-first, one sentence on time-zone overlap.",
+  "inputs": {
+    "master": "@factory:masterCV",
+    "application": {
+      "@factory": "application",
+      "overrides": {
+        "role": "Backend Engineer",
+        "company": "Example Remote Co",
+        "location": "Remote",
+        "remoteType": "remote"
+      }
+    },
+    "kind": "recruiter_reply",
+    "tone": "friendly",
+    "facts": {
+      "region": "remote",
+      "lines": [
+        {
+          "label": "Time zone",
+          "value": "Asia/Kolkata (UTC+05:30)"
+        }
+      ]
+    }
+  }
+}

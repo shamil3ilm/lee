@@ -5,7 +5,9 @@ import type { ApplicationWithJob } from '@/lib/db/queries/applications'
 // 1.2.0 — reads the JD requirements lee checked against the ready profile
 // and the adjacent experience the user chose to mention ("Tailor to this
 // JD"). Without a saved tailoring the prompt is the 1.1.0 one.
-export const COVER_LETTER_PROMPT_VERSION = '1.2.0'
+// 1.3.0 — region block (GCC / India / Remote facts the user opted to share),
+// appended by withApplicationFacts; without facts the prompt is unchanged.
+export const COVER_LETTER_PROMPT_VERSION = '1.3.0'
 
 /** What "Tailor to this JD" saved for this application (lib/cv-fit/tailor). */
 export interface CoverLetterTailoring {

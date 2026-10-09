@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Briefcase, Lock, Trash2, UserRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { FormField } from '@/components/ui/form-field'
@@ -146,7 +147,24 @@ export function CurrentJobForm({ initial, prefill }: CurrentJobFormProps) {
                   ))}
                 </NativeSelect>
               </FormField>
+              <FormField htmlFor="cj-expected" label="Expected yearly pay" hint="(optional)" help="Your expected CTC, before tax, per year.">
+                <Input
+                  id="cj-expected"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  aria-describedby="cj-expected-help"
+                  value={form.expectedAnnual}
+                  onChange={(e) => set({ expectedAnnual: e.target.value })}
+                />
+              </FormField>
             </div>
+            <Checkbox
+              id="cj-share-ctc"
+              checked={form.shareCtc}
+              onChange={(e) => set({ shareCtc: e.target.checked })}
+              label="Share current and expected CTC in India applications"
+              description="Off by default. When on, cover letters and recruiter messages for Indian roles state them."
+            />
           </section>
 
           <BenefitsSection form={form} set={set} />
