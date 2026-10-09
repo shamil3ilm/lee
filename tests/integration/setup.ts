@@ -8,6 +8,13 @@ import { clearThrottleCache } from '@/lib/usage/throttle'
 // App-level tables to truncate between tests. Ordered from child to parent
 // (though CASCADE handles the rest). Keep in sync with lib/db/schema.ts.
 const TABLES = [
+  'linkedin_posts',
+  'linkedin_connections',
+  'linkedin_imports',
+  'github_repo_stats',
+  'action_throttle',
+  'oauth_states',
+  'integration_connections',
   'job_comparison',
   'radar_briefs',
   'radar_items',

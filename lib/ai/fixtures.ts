@@ -17,6 +17,13 @@ import { replacementVerb, weakOpenerOf } from '@/lib/cv-score/dimensions/impact'
 import type { CallMeta } from './log'
 import type { ReputationSummaryInput, ReputationSummaryResult } from './prompts/reputation-summary'
 import type { RadarBriefInput, RadarBriefResult } from './prompts/radar-brief'
+import type {
+  LinkedInPostInput,
+  LinkedInPostResult,
+  LinkedInProfileInput,
+  LinkedInProfileResult,
+} from './prompts/linkedin'
+import { pseudoLinkedInPost, pseudoLinkedInProfile } from './fixtures-linkedin'
 import { pseudoRadarBrief } from './fixtures-radar'
 import type { ScoreJobContext } from './prompts/score-job'
 import type { SuggestRolesInput, SuggestRolesResult } from './prompts/suggest-roles'
@@ -88,6 +95,8 @@ export class FixtureAIProvider implements AIProvider {
       proposeResumeVariant?: (input: ResumeVariantInput) => ResumeVariantResult
       extractOpenings?: (input: ExtractOpeningsInput) => ExtractOpeningsResult
       writeRadarBrief?: (input: RadarBriefInput) => RadarBriefResult
+      draftLinkedInPost?: (input: LinkedInPostInput) => LinkedInPostResult
+      suggestLinkedInProfile?: (input: LinkedInProfileInput) => LinkedInProfileResult
     } = {},
   ) {}
 
@@ -284,6 +293,16 @@ export class FixtureAIProvider implements AIProvider {
     }
   }
 
+  async draftLinkedInPost(input: LinkedInPostInput, meta?: CallMeta): Promise<LinkedInPostResult> {
+    await this.emitLoggedCallId('linkedin_post', meta)
+    if (this.fixtures.draftLinkedInPost) return this.fixtures.draftLinkedInPost(input)
+    return pseudoLinkedInPost(input)
+  }
+  async suggestLinkedInProfile(input: LinkedInProfileInput, meta?: CallMeta): Promise<LinkedInProfileResult> {
+    await this.emitLoggedCallId('linkedin_profile', meta)
+    if (this.fixtures.suggestLinkedInProfile) return this.fixtures.suggestLinkedInProfile(input)
+    return pseudoLinkedInProfile(input)
+  }
   async writeRadarBrief(input: RadarBriefInput, meta?: CallMeta): Promise<RadarBriefResult> {
     await this.emitLoggedCallId('radar_brief', meta)
     if (this.fixtures.writeRadarBrief) return this.fixtures.writeRadarBrief(input)

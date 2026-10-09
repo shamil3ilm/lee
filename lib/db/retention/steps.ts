@@ -23,6 +23,7 @@ export const USER_STEP_IDS = [
   'applyHistory',
   'codingSubmissions',
   'radarItems',
+  'githubRepoStats',
 ] as const
 
 export const GLOBAL_STEP_IDS = [
@@ -33,6 +34,7 @@ export const GLOBAL_STEP_IDS = [
   'scamDomains',
   'systemEvents',
   'radarWhatsNew',
+  'integrationScratch',
 ] as const
 
 export type UserStepId = (typeof USER_STEP_IDS)[number]
@@ -69,12 +71,14 @@ export const STEP_LABELS: Readonly<Record<RetentionStepId, string>> = {
   applyHistory: 'Old daily shortlists and “Not for me” feedback deleted',
   codingSubmissions: 'Old coding submission code past the last 20 per problem deleted (best and latest kept)',
   radarItems: 'AI Radar items older than 30 days deleted (watched, saved and briefed entries kept)',
+  githubRepoStats: 'Cached GitHub repo stats not refreshed for 30 days deleted (linked and followed repos kept)',
   queueJobs: 'Finished background jobs deleted',
   orphanAiCallLogs: 'AI call logs of deleted users deleted',
   expiredAuth: 'Expired sign-in records deleted',
   usageHistory: 'Old usage snapshots and alerts deleted',
   scamDomains: 'Stale domain checks deleted',
   systemEvents: 'Old log events deleted',
+  integrationScratch: 'Expired GitHub / LinkedIn sign-in attempts and old rate-limit windows deleted',
   radarWhatsNew: "AI Radar what's new entries older than 60 days deleted (saved, watched and briefed kept)",
 }
 

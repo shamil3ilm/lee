@@ -20,6 +20,7 @@ import { toMatchDetail } from '@/lib/discovery/match/detail'
 import { ensureBestCv } from '@/lib/cv-fit/service'
 import { toBestCv, type BestCv } from '@/lib/cv-fit/types'
 import { BestCvLine } from '@/components/cv-fit/best-cv-line'
+import { ReferralHint } from '@/components/linkedin/referral-hint'
 
 /** The comparison card runs ~3k px on phones: jump past it to the description. */
 const SECTIONS: readonly SectionLink[] = [
@@ -100,6 +101,7 @@ export default async function DiscoveryDetail({ params }: { params: Promise<{ id
           ) : null}
         </CardContent>
       </Card>
+      <ReferralHint userId={userId} company={company} role={title} myName={null} />
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
         <div id="comparison" className={`${SECTION_ANCHOR} min-w-0 xl:col-span-3`}>
           <ComparisonCard comparison={card.comparison} hasCurrent={card.hasCurrent} saved={card.saved} citations={card.citations} />

@@ -1,4 +1,7 @@
+import Link from 'next/link'
 import { plural } from '@/lib/ui/labels'
+import * as connQ from '@/lib/db/queries/integrationConnections'
+import { githubAppConfig } from '@/lib/integrations/config'
 import { requireUserId } from '@/lib/auth/require-session'
 import * as publishQ from '@/lib/db/queries/portfolioPublish'
 import * as variantsQ from '@/lib/db/queries/resumeVariants'
@@ -18,16 +21,19 @@ export const dynamic = 'force-dynamic'
 
 export default async function PublishPage() {
   const userId = await requireUserId()
-  const [state, statuses, preview, variants, { profile }] = await Promise.all([
+  const [state, statuses, preview, variants, { profile }, github] = await Promise.all([
     publishQ.get(userId),
     listServiceSecretStatuses(userId),
     previewPublish(userId),
     variantsQ.list(userId, { archived: true }),
     getResumeProfile(userId),
+    connQ.get(userId, 'github'),
   ])
+  // Connect GitHub is preferred: an installation token for this repo, else the fine-grained token.
+  const viaApp = githubAppConfig().ok && Boolean(github?.installationId)
   const token = statuses.find((s) => s.info.id === PORTFOLIO_TOKEN_ID)
   const config = { repo: state?.repo ?? '', branch: state?.branch ?? 'main', path: state?.path ?? 'profile.json' }
-  const ready = isConfigured(config) && (token?.source ?? 'none') !== 'none'
+  const ready = isConfigured(config) && (viaApp || (token?.source ?? 'none') !== 'none')
   // Enabled variants, plus any still on the portfolio (e.g. archived since) so they can be removed.
   const variantRows: VariantPublishRow[] = variants
     .filter((v) => v.portfolioSlug && (v.publishToPortfolio || v.portfolioLastSha))
@@ -52,6 +58,20 @@ export default async function PublishPage() {
         commitUrl={state?.lastCommitUrl ?? null}
       />
       <VariantPublishList rows={variantRows} ready={ready} />
+      <p className="text-sm text-muted-foreground" data-testid="publish-auth">
+        {viaApp ? (
+          <>
+            Publishing uses your <Link href="/settings/integrations#github" className="underline">GitHub connection</Link> (the lee app installed
+            on your repository); the fine-grained token below is only the fallback.
+          </>
+        ) : (
+          <>
+            Publishing uses the fine-grained token below. Or{' '}
+            <Link href="/settings/integrations#github" className="underline">connect GitHub</Link> and install the lee app on your portfolio
+            repository: no personal token needed.
+          </>
+        )}
+      </p>
       <PublishSettings config={config} token={{ source: token?.source ?? 'none', last4: token?.last4 ?? null }} />
       <Card>
         <CardHeader>

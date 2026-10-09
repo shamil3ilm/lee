@@ -57,8 +57,34 @@ export const RELEASE_PROJECTS: readonly ReleaseProject[] = [
 export const RELEASE_PROJECT_IDS: readonly string[] = RELEASE_PROJECTS.map((p) => p.id)
 const BY_ID = new Map(RELEASE_PROJECTS.map((p) => [p.id, p]))
 
+/**
+ * A GitHub repository followed directly ("gh:owner/repo"): a starred repo,
+ * or a dependency of a linked repo that is not in the catalog. Its GitHub
+ * releases are followed like a catalog project's.
+ */
+export const GITHUB_PROJECT_PREFIX = 'gh:'
+const GITHUB_PROJECT = /^gh:([A-Za-z0-9-]{1,39})\/([A-Za-z0-9._-]{1,100})$/
+
+export function githubProjectId(fullName: string): string | null {
+  const id = `${GITHUB_PROJECT_PREFIX}${fullName}`
+  return GITHUB_PROJECT.test(id) ? id : null
+}
+
+function githubProject(id: string): ReleaseProject | undefined {
+  const m = GITHUB_PROJECT.exec(id)
+  if (!m) return undefined
+  const repo = m[2]!
+  return { id, label: `${m[1]}/${repo}`, github: `${m[1]}/${repo}`, aliases: [repo.toLowerCase()] }
+}
+
+/** The catalog project with this GitHub repo, if any ("vercel/next.js" is nextjs). */
+export function catalogIdForRepo(fullName: string): string | undefined {
+  const lower = fullName.toLowerCase()
+  return RELEASE_PROJECTS.find((p) => p.github?.toLowerCase() === lower)?.id
+}
+
 export function releaseProject(id: string): ReleaseProject | undefined {
-  return BY_ID.get(id)
+  return BY_ID.get(id) ?? githubProject(id)
 }
 
 /** Role families (lib/discovery/relevance/roles.ts) → projects their work usually runs on. */
@@ -92,14 +118,14 @@ export function deriveReleaseProjects(input: {
   return [...out].slice(0, MAX_USER_PROJECTS)
 }
 
-/** Known ids only, unique, capped. */
+/** Known ids (catalog or gh:owner/repo) only, unique, capped. */
 export function cleanProjectIds(ids: readonly unknown[]): string[] {
-  return [...new Set(ids.filter((i): i is string => typeof i === 'string' && BY_ID.has(i)))].slice(0, MAX_USER_PROJECTS)
+  return [...new Set(ids.filter((i): i is string => typeof i === 'string' && releaseProject(i) !== undefined))].slice(0, MAX_USER_PROJECTS)
 }
 
 /** The shared fetch's list: every user's projects, most-followed first, capped. */
 export function unionProjects(lists: ReadonlyArray<readonly string[]>, cap = 30): string[] {
   const count = new Map<string, number>()
-  for (const l of lists) for (const id of new Set(l)) if (BY_ID.has(id)) count.set(id, (count.get(id) ?? 0) + 1)
+  for (const l of lists) for (const id of new Set(l)) if (releaseProject(id)) count.set(id, (count.get(id) ?? 0) + 1)
   return [...count.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, cap).map(([id]) => id)
 }
