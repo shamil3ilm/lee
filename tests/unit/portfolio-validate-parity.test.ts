@@ -17,7 +17,19 @@ import { syntheticProfile } from '@/tests/fixtures/resume/profile'
  */
 
 const FIXTURES = path.resolve('tests/fixtures/portfolio')
-const PORTFOLIO_REPO = process.env.LEE_PORTFOLIO_REPO ?? path.resolve('..', 'portfolio')
+/**
+ * Reads ONE key from .env.local. Never load the whole file into tests: it
+ * holds real credentials (e.g. the production DATABASE_URL).
+ */
+function envLocalValue(key: string): string | undefined {
+  const file = path.resolve('.env.local')
+  if (!existsSync(file)) return undefined
+  const line = readFileSync(file, 'utf8').split(/\r?\n/).find((l) => l.startsWith(`${key}=`))
+  return line?.slice(key.length + 1).trim().replace(/^["']|["']$/g, '') || undefined
+}
+
+const PORTFOLIO_REPO =
+  process.env.LEE_PORTFOLIO_REPO ?? envLocalValue('LEE_PORTFOLIO_REPO') ?? path.resolve('..', 'portfolio')
 
 type JsCheck = (profile: unknown, schema: unknown) => string[]
 async function original(): Promise<{ checkProfile: JsCheck; schema: unknown }> {
