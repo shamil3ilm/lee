@@ -10,9 +10,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { LOCKED_OFF } from '@/lib/variants/presets'
 import { moveSection, sectionRows, toggleSection } from '@/lib/variants/edit'
 import {
+  isPaperSize,
+  PAPER_LABELS,
+  PAPER_SIZES,
   REGION_FIELD_LABELS,
   REGION_FIELDS,
   REGION_LABELS,
+  REGION_PAPER,
   REGIONS,
   SECTION_LABELS,
   TEMPLATE_LABELS,
@@ -72,16 +76,26 @@ export function VariantSettingsCard({ name, onName, portfolio, recipe, onChange,
                 <option value="2">2 pages</option>
               </NativeSelect>
             </FormField>
-            <FormField htmlFor="variant-template" label="Template">
-              <NativeSelect id="variant-template" value={recipe.template} onChange={(e) => set({ template: e.target.value as VariantTemplate })}>
-                {TEMPLATES.map((t) => (
-                  <option key={t} value={t}>
-                    {TEMPLATE_LABELS[t]}
+            <FormField htmlFor="variant-paper" label="Paper">
+              <NativeSelect id="variant-paper" value={recipe.paper ?? ''} onChange={(e) => set({ paper: isPaperSize(e.target.value) ? e.target.value : null })}>
+                <option value="">{`Region default (${PAPER_LABELS[REGION_PAPER[recipe.region]]})`}</option>
+                {PAPER_SIZES.map((size) => (
+                  <option key={size} value={size}>
+                    {PAPER_LABELS[size]}
                   </option>
                 ))}
               </NativeSelect>
             </FormField>
           </div>
+          <FormField htmlFor="variant-template" label="Template" className="sm:col-span-2">
+            <NativeSelect id="variant-template" value={recipe.template} onChange={(e) => set({ template: e.target.value as VariantTemplate })}>
+              {TEMPLATES.map((t) => (
+                <option key={t} value={t}>
+                  {TEMPLATE_LABELS[t]}
+                </option>
+              ))}
+            </NativeSelect>
+          </FormField>
         </div>
         <FormField htmlFor="variant-headline" label="Headline">
           <Input id="variant-headline" value={recipe.headline} onChange={(e) => set({ headline: e.target.value })} />

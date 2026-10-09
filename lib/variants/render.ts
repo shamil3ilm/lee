@@ -11,7 +11,7 @@ import {
 } from '@/lib/resume/readiness'
 import type { Highlight, ResumeProfile } from '@/lib/resume/types'
 import { fieldOn } from './presets'
-import { SECTION_LABELS, type ItemPick, type Recipe, type RegionField, type SectionKey } from './types'
+import { paperFor, SECTION_LABELS, type ItemPick, type PaperSize, type Recipe, type RegionField, type SectionKey } from './types'
 
 /**
  * Recipe + current master profile → the résumé to print. Facts always come
@@ -71,6 +71,8 @@ export interface RenderedResume {
   /** Rough page estimate for the length target. */
   estimatedPages: number
   template: Recipe['template']
+  /** A4 or US Letter (the recipe's choice, else its region's default). */
+  paper: PaperSize
   /** Place the profile photo: the Photo field is on, the region allows it and a photo exists. */
   photo: boolean
 }
@@ -322,6 +324,7 @@ export function renderVariant(profile: ResumeProfile, recipe: Recipe, opts: Rend
     warnings: ctx.warnings,
     estimatedPages,
     template: recipe.template,
+    paper: paperFor(recipe),
     photo: fieldOn(recipe, 'photo') && opts.hasPhoto === true,
   }
 }

@@ -29,6 +29,18 @@ export const TEMPLATE_LABELS: Readonly<Record<VariantTemplate, string>> = {
   classic: 'Classic (Charter, ruled sections, dates on the right)',
 }
 
+/**
+ * Paper size. GCC and Indian employers and agencies print and attach on A4;
+ * US readers expect Letter. A recipe stores `null` to follow its region.
+ */
+export const PAPER_SIZES = ['a4', 'letter'] as const
+export type PaperSize = (typeof PAPER_SIZES)[number]
+export const PAPER_LABELS: Readonly<Record<PaperSize, string>> = { a4: 'A4', letter: 'US Letter' }
+export function isPaperSize(v: unknown): v is PaperSize {
+  return typeof v === 'string' && (PAPER_SIZES as readonly string[]).includes(v)
+}
+export const REGION_PAPER: Readonly<Record<Region, PaperSize>> = { gcc: 'a4', india: 'a4', remote: 'letter' }
+
 export const SECTION_KEYS = ['summary', 'work', 'projects', 'skills', 'education', 'languages', 'certificates'] as const
 export type SectionKey = (typeof SECTION_KEYS)[number]
 export const SECTION_LABELS: Readonly<Record<SectionKey, string>> = {
@@ -100,10 +112,17 @@ export const recipeSchema = z.object({
   overrides: z.array(idSchema).max(40).default([]),
   lengthTarget: z.union([z.literal(1), z.literal(2)]).default(1),
   template: z.enum(TEMPLATES).default('ats'),
+  /** null = the region default (REGION_PAPER). */
+  paper: z.enum(PAPER_SIZES).nullable().default(null),
   fields: fieldsSchema.default(fieldsSchema.parse({})),
 })
 export type Recipe = z.infer<typeof recipeSchema>
 
 export function parseRecipe(value: unknown): Recipe {
   return recipeSchema.parse(value)
+}
+
+/** The paper a recipe compiles on: its own choice, else its region's default. */
+export function paperFor(recipe: Pick<Recipe, 'paper' | 'region'>): PaperSize {
+  return recipe.paper ?? REGION_PAPER[recipe.region]
 }
