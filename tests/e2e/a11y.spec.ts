@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { test, expect, type Page } from '@playwright/test'
+import { waitForHydration } from './ready'
+import { EXPORT_CSVS, syntheticExportZip } from '../fixtures/linkedin-export'
 
 // Accessibility gate (audit §1, S7–S9, S15): axe-core on the main routes in
 // light and dark at desktop width, plus target sizes at phone width. Fails on
@@ -61,7 +63,7 @@ const ROUTES = [
 ]
 
 /** Routes checked for 24px targets at phone width (WCAG 2.5.8). */
-const PHONE_ROUTES = ['/', '/discoveries', '/discoveries?tab=companies', '/shortlist', '/settings/search', '/settings/sources', '/compare', '/applications', '/todos', '/analytics', '/radar/sources', '/settings/notifications', '/settings/variants', '/settings/integrations', '/settings/linkedin']
+const PHONE_ROUTES = ['/', '/discoveries', '/discoveries?tab=companies', '/shortlist', '/settings/search', '/settings/sources', '/compare', '/applications', '/todos', '/analytics', '/radar/sources', '/settings/notifications', '/settings/variants', '/settings/integrations', '/settings/linkedin', '/settings/profile']
 
 interface Violation {
   id: string
@@ -166,6 +168,46 @@ for (const theme of ['light', 'dark'] as const) {
   })
 }
 
+for (const theme of ['light', 'dark'] as const) {
+  test.describe(`axe ${theme}: reset details`, () => {
+    test.use({ viewport: { width: 1280, height: 900 }, colorScheme: theme })
+    test(`the Reset details panel and its open dialog have no serious or critical violations (${theme})`, async ({ page }) => {
+      const panel = await scan(page, '/settings/profile#reset-details')
+      expect(report('reset panel', panel.filter((v) => BLOCKING.has(v.impact ?? '')))).toEqual([])
+      const reset = page.getByTestId('reset-panel')
+      const option = reset.getByRole('checkbox', { name: /Learned titles|Search preferences|Profile links|LinkedIn connections/ }).and(page.locator(':enabled')).first()
+      await option.check()
+      await reset.getByTestId('reset-review').click()
+      await expect(page.getByRole('dialog', { name: 'Reset details' }).getByRole('button', { name: 'Download a backup first' })).toBeEnabled()
+      const dialog = await scanHere(page)
+      expect(report('reset dialog', dialog.filter((v) => BLOCKING.has(v.impact ?? '')))).toEqual([])
+    })
+  })
+}
+
+/** The shared import review open (LinkedIn export with chips, rows and readiness). */
+async function openImportReview(page: Page): Promise<void> {
+  await page.goto('/settings/linkedin')
+  await waitForHydration(page)
+  await page.getByTestId('linkedin-export-input').setInputFiles({
+    name: 'export.zip',
+    mimeType: 'application/zip',
+    buffer: Buffer.from(syntheticExportZip({ 'Skills.csv': EXPORT_CSVS['Skills.csv']!, 'Projects.csv': EXPORT_CSVS['Projects.csv']!, 'Positions.csv': EXPORT_CSVS['Positions.csv']! })),
+  })
+  await expect(page.getByTestId('import-review')).toBeVisible()
+}
+
+for (const theme of ['light', 'dark'] as const) {
+  test.describe(`axe ${theme}: import review`, () => {
+    test.use({ viewport: { width: 1280, height: 900 }, colorScheme: theme })
+    test(`the open import review has no serious or critical violations (${theme})`, async ({ page }) => {
+      await openImportReview(page)
+      const review = await scanHere(page)
+      expect(report('import review', review.filter((v) => BLOCKING.has(v.impact ?? '')))).toEqual([])
+    })
+  })
+}
+
 test.describe('targets at phone width', () => {
   test('the region picker sheet has 24px targets', async ({ page }) => {
     await openRegionPicker(page, '/discoveries?region=kochi', 'region-filter')
@@ -174,6 +216,11 @@ test.describe('targets at phone width', () => {
   })
 
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
+  test('the open import review has 24px targets', async ({ page }) => {
+    await openImportReview(page)
+    const violations = await scanHere(page, ['target-size'])
+    expect(report('import review', violations)).toEqual([])
+  })
   for (const url of PHONE_ROUTES) {
     test(`${url} has 24px targets`, async ({ page }) => {
       const violations = await scan(page, url, ['target-size'])
