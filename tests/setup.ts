@@ -19,6 +19,18 @@ vi.unstubAllGlobals()
 vi.restoreAllMocks()
 globalThis.fetch = g.__pristineFetch
 
+// lib/net/safe-fetch.ts seams (see lib/net/ssrf.ts netHooks): no real DNS in
+// the suite — every name resolves to a public documentation-free address —
+// and the transport is the (stubbable) global fetch rather than undici's
+// pinned dispatcher. SSRF tests override `resolve` per case.
+;(globalThis as { __leeNetHooks?: unknown }).__leeNetHooks = {
+  resolve: async () => [{ address: '93.184.215.14', family: 4 }],
+  transport: (input: string, init: RequestInit & { dispatcher?: unknown }) => {
+    const { dispatcher: _ignored, ...rest } = init
+    return globalThis.fetch(input, rest)
+  },
+}
+
 // Only load DOM matchers when a DOM-like environment is present (e.g. tests
 // that opt into `// @vitest-environment happy-dom`). Node env has no
 // `document`, so importing `@testing-library/jest-dom/vitest` would crash.

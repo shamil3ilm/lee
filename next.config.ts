@@ -31,6 +31,10 @@ const nextConfig: NextConfig = {
     // server bundler can trip over when the module is imported in a route
     // handler. External load matches how @react-pdf is treated.
     'pdf-lib',
+    // lib/net/safe-fetch.ts uses undici's own fetch + Agent (the SSRF guard
+    // pins connections through a custom lookup). undici ships a WASM HTTP
+    // parser, so load it from node_modules instead of bundling it.
+    'undici',
   ],
   // The LaTeX templates in lib/latex/templates/*.tex are read via fs at
   // runtime; Next's file-tracing doesn't pick them up automatically because
