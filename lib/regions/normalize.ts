@@ -51,11 +51,24 @@ interface Located extends Hit {
   segment: number
 }
 
+/**
+ * A code that starts a longer place name is part of that name, not a code:
+ * "JP Nagar" is in Bengaluru, not Japan.
+ */
+function startsLongerPlace(raw: string, hit: Hit): boolean {
+  const rest = normalizeForMatch(raw.slice(hit.at, hit.at + 60))
+  return aliasHits(rest).some((h) => h.at === 0 && h.id !== hit.id)
+}
+
 function locate(raw: string, text: string, trustCodes: boolean): Located[] {
   const textSeg = segmentOf(text)
   const rawSeg = segmentOf(raw)
   const fromText = aliasHits(text).map((h) => ({ ...h, segment: textSeg(h.at) }))
-  const fromCodes = trustCodes ? codeHits(raw).map((h) => ({ ...h, segment: rawSeg(h.at) })) : []
+  const fromCodes = trustCodes
+    ? codeHits(raw)
+        .filter((h) => !startsLongerPlace(raw, h))
+        .map((h) => ({ ...h, segment: rawSeg(h.at) }))
+    : []
   return [...fromText, ...fromCodes].sort((a, b) => a.segment - b.segment || a.at - b.at)
 }
 

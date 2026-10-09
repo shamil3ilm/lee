@@ -28,6 +28,7 @@ export async function findPossibleDuplicates(
       applyUrl,
       title,
       companyName: sql<string | null>`${discoveries.normalized}->>'companyName'`,
+      location: sql<string | null>`${discoveries.normalized}->>'location'`,
     })
     .from(discoveries)
     .where(and(eq(discoveries.userId, userId), or(...conditions)))

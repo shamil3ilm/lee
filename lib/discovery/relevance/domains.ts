@@ -58,6 +58,19 @@ export const DOMAINS: readonly DomainDef[] = [
     duties: ['answering phones', 'diary management', 'travel arrangements', 'filing', 'office supplies', 'front desk', 'data entry'],
   },
   {
+    // Banks, insurers and retailers hire software / data people too; their
+    // front-line roles are what this domain recognises ("Bank Teller"),
+    // never the industry ("Business Analyst – Retail Banking" stays tech).
+    id: 'branch_ops',
+    label: 'Branch/retail operations',
+    titles: [
+      'teller', 'bank teller', 'cashier', 'relationship officer', 'relationship manager', 'branch manager', 'loan officer',
+      'collections officer', 'collection officer', 'insurance agent', 'insurance advisor', 'claims officer', 'underwriter',
+      'store manager', 'sales associate', 'retail assistant', 'merchandiser', 'visual merchandiser', 'shop assistant',
+    ],
+    duties: ['cash deposits', 'withdrawals', 'branch counter', 'cash handling', 'loan applications', 'store operations', 'shelf replenishment', 'point of sale counter'],
+  },
+  {
     id: 'healthcare',
     label: 'Healthcare/Clinical',
     titles: ['nurse', 'doctor', 'physician', 'pharmacist', 'dentist', 'physiotherapist', 'medical officer', 'clinical', 'caregiver', 'lab technician', 'radiographer', 'patient', 'medical coder', 'medical billing'],

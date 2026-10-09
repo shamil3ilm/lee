@@ -11,11 +11,11 @@ const state = (id: string, name: string, aliases: readonly string[] = []): Regio
   node({ id, name, kind: 'state', parents: ['in'], aliases })
 
 const STATES: readonly RegionNode[] = [
-  state('kerala', 'Kerala', ['keralam']),
-  state('karnataka', 'Karnataka'),
-  state('telangana', 'Telangana'),
-  state('tamil-nadu', 'Tamil Nadu', ['tamilnadu']),
-  state('maharashtra', 'Maharashtra'),
+  state('kerala', 'Kerala', ['keralam', 'കേരളം']),
+  state('karnataka', 'Karnataka', ['ಕರ್ನಾಟಕ']),
+  state('telangana', 'Telangana', ['తెలంగాణ']),
+  state('tamil-nadu', 'Tamil Nadu', ['tamilnadu', 'தமிழ்நாடு']),
+  state('maharashtra', 'Maharashtra', ['महाराष्ट्र']),
   state('andhra-pradesh', 'Andhra Pradesh'),
   state('west-bengal', 'West Bengal'),
   state('gujarat', 'Gujarat'),
@@ -35,21 +35,32 @@ const STATES: readonly RegionNode[] = [
 ]
 
 const KERALA: readonly RegionNode[] = [
-  city('kochi', 'Kochi', ['kerala'], ['cochin', 'ernakulam', 'kakkanad', 'kalamassery', 'edappally'], {
-    areas: [area('Infopark', 'info park', 'infopark kochi', 'infopark kakkanad'), area('SmartCity Kochi', 'smart city kochi', 'smartcity')],
+  city('kochi', 'Kochi', ['kerala'], ['cochin', 'ernakulam', 'kakkanad', 'kalamassery', 'edappally', 'കൊച്ചി', 'എറണാകുളം', 'कोच्चि'], {
+    areas: [
+      area('Infopark', 'info park', 'infopark kochi', 'infopark kakkanad'),
+      area('SmartCity Kochi', 'smart city kochi', 'smartcity'),
+      area('Vyttila', 'vytilla'),
+      area('Aluva', 'alwaye'),
+      area('Cochin SEZ', 'cochin special economic zone', 'csez'),
+      area('Palarivattom'),
+    ],
     codes: ['COK'],
     ambiguous: true,
   }),
-  city('thiruvananthapuram', 'Thiruvananthapuram', ['kerala'], ['trivandrum', 'thiruvanthapuram', 'tvm'], {
-    areas: [area('Technopark', 'techno park', 'technopark trivandrum'), area('Technocity', 'techno city')],
+  city('thiruvananthapuram', 'Thiruvananthapuram', ['kerala'], ['trivandrum', 'thiruvanthapuram', 'tvm', 'തിരുവനന്തപുരം', 'तिरुवनंतपुरम'], {
+    areas: [
+      area('Technopark', 'techno park', 'technopark trivandrum'),
+      area('Technocity', 'techno city'),
+      area('Kazhakkoottam', 'kazhakuttam', 'kazhakootam', 'kazhakoottam'),
+    ],
     codes: ['TRV'],
     short: 'Trivandrum',
   }),
-  city('kozhikode', 'Kozhikode', ['kerala'], ['calicut'], {
+  city('kozhikode', 'Kozhikode', ['kerala'], ['calicut', 'കോഴിക്കോട്'], {
     areas: [area('UL Cyberpark', 'ul cyber park'), area('Cyberpark', 'cyber park', 'kerala cyberpark', 'govt cyberpark')],
     codes: ['CCJ'],
   }),
-  city('thrissur', 'Thrissur', ['kerala'], ['trichur']),
+  city('thrissur', 'Thrissur', ['kerala'], ['trichur', 'തൃശ്ശൂർ']),
   city('kannur', 'Kannur', ['kerala'], ['cannanore']),
   city('kollam', 'Kollam', ['kerala'], ['quilon']),
   city('palakkad', 'Palakkad', ['kerala'], ['palghat']),
@@ -59,7 +70,7 @@ const KERALA: readonly RegionNode[] = [
 ]
 
 const SOUTH: readonly RegionNode[] = [
-  city('bengaluru', 'Bengaluru', ['karnataka'], ['bangalore', 'banglore', 'bengalore', 'blr'], {
+  city('bengaluru', 'Bengaluru', ['karnataka'], ['bangalore', 'banglore', 'bengalore', 'blr', 'bangalore urban', 'bengaluru urban', 'ಬೆಂಗಳೂರು', 'बेंगलुरु', 'बैंगलोर'], {
     areas: [
       area('Electronic City', 'electronics city'),
       area('Whitefield'),
@@ -68,6 +79,19 @@ const SOUTH: readonly RegionNode[] = [
       area('Koramangala'),
       area('HSR Layout'),
       area('Bellandur'),
+      area('Marathahalli', 'marathalli'),
+      area('Indiranagar', 'indira nagar'),
+      area('Hebbal'),
+      area('JP Nagar', 'j p nagar', 'jayaprakash nagar'),
+      area('Embassy Tech Village'),
+      area('Embassy Golf Links'),
+      area('Sarjapur Road', 'sarjapur'),
+      area('BTM Layout'),
+      area('Yelahanka'),
+      area('Jayanagar'),
+      area('Bagmane Tech Park', 'bagmane'),
+      area('RMZ Ecospace', 'ecospace'),
+      area('Domlur'),
     ],
     codes: ['BLR'],
   }),
@@ -75,19 +99,37 @@ const SOUTH: readonly RegionNode[] = [
   city('mangaluru', 'Mangaluru', ['karnataka'], ['mangalore']),
   city('hubballi', 'Hubballi', ['karnataka'], ['hubli', 'hubli-dharwad']),
   city('manipal', 'Manipal', ['karnataka']),
-  city('hyderabad', 'Hyderabad', ['telangana'], ['secunderabad'], {
+  city('hyderabad', 'Hyderabad', ['telangana'], ['secunderabad', 'cyberabad', 'हैदराबाद', 'హైదరాబాద్'], {
     areas: [
       area('HITEC City', 'hitech city', 'hi-tech city', 'hi tech city'),
       area('Gachibowli'),
       area('Madhapur'),
       area('Kondapur'),
+      area('Financial District', 'nanakramguda', 'financial district hyderabad'),
+      area('Raidurg', 'raidurgam'),
+      area('Kokapet'),
+      area('Manikonda'),
+      area('Begumpet'),
+      area('Uppal'),
     ],
     codes: ['HYD'],
     ambiguous: true,
   }),
   city('warangal', 'Warangal', ['telangana']),
-  city('chennai', 'Chennai', ['tamil-nadu'], ['madras'], {
-    areas: [area('Sholinganallur'), area('Siruseri'), area('Tidel Park'), area('Guindy')],
+  city('chennai', 'Chennai', ['tamil-nadu'], ['madras', 'சென்னை', 'चेन्नई'], {
+    areas: [
+      area('Sholinganallur'),
+      area('Siruseri'),
+      area('Tidel Park'),
+      area('Guindy'),
+      area('OMR', 'old mahabalipuram road', 'rajiv gandhi salai', 'it expressway'),
+      area('Taramani'),
+      area('Perungudi'),
+      area('Thoraipakkam'),
+      area('Ambattur'),
+      area('Porur'),
+      area('Velachery'),
+    ],
     codes: ['MAA'],
   }),
   city('coimbatore', 'Coimbatore', ['tamil-nadu'], ['kovai']),
@@ -100,12 +142,38 @@ const SOUTH: readonly RegionNode[] = [
 ]
 
 const WEST: readonly RegionNode[] = [
-  city('mumbai', 'Mumbai', ['maharashtra'], ['bombay'], {
-    areas: [area('Navi Mumbai'), area('Thane'), area('Powai'), area('Andheri'), area('BKC', 'bandra kurla complex'), area('Lower Parel')],
+  city('mumbai', 'Mumbai', ['maharashtra'], ['bombay', 'मुंबई', 'मुम्बई'], {
+    areas: [
+      area('Navi Mumbai', 'airoli', 'ghansoli', 'cbd belapur', 'belapur', 'vashi', 'mahape', 'rabale'),
+      area('Thane'),
+      area('Powai'),
+      area('Andheri'),
+      area('BKC', 'bandra kurla complex'),
+      area('Lower Parel'),
+      area('Malad'),
+      area('Goregaon'),
+      area('Vikhroli'),
+      area('Worli'),
+      area('Nariman Point'),
+      area('Bandra'),
+    ],
     codes: ['BOM'],
   }),
-  city('pune', 'Pune', ['maharashtra'], ['poona'], {
-    areas: [area('Hinjewadi', 'hinjawadi'), area('Kharadi'), area('Magarpatta'), area('Baner')],
+  city('pune', 'Pune', ['maharashtra'], ['poona', 'पुणे'], {
+    areas: [
+      area('Hinjewadi', 'hinjawadi', 'rajiv gandhi infotech park'),
+      area('Kharadi', 'eon it park', 'eon free zone'),
+      area('Magarpatta'),
+      area('Baner'),
+      area('Viman Nagar'),
+      area('Hadapsar'),
+      area('Wakad'),
+      area('Yerwada', 'yerawada'),
+      area('Kalyani Nagar'),
+      area('Aundh'),
+      area('Balewadi'),
+      area('Pimpri-Chinchwad', 'pimpri chinchwad', 'pcmc'),
+    ],
   }),
   city('nagpur', 'Nagpur', ['maharashtra']),
   city('nashik', 'Nashik', ['maharashtra'], ['nasik']),
@@ -120,9 +188,19 @@ const WEST: readonly RegionNode[] = [
 ]
 
 const NORTH_EAST: readonly RegionNode[] = [
-  city('delhi', 'Delhi', ['delhi-ncr'], ['new delhi'], { codes: ['DEL'] }),
-  city('gurugram', 'Gurugram', ['delhi-ncr', 'haryana'], ['gurgaon'], { areas: [area('DLF Cyber City', 'cyber hub')] }),
-  city('noida', 'Noida', ['delhi-ncr', 'uttar-pradesh'], ['greater noida']),
+  city('delhi', 'Delhi', ['delhi-ncr'], ['new delhi', 'दिल्ली', 'नई दिल्ली'], {
+    areas: [area('Okhla', 'okhla industrial area'), area('Connaught Place'), area('Nehru Place'), area('Aerocity')],
+    codes: ['DEL'],
+  }),
+  city('gurugram', 'Gurugram', ['delhi-ncr', 'haryana'], ['gurgaon', 'गुरुग्राम', 'गुड़गांव'], {
+    areas: [
+      area('DLF Cyber City', 'cyber hub', 'cyber city gurgaon', 'dlf cybercity'),
+      area('Udyog Vihar'),
+      area('Sohna Road'),
+      area('Golf Course Road'),
+    ],
+  }),
+  city('noida', 'Noida', ['delhi-ncr', 'uttar-pradesh'], ['greater noida', 'नोएडा'], { areas: [area('Noida Sector 62', 'sector 62 noida'), area('Noida Expressway')] }),
   city('faridabad', 'Faridabad', ['delhi-ncr', 'haryana']),
   city('ghaziabad', 'Ghaziabad', ['delhi-ncr', 'uttar-pradesh']),
   city('panchkula', 'Panchkula', ['haryana']),

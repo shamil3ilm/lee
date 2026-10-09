@@ -147,21 +147,71 @@ const NATIONALS_PREFERRED: readonly RegExp[] = [
  * before anything else is a proper name: "Saudi National Bank", "UAE
  * national carriers".
  */
-const NATIONALS_ONLY: readonly RegExp[] = [
-  new RegExp(`\\b${GCC_NATIONALITY} nationals\\b`),
+const NATIONALISATION =
+  '(?:emiratisation|emiratization|saudization|saudisation|saudi[sz]ation|nitaqat|qatarization|qatarisation|omanisation|omanization|kuwaitization|kuwaitisation|bahrainisation|bahrainization)'
+
+/** Unambiguous requirements: they count wherever they appear. */
+const NATIONALS_ONLY_STRONG: readonly RegExp[] = [
   new RegExp(`\\b${GCC_NATIONALITY} (?:national|${WHO}) only\\b`),
-  new RegExp(`\\b${GCC_NATIONALITY} national ${WHO}\\b`),
   new RegExp(`\\bonly (?:for |open to )?${GCC_NATIONALITY} (?:nationals?|${WHO})\\b`),
   /\bnationals only\b/,
-  // "for Kuwaiti candidates", "reserved for Saudi applicants" (demonyms only:
-  // "for UAE candidates" usually means candidates IN the UAE).
-  new RegExp(`\\b(?:for|reserved for|restricted to|limited to|exclusively for) ${GCC_DEMONYM} ${WHO}\\b`),
-  // Plural demonyms: "for Kuwaitis", "Kuwaitis only", "open to Emiratis only".
-  new RegExp(`\\b(?:for|reserved for|restricted to|limited to|exclusively for) ${GCC_PEOPLE}\\b|\\b${GCC_PEOPLE} only\\b`),
+  new RegExp(`\\b(?:reserved for|restricted to|limited to|exclusively for|open only to) ${GCC_NATIONALITY} (?:nationals?|${WHO})\\b`),
+  new RegExp(`\\b(?:reserved for|restricted to|limited to|exclusively for|open only to) ${GCC_PEOPLE}\\b|\\b${GCC_PEOPLE} only\\b`),
+  new RegExp(`\\b(?:must|should|need to|needs to|required to) (?:be|hold) (?:an? )?${GCC_NATIONALITY} (?:nationals?|citizens?|citizenship|passport)\\b`),
+  new RegExp(`\\b${GCC_NATIONALITY} (?:nationality|citizenship) (?:is )?(?:required|mandatory|a must)\\b`),
+  new RegExp(`\\b(?:this|the) (?:role|position|job|vacancy|opening|opportunity) is (?:only )?(?:open |available )?(?:to|for) ${GCC_NATIONALITY} (?:nationals?|${WHO})\\b`),
+]
+
+/**
+ * Phrases that name nationals but can also be company boilerplate ("70% of
+ * our workforce are Kuwaiti nationals", "we support Emiratisation"): they
+ * count only in a sentence that is not about the company and does not
+ * welcome other nationalities.
+ */
+const NATIONALS_ONLY_WEAK: readonly RegExp[] = [
+  new RegExp(`\\b${GCC_NATIONALITY} nationals\\b`),
+  new RegExp(`\\b${GCC_NATIONALITY} national ${WHO}\\b`),
+  // "for Kuwaiti candidates" (demonyms only: "for UAE candidates" usually means candidates IN the UAE).
+  new RegExp(`\\bfor ${GCC_DEMONYM} ${WHO}\\b`),
+  new RegExp(`\\bfor ${GCC_PEOPLE}\\b`),
   // Kuwait's national-labour programme for the private sector.
   /\b(?:mgrp|manpower and government restructuring program(?:me)?)\b/,
-  /\b(?:emiratisation|emiratization|saudization|saudisation|nitaqat|qatarization|qatarisation|omanisation|omanization|kuwaitization|bahrainisation|bahrainization)\b/,
+  new RegExp(`\\b${NATIONALISATION}\\b`),
 ]
+
+/** A sentence about the employer, not this opening. */
+const BOILERPLATE = new RegExp(
+  [
+    '\\bwe (?:employ|have|are|were|support|invest|believe|nurture|develop|empower|take pride|proudly|remain|continue)\\b',
+    '\\bour (?:workforce|employees|people|team members|staff|mission|vision|commitment|values|culture|history|graduate)\\b',
+    '\\b(?:committed to|commitment to|proud(?:ly)?|founded|established in|headquartered|employs|employer of choice|largest|leading)\\b',
+    '\\b\\d{1,3} ?(?:%|percent) of\\b',
+    '\\b(?:in line with|in support of|supports?|supporting|contribut\\w+ to|aligned with|as part of)\\b',
+    `\\b(?:develop|developing|empower|empowering|nurture|nurturing|train|training|upskill\\w*|attract\\w*|retain\\w*|invest\\w* in) (?:young |local |national |the next generation of )?${GCC_NATIONALITY}\\b`,
+    '\\b(?:vision 20\\d\\d|national (?:vision|agenda|strategy))\\b',
+    `\\b${GCC_NATIONALITY} (?:company|firm|bank|group|conglomerate|shareholding|owned|economy|market|private sector|business)\\b`,
+  ].join('|'),
+)
+
+/** "Open to all nationalities", "Kuwaiti nationals and expatriates": not exclusive. */
+const INCLUSIVE =
+  /\b(?:all nationalities|any nationality|other nationalities|regardless of nationality|non[\s-]?(?:kuwaitis?|emiratis?|saudis?|qataris?|bahrainis?|omanis?|nationals?|gcc)|expat(?:riate)?s?|international candidates)\b/
+
+/** "Data Analyst - UAE National", "Developer (Saudi Nationals Only)": a title segment naming nationals. */
+const TITLE_NATIONALS = new RegExp(`(?:^|[-–|(,/:])\\s*${GCC_NATIONALITY} nationals?(?: only)?\\s*(?:$|[)\\]|,/-])`)
+
+/** Sentences (split before normalising, since normalising folds newlines). */
+function sentences(text: string): string[] {
+  return text
+    .slice(0, 8_000)
+    .split(/(?<=[.;!?])\s+|\n+|\s[•·]\s|^\s*[-*]\s/m)
+    .map((s) => normalizeForMatch(s))
+    .filter(Boolean)
+}
+
+function weakCounts(sentence: string): boolean {
+  return NATIONALS_ONLY_WEAK.some((re) => re.test(sentence)) && !BOILERPLATE.test(sentence) && !INCLUSIVE.test(sentence)
+}
 
 /** A GCC-style "visa provided / relocation / open to candidates from abroad" phrase. */
 export function detectVisaOffered(description: string): string | null {
@@ -177,7 +227,9 @@ export function detectPresenceRequired(description: string): boolean {
   return PRESENCE_REQUIRED.some((re) => re.test(d))
 }
 
-const EXPLICIT_ONLY = /\bnationals? only\b|\b(?:candidates?|applicants?) only\b|\bonly (?:for |open to )?(?:uae|emirati|saudi|qatari|kuwaiti|bahraini|omani|gcc) (?:nationals?|candidates?|applicants?)\b|\b(?:emiratisation|emiratization|saudization|saudisation|nitaqat|qatarization|qatarisation|omanisation|omanization|kuwaitization|bahrainisation|bahrainization)\b/
+const EXPLICIT_ONLY = new RegExp(
+  `\\bnationals? only\\b|\\b(?:candidates?|applicants?) only\\b|\\bonly (?:for |open to )?${GCC_NATIONALITY} (?:nationals?|candidates?|applicants?)\\b|\\b${NATIONALISATION}\\b`,
+)
 
 /** "UAE nationals preferred"… (a soft penalty). */
 export function detectNationalsPreferred(description: string): string | null {
@@ -185,10 +237,19 @@ export function detectNationalsPreferred(description: string): string | null {
   return NATIONALS_PREFERRED.some((re) => re.test(d)) ? 'nationals preferred' : null
 }
 
-/** "UAE nationals only", "Saudization role"… A "nationals preferred" phrase alone is not "only". */
-export function detectNationalsOnly(description: string): string | null {
+/**
+ * "UAE nationals only", "Saudization role"… A "nationals preferred" phrase
+ * alone is not "only", and a mention of nationals in company boilerplate
+ * ("a Kuwaiti company", "we support Emiratisation") is not a requirement.
+ * The title counts when a segment of it names nationals ("BI Developer -
+ * UAE National").
+ */
+export function detectNationalsOnly(description: string, title?: string | null): string | null {
+  if (title && TITLE_NATIONALS.test(normalizeForMatch(title))) return 'nationals only'
+  const parts = sentences(description)
+  const strong = parts.some((s) => NATIONALS_ONLY_STRONG.some((re) => re.test(s)))
+  if (!strong && !parts.some(weakCounts)) return null
   const d = normalizeForMatch(description.slice(0, 8_000))
-  if (!NATIONALS_ONLY.some((re) => re.test(d))) return null
   if (detectNationalsPreferred(description) && !EXPLICIT_ONLY.test(d)) return null
   return 'nationals only'
 }

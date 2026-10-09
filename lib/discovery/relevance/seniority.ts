@@ -134,6 +134,9 @@ export function isAboveSelected(level: SeniorityLevel, selected: readonly Senior
 export function detectSeniority(title: string | null | undefined): SeniorityLevel | null {
   let t = normalizeForMatch(title).replace(/[.]/g, ' ')
   for (const re of NOT_SENIORITY) t = t.replace(re, ' ')
+  // Gulf and Indian banks, telcos and groups grade mid-career staff as
+  // "Assistant / Deputy Manager": a senior individual role, not a manager.
+  t = t.replace(/\b(?:assistant|asst|deputy|dy) manager\b/g, ' senior ')
   let best: SeniorityLevel | null = null
   const consider = (level: SeniorityLevel): void => {
     if (best === null || (RANK.get(level) ?? 0) > (RANK.get(best) ?? 0)) best = level

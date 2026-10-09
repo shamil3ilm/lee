@@ -89,7 +89,7 @@ function presenceCountry(regions: ReadonlySet<RegionCode>): string {
  * an info chip only.
  */
 function visaRules(input: SoftRuleInput, prefs: SearchPrefs, add: Add, out: SoftRuleResult): void {
-  const nationals = detectNationalsOnly(input.description)
+  const nationals = detectNationalsOnly(input.description, input.title)
   if (nationals) add('visa', `visa: ${nationals}`)
   // "UAE nationals preferred" is a weaker signal: never a skip, only lower.
   else if (detectNationalsPreferred(input.description) && ruleMode(prefs.extra, 'visa') !== 'off') {

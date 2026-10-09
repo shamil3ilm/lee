@@ -14,7 +14,8 @@ import type { RegionNode } from './types'
  * Never rename or remove an id: ids are stored in preferences and URLs.
  */
 
-export const TAXONOMY_VERSION = 't1'
+// t2 — 2026-10-09: Kuwait governorates and districts, GCC business districts, Indian tech areas, Malayalam / Hindi / Kannada / Tamil / Telugu names.
+export const TAXONOMY_VERSION = 't2'
 
 export const REGION_NODES: readonly RegionNode[] = [...GCC_NODES, ...INDIA_NODES, ...WORLD_NODES]
 

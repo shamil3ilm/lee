@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { resolveLocation } from '@/lib/regions/normalize'
 
 /**
  * Search parameters for the job-search API adapters (Himalayas, Jobicy,
@@ -127,7 +128,12 @@ const PLACE_WORDS: Readonly<Record<string, readonly string[]>> = {
  */
 export function locationMatchesCountries(text: string, countries: readonly string[]): boolean {
   const t = ` ${text.toLowerCase().replace(/[^a-z]+/g, ' ')} `
-  return countries.some((c) => (PLACE_WORDS[c] ?? [COUNTRY_NAMES[c]?.toLowerCase() ?? '']).some((w) => w && t.includes(` ${w} `)))
+  if (countries.some((c) => (PLACE_WORDS[c] ?? [COUNTRY_NAMES[c]?.toLowerCase() ?? '']).some((w) => w && t.includes(` ${w} `)))) {
+    return true
+  }
+  // Every spelling the region taxonomy knows ("Shuwaikh", "Mangaf", "Kakkanad", "الكويت").
+  const named = resolveLocation(text, { trustCodes: true }).ids
+  return countries.some((c) => named.includes(c.toLowerCase()))
 }
 
 /** Country names as job boards spell them. */

@@ -103,7 +103,7 @@ export function visaComponent(job: MatchJob, p: Pick<MatchProfile, 'extra'>): Ma
   const description = job.descriptionMd ?? ''
   const needs = sponsorshipCountries(job, p)
   const remote = isRemotePosting(job)
-  const nationals = detectNationalsOnly(description)
+  const nationals = detectNationalsOnly(description, job.title)
   if (nationals && (needs.length > 0 || (p.extra.sponsorshipFor.length > 0 && !remote))) {
     return c(min, 'Visa: nationals only (e.g. Emiratisation, Saudization)')
   }
