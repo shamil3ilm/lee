@@ -1,3 +1,4 @@
+import { waitForHydration } from './ready'
 import { test, expect, type Page, type Route } from '@playwright/test'
 import { onePagePdf } from './pdf-fixture'
 
@@ -100,6 +101,7 @@ test('LaTeX editor: compile menu, auto-compile badge, autocomplete, shortcut com
   await expect(page.locator('.cm-content')).toContainText('\\subsection{Skills}')
 
   // Compile with Ctrl/Cmd+Enter: the stub fails with a line-2 error.
+  await waitForHydration(page)
   await page.keyboard.press('ControlOrMeta+Enter')
   await expect.poll(() => compiles.length).toBe(1)
   expect(compiles[0]!.source).toContain('\\subsection{Skills}')

@@ -1,3 +1,4 @@
+import { waitForHydration } from './ready'
 import { test, expect, type Page } from '@playwright/test'
 import { E2E_GITHUB_STUB_URL, E2E_LATEX_STUB_URL } from './env'
 
@@ -41,6 +42,8 @@ async function syntheticPng(page: Page): Promise<Buffer> {
   })
   return Buffer.from(dataUrl.split(',')[1]!, 'base64')
 }
+
+test.describe.configure({ retries: 0 })
 
 test('edit the master profile, build a variant, preview it and publish to the portfolio', async ({ page }) => {
   // 1. Résumé: the legacy master CV arrives as the master profile.
@@ -168,6 +171,8 @@ test('edit the master profile, build a variant, preview it and publish to the po
 
   // 5. Photo: uploaded on Résumé (cropped in the browser), private, used by the GCC variant.
   await page.goto('/settings/resume')
+  // The file input's onChange exists only after hydration; a file set earlier is dropped.
+  await waitForHydration(page)
   await page.getByTestId('photo-input').setInputFiles({ name: 'synthetic.png', mimeType: 'image/png', buffer: await syntheticPng(page) })
   // The crop + upload can be slow on CI; wait for the stored photo, not the toast.
   await expect(page.getByTestId('profile-photo')).toBeVisible({ timeout: 30_000 })
