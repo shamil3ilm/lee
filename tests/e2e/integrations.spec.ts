@@ -50,8 +50,11 @@ test('connect LinkedIn with posting allowed', async ({ page }) => {
 })
 
 test('import a LinkedIn export, then see a referral hint on a discovery', async ({ page }) => {
+  // Profile, Skills and Connections only: later specs publish the master
+  // profile, so this journey adds no positions or projects to it.
   const files = {
-    ...EXPORT_CSVS,
+    'Profile.csv': EXPORT_CSVS['Profile.csv']!,
+    'Skills.csv': EXPORT_CSVS['Skills.csv']!,
     'Connections.csv': `${EXPORT_CSVS['Connections.csv']}\nPriya,Example,https://www.linkedin.com/in/priya-example,,Juspay Technologies Pvt Ltd,Staff Engineer,10 Feb 2024`,
   }
   await page.goto('/settings/linkedin')
@@ -63,7 +66,7 @@ test('import a LinkedIn export, then see a referral hint on a discovery', async 
   })
   const review = page.getByTestId('linkedin-import-review')
   await expect(review).toBeVisible()
-  await expect(review.getByText('Software Engineer · Gulf Fintech')).toBeVisible()
+  await expect(review.getByText('Laravel')).toBeVisible()
   await page.getByTestId('linkedin-import-apply').click()
   await expectToast(page, /saved 4 connections/)
   await expect(page.getByTestId('linkedin-connections')).toContainText('Priya Example')

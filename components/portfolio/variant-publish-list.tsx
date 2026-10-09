@@ -94,7 +94,7 @@ function Row({ row, ready }: { row: VariantPublishRow; ready: boolean }) {
         {row.commitUrl ? (
           <>
             {' · '}
-            <a href={row.commitUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+            <a href={row.commitUrl} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">
               view commit
             </a>
           </>
@@ -103,7 +103,7 @@ function Row({ row, ready }: { row: VariantPublishRow; ready: boolean }) {
           <>
             {' · '}
             {row.published ? (
-              <a href={row.pageUrl} target="_blank" rel="noreferrer" className="break-all text-primary hover:underline" data-testid="variant-page-url">
+              <a href={row.pageUrl} target="_blank" rel="noreferrer" className="break-all text-primary underline underline-offset-2" data-testid="variant-page-url">
                 {row.pageUrl}
               </a>
             ) : (
@@ -165,7 +165,7 @@ export function VariantPublishList({ rows, ready }: { rows: VariantPublishRow[];
         {rows.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No variant is set to publish. Turn it on in a{' '}
-            <Link href="/settings/variants" className="text-primary hover:underline">
+            <Link href="/settings/variants" className="text-primary underline underline-offset-2">
               variant
             </Link>
             .

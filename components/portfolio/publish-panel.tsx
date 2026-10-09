@@ -137,7 +137,7 @@ export function PublishPanel({ ready, status, commitUrl }: PublishPanelProps) {
               {commitUrl ? (
                 <>
                   {' · '}
-                  <a href={commitUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                  <a href={commitUrl} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">
                     view commit
                   </a>
                 </>
