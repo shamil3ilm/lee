@@ -148,6 +148,6 @@ describe('email_alert source', () => {
 
   it('searches only known senders with alert-like subjects', () => {
     const q = alertQuery()
-    expect(q).toMatch(/^from:\(linkedin\.com OR indeed\.com OR naukri\.com OR naukrigulf\.com OR bayt\.com OR gulftalent\.com OR glassdoor\.com\) newer_than:7d subject:\(/)
+    expect(q).toMatch(/^from:\(linkedin\.com OR indeed\.com OR indeedemail\.com OR indeedmail\.com OR naukri\.com OR naukrigulf\.com OR bayt\.com OR gulftalent\.com OR glassdoor\.com\) newer_than:7d subject:\(/)
   })
 })
