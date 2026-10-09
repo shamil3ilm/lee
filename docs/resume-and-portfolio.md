@@ -65,6 +65,7 @@ It runs in bounded batches inside the run's time budget and is idempotent. The p
 - The PDF can be saved to Drive in lee/CVs.
 - "Score this variant" goes through CV Score's public `scoreCv`.
 - A plain-text export is available for portal forms.
+- **Download .docx** (`/api/variants/[id]/docx` for the saved variant version; `/api/documents/[id]/docx` for a master or tailored CV, also in the documents menus and the Prepare/Tailor steps) writes an ATS-friendly Word file: one column, real Title / Heading 1 / Heading 2 / List Bullet styles, each role as "Title — Company | Location | Dates" on one line, no tables, text boxes or images, on the variant's paper size (a tailored CV keeps its variant's paper, else A4). It is a hand-written minimal OOXML package zipped with `fflate` (already a dependency; the `docx` package is not installed), in `lib/docx/`, loaded lazily by the routes. Tests unzip it and read it back through CV Score's own upload extraction, which now reads Word list paragraphs as bullets.
 
 ### Photo (`lib/resume/photo.ts`, `photo-store.ts`)
 

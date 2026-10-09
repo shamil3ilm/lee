@@ -15,7 +15,8 @@
  *         (outcome component, weak openers weigh double); findings cite lines.
  * 1.1.1 — LaTeX sources: `\hfill {\small location · dates}` keeps the
  *         group (the ATS and Brand variant templates lost every role date,
- *         so no work experience was found).
+ *         so no work experience was found). DOCX uploads: Word list
+ *         paragraphs read as bullets ("• ").
  */
 export const SCORER_VERSION = '1.1.1'
 

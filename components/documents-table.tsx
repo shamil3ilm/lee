@@ -4,7 +4,8 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Download, FileText, Loader2, Pencil, TextCursorInput, Trash2 } from 'lucide-react'
+import { Download, FileDown, FileText, Loader2, Pencil, TextCursorInput, Trash2 } from 'lucide-react'
+import { hasWordExport } from '@/lib/docx/kinds'
 import type { DocumentSummary as Document } from '@/lib/db/queries/documents'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -283,6 +284,13 @@ export function DocumentsTable({ documents, currentFilter, scores = {} }: Docume
                               <Download className="size-4" />
                             </Link>
                           </Button>
+                          {hasWordExport(doc.kind) ? (
+                            <Button asChild variant="ghost" size="icon" aria-label={`Download ${doc.title} as Word (.docx)`}>
+                              <a href={`/api/documents/${doc.id}/docx`} download>
+                                <FileDown className="size-4" />
+                              </a>
+                            </Button>
+                          ) : null}
                           <Button
                             type="button"
                             variant="ghost"
