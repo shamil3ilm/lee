@@ -9,6 +9,8 @@
 const LEGAL = new Set([
   'inc', 'incorporated', 'llc', 'l l c', 'ltd', 'limited', 'plc', 'gmbh', 'ag', 'sa', 'bv', 'nv', 'co', 'corp', 'corporation',
   'company', 'pvt', 'private', 'pte', 'fz', 'fze', 'fzco', 'fzc', 'fzllc', 'dmcc', 'wll', 'spc', 'llp', 'srl', 'oy', 'ab', 'as',
+  // Gulf company forms: Kuwait (K.S.C., K.S.C.C., K.S.C.P.), Bahrain (B.S.C.), Qatar (Q.S.C., Q.P.S.C.), UAE (P.J.S.C.), Oman (S.A.O.C./G.)
+  'ksc', 'kscc', 'kscp', 'kpsc', 'bsc', 'qsc', 'qpsc', 'pjsc', 'psc', 'saoc', 'saog', 'jsc',
 ])
 
 export function companyKey(name: string): string {

@@ -40,7 +40,8 @@ export interface DefaultSource {
 }
 
 /** Bump when adding defaults; users below it get only the newer ones. */
-export const DEFAULTS_VERSION = 4
+// 5 — Kuwait employers on the watch list (2026-10-09).
+export const DEFAULTS_VERSION = 5
 
 export interface DefaultWatchTerm {
   term: string

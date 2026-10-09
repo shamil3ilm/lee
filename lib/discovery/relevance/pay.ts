@@ -29,6 +29,11 @@ export const USD_PEGS: Readonly<Record<Exclude<PayCurrency, 'INR'>, number>> = {
 
 export type PayPeriod = 'month' | 'year'
 
+/** Dinar-class currencies (one unit ≈ 10 AED). */
+const STRONG: ReadonlySet<PayCurrency> = new Set(['KWD', 'BHD', 'OMR'])
+/** Gulf currencies shown with an AED equivalent. */
+const AED_EQUIVALENT: ReadonlySet<PayCurrency> = new Set(['SAR', 'QAR', 'KWD', 'BHD', 'OMR'])
+
 export interface PostedPay {
   min: number | null
   max: number | null
@@ -70,7 +75,8 @@ const LPA = /\b(\d{1,3}(?:\.\d+)?)\s*(?:(?:-|to)\s*(\d{1,3}(?:\.\d+)?))?\s*(?:lp
 function periodOf(token: string | undefined, top: number, currency: PayCurrency): PayPeriod {
   if (token) return /^(?:month|mo|monthly|m)$/.test(token) ? 'month' : 'year'
   // No period stated: infer from size (monthly GCC salaries rarely exceed 60k).
-  const threshold = currency === 'INR' ? 300_000 : currency === 'USD' ? 20_000 : 60_000
+  // KWD, BHD and OMR are worth ~10× the dirham: a month's pay rarely exceeds 6,000.
+  const threshold = currency === 'INR' ? 300_000 : currency === 'USD' ? 20_000 : STRONG.has(currency) ? 6_000 : 60_000
   return top < threshold ? 'month' : 'year'
 }
 
@@ -178,12 +184,17 @@ export interface PayAssessment {
 export function assessPay(pay: PostedPay, floor: PayFloor | null): PayAssessment {
   const top = pay.max ?? pay.min ?? 0
   const posted = rangeText(pay)
-  if (!floor) return { figure: posted, below: false }
+  // KWD follows an undisclosed basket, so its conversion is marked approximate.
+  const approx = pay.currency === 'KWD' || floor?.currency === 'KWD' ? ', approx.' : ''
+  if (!floor) {
+    const aed = AED_EQUIVALENT.has(pay.currency) ? convert(top, pay.currency, 'AED') : null
+    return { figure: aed !== null ? `${posted} (≈ ${formatPay(aed, 'AED', pay.period)}${approx})` : posted, below: false }
+  }
   const floorInPosting = convert(floor.amount, floor.currency, pay.currency)
   const inFloorCur = convert(top, pay.currency, floor.currency)
   const equivalent =
     pay.currency !== floor.currency && inFloorCur !== null
-      ? ` (≈ ${formatPay(perPeriod(inFloorCur, pay.period, floor.period), floor.currency, floor.period)})`
+      ? ` (≈ ${formatPay(perPeriod(inFloorCur, pay.period, floor.period), floor.currency, floor.period)}${approx})`
       : ''
   if (floorInPosting === null) return { figure: posted, below: false }
   const floorSamePeriod = perPeriod(floorInPosting, floor.period, pay.period)

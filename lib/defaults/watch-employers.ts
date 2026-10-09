@@ -42,6 +42,8 @@ export interface WatchEmployer {
   alertSignupUrl?: string
   /** What the live check found. */
   note: string
+  /** DEFAULTS_VERSION that added its watch link (default 3). */
+  since?: number
 }
 
 export const WATCH_CHECKED_ON = '2026-10-08'
@@ -92,6 +94,17 @@ export const WATCH_EMPLOYERS: readonly WatchEmployer[] = [
   { key: 'knpc', name: 'KNPC', country: 'KW', sector: 'energy', nationalsOnly: false, careersUrl: 'https://www.knpc.com/', backend: 'Custom', methods: AI_MANUAL, sourceKey: 'watch:knpc', note: 'Careers page not found (404).' },
   { key: 'zain', name: 'Zain', country: 'KW', sector: 'telecom', nationalsOnly: false, careersUrl: 'https://careers.zain.com/', backend: 'Custom', methods: AI_MANUAL, sourceKey: 'watch:zain', note: 'Custom site, no feed.' },
   { key: 'nbk', name: 'National Bank of Kuwait', country: 'KW', sector: 'banking', nationalsOnly: false, careersUrl: 'https://www.nbk.com/kuwait/careers.html', backend: 'Custom', methods: AI_MANUAL, sourceKey: 'watch:nbk', note: 'Custom page, no feed.' },
+  // Kuwait (more), added 2026-10-09 (careers pages probed live; none exposes a public job feed)
+  { key: 'kfh', name: 'Kuwait Finance House', country: 'KW', sector: 'banking', nationalsOnly: false, careersUrl: 'https://www.kfh.com/', backend: 'Custom', methods: AI_MANUAL, sourceKey: 'watch:kfh', note: 'Careers page redirects to the home page; no feed.', since: 5 },
+  { key: 'boubyan', name: 'Boubyan Bank', country: 'KW', sector: 'banking', nationalsOnly: false, careersUrl: 'https://www.bankboubyan.com/', backend: 'Custom', methods: AI_MANUAL, sourceKey: 'watch:boubyan', note: 'Careers page not found (404); no feed.', since: 5 },
+  { key: 'gulf-bank', name: 'Gulf Bank', country: 'KW', sector: 'banking', nationalsOnly: false, careersUrl: 'https://www.e-gulfbank.com/', backend: 'Custom', methods: AI_MANUAL, sourceKey: 'watch:gulf-bank', note: 'Careers page not found (404); no feed.', since: 5 },
+  { key: 'burgan', name: 'Burgan Bank', country: 'KW', sector: 'banking', nationalsOnly: false, careersUrl: 'https://burgan.com/en/careers/', backend: 'Custom', methods: AI_MANUAL, sourceKey: 'watch:burgan', note: 'Custom page, no feed.', since: 5 },
+  { key: 'agility', name: 'Agility', country: 'KW', sector: 'transport', nationalsOnly: false, careersUrl: 'https://agility.com/careers/', backend: 'Custom', methods: AI_MANUAL, sourceKey: 'watch:agility', note: 'Custom page; no public job board found.', since: 5 },
+  { key: 'alshaya', name: 'Alshaya Group', country: 'KW', sector: 'tech', nationalsOnly: false, careersUrl: 'https://www.alshaya.com/en/careers', backend: 'Custom', methods: AI_MANUAL, sourceKey: 'watch:alshaya', note: 'Custom page (retail group with a large digital team); no feed.', since: 5 },
+  { key: 'ooredoo-kuwait', name: 'Ooredoo Kuwait', country: 'KW', sector: 'telecom', nationalsOnly: false, careersUrl: 'https://www.ooredoo.com.kw/', backend: 'Custom', methods: AI_MANUAL, sourceKey: 'watch:ooredoo-kuwait', note: 'Careers link redirects to the home page; no feed.', since: 5 },
+  { key: 'stc-kuwait', name: 'stc Kuwait', country: 'KW', sector: 'telecom', nationalsOnly: false, careersUrl: 'https://www.stc.com.kw/', backend: 'Custom', methods: AI_MANUAL, sourceKey: 'watch:stc-kuwait', note: 'Careers page refuses automated clients (403); not bypassed.', since: 5 },
+  { key: 'tap-payments', name: 'Tap Payments', country: 'KW', sector: 'tech', nationalsOnly: false, careersUrl: 'https://www.tap.company/', backend: 'Unknown', methods: AI_MANUAL, sourceKey: 'watch:tap-payments', note: 'Kuwaiti payments company; careers page 404 and no Greenhouse / Lever / Ashby / Workable board found.', since: 5 },
+  { key: 'talabat', name: 'talabat', country: 'KW', sector: 'tech', nationalsOnly: false, careersUrl: 'https://careers.talabat.com/', backend: 'SmartRecruiters', methods: AI_MANUAL, sourceKey: 'watch:talabat', note: 'Headquartered in Kuwait; SmartRecruiters API disallowed by robots.txt.' },
   // Bahrain
   { key: 'bapco', name: 'Bapco Energies', country: 'BH', sector: 'energy', nationalsOnly: false, careersUrl: 'https://www.bapcoenergies.com/careers', backend: 'Oracle ORC', methods: ['adapter'], sourceKey: 'oracle_orc:bapco', note: '1 job.' },
   { key: 'beyon', name: 'Beyon (Batelco)', country: 'BH', sector: 'telecom', nationalsOnly: false, careersUrl: 'https://beyon.com/careers/', backend: 'Custom', methods: AI_MANUAL, sourceKey: 'watch:beyon', note: 'Custom page, no feed.' },

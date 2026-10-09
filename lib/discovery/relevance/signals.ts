@@ -125,6 +125,10 @@ const PRESENCE_REQUIRED: readonly RegExp[] = [
 ]
 
 const GCC_NATIONALITY = '(?:uae|emirati|saudi|qatari|kuwaiti|bahraini|omani|gcc)'
+/** Demonyms only (not "UAE" / "GCC", which also name a place). */
+const GCC_DEMONYM = '(?:emirati|saudi|qatari|kuwaiti|bahraini|omani)'
+/** Plural demonyms used for people ("for Kuwaitis"). */
+const GCC_PEOPLE = '(?:emiratis|saudis|qataris|kuwaitis|bahrainis|omanis)'
 /** Words that make a nationality about people, not an employer ("Saudi National Bank"). */
 const WHO = '(?:candidates?|applicants?|citizens?|jobseekers?|job seekers?|graduates?|talent|hires?)'
 
@@ -149,6 +153,13 @@ const NATIONALS_ONLY: readonly RegExp[] = [
   new RegExp(`\\b${GCC_NATIONALITY} national ${WHO}\\b`),
   new RegExp(`\\bonly (?:for |open to )?${GCC_NATIONALITY} (?:nationals?|${WHO})\\b`),
   /\bnationals only\b/,
+  // "for Kuwaiti candidates", "reserved for Saudi applicants" (demonyms only:
+  // "for UAE candidates" usually means candidates IN the UAE).
+  new RegExp(`\\b(?:for|reserved for|restricted to|limited to|exclusively for) ${GCC_DEMONYM} ${WHO}\\b`),
+  // Plural demonyms: "for Kuwaitis", "Kuwaitis only", "open to Emiratis only".
+  new RegExp(`\\b(?:for|reserved for|restricted to|limited to|exclusively for) ${GCC_PEOPLE}\\b|\\b${GCC_PEOPLE} only\\b`),
+  // Kuwait's national-labour programme for the private sector.
+  /\b(?:mgrp|manpower and government restructuring program(?:me)?)\b/,
   /\b(?:emiratisation|emiratization|saudization|saudisation|nitaqat|qatarization|qatarisation|omanisation|omanization|kuwaitization|bahrainisation|bahrainization)\b/,
 ]
 

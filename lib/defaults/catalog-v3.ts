@@ -67,7 +67,7 @@ const BOARDS_V3: readonly DefaultSource[] = [
 
 /** Watch keys the v2 catalog already ships (their employers reuse them). */
 const V2_WATCH_KEYS = new Set([
-  'watch:emirates-group', 'watch:etihad', 'watch:flydubai', 'watch:mubadala', 'watch:qnb', 'watch:ooredoo', 'watch:aramco',
+  'watch:emirates-group', 'watch:etihad', 'watch:flydubai', 'watch:mubadala', 'watch:qnb', 'watch:ooredoo', 'watch:aramco', 'watch:talabat',
 ])
 
 function reasonOf(note: string, alert: boolean): string {
@@ -83,7 +83,7 @@ export const EMPLOYER_WATCH_V3: readonly DefaultSource[] = WATCH_EMPLOYERS.filte
   kind: 'watch',
   config: { url: e.careersUrl, reason: reasonOf(e.note, e.methods.includes('alert')), employer: e.key, cadence: 'weekly' },
   enabled: false,
-  since: 3,
+  since: e.since ?? 3,
 }))
 
 export const DEFAULT_SOURCES_V3: readonly DefaultSource[] = [...ENTERPRISE_V3, ...BOARDS_V3, ...EMPLOYER_WATCH_V3]

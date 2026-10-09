@@ -26,7 +26,8 @@ import { familiesFromEvidence } from './roles'
  */
 // r6 — review 2026-10-09: nationals-only needs a phrase about candidates;
 // benefit-list visa wording; mandatory languages; years "as a / in X".
-export const RELEVANCE_RULES_VERSION = 'r6'
+// r7 — 2026-10-09: "for Kuwaiti candidates", "for Kuwaitis", MGRP (Kuwait).
+export const RELEVANCE_RULES_VERSION = 'r7'
 
 export type RemoteScope = 'worldwide' | 'regions' | 'none'
 export const REMOTE_SCOPES: readonly RemoteScope[] = ['worldwide', 'regions', 'none']
