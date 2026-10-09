@@ -12,6 +12,10 @@ import { ReturnLink } from '@/components/settings/return-link'
 import { PortfolioSyncCard } from '@/components/portfolio/sync-card'
 import { pullOnOpen } from '@/lib/portfolio/pull'
 import { loadSyncStatus } from '@/lib/portfolio/sync-status'
+import { ResetPanel } from '@/components/profile/reset/reset-panel'
+import { lastUndoableImport } from '@/lib/import/undo'
+import { batchViews, resetCounts } from '@/lib/reset/plan'
+import { loadResetState } from '@/lib/reset/state'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,6 +25,7 @@ const SECTIONS = [
   { id: 'profile-links', label: 'Links' },
   { id: 'portfolio-sync', label: 'Portfolio' },
   { id: 'profile-details', label: 'Details' },
+  { id: 'reset-details', label: 'Reset' },
 ]
 
 /**
@@ -35,7 +40,14 @@ export default async function ProfileSettingsPage({
   const userId = await requireUserId()
   // The portfolio is the source of the public profile: pull it first (throttled).
   await pullOnOpen(userId)
-  const [profile, sp, sync] = await Promise.all([getProfile(userId), searchParams, loadSyncStatus(userId)])
+  const [profile, sp, sync, reset, last] = await Promise.all([
+    getProfile(userId),
+    searchParams,
+    loadSyncStatus(userId),
+    loadResetState(userId),
+    lastUndoableImport(userId),
+  ])
+  const batches = batchViews(reset)
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <ReturnLink from={sp.from} />
@@ -55,6 +67,12 @@ export default async function ProfileSettingsPage({
       <div id="profile-details" className={SECTION_ANCHOR}>
         <ProfileForm profile={profile} />
       </div>
+      <ResetPanel
+        counts={resetCounts(reset)}
+        batches={batches}
+        lastImport={batches.find((b) => b.id === last?.id) ?? null}
+        editable={reset.editable}
+      />
     </div>
   )
 }

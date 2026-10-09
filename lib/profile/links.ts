@@ -43,6 +43,19 @@ export const profileLinkSchema = z.object({
 })
 export type ProfileLink = z.infer<typeof profileLinkSchema>
 
+/** The kind a link gets by default from its address (the user may change it). */
+export function inferLinkKind(url: string): LinkKind {
+  let host = ''
+  try {
+    host = new URL(url).hostname.toLowerCase().replace(/^www\./, '')
+  } catch {
+    return 'other'
+  }
+  if (host === 'github.com') return 'github'
+  if (host === 'linkedin.com' || host.endsWith('.linkedin.com')) return 'linkedin'
+  return 'other'
+}
+
 /** Stored links, leniently: invalid entries are dropped. */
 export function readProfileLinks(value: unknown): ProfileLink[] {
   if (!Array.isArray(value)) return []
