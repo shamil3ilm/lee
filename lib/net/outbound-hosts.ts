@@ -199,6 +199,13 @@ export const OUTBOUND_PARTIES: readonly OutboundParty[] = [
     group: 'jobs',
   },
   {
+    id: 'company-logos',
+    name: 'Company logos (Wikimedia Commons, GitHub avatars)',
+    hosts: ['commons.wikimedia.org', 'avatars.githubusercontent.com'],
+    sends: 'Your browser loads small company logos in Discovery › Companies from these hosts (they see your IP address; no referrer is sent).',
+    group: 'jobs',
+  },
+  {
     id: 'company-sites',
     name: 'Company websites (careers-page check)',
     hosts: [],

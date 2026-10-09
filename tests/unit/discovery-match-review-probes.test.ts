@@ -141,6 +141,6 @@ describe('cappedFit', () => {
 
 describe('rules version', () => {
   it('is bumped so stored scores recompute', () => {
-    expect(MATCH_SCORE_VERSION).toBe('m3')
+    expect(MATCH_SCORE_VERSION).toBe('m4')
   })
 })

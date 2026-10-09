@@ -1,0 +1,20 @@
+{
+  "name": "Kuwait role 'for Kuwaitis' under MGRP: filtered",
+  "inputs": {
+    "profile": {
+      "discoveryPrefs": {
+        "basedIn": "IN",
+        "sponsorshipFor": ["AE", "SA", "QA", "KW", "BH", "OM"]
+      }
+    },
+    "job": {
+      "title": "PHP Developer",
+      "location": "Salmiya, Kuwait",
+      "descriptionMd": "Private-sector role supported under the MGRP programme; this vacancy is for Kuwaitis. Laravel, MySQL."
+    }
+  },
+  "expect": {
+    "pass": false,
+    "reasons": ["visa: nationals only"]
+  }
+}

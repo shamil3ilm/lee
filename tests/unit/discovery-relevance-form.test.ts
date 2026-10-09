@@ -82,6 +82,8 @@ describe('search preferences form', () => {
       relocationIfSponsored: true,
       relocationCountries: ['DE', 'UK', 'EU'],
       share: { visa: true, notice: true, relocation: false, timezone: false, nationality: false },
+      preferredRegions: [],
+      companyStages: [],
     })
   })
 

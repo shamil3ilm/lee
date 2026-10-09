@@ -1,6 +1,6 @@
-import { and, eq, lt } from 'drizzle-orm'
+import { and, eq, isNotNull, lt } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
-import { sources, users } from '@/lib/db/schema'
+import { sources, userProfile, users } from '@/lib/db/schema'
 import { MAX_ERRORS_BEFORE_SKIP } from '@/lib/discovery/service'
 import { JOB_PRIORITY, JOB_TYPES, jobKeys, utcDay } from './job-types'
 import { enqueueMany, type EnqueueSpec } from './queue'
@@ -61,9 +61,6 @@ export function planUserJobs(
       // A failed source is recorded, not retried; one extra try covers a crash.
       maxAttempts: 2,
     })),
-    // Company discovery (lib/company-discovery): planned daily, keyed per ISO
-    // week, so it runs once a week per user.
-    weeklyCompanySpec(userId, now),
   ]
 }
 
@@ -126,7 +123,7 @@ export async function scheduleDailyJobs(now: Date = new Date()): Promise<Schedul
   for (const u of await db.select({ id: users.id }).from(users)) {
     await applyDefaults(u.id)
   }
-  const [allUsers, activeSources, radar] = await Promise.all([
+  const [allUsers, activeSources, radar, withPrefs] = await Promise.all([
     db.select({ id: users.id }).from(users),
     db
       .select({ id: sources.id, userId: sources.userId })
@@ -134,6 +131,8 @@ export async function scheduleDailyJobs(now: Date = new Date()): Promise<Schedul
       .where(and(eq(sources.enabled, true), lt(sources.errorCount, MAX_ERRORS_BEFORE_SKIP)))
       .orderBy(sources.createdAt),
     radarSourcesByUser(),
+    // Company discovery needs target regions: users who saved Settings › Search.
+    db.select({ id: userProfile.userId }).from(userProfile).where(isNotNull(userProfile.searchPrefsSavedAt)),
   ])
   const byUser = new Map<string, string[]>()
   for (const s of activeSources) byUser.set(s.userId, [...(byUser.get(s.userId) ?? []), s.id])
@@ -154,6 +153,9 @@ export async function scheduleDailyJobs(now: Date = new Date()): Promise<Schedul
       priority: JOB_PRIORITY[JOB_TYPES.usageSnapshot],
     },
     ...allUsers.flatMap((u) => planUserJobs(u.id, byUser.get(u.id) ?? [], day, now, radar.get(u.id) ?? [])),
+    // Company discovery (lib/company-discovery): planned daily, keyed per ISO
+    // week, so it runs once a week per user.
+    ...withPrefs.map((u) => weeklyCompanySpec(u.id, now)),
   ]
   const { created } = await enqueueMany(specs)
   return { day, users: allUsers.length, planned: specs.length, enqueued: created }

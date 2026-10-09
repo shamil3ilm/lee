@@ -146,7 +146,8 @@ describe('outbound timeouts', () => {
   // lib/ingest/fetch (10 s AbortController, SSRF checks) and its JD
   // enrichment through discoveryFetch; it needs a user, so it is checked in
   // tests/unit/google-alerts.test.ts with stubbed deps.
-  const noFetchKinds = ['watch', 'email_alert', 'manual_import', 'google_alerts']
+  // `local_companies` holds company discovery's rows (filled by lib/company-discovery).
+  const noFetchKinds = ['watch', 'email_alert', 'manual_import', 'google_alerts', 'local_companies']
 
   it('covers every registered discovery adapter', () => {
     expect([...Object.keys(adapterConfigs), ...noFetchKinds].sort()).toEqual(listAdapterKinds().sort())

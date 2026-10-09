@@ -1,0 +1,21 @@
+{
+  "name": "Kuwait City fintech open to all nationalities: passes",
+  "inputs": {
+    "profile": {
+      "discoveryPrefs": {
+        "basedIn": "IN",
+        "sponsorshipFor": ["AE", "SA", "QA", "KW", "BH", "OM"]
+      }
+    },
+    "job": {
+      "title": "Backend Developer",
+      "location": "Kuwait City, Kuwait",
+      "descriptionMd": "Payments fintech in Kuwait City, open to candidates of all nationalities; work visa provided. Laravel, MySQL and REST APIs. Salary KWD 900 - 1,200 per month."
+    }
+  },
+  "expect": {
+    "pass": true,
+    "reasons": [],
+    "regions": ["gcc"]
+  }
+}
