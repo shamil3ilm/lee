@@ -429,18 +429,28 @@ enrichment queue then finds each company's careers page and job board.
 | Source | Endpoint | Terms / robots | Bounds |
 |---|---|---|---|
 | Wikidata Query Service | `GET query.wikidata.org/sparql` (companies whose HQ (P159) is a target city or in one, or whose country (P17) is a target country, with an industry (P452) in lee's list, not dissolved; website, inception, employees, logo) | Data CC0. WDQS manual: 60 s per query, 60 s of processing per minute per client, informative User-Agent with contact details required (`lee/1.0 (+https://getlee.vercel.app; …)`). robots.txt disallows `/sparql` for crawlers; the endpoint is a public API | one query per country, `LIMIT 400`, 2 s apart |
-| GitHub organisations | `GET api.github.com/search/users?q=type:org location:"Dubai"`, then `/orgs/{login}` and `/orgs/{login}/repos` in enrichment | REST Search API: 10 requests a minute unauthenticated, 30 with a token (the user's GitHub connection, else the deployment's `GITHUB_TOKEN`). Acceptable Use forbids using GitHub information for spam or selling personal data: lee searches **organisations only** (`type:org`), stores no person's data and sends nothing | 6 locations a run (starred countries always, the rest rotating weekly), 20 orgs each, 6.5 s apart |
+| GitHub organisations | `GET api.github.com/search/users?q=type:org location:"Dubai"`, then `/orgs/{login}` and `/orgs/{login}/repos` in enrichment | REST Search API: 10 requests a minute unauthenticated, 30 with a token (the user's GitHub connection, else the deployment's `GITHUB_TOKEN`). Acceptable Use forbids using GitHub information for spam or selling personal data: lee searches **organisations only** (`type:org`), stores no person's data and sends nothing | 6 locations a run (starred countries always, the rest rotating weekly), 50 orgs a page, 6.5 s apart; a cursor per city walks the pages week by week (search serves at most 1,000 results), so every org in the city comes round (Kuwait: 368 orgs → 8 pages) |
 | YC companies (yc-oss) | `GET yc-oss.github.io/api/companies/all.json` (~10.5 MB, 6,283 companies on 2026-10-09) | The github.com/yc-oss/api repository has **no licence**, and YC's own terms forbid scraping ycombinator.com. lee never fetches ycombinator.com; from the open copy it keeps facts only (name, website, location, team size, industry tags) and links to the YC profile; no descriptions or logos | one fetch a week, 16 MB cap; active GCC / India companies only (India 226, UAE 17, Saudi 5 on 2026-10-09) |
-| Technopark company list | `GET technopark.in/api/paginated-companies?page=N` (the JSON its own /company-list page calls; 497 companies, 25 pages) | robots.txt disallows only `/cgi-bin/`; no terms against reading it (privacy/cookie policy only) | 3 pages a week, rotating |
+| Technopark company list | `GET technopark.in/api/paginated-companies?page=N` (the JSON its own /company-list page calls; 497 companies, 25 pages; names only), then `GET technopark.in/company-details/{id}` during enrichment for the "Company Website" link | robots.txt disallows only `/cgi-bin/`; no terms page (privacy/cookie policy only) | the **whole list** every week (a cursor; an interrupted run resumes at the next page); one profile page per name-only company |
+| Infopark company list (Kochi) | `GET infopark.in/companies?page=N` (HTML cards: name, website, "Domain" tags; 401 companies, 10 pages of 42) | robots.txt `User-agent: * Disallow:` (empty); no terms page (`/terms*`, `/privacy-policy`, `/disclaimer` all 404) | the whole list every week (cursor); e-mails and phones on the cards are never kept |
+| Kerala Cyberpark (Kozhikode) | `GET cyberparks.in/companies-at-park/` (one page, ~75 cards: name, website, listing) | robots.txt disallows only `/wp-admin/`; no terms page | once a week |
+| UL Cyberpark (Kozhikode) | `GET www.ulcyberpark.com/companies` (one page, ~42 linked cards) | no robots.txt (the path serves the site's 404 page, so no rules); its terms page has no clause on robots, scraping or automated access | once a week |
 | QSTP directory (Doha) | `GET qstp.qa/wp-json/wp/v2/directory?per_page=100` (WordPress REST API; 95 entries) | robots.txt `Disallow:` (empty); privacy policy only, no scraping clause | once a week |
-| Your LinkedIn connections | the export you imported (`linkedin_connections`) | your own data | companies with ≥ 2 connections, 30 a run; counts feed the warm-intro chip |
+| Flat6Labs portfolio | `GET flat6labs.com/company-sitemap.xml` (Yoast; 455 portfolio companies), then each company page (name and country in its `<h1>`, website after "Website") | robots.txt `User-agent: * Allow: /`; no terms page (`/terms-of-use`, `/terms-and-conditions`, `/privacy-policy` 404); no bot wall | 60 company pages a week (cursor; a full pass in about 8 weeks); GCC companies inside your target regions only |
+| StartUp Bahrain ecosystem | `GET startupbahrain.com/ecosystem` (one pre-rendered Framer page; the "Startups" section's name + domain) | robots.txt `User-agent: * Allow: /`; no terms page | once a week |
+| NASSCOM members | `GET nasscom.in/members-listing?page=N` (Drupal view, 15 a page, about 3,600 members: name, city, website) | robots.txt disallows `/core/`, `/profiles/`, `/admin/`, `/search/`, `/user/*` … not `/members-listing`; no terms-of-use page; the footer's refund and privacy policies have no clause on automated access | 10 pages a week (cursor; a full pass in about 24 weeks); members in your target cities only |
+| Employers in your jobs | every employer of a posting lee collected in the last 120 days (ATS boards, e-mail alerts, Google Alerts, pasted imports, park job boards), your applications and your watch list; placed by the posting's location | your own data | 300 a run, most postings first; a posting from the employer's own ATS source sets its job board (already watched) |
+| Well-known employers (seed) | `lib/company-discovery/seed/*.ts`: about 75 public facts (name, website, offices, industry, other names), verified live with `pnpm tsx scripts/company-seed-verify.ts` | public facts | **a recall floor, not the ceiling, never a ranking signal**: no fit or growth points, never "under the radar" |
+| Your LinkedIn connections | the export you imported (`linkedin_connections`) | your own data | companies with ≥ 2 connections, 60 a run; counts feed the warm-intro chip |
 | "Add companies" | text or links you paste (e.g. a Google AI Mode answer from the prompts in the dialog, opened in your own browser) | lee never contacts Google | 40 companies per paste |
+| "Find a company by name" | the name you type: Wikidata `wbsearchentities` (www.wikidata.org) and one SPARQL query for website, HQ, industry, founding year and employees; up to 4 website guesses (the name + .com/.ai/.io/.co and the typed place's country domain), each one GET of the home page | Wikidata data CC0; nothing is stored until you pick an option and confirm (you may correct the website) | 5 Wikidata hits, 4 guesses a search |
 
 Company websites are read only during enrichment, only after robots.txt
 (lee's token or `*`; an unreadable robots.txt stops the check), through
 `safeFetch`: the home page, then a linked careers page or `/careers`,
 `/jobs`, `/join-us`, `/work-with-us`; at most 4 pages of 1.5 MB per
-company, 6 companies per job, 10 jobs a week. A link to Greenhouse, Lever,
+company, 6 companies per job, 40 jobs a week (complete park lists add
+hundreds of companies; the rest continue the week after). A link to Greenhouse, Lever,
 Ashby, Workable, Recruitee, Pinpoint, Workday or Teamtailor offers
 **Watch jobs** (a source of that kind, polled by the existing adapter);
 SmartRecruiters, BambooHR, Zoho Recruit and others stay links. Role
@@ -462,12 +472,15 @@ text hash is compared weekly and a change adds a to-do.
 | Central Bank of Kuwait Innovation Hub participants | Kuwait | Terms: "for personal usage only" |
 | Kuwait National Fund for SME Development | Kuwait | Sucuri JavaScript challenge; Sirdab Lab's domain no longer resolves |
 | Misk Hub / Monsha'at | Saudi Arabia | No public startup list (the Misk Accelerator page is 404); Monsha'at did not answer |
-| Flat6Labs portfolio | KSA / UAE / Egypt | Allowed by robots (company sitemap), but HTML only; browse for now |
 | QDB startups | Qatar | Akamai 403 |
-| StartUp Bahrain ecosystem | Bahrain | Allowed by robots, one Framer page; browse for now |
 | Bahrain FinTech Bay partners | Bahrain | Terms only render with JavaScript (unread) |
 | Oman SME Authority (Riyada) | Oman | No company directory (riyada.om has lapsed; sme.gov.om) |
-| Infopark, Kerala Cyberpark, UL Cyberpark companies | Kerala | Allowed by robots, HTML lists; browse for now |
+| GTECH members (Group of Technology Companies, Kerala) | Kerala | Terms of use §5: "No material from this site may be copied, modified, reproduced, republished … without prior written permission from GTech"; the list is a CSRF-protected POST behind JavaScript |
+| Kerala IT (keralait.org) | Kerala | Unusable: an expired self-signed certificate over HTTPS, "Restricted URL!!" over HTTP (checked 2026-10-09) |
+| Dubai Chambers commercial directory | Dubai | Terms: "No material from the site may be copied, distributed, transmitted or used without expressed written permission"; the directory is a session-based Siebel app behind Cloudflare |
+| DMCC business directory / public register | Dubai | The directory page itself: "expressly forbidden to copy, download, store, reproduce … the DMCC member directory"; Salesforce search pages only |
+| RAKEZ | Ras Al Khaimah | No public company registry; terms forbid obtaining information "through any means not intentionally made available" |
+| Kuwait Chamber of Commerce & Industry | Kuwait | Sucuri JavaScript challenge on every page (not bypassed); terms unreadable |
 | Kerala Startup Mission | Kerala | No startup directory API (a short showcase only) |
 | Startup India search | India | `api.startupindia.gov.in/robots.txt`: `Disallow: /` |
 
@@ -479,8 +492,84 @@ that serves your target role families: payments, fintech, banking,
 e-invoicing, ERP, data 22 · general software 16), tech (GitHub languages
 you have ready: top language 13 · any 9), size/stage (your preference 8 ·
 none 4), hiring (open roles 15 · a job board 10 · a careers page 6), warm
-intro (LinkedIn connections, 10). Public-sector / nationals-first names are
-capped at 10 and flagged.
+intro (LinkedIn connections, 10), **growth (0–10: the growth score ÷ 10,
+pulled toward the neutral 5 by its confidence — high × 1, medium × 0.7,
+low × 0.4; unknown growth is the neutral 5, never 0)**. The total is capped
+at 100. Public-sector / nationals-first names are capped at 10 and
+flagged. No part counts fame: a seed entry, a Wikidata item or press
+coverage adds nothing by itself.
+
+### Growth score (0–100, with a confidence)
+
+`lib/company-discovery/growth`: deterministic, explainable, free. Each
+signal is a 0–100 sub-score (50 = flat) with its source, date and
+confidence, measured against the company's **own** baseline, so a 3 → 8
+role company scores higher than a 300 → 310 one. A signal lee could not
+measure is *unknown*: it is left out of the mean (never counted as 0) and
+lowers the confidence.
+
+| Signal | Weight | What is measured | Source |
+|---|---|---|---|
+| Hiring velocity | 30 | open roles now vs ~30 and ~90 days ago (relative change, floor 2); until that history exists, new postings first seen in the last 30 days vs the 60 before | a weekly count of the company's ATS board (Greenhouse, Lever, Ashby, Workable, Recruitee, Pinpoint, Workday, Teamtailor) through the existing adapters, kept in `role_snapshots` (one a week, 26 weeks: retention by construction); postings lee collected |
+| Funding and expansion news | 18 | funding +25, expansion / new office +18, acquisition +10, layoffs −30, closure −45, **each kind once** (press volume never adds), last 12 months | GDELT headlines naming the company (rule-classified, `lib/reputation/classify.ts`) and the user's reputation panel |
+| Engineering activity | 17 | commits in the last 13 weeks vs the 13 before (the 3 most active public repos), plus new repos; stars are never scored | GitHub `/orgs/{login}/repos` + `/repos/{o}/{r}/stats/participation`, weekly |
+| Headcount trend | 13 | yearly growth rate from dated employee counts; a size band alone is context (unknown) | Wikidata P1128 with P585 qualifiers, monthly |
+| Stage and age | 9 | young (≤ 3 y 62 · ≤ 8 y 58 · ≤ 20 y 50 · older 45), + 10 for a recent accelerator cohort (a YC batch in the last 3 years, or an accelerator listing of a company at most 5 years old; any accelerator counts the same, no YC premium; a park or portfolio listing alone is not a signal), + 15 for funding in the last year when ≤ 10 years old | Wikidata / YC / Flat6Labs / StartUp Bahrain |
+| Product momentum | 6 | launches in 90 days (+12 each, ≤ 2) and the **trend** of Hacker News mentions (6 months vs the 6 before), not their number | AI Radar "What's new" rows on the company's domain or GitHub org; HN Algolia |
+| Market tailwind | 7 | a documented table: ZATCA e-invoicing in KSA 75, UAE e-invoicing 72, Saudi fintech 68, GCC fintech / payments 65, GCC AI 62, GCC e-commerce 58, Indian SaaS / AI 60, Kerala IT 56 | `lib/company-discovery/growth/tailwind.ts` (reviewed 2026-10-09) |
+
+Score = the weighted mean of the known signals; null ("Growth unknown")
+when nothing company-specific is known (the tailwind alone says nothing
+about the company). Confidence: coverage q = Σ weight × confidence factor
+(high 1 · medium 0.7 · low 0.4) ÷ 100 → **high** when q ≥ 0.45 and 3+
+company-specific signals are known, **medium** when q ≥ 0.2 or 2+ are
+known, else **low**. Shown as a chip ("Growth 78 · high confidence") with a
+"Why" popover listing every signal; Discovery › Companies sorts by growth
+and filters by a minimum growth.
+
+**Under the radar** ("Under the radar" filter): fit ≥ 55, growth ≥ 60 or
+open roles / new postings, and little visibility — no Wikidata item, no
+press found, under 3 HN mentions, under 200 GitHub stars, no YC batch, not a
+large employer (1000+ people or 50+ open roles), not
+in the seed list.
+
+**Job cards**: the employer's growth is copied onto its postings (by
+domain, name or the legal name a park listed) and shown in "Why this
+score" as "Company growth: 78" — not in Fit, unless Settings › Search ›
+"Factor company growth into Fit" is on: then Fit moves by round((growth −
+50) ÷ 10), −5…+5, at medium or high confidence only (the list sort uses
+the same nudge, `growthNudgeSql`).
+
+A weekly `company-growth` job (after the discovery run) gathers the facts
+within bounds, best fit first, each on its own staleness clock: 20 board
+counts (weekly), 6 GitHub orgs (4 requests each, weekly), one Wikidata
+query for 40 companies (monthly), news + HN for 4 companies (every four
+weeks).
+
+### Recall audit (2026-10-09): why CareStack and QBurst were missing
+
+Checked live through the same endpoints the pipeline reads.
+
+| Company | Technopark list | Wikidata | GitHub org search | Cause |
+|---|---|---|---|---|
+| CareStack | listed as **"Good Methods Software Solutions (P) Ltd"** (id 6254, page 10 of 25); its profile page links carestack.com | no item (the only "CareStack" is an unrelated doula-practice product, Q140085746) | org `carestack` has no location, name or repos | the run read **3 of 25 pages** (this week's slice: 24, 25, 1); even when read, the legal name had no website, so it was never recognised or enriched |
+| QBurst | listed as "QBurst Technologies (P) Ltd" (id 6092, page 18) | no item | org `qburst` (283 repos) has no location, so `location:` searches miss it | page 18 was not in the rotation; Infopark (Kochi) and UL Cyberpark (Kozhikode) list it with qburst.com but were browse-only; "(P)" was not stripped, so the Technopark name would not have matched "QBurst Technologies" |
+
+Not the cause: dedupe across sources and region tagging (Technopark rows
+are tagged Thiruvananthapuram → Kerala → India). Contributing: 40 new
+directory rows a run (20 of the 60 read were dropped), 800 rows per user,
+and retention auto-dismissing unreviewed companies after 60 days (a
+dismissed key never comes back).
+
+Fixes: the whole Technopark list every run (cursor, resumes after a
+failure) and its profile pages for websites; Infopark, Cyberparks,
+Flat6Labs, StartUp Bahrain and NASSCOM read automatically; "(P)" and
+generic tails ("Technologies", "Solutions") folded into a brand key that
+joins a name-only listing to the company known by its website (also across
+runs: the remap before insert and the duplicate fold); a seed of
+well-known employers with their legal names as aliases; employers seen in
+jobs; the search box; caps of 1,200 directory rows a run and 3,000 per
+user; local companies no longer auto-expire.
 
 ### Live check (2026-10-09)
 
@@ -495,3 +584,25 @@ Through lee's own parsers and client (`pnpm tsx scripts/company-discovery-audit.
 | Wikidata | Kerala | Kochi 8 · Kozhikode 4 · Trivandrum 3 · Kerala-level 4 (of 165 for all Indian target cities, Bengaluru 70) | Codenex Solutions, Asianet Web |
 | GitHub orgs | Dubai · Abu Dhabi · Riyadh · Doha · Kuwait | 20 each (first page; Kuwait 368 in total) | Vinelab, namshi · tiiuae · mrsool, ElmCompany · qcri, dibsyhq · Tap-Payments, JoinCODED |
 | GitHub orgs | Kochi · Trivandrum · Kozhikode | 20 each (first page) | ileafsolutions, flycatch · zyxware, PIT-Solutions · Genskill, efeone |
+
+### Live check after the recall fixes (2026-10-09)
+
+`pnpm tsx scripts/company-recall-live-check.ts` against a throwaway PGlite
+database: one synthetic user per region, the real weekly run, then 40
+enrichments and the growth refresh. "Before" emulates the previous
+pipeline's first run with the same parsers (Technopark 3 rotating pages,
+GitHub first page of 20, no other parks, no seed, no jobs; caps wikidata
+60 · github 40 · directory 40 · yc 40).
+
+| Region | Before | After | After, by source | Well-known names present |
+|---|---|---|---|---|
+| Kerala | 138 | 1,148 | Technopark 488 · Infopark 401 · Cyberpark 75 · UL Cyberpark 42 · GitHub 162 · seed 25 · Wikidata 18 · NASSCOM 2 | 12 / 12 (CareStack, QBurst, UST, IBS, Experion, SunTec, Tata Elxsi, Envestnet, Guidehouse, Nest Digital, Quest Global, Litmus7) |
+| UAE | 140 | 184 | GitHub 152 · seed 19 · YC 16 · Flat6Labs 1 (Wikidata rate-limited in this run: 429) | 12 / 12 |
+| Kuwait | 79 | 75 | GitHub 51 · Wikidata 18 · seed 11 (YC's Indian companies no longer leak in) | 11 / 11 |
+| KSA | 122 | 212 | GitHub 152 · Wikidata 42 · seed 17 · YC 4 · Flat6Labs 1 | 12 / 12 |
+| Qatar | 126 | 181 | QSTP 95 · GitHub 74 · Wikidata 11 · seed 5 | 5 / 5 |
+
+On the first run growth is mostly unknown (no role history yet; GDELT
+answered 429 to this IP during the check), so it rests on the signals
+that exist at once: engineering activity, Wikidata headcount and founding
+year. Role counts build week by week.
