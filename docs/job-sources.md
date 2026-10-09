@@ -798,3 +798,151 @@ On the first run growth is mostly unknown (no role history yet; GDELT
 answered 429 to this IP during the check), so it rests on the signals
 that exist at once: engineering activity, Wikidata headcount and founding
 year. Role counts build week by week.
+
+## Company sources for low-visibility companies (2026-10-09)
+
+Many employers in the GCC and Kerala have no Wikidata item, no GitHub
+organisation and no park listing: family groups, banks, hospitals,
+logistics firms, small software houses in residential towers. Two automatic
+sources and one keyed source now find them
+(`lib/company-discovery/sources/overpass.ts`, `gleif.ts`, `mca.ts`, walked by
+`map-register.ts` over the areas in `register-areas.ts`, which is data: a
+bounding box per target city, a GLEIF search per country or city, an MCA
+state), plus browse links for the registers and events that cannot be read.
+
+**Not only tech companies.** Banks, insurers, telecoms, airlines, logistics,
+e-commerce, hospitals, universities, government bodies, conglomerates and
+consultancies all hire software, data, analyst, ERP and BI people, so these
+sources take every kind of office and large employer and never filter by
+industry. Each listing gets a **hiring likelihood** instead
+(`lib/company-discovery/hire-likelihood.ts`; on the card, e.g. "Likely
+hires: data/IT (bank, 1,000+ staff)"): job postings lee saw from it +35 (the
+strongest signal), a job board +15 or a careers page +10, a sector prior
+(`sectors.ts`: software, IT, banks, telecoms, e-commerce, airlines,
+conglomerates 28–35; retail and manufacturing 18; shops and restaurants 2–3),
+size (staff, branches on the map, paid-up capital) up to +30, an LEI +8, a
+website that answers +8. Only obvious non-employers are dropped (ATMs,
+restaurants and cafés, single shops, homes, unnamed objects, embassies);
+nothing is dropped for its sector alone. Each run keeps the 150 most likely
+employers per family (map, register; `NEW_PER_SOURCE` caps them the same).
+The likelihood is **not** part of the company fit, and these sources add no
+fame or growth points. The card says why the company appeared ("Found via
+map", "Found via register", when no other source listed it) and links to the
+OpenStreetMap element or the GLEIF record.
+
+**Fit is domain-neutral** (`lib/company-discovery/fit.ts`, audited for tech
+bias): an unknown industry scores the neutral 11 (was 0), no public GitHub
+code the neutral 6 (was 0), postings lee saw from the employer count as
+hiring (+10), and banks, telecoms, e-commerce, fintech and data companies
+now serve the analyst, BI and ERP role families as well as engineering ones
+(`INDUSTRY_FAMILIES`). The growth score already left unmeasured signals out
+(GitHub activity unknown is not 0), and "under the radar" / the seed floor
+add no tech-only points.
+
+### Automatic (with the bounds)
+
+| Source | Endpoint | Licence / policy | Bounds |
+|---|---|---|---|
+| OpenStreetMap | `GET overpass-api.de/api/interpreter?data=…`: per area `[bbox]`, `nwr["office"]["name"]` (every office kind), `amenity=hospital\|university\|college\|bank`, `shop=mall\|department_store`, `man_made=works`, `industrial=*`; `out tags center 1500` | Data © OpenStreetMap contributors, **ODbL 1.0**: the attribution is shown at the foot of Discovery › Companies (linked to openstreetmap.org/copyright) and on the privacy page. Overpass usage (wiki.openstreetmap.org/wiki/Overpass_API): "You can assume that you don't disturb other users when you do less than 10,000 queries per day and download less than 1 GB data per day … If you set something up that uses the Overpass API regularly, then divide those numbers by 100 (making less than 100 queries fetching less 10 MB of data per day fine). If you have an app or website, then the usage counts towards the sum of requests made by all your users". overpass-doc "commons": "users are expected to send a maximum of about 10000 requests per day and keep their download volume below about 1 GB per day". `overpass-api.de/robots.txt` disallows `/api/` for crawlers; the interpreter is a public query API (as with WDQS) and lee does not crawl | the public instance, `[timeout:60]`, lee's User-Agent; **one area per run and at most one query per user every 14 days**, 1,500 elements a query (about 0.3–1 MB); with ≤ 100 invitees that is under ~50 queries and ~50 MB on a Monday; a full pass over a user's areas takes months; a failed query (504 "server too busy") also waits the 14 days |
+| GLEIF LEI register | `GET api.gleif.org/api/v1/lei-records?filter[entity.legalAddress.country]=KW&filter[entity.status]=ACTIVE&page[size]=200&page[number]=N`: the whole country for KW, BH, QA, OM; `filter[fulltext]=<city>` for UAE, KSA and Indian cities (GLEIF has no city filter: `filter[entity.legalAddress.city]` answers "Filter should contain only allowed values"), places resolved from the addresses | GLEIF terms of use: "The data available through the Access Service are provided under the CC0 licence" (no attribution required; credited anyway). robots.txt `Disallow:` (empty). The API allows 60 requests a minute | 3 pages of 200 a run, one area a run (a cursor per area), a finished area again after 90 days; funds dropped; the trading or transliterated name shown, the legal name kept as "listed as" |
+| India MCA company master data | `GET api.data.gov.in/resource/4dbe5667-7b6b-41d7-82af-211562424d9a?api-key=…&filters[CompanyStateCode]=Kerala&limit=500&offset=N` ("Registrars of Companies (RoC)-wise Company Master Data") | Government Open Data License – India (use, adaptation and redistribution, commercial or not, with attribution; credited in the Companies tab). Needs a free data.gov.in key: **runs only when the user saves one** (Settings › AI › "data.gov.in"; owner env fallback `DATA_GOV_IN_KEY`), skipped otherwise | 4 pages of 500 a run, one state a run; **all NIC codes** (the CIN's NIC code sets the sector: NIC 2004 for CINs before 2011, NIC 2008 after); companies not Active dropped; the e-mail and the full address never kept |
+
+**MCA not verified live:** `api.data.gov.in` did not answer from the audit
+network (connection failed) and `www.data.gov.in` (catalogue, robots.txt,
+licence page) returned Akamai 403, so the resource id, field names and the
+`CompanyStateCode` filter come from the published dataset listing and a
+third-party integration's description, not from a response. The parser
+reads fields leniently (`CompanyName` / `COMPANY_NAME` / `company_name`),
+checks the state letters inside each CIN itself, and stops the walk with
+"state filter not applied" if a page holds no company of the state. The
+fixtures are synthetic.
+
+**Legal names.** The brand fold strips GCC and Indian legal forms ("W.L.L.",
+"K.S.C.(Closed)", "K.S.C. (Holding)", "K.S.C.C.", "K.S.C.P.", "S.A.K.P.",
+"S.P.C.", "S.A.O.G", "S.A.O.C", "P.J.S.C.", "L.L.C.", "FZ-LLC", "FZE",
+"FZCO", "DMCC", "Pvt. Ltd.", "Private Limited", "Co.", "Company", "Est.",
+"Establishment", "/With Limited Liability"; for the brand key also
+"Trading", "Industries" and a trailing country), only at the end of a name
+and never the first word. A register's legal name joins the company lee
+knows by its website in the same country ("National Bank of Kuwait
+S.A.K.P." → "National Bank of Kuwait", "Zain Kuwait K.S.C.P." → "Zain"), and
+a legal name that begins with exactly one known brand of 5+ characters joins
+it ("Agility Public Warehousing Company K.S.C.P." → "Agility") — for map and
+register names only, in the candidate merge, the remap before insert and
+across runs.
+
+**Websites.** A website that only a map or a register gave is checked once
+in enrichment with the website liveness check (one GET of the home page,
+`lib/company-discovery/site-live.ts`, shared with "Find a company"); a site
+that does not answer is removed from the row ("The listed website did not
+answer."), the company stays.
+
+### Browse links only
+
+| Register / channel | Checked 2026-10-09 (single GETs, lee's UA) | Why not automatic |
+|---|---|---|
+| DIFC public register, ADGM public registers, Dubai Internet City, in5, Dubai Silicon Oasis (DTEC) | see "Directories: browse links only" above | bot walls (Vercel, Cloudflare) and TECOM / DSO terms |
+| QFC public register (Doha) | `qfc.qa/robots.txt` disallows only `/umbraco/`; `/en/public-register` redirects to `eservices.qfc.qa/qfcpublicregister/publicregister.aspx` | an ASP.NET WebForms search (postbacks, view state), not a list lee can page politely |
+| SRTI Park (Sharjah) | robots.txt `Disallow:` (empty) | no public company directory |
+| KSA MISA | robots.txt `Crawl-delay: 30` | no public licensee list |
+| KSA Monsha'at | see above | did not answer automated clients |
+| Kuwait MOCI | no robots.txt (404) | company lookups are e-services; no list |
+| KDIPA (Kuwait) | robots.txt `Disallow:` (empty) | licensed investors are announced in news posts, not a list |
+| Bahrain Sijilat | no robots.txt (404) | a per-company search app; no bulk list |
+| Oman Invest Easy | connection failed | did not answer |
+| India MCA via data.gov.in | Akamai 403 on www; API unreachable from the audit network | automatic with the user's key (above); otherwise a link |
+| GITEX Global (Dubai) | robots.txt disallows `/registration-and-vip`; `/exhibitor-list` is a 404 page | exhibitors live in an event app, per edition |
+| LEAP (Riyadh) | robots.txt allows; `/exhibitors` → Cloudflare 403 | bot wall (never bypassed) |
+| Web Summit Qatar | robots.txt `Disallow: /api/` | its data API is disallowed |
+| Huddle Global (Kerala) | robots.txt → 403 AccessDenied | no exhibitor list on the site |
+| KSA Etimad | redirects to `login.etimad.sa` | tender awards behind sign-in |
+| University career-fair employer lists | — | per-fair PDFs and pages; add them with "Add companies" |
+
+**Common Crawl: skipped.** Finding company sites in it means scanning CDX
+indexes or WAT files (terabytes per crawl) and classifying each host — not
+cheap enough for a weekly per-user job — and the result would still need the
+same liveness and noise checks as OpenStreetMap, which lists the same
+employers with a name and a place already attached.
+
+### Google Maps: a link only, never data
+
+lee neither scrapes Google Maps nor uses the Places API to find companies.
+Google Maps Platform Terms of Service §3.2.3: "(a) No Scraping. Customer will
+not export, extract, or otherwise scrape Google Maps Content for use outside
+the Services. For example, Customer will not: (i) pre-fetch, index, store,
+reshare, or rehost Google Maps Content outside the services; (ii) bulk
+download … places information …; (iii) copy and save business names,
+addresses, or user reviews" and "(b) No Caching. Customer will not cache
+Google Maps Content except as expressly permitted under the Maps Service
+Specific Terms". The Service Specific Terms allow caching "latitude values,
+longitude values" for "30 consecutive calendar days, after which Customer
+must delete the cached Google Maps Content", and the Places policies say
+"the place ID, used to uniquely identify a place, is exempt from the caching
+restrictions". A list of discovered companies is exactly the stored business
+names and addresses the terms forbid. Each company card instead has **"Look
+up on Google Maps"**: a plain Maps URL,
+`https://www.google.com/maps/search/?api=1&query=<name + city>`
+(`lib/company-discovery/maps-link.ts`), opened in the user's own browser —
+"You don't need a Google API key to use Maps URLs" (Maps URLs guide). lee
+stores nothing from it. (The optional Google ratings on the Reputation panel
+are a separate, user-keyed feature.)
+
+### Automatic vs browse-only, in short
+
+Automatic: OpenStreetMap (Overpass), GLEIF, India MCA (with the user's
+data.gov.in key). Browse links: every register and event in the table
+above, plus the existing directory links. A link only: Google Maps.
+
+### Live check (2026-10-09)
+
+`pnpm tsx scripts/company-sources-live-check.ts` (`countRegionCandidates`
+in `map-register.ts`: one Overpass query and one GLEIF page per region,
+no database). The first Dubai and Kochi Overpass queries answered 504
+("Dispatcher_Client::request_read_and_idx::timeout. The server is probably
+too busy"); they succeeded about 30 minutes later.
+
+| Region | OpenStreetMap (after the noise filter; branches folded) | GLEIF |
+|---|---|---|
+| Kuwait (Kuwait City box) | 327 employers, 33 with a website, 43 likely or possible data/IT employers; most likely first: Boubyan Bank, Gulf Bank, NBK, Kuwait Finance House, ABK | 224 active entities in Kuwait; 97 of the first 100 kept |
+| UAE (Dubai box) | 1,194 employers (the 1,500-element cap was reached), 281 with a website, 158 likely or possible; Commercial Bank of Dubai, Dubai Islamic Bank, Emirates Islamic, Emirates NBD | 5,730 entities match "Dubai"; 99 of the first 100 kept (mostly free-zone FZCO / FZ-LLC firms) |
+| Kochi | 1,168 employers (cap reached), 88 with a website, 198 likely or possible; Axis Bank, Bank of Baroda, Bank of India, Canara Bank, Federal Bank | 2,266 entities match "Ernakulam"; 98 of the first 100 kept |
