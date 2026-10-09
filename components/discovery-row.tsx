@@ -284,7 +284,8 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
               {workModeLabel(n.remoteType) ? (
                 <Badge variant="slate">{workModeLabel(n.remoteType)}</Badge>
               ) : null}
-              <span className="text-xs text-muted-foreground">
+              {/* "just now" on the server can be "1m ago" by hydration: relative text may differ. */}
+              <span className="text-xs text-muted-foreground" suppressHydrationWarning>
                 {relativeFromNow(item.createdAt)}
               </span>
             </div>
