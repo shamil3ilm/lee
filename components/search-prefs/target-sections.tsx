@@ -2,7 +2,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ROLE_FAMILIES } from '@/lib/discovery/relevance/roles'
 import { SENIORITY_LABELS, SENIORITY_LEVELS } from '@/lib/discovery/relevance/seniority'
-import { REGION_CODES, TARGET_REGIONS } from '@/lib/discovery/relevance/places'
+import { REGION_CODES } from '@/lib/discovery/relevance/places'
+import { RegionField } from '@/components/regions/region-field'
 import { WORK_MODE_LABELS, WORK_MODES } from '@/lib/discovery/relevance/work-mode'
 import { NativeSelect } from '@/components/ui/native-select'
 import { CountryPicker } from './country-picker'
@@ -56,17 +57,9 @@ export function TargetSections({ values }: SectionProps) {
 
       <PrefsFieldset
         legend="Locations"
-        description="Cities, emirates and spellings are matched for you (Dubai, Riyadh/KSA, Bengaluru/Bangalore, Kochi/Cochin…)."
+        description="Pick a whole region (GCC, India, Kerala) or narrow to cities (Dubai, Kochi). Spellings, IT parks and free zones are matched for you (Cochin, Trivandrum/Technopark, Calicut/Cyberpark, DIFC…)."
       >
-        {TARGET_REGIONS.map((r) => (
-          <ChoiceChip
-            key={r.code}
-            name="region"
-            value={r.code}
-            label={r.label}
-            defaultChecked={values.regions.includes(r.code)}
-          />
-        ))}
+        <RegionField name="region" defaultValue={values.regions} label="Target regions" />
       </PrefsFieldset>
       <CountryPicker
         name="otherCountries"

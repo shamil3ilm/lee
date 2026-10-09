@@ -25,7 +25,7 @@ shifts (`lib/discovery/match/jd.ts`).
 | Responsibilities | 0…10 | Share of JD duties that name a ready skill or share two content words with a ready highlight. |
 | Role | 0…10 | The JD's role family vs your targets; the title only nudges. Title and JD agree 10; the JD reads as a target under an unusual title 8 ("new title"); title says a target but the JD reads another family 3. |
 | Seniority | 0…15 | Title level and years asked vs your levels and years; a stretch in a strong ready area (payments, ZATCA, Laravel, integrations, data) recovers half. |
-| Region | 0…10 | On-site in your regions 10, relocation offered elsewhere 6; remote where you live 10, hours within ±4 h 9, worldwide 8, unclear 5, restricted elsewhere 0. |
+| Region | 0…10 | Matched through the region hierarchy (`lib/regions`: GCC includes every Gulf city, Kerala includes Kochi, Trivandrum and Kozhikode). On-site in your regions 10, broader than your selection ("India" for a Kerala-only search) 7, relocation offered elsewhere 6; remote where you live 10, hours within ±4 h 9, worldwide 8, unclear 5, restricted elsewhere 0. |
 | Work mode | 0…5 | Remote / hybrid / on-site vs your preference. |
 | Pay | −5…+5 | Stated pay vs your floor for that region (GCC pegs). |
 | Language | −10…+3 | A language required at a level you do not have is −10 and a missing must-have. |

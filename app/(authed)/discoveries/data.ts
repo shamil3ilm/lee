@@ -16,6 +16,8 @@ import type {
   DiscoveryStatusFilter,
 } from '@/lib/discovery/filter-options'
 import type { DiscoveryBoardColumn, DiscoveryBoardItem } from '@/components/discoveries-board'
+import { parseRegionParam } from '@/lib/regions/selection'
+import { regionGroups, type RegionGroup } from '@/lib/regions/display'
 
 /** Parsed, validated Discovery query string. */
 export interface DiscoveryParams {
@@ -25,7 +27,10 @@ export interface DiscoveryParams {
   sort: DiscoverySort
   page: number
   size: number
+  /** Region selection (lib/regions node ids); empty = all regions. */
   region: DiscoveryRegionFilter
+  /** "Group by region": show postings per GCC → country → city above the list. */
+  byRegion: boolean
   sourceId: string
   scoredOnly: boolean
   showFiltered: boolean
@@ -53,7 +58,8 @@ function parseInt10(raw: string | undefined, min: number, max: number, fallback:
 export function parseDiscoveryParams(sp: RawParams, sizeCookie?: string): DiscoveryParams {
   const tab = sp.tab === 'companies' ? 'companies' : 'jobs'
   const sort = sp.sort === 'match' || sp.sort === 'benefits' || sp.sort === 'posted' ? sp.sort : 'combined'
-  const region = (['ae', 'gcc', 'in', 'remote'] as const).find((r) => r === sp.region) ?? 'all'
+  // Old links (?region=gcc, ?region=ae) are valid node ids and keep working.
+  const region = parseRegionParam(sp.region)
   return {
     tab,
     status: parseStatus(sp.status, tab),
@@ -62,6 +68,7 @@ export function parseDiscoveryParams(sp: RawParams, sizeCookie?: string): Discov
     page: parseInt10(sp.page, 1, 10_000, 1),
     size: parsePageSize(sp.size, sizeCookie),
     region,
+    byRegion: sp.by === 'region',
     sourceId: sp.source && UUID_RE.test(sp.source) ? sp.source : '',
     scoredOnly: sp.scored === '1',
     showFiltered: sp.filtered === 'show',
@@ -74,7 +81,7 @@ function sharedFilters(p: DiscoveryParams): Pick<
   'region' | 'sourceIds' | 'minScore' | 'scoredOnly'
 > {
   return {
-    region: p.region === 'all' ? undefined : p.region,
+    region: p.region.length > 0 ? p.region : undefined,
     sourceIds: p.sourceId ? [p.sourceId] : undefined,
     minScore: p.minScore > 0 ? p.minScore : undefined,
     scoredOnly: p.scoredOnly,
@@ -114,6 +121,14 @@ export interface JobsData {
   risks: Map<string, riskQ.RiskAssessmentRow>
   quarantinedCount: number
   filteredCount: number
+  /** Postings per region under the other filters, when "Group by region" is on. */
+  regionGroups: RegionGroup[] | null
+}
+
+/** Region counts for "Group by region": the list's filters minus the region itself. */
+async function loadRegionGroups(userId: string, opts: discoveriesQ.ListOpts): Promise<RegionGroup[]> {
+  const counts = await discoveriesQ.countByRegion(userId, { ...opts, region: undefined })
+  return regionGroups(counts)
 }
 
 export async function loadJobs(userId: string, p: DiscoveryParams): Promise<JobsData> {
@@ -124,18 +139,19 @@ export async function loadJobs(userId: string, p: DiscoveryParams): Promise<Jobs
     statuses: p.status === 'new' && p.showFiltered ? ['new', 'filtered'] : undefined,
     quarantine: quarantineView ? 'only' : 'exclude',
   }
-  const [listed, total, quarantinedCount, filteredCount] = await Promise.all([
+  const [listed, total, quarantinedCount, filteredCount, groups] = await Promise.all([
     discoveriesQ.list(userId, { ...opts, sort: p.sort, limit: p.size, offset: (p.page - 1) * p.size }),
     discoveriesQ.countList(userId, opts),
     discoveriesQ.countQuarantined(userId),
     discoveriesQ.countList(userId, { ...sharedFilters(p), status: 'filtered', quarantine: 'exclude' }),
+    p.byRegion ? loadRegionGroups(userId, opts) : Promise.resolve(null),
   ])
   // Best CV of the rows on this page, filled on read when stale (bounded to
   // the page; the queued backfill handles the rest).
   const fresh = await safely('best_cv_view', () => ensureBestCv(userId, listed.filter((r) => r.status !== 'filtered' && r.status !== 'dismissed').map((r) => r.id)))
   const rows = fresh && fresh.size > 0 ? listed.map((r) => (fresh.has(r.id) ? { ...r, bestCv: fresh.get(r.id) ?? null } : r)) : listed
   const risks = await riskQ.mapForTargets(userId, 'discovery', rows.map((d) => d.id))
-  return { rows, total, risks, quarantinedCount, filteredCount }
+  return { rows, total, risks, quarantinedCount, filteredCount, regionGroups: groups }
 }
 
 /** Cards per board column; the footer links to the full list. */

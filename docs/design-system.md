@@ -376,6 +376,9 @@ with `primary`; focus shows the shared ring on the box or track.
   row. Without `label`, give it an `aria-label` or wrap it in your own
   `<label>`; `className` then positions the box (e.g. `mt-0.5` beside a
   multi-line block).
+- `indeterminate` (client components) draws a dash on the primary fill and
+  reads as "mixed": a parent with only some children selected (the region
+  picker's tree).
 
 ```tsx
 <Checkbox name="remote" defaultChecked={prefs.remote} label="Remote only" description="Hide on-site roles." />
@@ -481,6 +484,7 @@ dependency; use it instead of `whitespace-pre-wrap` on raw Markdown.
 | `SectionNav` (`components/section-nav.tsx`) | Sticky in-page anchor chips under the header for pages taller than ~3 screens. Targets get `SECTION_ANCHOR` (`scroll-mt-28`). |
 | `CollapsibleSection` (`components/collapsible-section.tsx`) | A titled group that folds to a one-line status summary ("12 on · 1 failing"). `collapseOnMobile` closes it below `md` without layout shift. Never a native `<details>` triangle. |
 | `ResponsivePopover` (`components/responsive-popover.tsx`) | Rich popovers are anchored popovers from `sm` up and **bottom sheets** on phones (max 85dvh, internal scroll). |
+| `RegionPicker` (`components/regions/`) | Every region choice (Discovery and Shortlist `RegionFilter`, Settings `RegionField`): search over names, old spellings, IT parks and free zones; quick picks; a tree whose parents show mixed (`Checkbox indeterminate`); removable chips. A parent includes its descendants; children alone narrow (`lib/regions/selection.ts`). Locations on cards use `PlaceLabel` ("Kochi, Kerala · Infopark", chain on hover). |
 | Settings links that return (`lib/ui/settings-links.ts`) | Links from a page into Settings carry `?from=<path>`; the settings page offers "Back to …". Only internal paths are accepted. |
 
 Filters: primary filters inline in a toolbar row, the rest under a "More filters (n)" popover, **applied on change** (URL state), with a ghost "Clear" when anything differs from the default. No Filter/Apply buttons.

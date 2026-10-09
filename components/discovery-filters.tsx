@@ -1,13 +1,13 @@
 'use client'
-import { Loader2, X } from 'lucide-react'
+import { Layers, Loader2, X } from 'lucide-react'
 import { useUrlFilters } from '@/components/filters/use-url-filters'
 import { plural } from '@/lib/ui/labels'
 import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/ui/native-select'
 import { MoreFilters } from '@/components/discovery/more-filters'
+import { RegionFilter } from '@/components/regions/region-filter'
 import {
   activeMoreFilters,
-  REGION_LABELS,
   SORT_LABELS,
   STATUS_LABELS,
   type DiscoveryRegionFilter,
@@ -36,6 +36,9 @@ interface DiscoveryFiltersProps {
   hideStatus?: boolean
   /** Results for the current filters, announced after each change. */
   resultCount?: number
+  /** List view only: the "Group by region" toggle and its state. */
+  byRegion?: boolean
+  canGroupByRegion?: boolean
 }
 
 const JOB_ONLY: ReadonlySet<DiscoveryStatusFilter> = new Set(['quarantined', 'shortlisted', 'filtered'])
@@ -54,13 +57,15 @@ export function DiscoveryFilters({
   sort,
   quarantinedCount = 0,
   filteredCount = 0,
-  region = 'all',
+  region = [],
   sourceId = '',
   sources = [],
   scoredOnly = false,
   showFiltered = false,
   hideStatus = false,
   resultCount,
+  byRegion = false,
+  canGroupByRegion = false,
 }: DiscoveryFiltersProps) {
   const statuses = (Object.keys(STATUS_LABELS) as DiscoveryStatusFilter[]).filter(
     (s) => !JOB_ONLY.has(s) || tab === 'jobs',
@@ -84,7 +89,7 @@ export function DiscoveryFilters({
 
   const more = { minScore, sourceId, scoredOnly, showFiltered: showFiltered && status === 'new' }
   const moreCount = activeMoreFilters(more)
-  const anyActive = moreCount > 0 || (jobs && region !== 'all') || (!hideStatus && status !== 'new')
+  const anyActive = moreCount > 0 || (jobs && region.length > 0) || (!hideStatus && status !== 'new')
 
   return (
     <div
@@ -105,18 +110,7 @@ export function DiscoveryFilters({
       )}
       {jobs ? (
         <>
-          <NativeSelect
-            aria-label="Region"
-            value={region}
-            onChange={(e) => update({ region: e.target.value === 'all' ? '' : e.target.value })}
-            className="h-8 w-[8.5rem]"
-          >
-            {(Object.keys(REGION_LABELS) as DiscoveryRegionFilter[]).map((r) => (
-              <option key={r} value={r}>
-                {REGION_LABELS[r]}
-              </option>
-            ))}
-          </NativeSelect>
+          <RegionFilter value={region} apply={(v) => update({ region: v })} />
           <NativeSelect aria-label="Sort" value={sort} onChange={(e) => update({ sort: e.target.value })} className="h-8 w-[13.5rem] max-sm:w-[11rem]">
             {(Object.keys(SORT_LABELS) as DiscoverySort[]).map((s) => (
               <option key={s} value={s}>
@@ -134,6 +128,20 @@ export function DiscoveryFilters({
         count={moreCount}
         onChange={update}
       />
+      {jobs && canGroupByRegion ? (
+        <Button
+          type="button"
+          size="sm"
+          variant={byRegion ? 'secondary' : 'ghost'}
+          className="h-8 px-2 text-xs"
+          aria-pressed={byRegion}
+          onClick={() => update({ by: byRegion ? '' : 'region' })}
+          data-testid="group-by-region"
+        >
+          <Layers className="size-3.5" aria-hidden="true" />
+          Group by region
+        </Button>
+      ) : null}
       {anyActive ? (
         <Button
           type="button"

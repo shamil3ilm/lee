@@ -37,6 +37,7 @@ import { AiModeDialog } from '@/components/discovery/ai-mode-dialog'
 import { PasteImportDialog } from '@/components/discovery/paste-import-dialog'
 import { loadAiModePrompts, type AiModePromptSet } from '@/lib/discovery/ai-mode/load'
 import { discoveryNotices } from './notices'
+import { RegionGroups } from '@/components/regions/region-groups'
 
 /** "Last checked 2h ago · 12 new" from the sources' last poll results. */
 function lastCheckedLine(sources: Parameters<typeof lastCheck>[0]): string | null {
@@ -178,7 +179,10 @@ export default async function DiscoveriesPage({
         scoredOnly={p.scoredOnly}
         showFiltered={p.showFiltered}
         resultCount={total}
+        byRegion={p.byRegion}
+        canGroupByRegion
       />
+      {jobs?.regionGroups ? <RegionGroups groups={jobs.regionGroups} searchParams={sp} selected={p.region} /> : null}
       {jobs ? (
         <DiscoveryInbox
           kind="jobs"

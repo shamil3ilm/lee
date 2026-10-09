@@ -3,6 +3,7 @@ import * as React from 'react'
 import Link from 'next/link'
 import { Briefcase, ExternalLink, MapPin } from 'lucide-react'
 import { moveDiscovery } from '@/app/(authed)/discoveries/actions'
+import { PlaceLabel } from '@/components/regions/place-label'
 import { Board, type BoardColumnDef, type BoardQuickAction } from '@/components/board/board'
 import { Badge } from '@/components/ui/badge'
 import { workModeLabel } from '@/lib/ui/labels'
@@ -81,7 +82,7 @@ function renderCard(d: DiscoveryBoardItem): React.ReactNode {
           {d.location ? (
             <span className="inline-flex items-center gap-1">
               <MapPin className="size-3" aria-hidden="true" />
-              {d.location}
+              <PlaceLabel location={d.location} />
             </span>
           ) : null}
           {workModeLabel(d.remoteType) ? (
