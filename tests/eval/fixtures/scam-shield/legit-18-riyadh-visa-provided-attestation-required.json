@@ -1,0 +1,18 @@
+{
+  "name": "Riyadh employer: visa provided, degree attestation required (no fee)",
+  "label": "legit",
+  "inputs": {
+    "title": "Software Engineer",
+    "company": "Example Riyadh Tech",
+    "applyUrl": "https://careers.example-riyadh.com/jobs/42",
+    "location": "Riyadh, KSA",
+    "description": "Visa will be provided. Iqama provided. Degree attestation required before joining; the company guides you through the process. Medical test arranged by the company after the offer."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "money.gulf_agency_fee",
+      "identity.passport_with_fee"
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "Pay for your visa; offer letter after the deposit",
+  "label": "scam",
+  "inputs": {
+    "title": "Backend Engineer, Doha",
+    "company": "Doha Talent Placements",
+    "location": "Doha, Qatar",
+    "description": "Selected candidates pay for your visa through our agency. The offer letter will be issued after the deposit is received. Joining within 2 weeks."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "money.gulf_agency_fee",
+      "money.offer_letter_fee"
+    ]
+  }
+}

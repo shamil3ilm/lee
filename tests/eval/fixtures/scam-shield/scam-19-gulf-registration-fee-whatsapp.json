@@ -1,0 +1,17 @@
+{
+  "name": "Registration fee on WhatsApp for a Muscat job",
+  "label": "scam",
+  "inputs": {
+    "title": "Full Stack Developer, Muscat",
+    "company": "Gulf Jobs Hub",
+    "location": "Muscat, Oman",
+    "description": "Walk in for Muscat IT jobs. Registration fee Rs 3,000 only. WhatsApp only: +91 98xxx xxxxx. Transfer the fee on GPay number shared in chat."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "money.upfront_fee",
+      "channel.messaging_payment"
+    ]
+  }
+}

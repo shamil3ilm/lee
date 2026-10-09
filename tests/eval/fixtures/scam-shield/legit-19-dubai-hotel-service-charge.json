@@ -1,0 +1,17 @@
+{
+  "name": "Dubai hotel: salary plus service charge (hospitality pay, not a fee)",
+  "label": "legit",
+  "inputs": {
+    "title": "Guest Relations Executive",
+    "company": "Example Marina Hotel",
+    "applyUrl": "https://careers.example-hotel.com/gre-dubai",
+    "location": "Dubai, UAE",
+    "description": "Salary AED 4,500 plus service charge, accommodation, transport and medical insurance. Interviews at the hotel with the Front Office Manager."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "money.gulf_agency_fee"
+    ]
+  }
+}

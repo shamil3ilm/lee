@@ -1,0 +1,18 @@
+{
+  "name": "Abu Dhabi: relocation package, annual ticket, offer letter after interviews",
+  "label": "legit",
+  "inputs": {
+    "title": "Data Engineer",
+    "company": "Example Abu Dhabi Analytics",
+    "applyUrl": "https://careers.example-ad.ae/de",
+    "location": "Abu Dhabi, UAE",
+    "description": "Relocation package, annual air ticket and family medical insurance. The offer letter is issued after the final interview."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "money.gulf_agency_fee",
+      "money.offer_letter_fee"
+    ]
+  }
+}

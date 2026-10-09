@@ -1,0 +1,18 @@
+{
+  "name": "Doha employer: visa and medical charges paid by the company",
+  "label": "legit",
+  "inputs": {
+    "title": "Laravel Developer",
+    "company": "Example Doha Systems",
+    "applyUrl": "https://jobs.lever.co/exampledoha/abc",
+    "location": "Doha, Qatar",
+    "description": "Visa fees, medical test charges and air ticket are paid by the company. Two technical interviews over video, then an offer."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "money.gulf_agency_fee",
+      "money.upfront_fee"
+    ]
+  }
+}

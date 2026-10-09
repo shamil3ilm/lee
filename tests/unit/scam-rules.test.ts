@@ -265,3 +265,58 @@ describe('content signals', () => {
     silent('content.vague_duties', 'Own the billing service: design APIs, write tests, run on-call.')
   })
 })
+
+describe('Gulf agency-fee signals (review 2026-10-09, B.10)', () => {
+  it.each([
+    'Pay medical test charges INR 6,500 at our office.',
+    'Attestation charges INR 12,000 to be paid by the candidate.',
+    'Service charge after visa stamping.',
+    'Visa processing fee AED 2500.',
+    'You must pay for your visa before travel.',
+    'A refundable deposit of INR 20,000 is required.',
+    'Transfer the refundable ticket deposit to confirm.',
+    'Air ticket charges will be deducted from your first salary.',
+    'Visa stamping charges INR 18,000.',
+    'Come on visit visa with a 100% job guarantee.',
+    'Package AED 5,000 includes visa and accommodation.',
+  ])('fires: %s', (d) => fires('money.gulf_agency_fee', d))
+
+  it('weighs a stated amount as decisive', () => {
+    const withAmount = assessScam({ description: 'Pay medical test charges INR 6,500 at our office.' })
+    const without = assessScam({ description: 'Medical test charges are payable at our office.' })
+    expect(withAmount.signals.find((s) => s.id === 'money.gulf_agency_fee')?.weight).toBe(55)
+    expect(withAmount.level).toBe('likely_scam')
+    expect(without.signals.find((s) => s.id === 'money.gulf_agency_fee')?.weight).toBe(45)
+  })
+
+  it.each([
+    'Benefits: employment visa, medical insurance and annual air ticket provided.',
+    'Visa provided. Medical test arranged by the company after the offer.',
+    'Degree attestation required before joining.',
+    'Salary AED 4,500 plus service charge and accommodation.',
+    'Visa fees, medical test charges and air ticket are paid by the company.',
+    'Visa processing fee borne by the company.',
+    'No registration fee; we never charge candidates.',
+  ])('stays silent: %s', (d) => silent('money.gulf_agency_fee', d))
+
+  it.each(['Offer letter after payment.', 'Pay the processing fee to receive your offer letter.', 'Offer letter fee AED 500.'])(
+    'offer letter for a fee fires: %s',
+    (d) => fires('money.offer_letter_fee', d),
+  )
+
+  it('an offer letter after interviews is not a fee', () => {
+    silent('money.offer_letter_fee', 'The offer letter is issued after the final interview.')
+  })
+
+  it.each(['Send passport copy and fee to our office.', 'Send your original passport along with the payment by courier.'])(
+    'passport with a fee fires: %s',
+    (d) => fires('identity.passport_with_fee', d),
+  )
+
+  it('WhatsApp contact plus a payment request fires; WhatsApp alone or a pay package does not', () => {
+    fires('channel.messaging_payment', 'Contact on WhatsApp and transfer the payment to our account.')
+    fires('channel.messaging_payment', 'WhatsApp only. Pay the amount on GPay.')
+    silent('channel.messaging_payment', 'Our HR may WhatsApp shortlisted candidates. Attractive pay package.')
+    silent('channel.messaging_payment', 'Build our WhatsApp Business API payments integration.')
+  })
+})

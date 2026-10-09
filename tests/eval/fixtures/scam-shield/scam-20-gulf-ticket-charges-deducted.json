@@ -1,0 +1,16 @@
+{
+  "name": "Ticket charges deducted from salary plus medical fees",
+  "label": "scam",
+  "inputs": {
+    "title": "Developer - Jeddah",
+    "company": "Red Sea HR Services",
+    "location": "Jeddah, KSA",
+    "description": "Jeddah software company needs developers. Air ticket charges will be deducted from the first salary. Medical fees SAR 400 to be paid at our office before deployment."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "money.gulf_agency_fee"
+    ]
+  }
+}

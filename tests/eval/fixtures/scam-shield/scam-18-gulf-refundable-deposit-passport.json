@@ -1,0 +1,17 @@
+{
+  "name": "Refundable deposit and passport copy with the fee",
+  "label": "scam",
+  "inputs": {
+    "title": "Software Engineer - Kuwait",
+    "company": "Al Safa Manpower",
+    "location": "Kuwait City, Kuwait",
+    "description": "Software engineers for a Kuwait IT company. A refundable deposit of INR 25,000 is required. Send passport copy and fee to our Mumbai office to start processing."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "money.upfront_fee",
+      "identity.passport_with_fee"
+    ]
+  }
+}

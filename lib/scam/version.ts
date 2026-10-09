@@ -6,7 +6,9 @@
  * Bump rules: ANY change that can alter a score, level or signal for the
  * same input (patterns, weights, thresholds, word lists) bumps this.
  */
-export const RULES_VERSION = 'scam-1.0.0'
+// 1.1.0 — Gulf agency-fee rules (medical / attestation / stamping / ticket
+// charges, offer letter after payment, passport with a fee, WhatsApp + payment).
+export const RULES_VERSION = 'scam-1.1.0'
 
 /** Level thresholds on the 0–100 score. */
 export const CAUTION_AT = 25
