@@ -7,6 +7,7 @@ import type { AIProvider } from '@/lib/ai/types'
 import { extractOpenings } from '@/lib/discovery/manual-import/extract'
 import { importOpenings } from '@/lib/discovery/manual-import/service'
 import { unavailableAi } from '@/lib/discovery/manual-import/no-ai'
+import { readPastedPost } from '@/lib/linkedin-posts/paste'
 import {
   importCandidateSchema,
   MAX_IMPORT_ITEMS,
@@ -42,6 +43,9 @@ export async function extractPastedOpenings(text: unknown): Promise<ExtractActio
   if (!parsed.success || parsed.data.trim().length === 0) return { error: 'Paste some text or links first.' }
   try {
     const userId = await requireUserId()
+    // One LinkedIn post (text and/or link): read deterministically, no AI call.
+    const post = readPastedPost(parsed.data)
+    if (post) return { ok: true, result: { candidates: [], mode: 'urls', note: null, post } }
     const ai = await providerOrNull(userId)
     const result = await extractOpenings(parsed.data, ai, { userId })
     return { ok: true, result }

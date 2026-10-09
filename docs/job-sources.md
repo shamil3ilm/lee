@@ -146,6 +146,91 @@ steps. Parsers live in `lib/email-alerts/`; their test fixtures in
 `tests/fixtures/email-alerts/` are **synthetic** (hand-written from the
 sites' documented or observable formats), not real emails.
 
+## LinkedIn hiring posts (2026-10-09)
+
+Many GCC openings are never listed: a recruiter or hiring manager posts
+"We're hiring a Laravel developer in Dubai, DM me / send your CV to …".
+lee picks these up through compliant channels only. It never fetches,
+scrapes or scrolls linkedin.com: LinkedIn's User Agreement (section 8.2)
+forbids scraping and "bots or other unauthorized automated methods to
+access the Services", and reading other members' posts through the API
+(`r_member_social`) is granted to approved partners only.
+
+**1. The user's own LinkedIn notification emails (automatic).** Source kind
+`linkedin_post` (Settings › LinkedIn › Hiring posts, off by default). Each
+discovery run reads the last 7 days of mail matching
+`from:linkedin.com subject:(posted OR post OR posts OR shared OR …) -subject:("job alert")`
+(≤ 40 messages) with the Gmail read-only scope, keeps only messages Google
+verified for linkedin.com (DMARC pass, or a DKIM pass from linkedin.com, in
+mx.google.com's Authentication-Results; the job-alert check), parses them
+in memory (`lib/linkedin-posts/email-parse.ts`: "X posted", "X shared a
+post", "Top posts for you" digests, text-only fallback) and keeps the posts
+the classifier calls hiring. Stored per post: poster name, headline and
+profile link as the email showed them, a ≤ 1 KB snippet, the canonical post
+link (`/feed/update/urn:li:activity:<id>/`; every tracking and
+recipient-token parameter dropped; never requested), the role, place and
+contact read from the text. The job itself is title-only ("Low confidence:
+title only", with Paste the JD). Bodies are never stored.
+
+Turning the emails on (LinkedIn renames these; check the current labels):
+Me › Settings & Privacy › Notifications; "Connecting with others" ›
+"Updates from your network" › Email on; "Posting and commenting" › the post
+notifications you want › Email on; a "Searching for a job" hiring/job-post
+update, if your account shows one, › Email on. Follow recruiters in your
+target cities and ring their bell so their new posts are emailed.
+
+**Format changes.** LinkedIn changes these emails often. The parser keys
+on what stays stable (post links carry a feed URN or a `/posts/` slug,
+actor links are `/in/<slug>`) and reads the text around them. An email
+whose subject looks like a post notification but yields no post is counted
+as unreadable, never thrown: the count is in the source's run summary
+("… · 2 unreadable"), on `sources.last_result.parseFailures`, and in
+Settings › LinkedIn ("Format changed?" when at least half of the last five
+emails, and two or more, were unreadable). Counters
+(`linkedin_post_messages`) are pruned after 120 days.
+
+**Classifier** (`lib/linkedin-posts/classify.ts`, deterministic): weighted
+hiring phrases in English and Arabic ("we're hiring", "#hiring", "join our
+team", "send your CV to", "urgent requirement", "looking to hire", مطلوب,
+توظيف, وظيفة شاغرة …) plus supporting signals (DM me, role named, years of
+experience, a GCC place, an email address), minus job-seeker posts
+(#opentowork, "I'm looking for a new role"), announcements, advice about
+hiring, filled roles and events. Hiring = a clear hiring phrase, score ≥ 5,
+no job-seeker signal. On the 40 labelled synthetic posts
+(`tests/fixtures/linkedin-posts/posts.ts`, 24 hiring / 16 not, used to tune
+it): precision 1.00, recall 1.00 (gate: precision ≥ 0.90). On the 10
+held-out posts, first blind run: precision 0.75, recall 0.60; after adding
+the missed phrase families ("looking to hire", "we have an opening",
+"recruiting now", "not hiring yet", "lessons from hiring"): 1.00 / 1.00, so
+the held-out set is no longer blind. Expect real-world recall below these
+numbers; the threshold favours precision.
+
+**2. Posts the user captures.** "Add from text or link" recognises a pasted
+LinkedIn post (its text, its link, or both). A link alone is stored as a
+link and the user is asked to paste the text. The **Send to lee**
+bookmarklet (Settings › LinkedIn) sends the user's current text selection
+and the page URL in a POST form to `/api/capture` (never a query string),
+authenticated by a per-user HMAC key in the form body (the cross-site POST
+carries no session cookie; the key is revoked by making a new one); the
+capture waits 30 minutes on Discovery › Capture for review, ≤ 4,000
+characters, at most five per user. On a phone: Share › Copy link to post,
+copy the text, paste both. A PWA share target was not added: lee has no
+web app manifest or service worker, and iOS Safari does not support Web
+Share Target.
+
+**3. AI Mode.** The AI Mode dialog has "LinkedIn hiring posts" prompts (GCC,
+the user's domains, India) asking for recent hiring posts with their links;
+the answer comes back through "Add from text or link".
+
+**Acting on a post:** a fact-locked, region-aware reply (LinkedIn message,
+or email when the post lists an address) from the master CV, the best
+résumé variant and the opted-in region facts, which the user copies and
+sends; "Track it" makes an application (source "LinkedIn post"), the poster
+a contact (role "Recruiter / Hiring manager") and, when sent, schedules
+follow-ups; the referral hint shows the poster or colleagues at the
+company among the user's imported connections; Scam Shield runs on the post
+text with the Gulf rules (visa + job, processing fees, WhatsApp only).
+
 ## AI search: Google AI Mode hand-off and "Add from text or link"
 
 Checked 2026-10-08 against Google's own pages (dates are each page's

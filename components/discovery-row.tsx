@@ -39,6 +39,8 @@ import { BestCvLine } from '@/components/cv-fit/best-cv-line'
 import type { BestCv } from '@/lib/cv-fit/types'
 import { JdPaste } from '@/components/discovery/jd-paste'
 import { Checkbox } from '@/components/ui/checkbox'
+import { PostedBy, PostReplyDialog, PostSourceChip, PostTrackButton } from '@/components/discovery/post-actions'
+import type { PostRowView } from '@/lib/linkedin-posts/types'
 
 /**
  * Only the fields a job row renders — the page never ships the full
@@ -87,6 +89,8 @@ export interface DiscoveryRowJob {
   filterReason?: string | null
   /** Soft-rule chips: lower priority, boosts and neutral info. */
   notes?: { penalties?: string[]; boosts?: string[]; infos?: string[] } | null
+  /** A LinkedIn hiring post: the poster and how to respond. */
+  post?: PostRowView | null
 }
 
 export interface DiscoveryRowCompany {
@@ -255,6 +259,7 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
                 <PlaceLabel location={n.location} />
               </p>
             ) : null}
+            {item.post ? <PostedBy post={item.post} /> : null}
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               <MatchBadge
                 match={item.fitScore ?? null}
@@ -275,7 +280,7 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
               />
               {/* Scam Shield speaks up only when it has something to say. */}
               {item.risk && item.risk.level !== 'safe' ? <RiskBadge risk={item.risk} /> : null}
-              <Badge variant="neutral">{item.sourceName}</Badge>
+              {item.post ? <PostSourceChip /> : <Badge variant="neutral">{item.sourceName}</Badge>}
               {workModeLabel(n.remoteType) ? (
                 <Badge variant="slate">{workModeLabel(n.remoteType)}</Badge>
               ) : null}
@@ -308,7 +313,15 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
                 </a>
               </Button>
             ) : null}
-            {isActionable ? (
+            {isActionable && item.post ? (
+              <>
+                <PostReplyDialog discoveryId={item.id} title={n.title} canEmail={Boolean(item.post.email)} />
+                <PostTrackButton discoveryId={item.id} />
+                <Button size="sm" variant="ghost" onClick={handleDismiss} disabled={isPending}>
+                  Dismiss
+                </Button>
+              </>
+            ) : isActionable ? (
               <>
                 <Button size="sm" variant="outline" onClick={handleSave} disabled={isPending}>
                   Save

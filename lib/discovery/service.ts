@@ -306,6 +306,8 @@ export async function ingestItemsForSource(args: {
   const { userId, source } = args
   const profile = await profileQ.get(userId)
   const relevance = relevanceContext(profile)
+  // The Match Score at insert, as a poll does (a pasted post shows "Low confidence: title only" at once).
+  const match = matchContext(profile)
   const signal = checkDiscoveryScoringSignal(profile)
   const scoreContext = signal.ok
     ? { cvDigest: profileDigest({ profile, masterCv: await loadMasterCv(userId) }) }
@@ -318,7 +320,7 @@ export async function ingestItemsForSource(args: {
   }
   const stats = emptyPollStats()
   await ingestJobItems(
-    { userId, source, ai: args.ai, profile: signal.ok ? profile ?? null : null, scam, scoring, relevance, scoreContext, stats },
+    { userId, source, ai: args.ai, profile: signal.ok ? profile ?? null : null, scam, scoring, relevance, match, scoreContext, stats },
     args.items.filter((i) => i.normalized.kind === 'job'),
   )
   await sourcesQ.setPolled(userId, source.id, undefined, { ...stats })

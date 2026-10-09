@@ -1,5 +1,5 @@
 'use client'
-import { Layers, Loader2, X } from 'lucide-react'
+import { Layers, Loader2, Megaphone, X } from 'lucide-react'
 import { useUrlFilters } from '@/components/filters/use-url-filters'
 import { plural } from '@/lib/ui/labels'
 import { Button } from '@/components/ui/button'
@@ -39,6 +39,8 @@ interface DiscoveryFiltersProps {
   /** List view only: the "Group by region" toggle and its state. */
   byRegion?: boolean
   canGroupByRegion?: boolean
+  /** Jobs tab: only LinkedIn hiring posts. */
+  hiringPosts?: boolean
 }
 
 const JOB_ONLY: ReadonlySet<DiscoveryStatusFilter> = new Set(['quarantined', 'shortlisted', 'filtered'])
@@ -66,6 +68,7 @@ export function DiscoveryFilters({
   resultCount,
   byRegion = false,
   canGroupByRegion = false,
+  hiringPosts = false,
 }: DiscoveryFiltersProps) {
   const statuses = (Object.keys(STATUS_LABELS) as DiscoveryStatusFilter[]).filter(
     (s) => !JOB_ONLY.has(s) || tab === 'jobs',
@@ -89,7 +92,7 @@ export function DiscoveryFilters({
 
   const more = { minScore, sourceId, scoredOnly, showFiltered: showFiltered && status === 'new' }
   const moreCount = activeMoreFilters(more)
-  const anyActive = moreCount > 0 || (jobs && region.length > 0) || (!hideStatus && status !== 'new')
+  const anyActive = moreCount > 0 || (jobs && (region.length > 0 || hiringPosts)) || (!hideStatus && status !== 'new')
 
   return (
     <div
@@ -128,6 +131,20 @@ export function DiscoveryFilters({
         count={moreCount}
         onChange={update}
       />
+      {jobs ? (
+        <Button
+          type="button"
+          size="sm"
+          variant={hiringPosts ? 'secondary' : 'ghost'}
+          className="h-8 px-2 text-xs"
+          aria-pressed={hiringPosts}
+          onClick={() => update({ posts: hiringPosts ? '' : '1' })}
+          data-testid="hiring-posts-filter"
+        >
+          <Megaphone className="size-3.5" aria-hidden="true" />
+          Hiring posts
+        </Button>
+      ) : null}
       {jobs && canGroupByRegion ? (
         <Button
           type="button"
@@ -148,7 +165,7 @@ export function DiscoveryFilters({
           size="sm"
           variant="ghost"
           className="h-8 px-2 text-xs"
-          onClick={() => update({ status: '', region: '', source: '', minScore: '', scored: '', filtered: '' })}
+          onClick={() => update({ status: '', region: '', source: '', minScore: '', scored: '', filtered: '', posts: '' })}
         >
           <X className="size-3.5" aria-hidden="true" />
           Clear

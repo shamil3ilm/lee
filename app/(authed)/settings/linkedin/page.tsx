@@ -13,11 +13,16 @@ import { ConnectionsPanel } from '@/components/linkedin/connections-panel'
 import { ExportImport } from '@/components/linkedin/export-import'
 import { OptimizerPanel } from '@/components/linkedin/optimizer-panel'
 import { PostComposer, type ComposerSourceOption } from '@/components/linkedin/post-composer'
+import { HiringPostsSection } from '@/components/linkedin/hiring-posts-section'
+import { hiringPostsPanelData } from '@/lib/linkedin-posts/panel-data'
 
 export const dynamic = 'force-dynamic'
+// "Check now" reads the LinkedIn emails and scores within this limit.
+export const maxDuration = 60
 
 const SECTIONS = [
   { id: 'linkedin-import', label: 'Import' },
+  { id: 'linkedin-hiring-posts', label: 'Hiring posts' },
   { id: 'linkedin-connections', label: 'Connections' },
   { id: 'linkedin-optimizer', label: 'Profile optimizer' },
   { id: 'linkedin-composer', label: 'Post composer' },
@@ -26,7 +31,7 @@ const SECTIONS = [
 /** Settings › LinkedIn: the data-export import, connections, profile optimizer and post composer. */
 export default async function LinkedInSettingsPage() {
   const userId = await requireUserId()
-  const [{ profile }, status, count, initial, optimizer, sources, posts] = await Promise.all([
+  const [{ profile }, status, count, initial, optimizer, sources, posts, hiring] = await Promise.all([
     getResumeProfile(userId),
     getLinkedInStatus(userId),
     linkedinQ.countConnections(userId),
@@ -34,6 +39,7 @@ export default async function LinkedInSettingsPage() {
     loadOptimizer(userId),
     listComposerSources(userId),
     linkedinQ.listPosts(userId, 20),
+    hiringPostsPanelData(userId),
   ])
   const options: ComposerSourceOption[] = sources.map((s) => ({ id: s.id, kind: s.kind, label: s.label }))
 
@@ -41,7 +47,7 @@ export default async function LinkedInSettingsPage() {
     <div className="space-y-6">
       <PageHeader
         title="LinkedIn"
-        description="Import your LinkedIn data export, get referral hints from your connections, tune your profile and draft posts. lee never posts, likes, comments or connects on its own."
+        description="Import your LinkedIn data export, find hiring posts in LinkedIn’s emails to you, get referral hints from your connections, tune your profile and draft posts. lee never reads LinkedIn pages, and never posts, likes, comments, messages or connects on its own."
       />
       <SectionNav sections={SECTIONS} />
       <Card id="linkedin-import" className={SECTION_ANCHOR}>
@@ -50,6 +56,14 @@ export default async function LinkedInSettingsPage() {
         </CardHeader>
         <CardContent>
           <ExportImport profile={profile} />
+        </CardContent>
+      </Card>
+      <Card id="linkedin-hiring-posts" className={SECTION_ANCHOR}>
+        <CardHeader>
+          <CardTitle className="text-base">Hiring posts</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <HiringPostsSection data={hiring} />
         </CardContent>
       </Card>
       <Card id="linkedin-connections" className={SECTION_ANCHOR}>

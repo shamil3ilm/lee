@@ -37,6 +37,7 @@ import { RegionGroups } from '@/components/regions/region-groups'
 import { CompaniesTab } from '@/components/companies/companies-tab'
 import { parseCompanyParams } from './companies-data'
 import { searchPrefsFromProfile } from '@/lib/discovery/relevance/prefs'
+import { toPostRowView } from '@/lib/linkedin-posts/types'
 
 /** "Last checked 2h ago · 12 new" from the sources' last poll results. */
 function lastCheckedLine(sources: Parameters<typeof lastCheck>[0]): string | null {
@@ -135,6 +136,7 @@ export default async function DiscoveriesPage({
           sourceId={p.sourceId}
           sources={sourceOptions}
           scoredOnly={p.scoredOnly}
+          hiringPosts={p.hiringPosts}
         />
         <LazyDiscoveriesBoard items={board.items} totals={board.totals} />
       </div>
@@ -187,6 +189,7 @@ export default async function DiscoveriesPage({
         sourceId={p.sourceId}
         sources={sourceOptions}
         scoredOnly={p.scoredOnly}
+        hiringPosts={p.hiringPosts}
         showFiltered={p.showFiltered}
         resultCount={total}
         byRegion={p.byRegion}
@@ -236,6 +239,7 @@ function toJobRows(jobs: JobsData, sourceNameById: Map<string, string>): Discove
       risk: risk ? toRiskView(risk, sourceName) : null,
       filterReason: d.filterReason,
       notes: d.relevanceNotes,
+      post: toPostRowView(d.post),
     }
   })
 }

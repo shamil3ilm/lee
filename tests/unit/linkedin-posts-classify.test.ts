@@ -3,10 +3,11 @@ import { classifyHiringPost } from '@/lib/linkedin-posts/classify'
 import { HELD_OUT_POSTS, LABELLED_POSTS } from '@/tests/fixtures/linkedin-posts/posts'
 
 /**
- * Precision gate on 40 synthetic posts (24 hiring, 16 not). Documented
- * metrics (docs/job-sources.md): precision 1.00, recall 1.00 on this set;
- * the gate is precision ≥ 0.90 and recall ≥ 0.80 so tuning that trades
- * recall for fewer false positives stays allowed.
+ * Precision gate on 40 synthetic posts (24 hiring, 16 not; the tuning set).
+ * Documented metrics (docs/job-sources.md): precision 1.00, recall 1.00 on
+ * this set; held-out first blind run 0.75 / 0.60. The gate is precision
+ * ≥ 0.90 and recall ≥ 0.80 so tuning that trades recall for fewer false
+ * positives stays allowed.
  */
 function metrics() {
   let tp = 0

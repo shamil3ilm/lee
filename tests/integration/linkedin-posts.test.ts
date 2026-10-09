@@ -156,6 +156,8 @@ describe('pasted posts', () => {
     expect(row!.sourceJobId).toBe('post:activity:7300000000000000002')
     expect((row!.normalized as NormalizedJob).title).toBe('PHP Developer (Laravel)')
     expect((row!.normalized as NormalizedJob).companyName).toBe('Gulf Staffing Partners')
+    // Pasted posts are title-only too (Paste the JD on the card).
+    expect((row!.fitDetail as { confidence?: string } | null)?.confidence).toBe('title_only')
     expect((await importPost(u.id, input, new FixtureAIProvider())).duplicate).toBe(true)
     // The source exists but stays off until the user turns on Gmail reading.
     const [src] = await db.select().from(sources).where(and(eq(sources.userId, u.id), eq(sources.kind, 'linkedin_post')))

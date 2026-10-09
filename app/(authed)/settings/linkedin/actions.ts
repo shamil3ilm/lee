@@ -11,6 +11,12 @@ import { suggestProfileRewrites } from '@/lib/integrations/linkedin/optimizer-se
 import { applyImportSelection } from '@/lib/integrations/linkedin/review'
 import { logger } from '@/lib/logger'
 import { getResumeProfile, ResumeValidationError, saveResumeProfile } from '@/lib/resume/service'
+import { getAIProviderForUser } from '@/lib/ai'
+import type { AIProvider } from '@/lib/ai/types'
+import * as capturesQ from '@/lib/db/queries/postCaptures'
+import { unavailableAi } from '@/lib/discovery/manual-import/no-ai'
+import { runDiscoveryForSource } from '@/lib/discovery/service'
+import { ensureLinkedInPostSource } from '@/lib/linkedin-posts/source'
 
 /**
  * Settings › LinkedIn: the export import (review → confirm), connections,
@@ -152,5 +158,55 @@ export async function publishPostAction(input: unknown): Promise<ActionResult<{ 
     return r.ok ? { ok: true, url: r.url } : r
   } catch (err) {
     return fail('linkedin_post', err, 'Could not post to LinkedIn. Nothing was published.')
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Hiring posts (lib/linkedin-posts): read the user's own LinkedIn
+// notification emails in Gmail, and the "Send to lee" bookmarklet key.
+// ---------------------------------------------------------------------------
+
+export async function setHiringPostsAction(enabled: unknown): Promise<ActionResult> {
+  if (typeof enabled !== 'boolean') return { ok: false, error: 'Choose on or off.' }
+  const userId = await requireUserId()
+  try {
+    await ensureLinkedInPostSource(userId, { enable: enabled })
+    revalidatePath('/settings/linkedin')
+    revalidatePath('/settings/sources')
+    return { ok: true }
+  } catch (err) {
+    return fail('linkedin_hiring_posts_toggle', err, 'Could not change the setting.')
+  }
+}
+
+export async function checkHiringPostsNowAction(): Promise<ActionResult<{ found: number; added: number; unreadable: number }>> {
+  const userId = await requireUserId()
+  try {
+    const source = await ensureLinkedInPostSource(userId)
+    if (!source.enabled) return { ok: false, error: 'Turn on reading LinkedIn emails first.' }
+    let ai: AIProvider
+    try {
+      ai = await getAIProviderForUser(userId)
+    } catch {
+      ai = unavailableAi('No AI key: scoring runs on the next discovery run.')
+    }
+    const r = await runDiscoveryForSource({ userId, sourceId: source.id, ai, deadline: Date.now() + 40_000 })
+    revalidatePath('/settings/linkedin')
+    revalidatePath('/discoveries')
+    if (r.status === 'failed') return { ok: false, error: r.error ?? 'Could not read your LinkedIn emails.' }
+    return { ok: true, found: r.stats?.fetched ?? 0, added: r.newJobDiscoveries, unreadable: r.stats?.parseFailures ?? 0 }
+  } catch (err) {
+    return fail('linkedin_hiring_posts_check', err, 'Could not read your LinkedIn emails.')
+  }
+}
+
+export async function rotateCaptureKeyAction(): Promise<ActionResult> {
+  const userId = await requireUserId()
+  try {
+    await capturesQ.rotateKey(userId)
+    revalidatePath('/settings/linkedin')
+    return { ok: true }
+  } catch (err) {
+    return fail('capture_key_rotate', err, 'Could not make a new bookmarklet.')
   }
 }

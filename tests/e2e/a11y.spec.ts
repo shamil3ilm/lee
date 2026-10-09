@@ -22,6 +22,9 @@ const ROUTES = [
   '/discoveries?status=dismissed&region=kerala,dubai&by=region',
   // Local companies & startups.
   '/discoveries?tab=companies',
+  // LinkedIn hiring posts filter and the Send to lee capture page.
+  '/discoveries?posts=1',
+  '/discoveries/capture',
   '/shortlist?region=kerala',
   '/compare',
   '/applications',

@@ -1,7 +1,7 @@
 import { and, arrayOverlaps, count, desc, eq, gte, inArray, isNotNull, lt, sql, type SQL } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
-import { discoveries } from '@/lib/db/schema'
+import { discoveries, sources } from '@/lib/db/schema'
 import type * as schema from '@/lib/db/schema'
 import { discoveryNotQuarantinedSql, discoveryQuarantinedSql } from './riskAssessments'
 
@@ -184,6 +184,8 @@ export interface ListOpts {
   /** Only rows with an AI score. */
   scoredOnly?: boolean
   sourceIds?: string[]
+  /** Only rows from the user's sources of these kinds (e.g. 'linkedin_post': "Hiring posts"). */
+  sourceKinds?: readonly string[]
   /**
    * Region selection (lib/regions node ids). A row matches when its stored
    * region_ids overlap the selection; ancestors are stored, so "kerala"
@@ -234,6 +236,8 @@ export interface DiscoveryListItem {
   filterReason: string | null
   filterOverride: boolean
   relevanceNotes: RelevanceNotes
+  /** `normalized.post` of a LinkedIn hiring post (LinkedInPostMeta), else null. */
+  post: unknown
 }
 
 const n = (key: string) => sql<string | null>`${discoveries.normalized}->>${key}`
@@ -261,6 +265,8 @@ const LIST_COLUMNS = {
   techStack: sql<unknown>`case when jsonb_typeof(${discoveries.normalized}->'techStack') = 'array'
     then ${discoveries.normalized}->'techStack' else '[]'::jsonb end`,
   applyUrl: n('applyUrl'),
+  // LinkedIn hiring posts: who posted and how to respond (null for other rows).
+  post: sql<unknown>`${discoveries.normalized}->'post'`,
   filterReason: discoveries.filterReason,
   filterOverride: discoveries.filterOverride,
   relevanceNotes: discoveries.relevanceNotes,
@@ -324,6 +330,14 @@ function listWhere(userId: string, opts: ListOpts): SQL {
   }
   if (opts.sourceIds && opts.sourceIds.length > 0) {
     conds.push(inArray(discoveries.sourceId, opts.sourceIds))
+  }
+  if (opts.sourceKinds && opts.sourceKinds.length > 0) {
+    conds.push(
+      inArray(
+        discoveries.sourceId,
+        db.select({ id: sources.id }).from(sources).where(and(eq(sources.userId, userId), inArray(sources.kind, [...opts.sourceKinds]))),
+      ),
+    )
   }
   if (opts.region && opts.region.length > 0) conds.push(arrayOverlaps(discoveries.regionIds, [...opts.region]))
   if (opts.createdAfter) conds.push(gte(discoveries.createdAt, opts.createdAfter))
@@ -539,7 +553,7 @@ export async function countNew(userId: string, client: DbClient = db): Promise<n
 export async function countByStatus(
   userId: string,
   client: DbClient = db,
-  filters: Pick<ListOpts, 'region' | 'sourceIds' | 'minScore' | 'scoredOnly'> = {},
+  filters: Pick<ListOpts, 'region' | 'sourceIds' | 'sourceKinds' | 'minScore' | 'scoredOnly'> = {},
 ): Promise<Record<DiscoveryStatus, number>> {
   const rows = await client
     .select({ status: discoveries.status, c: count() })

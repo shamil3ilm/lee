@@ -18,6 +18,7 @@ import type {
 import type { DiscoveryBoardColumn, DiscoveryBoardItem } from '@/components/discoveries-board'
 import { parseRegionParam } from '@/lib/regions/selection'
 import { regionGroups, type RegionGroup } from '@/lib/regions/display'
+import { LINKEDIN_POST_KIND } from '@/lib/linkedin-posts/types'
 
 /** Parsed, validated Discovery query string. */
 export interface DiscoveryParams {
@@ -34,6 +35,8 @@ export interface DiscoveryParams {
   sourceId: string
   scoredOnly: boolean
   showFiltered: boolean
+  /** "Hiring posts": only LinkedIn hiring posts (source kind linkedin_post). */
+  hiringPosts: boolean
 }
 
 export type RawParams = Record<string, string | undefined>
@@ -72,17 +75,19 @@ export function parseDiscoveryParams(sp: RawParams, sizeCookie?: string): Discov
     sourceId: sp.source && UUID_RE.test(sp.source) ? sp.source : '',
     scoredOnly: sp.scored === '1',
     showFiltered: sp.filtered === 'show',
+    hiringPosts: sp.posts === '1',
   }
 }
 
 /** Filters shared by the list, its count and the board. */
 function sharedFilters(p: DiscoveryParams): Pick<
   discoveriesQ.ListOpts,
-  'region' | 'sourceIds' | 'minScore' | 'scoredOnly'
+  'region' | 'sourceIds' | 'sourceKinds' | 'minScore' | 'scoredOnly'
 > {
   return {
     region: p.region.length > 0 ? p.region : undefined,
     sourceIds: p.sourceId ? [p.sourceId] : undefined,
+    sourceKinds: p.hiringPosts ? [LINKEDIN_POST_KIND] : undefined,
     minScore: p.minScore > 0 ? p.minScore : undefined,
     scoredOnly: p.scoredOnly,
   }

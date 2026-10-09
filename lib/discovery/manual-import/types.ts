@@ -1,3 +1,4 @@
+import type { PostCandidate } from '@/lib/linkedin-posts/types'
 import { z } from 'zod'
 
 /**
@@ -30,6 +31,8 @@ export interface ExtractResult {
   mode: ExtractMode
   /** Why the AI was not used or failed, shown under the list. */
   note: string | null
+  /** The paste is one LinkedIn post (text and/or link): reviewed as a hiring post instead. */
+  post?: PostCandidate | null
 }
 
 const field = (max: number) => z.string().trim().max(max).default('')
