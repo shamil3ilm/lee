@@ -38,7 +38,7 @@ export function SkillChips({ items, selection, disabled, onChange }: SkillChipsP
           const picked = on.has(s.key)
           const mine = readinessOf(selection, s.key) === 'mine'
           return (
-            <li key={s.key} className="inline-flex items-stretch overflow-hidden rounded-full border">
+            <li key={s.key} className={cn('inline-flex items-stretch overflow-hidden rounded-full border', s.status === 'duplicate' && 'border-dashed')}>
               <button
                 type="button"
                 aria-pressed={picked}
@@ -48,6 +48,7 @@ export function SkillChips({ items, selection, disabled, onChange }: SkillChipsP
                 className={cn(
                   'inline-flex min-h-7 items-center gap-1 px-2.5 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50',
                   picked ? 'bg-primary text-primary-foreground' : 'bg-card text-foreground hover:bg-accent',
+                  s.status === 'duplicate' && !picked && 'bg-muted text-muted-foreground line-through decoration-muted-foreground/50',
                 )}
               >
                 {picked ? <Check className="size-3" aria-hidden="true" /> : null}
@@ -74,7 +75,7 @@ export function SkillChips({ items, selection, disabled, onChange }: SkillChipsP
         })}
       </ul>
       <p className="text-xs text-muted-foreground">
-        Skills are imported as “Learning” (not used in CVs or suggestions) until you mark them “Mine”. Greyed-out skills are already in lee.
+        Skills are imported as “Learning” (not used in CVs or suggestions) until you mark them “Mine”. Dimmed skills are already in lee.
       </p>
     </div>
   )

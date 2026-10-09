@@ -86,7 +86,10 @@ export function ResetPanel({ counts, batches, lastImport, editable }: ResetPanel
                 key={s}
                 checked={profile.includes(s)}
                 disabled={!editable || counts.profile[s] === 0}
-                onChange={(e) => setProfile((cur) => toggle(cur, s, e.currentTarget.checked))}
+                onChange={(e) => {
+                  const on = e.currentTarget.checked
+                  setProfile((cur) => toggle(cur, s, on))
+                }}
                 label={
                   <span>
                     {PROFILE_SECTION_LABELS[s]} <span className="text-muted-foreground">({counts.profile[s]})</span>
@@ -106,7 +109,10 @@ export function ResetPanel({ counts, batches, lastImport, editable }: ResetPanel
                 key={t}
                 checked={targets.includes(t)}
                 disabled={counts.targets[t] === 0}
-                onChange={(e) => setTargets((cur) => toggle(cur, t, e.currentTarget.checked))}
+                onChange={(e) => {
+                  const on = e.currentTarget.checked
+                  setTargets((cur) => toggle(cur, t, on))
+                }}
                 label={
                   <span>
                     {RESET_TARGET_LABELS[t].label} <span className="text-muted-foreground">({counts.targets[t].toLocaleString('en-US')})</span>
@@ -126,7 +132,10 @@ export function ResetPanel({ counts, batches, lastImport, editable }: ResetPanel
                 <Checkbox
                   key={b.id}
                   checked={imports.includes(b.id)}
-                  onChange={(e) => setImports((cur) => toggle(cur, b.id, e.currentTarget.checked))}
+                  onChange={(e) => {
+                  const on = e.currentTarget.checked
+                  setImports((cur) => toggle(cur, b.id, on))
+                }}
                   label={
                     <span>
                       {importSourceLabel(b.source)}, {shortDate(b.importedAt)}{' '}
