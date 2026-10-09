@@ -182,3 +182,25 @@ test('Settings › Search: star Kuwait as top priority (not saved)', async ({ pa
   await field.getByRole('button', { name: 'Unstar Kuwait' }).click()
   await expect(field.locator('input[name="preferredRegion"]')).toHaveCount(0)
 })
+
+// Last in this file: it removes the seeded companies.
+test('Reset companies: counts, typed confirmation when watched go too, then the list empties', async ({ page }) => {
+  await page.goto('/discoveries?tab=companies')
+  await page.getByTestId('companies-more').click()
+  await page.getByTestId('reset-companies').click()
+  const dialog = page.getByTestId('reset-companies-dialog')
+  await expect(dialog.getByTestId('reset-companies-counts')).toContainText(/will be removed/)
+  const confirm = page.getByTestId('reset-companies-confirm')
+  await dialog.getByTestId('reset-keep-watched').uncheck()
+  await expect(confirm).toBeDisabled()
+  await dialog.getByTestId('reset-companies-confirm-text').fill('RESET')
+  await dialog.getByLabel('Run discovery now').uncheck()
+  await expect(confirm).toBeEnabled()
+  await confirm.click()
+  await toast(page, /Removed \d+ compan/)
+  await expect(card(page, BACKWATER)).toHaveCount(0)
+  // Companies the user added (found by name above) and tracked ones stay.
+  await page.goto('/discoveries?tab=companies&view=all')
+  await expect(card(page, 'Lagoon Labs Example')).toBeVisible()
+  await expect(card(page, DINAR)).toBeVisible()
+})

@@ -67,3 +67,16 @@ export async function enqueueGrowth(userId: string, now: Date = new Date()): Pro
   ])
   return created > 0
 }
+
+/** "Run discovery now" after a reset: one run per reset, not held to the once-a-day limit of "Find now". */
+export async function enqueueCompanyDiscoveryAfterReset(userId: string, now: Date = new Date()): Promise<boolean> {
+  const { created } = await enqueueMany([
+    {
+      ...weeklyCompanySpec(userId, now),
+      payload: { trigger: 'manual' },
+      idempotencyKey: jobKeys.companyDiscoveryReset(userId, now.toISOString()),
+      priority: JOB_PRIORITY[JOB_TYPES.companyReputation],
+    },
+  ])
+  return created > 0
+}

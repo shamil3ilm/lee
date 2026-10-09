@@ -58,6 +58,7 @@ import * as growthQ from '@/lib/db/queries/companyGrowth'
 import { refreshGrowth } from '@/lib/company-discovery/growth/refresh'
 import { copyGrowthToPostings } from '@/lib/company-discovery/growth/postings'
 import { foldDuplicates } from '@/lib/company-discovery/fold'
+import { previewCompanyReset, resetCompanies } from '@/lib/company-discovery/reset'
 import {
   GITHUB_ORGS_KUWAIT,
   HOME_WITH_BOARD,
@@ -251,6 +252,19 @@ async function main(): Promise<void> {
         await copyGrowthToPostings(id, now)
         await discQ.list(id, { status: 'new', sort: 'match', growthInFit: true, limit: 5 })
         await discQ.list(id, { status: 'new', sort: 'combined', growthInFit: true, limit: 5 })
+        // The Companies tab's segments and sorts.
+        await localCompaniesQ.listCompanies(id, { status: 'all', sort: 'roles', watching: true, limit: 25 })
+        await localCompaniesQ.listCompanies(id, { status: 'saved', sort: 'newest', limit: 25 })
+      },
+    ],
+    // "Reset companies": the counting and batched delete are raw SQL. The
+    // full reset is only previewed; the run keeps watched and own companies
+    // (the defaults).
+    [
+      'companies.reset',
+      async () => {
+        await previewCompanyReset(id, { keepWatched: false, includeOwn: true })
+        await resetCompanies(id, { keepWatched: true, includeOwn: false }, { deadline: Date.now() + 10_000, now })
       },
     ],
     [

@@ -161,6 +161,17 @@ export const EVENT_CATALOG: Readonly<Record<string, EventSpec>> = {
     persist: true,
     message: (c) => `Careers pages changed: ${n(c, 'changed')} of ${n(c, 'checked')} watched`,
   },
+  company_growth_done: {
+    category: 'source',
+    persist: true,
+    message: (c) =>
+      `Company growth: ${n(c, 'scored')} of ${n(c, 'companies')} scored · ${n(c, 'roleCounts')} role counts · ${n(c, 'github')} GitHub orgs · ${plural(n(c, 'gems'), 'hidden gem')}`,
+  },
+  companies_reset: {
+    category: 'source',
+    persist: true,
+    message: (c) => `Companies reset: ${plural(n(c, 'deleted'), 'company', 'companies')} removed${c.remaining ? ' (more left: run it again)' : ''}`,
+  },
   // Company reputation (lib/reputation)
   reputation_refreshed: {
     category: 'source',

@@ -132,6 +132,8 @@ export const jobKeys = {
   companyDiscovery: (userId: string, isoWeek: string) => `company-discovery:${userId}:${isoWeek}`,
   /** Discovery › Companies › Find now: at most once per UTC day. */
   companyDiscoveryManual: (userId: string, day: string) => `company-discovery:${userId}:now:${day}`,
+  /** After "Reset companies": one run per reset (`stamp` = the reset time). */
+  companyDiscoveryReset: (userId: string, stamp: string) => `company-discovery:${userId}:reset:${stamp}`,
   /** Enrichment batches: numbered within the week, so a week has at most COMPANY_ENRICH_BATCHES. */
   companyEnrich: (userId: string, isoWeek: string, n: number) => `company-enrich:${userId}:${isoWeek}:${n}`,
   portfolioPull: (userId: string, day: string) => `portfolio-pull:${userId}:${day}`,

@@ -571,6 +571,21 @@ well-known employers with their legal names as aliases; employers seen in
 jobs; the search box; caps of 1,200 directory rows a run and 3,000 per
 user; local companies no longer auto-expire.
 
+### Reset companies
+
+Discovery › Companies › ⋯ › "Reset companies" (`lib/company-discovery/reset.ts`)
+removes discovered companies, their growth scores, signals and weekly role
+counts, and the dismissed rows that block a company from coming back.
+Watched and saved companies are kept by default (removing them needs
+typing RESET), and companies you added (pasted or found by name) are kept
+unless you tick "Also remove companies I added myself". Rows linked to a
+speculative application or promoted to your companies list are always
+kept. Applications, contacts, jobs and the sources "Watch" added are never
+touched. The dialog shows the counts first. The reset is owner-scoped and
+batched, resets the list cursors so the next run re-reads every park and
+member list, and can start that run at once. It logs `companies_reset`
+with counts only.
+
 ### Live check (2026-10-09)
 
 Through lee's own parsers and client (`pnpm tsx scripts/company-discovery-audit.ts`):

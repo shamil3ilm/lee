@@ -1,16 +1,18 @@
 'use client'
-import { useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { MoreHorizontal, Search } from 'lucide-react'
+import { MoreHorizontal, RotateCcw, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { findCompaniesNow } from '@/app/(authed)/discoveries/company-actions'
 import type { CompanyPrompt } from '@/lib/company-discovery/ai-prompts'
 import { PasteCompaniesDialog } from './paste-companies-dialog'
+import { ResetCompaniesDialog } from './reset-companies-dialog'
 
-/** Companies tab header: "Add companies" and the overflow menu (run the search now). */
-export function CompaniesHeaderActions({ prompts, children }: { prompts: readonly CompanyPrompt[]; children?: React.ReactNode }) {
+/** Companies tab header: "Add companies" and the overflow menu (run the search now, reset companies). */
+export function CompaniesHeaderActions({ prompts }: { prompts: readonly CompanyPrompt[] }) {
   const [pending, start] = useTransition()
+  const [resetOpen, setResetOpen] = useState(false)
   const runNow = (): void =>
     start(async () => {
       const r = await findCompaniesNow()
@@ -31,9 +33,13 @@ export function CompaniesHeaderActions({ prompts, children }: { prompts: readonl
             <Search className="size-4" aria-hidden="true" />
             Run the weekly search now
           </DropdownMenuItem>
-          {children}
+          <DropdownMenuItem onSelect={() => setResetOpen(true)} data-testid="reset-companies">
+            <RotateCcw className="size-4" aria-hidden="true" />
+            Reset companies…
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <ResetCompaniesDialog open={resetOpen} onOpenChange={setResetOpen} />
     </div>
   )
 }
