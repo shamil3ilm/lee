@@ -37,7 +37,9 @@ describe('token vault', () => {
   it('fails loudly on tampering', () => {
     const enc = encryptToken('token-value')
     const [head, tag, ct] = enc.split('.') as [string, string, string]
-    const flipped = ct.slice(0, -1) + (ct.endsWith('A') ? 'B' : 'A')
+    // Change the FIRST character: the last base64url character can carry
+    // padding bits only, so changing it may not change the decoded bytes.
+    const flipped = (ct.startsWith('A') ? 'B' : 'A') + ct.slice(1)
     expect(() => decryptToken(`${head}.${tag}.${flipped}`)).toThrow()
   })
 })
