@@ -16,6 +16,8 @@ export interface CompanyCardData {
   domain: string | null
   logoUrl: string | null
   regionLabel: string | null
+  /** "Kochi › Kerala › India". */
+  locationChain: string | null
   industries: string[]
   sizeBand: string | null
   stage: string | null

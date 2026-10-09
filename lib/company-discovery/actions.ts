@@ -131,3 +131,39 @@ export async function trackSpeculative(
   await companiesQ.patchCompany(userId, row.id, { applicationId: app.id, status: 'saved' })
   return { applicationId: app.id }
 }
+
+/** "Watch": the company's job board when lee can poll it, else its careers page. */
+export async function watchCompany(userId: string, id: string): Promise<{ kind: 'jobs' | 'careers' }> {
+  const row = await load(userId, id)
+  const kind = row.atsKind as BoardKind | null
+  if (kind && kind in BOARD_LABELS && row.atsSlug && boardSource({ kind, slug: row.atsSlug, url: row.careersUrl ?? '', watchable: true })) {
+    await watchJobs(userId, id)
+    return { kind: 'jobs' }
+  }
+  await watchCareers(userId, id)
+  return { kind: 'careers' }
+}
+
+export const BULK_LIMIT = 100
+
+export interface BulkResult {
+  done: number
+  skipped: number
+}
+
+/** Bulk "Watch" / "Not interested", one company at a time; companies that can't be watched (no website) are skipped. */
+export async function bulkCompanies(userId: string, ids: readonly string[], action: 'watch' | 'dismiss'): Promise<BulkResult> {
+  let done = 0
+  let skipped = 0
+  for (const id of [...new Set(ids)].slice(0, BULK_LIMIT)) {
+    try {
+      if (action === 'watch') await watchCompany(userId, id)
+      else await dismissCompany(userId, id, null)
+      done += 1
+    } catch (e) {
+      if (!(e instanceof CompanyActionError)) throw e
+      skipped += 1
+    }
+  }
+  return { done, skipped }
+}

@@ -237,7 +237,7 @@ export async function runCompanyDiscovery(userId: string, deps: RunDeps = {}): P
   const source = await ensureLocalCompaniesSource(userId)
   const token = deps.githubToken !== undefined ? deps.githubToken : await githubToken(userId)
   const { candidates, runs, counts, cursors } = await collectCandidates(userId, prefs, parseCursors(source.config), { ...deps, githubToken: token })
-  await sourcesQ.update(userId, source.id, { config: { ...((source.config ?? {}) as Record<string, unknown>), cursors } })
+  await sourcesQ.update(userId, source.id, { config: { ...((source.config ?? {}) as Record<string, unknown>), cursors }, lastPolledAt: deps.now ?? new Date() })
   const stored = await storeCandidates(userId, candidates, { counts, ctx })
   const summary: CompanyRunSummary = {
     kind: 'company-discovery',

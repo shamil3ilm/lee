@@ -1,3 +1,8 @@
+import { Suspense } from 'react'
+import { CompaniesHeaderActions } from '@/components/companies/companies-header-actions'
+import { CompaniesSkeleton } from '@/components/companies/companies-skeleton'
+import { companyPrompts } from '@/lib/company-discovery/ai-prompts'
+import { LOCAL_COMPANIES_KIND } from '@/lib/company-discovery/service'
 import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { requireUserId } from '@/lib/auth/require-session'
@@ -36,7 +41,7 @@ import { discoveryNotices } from './notices'
 import { RegionGroups } from '@/components/regions/region-groups'
 import { CompaniesTab } from '@/components/companies/companies-tab'
 import { parseCompanyParams } from './companies-data'
-import { searchPrefsFromProfile } from '@/lib/discovery/relevance/prefs'
+import { searchPrefsFromProfile, targetFamilies } from '@/lib/discovery/relevance/prefs'
 import { toPostRowView } from '@/lib/linkedin-posts/types'
 
 /** "Last checked 2h ago · 12 new" from the sources' last poll results. */
@@ -145,15 +150,21 @@ export default async function DiscoveriesPage({
   }
 
   if (p.tab === 'companies') {
+    const prefs = searchPrefsFromProfile(profile)
+    const prompts = companyPrompts({ regionIds: prefs.regionIds, starred: prefs.extra.preferredRegions.map((r) => r.id), families: targetFamilies(prefs) })
+    const lastRun = sources.find((s) => s.kind === LOCAL_COMPANIES_KIND)?.lastPolledAt ?? null
     return (
       <div className="space-y-4">
         <PageHeader
           title="Discovery"
           description="Local companies and startups worth approaching, even without a posting."
           className="mb-0"
+          actions={<CompaniesHeaderActions prompts={prompts} />}
         />
         <TabBar tab={p.tab} />
-        <CompaniesTab userId={userId} params={parseCompanyParams(sp, p.size)} prefs={searchPrefsFromProfile(profile)} searchParams={sp} />
+        <Suspense fallback={<CompaniesSkeleton />}>
+          <CompaniesTab userId={userId} params={parseCompanyParams(sp, p.size)} prefs={prefs} searchParams={sp} lastRun={lastRun} />
+        </Suspense>
       </div>
     )
   }

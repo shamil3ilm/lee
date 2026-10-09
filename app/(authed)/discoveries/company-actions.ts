@@ -12,6 +12,9 @@ import {
   trackSpeculative,
   watchCareers,
   watchJobs,
+  watchCompany,
+  bulkCompanies,
+  BULK_LIMIT,
 } from '@/lib/company-discovery/actions'
 import { draftReachOut } from '@/lib/company-discovery/reach-out'
 import type { SpeculativeDraft } from '@/lib/company-discovery/outreach'
@@ -198,5 +201,39 @@ export async function addCompanyFromSearch(choice: unknown): Promise<CompanyActi
   } catch (e) {
     if (e instanceof z.ZodError) return { error: 'That choice could not be read. Search again.' }
     return failure(e, 'addCompanyFromSearch')
+  }
+}
+
+/** Row "Watch": the job board when lee can poll it, else a weekly careers-page check. */
+export async function watchLocalCompany(companyId: string): Promise<CompanyActionResult> {
+  try {
+    const userId = await requireUserId()
+    const r = await watchCompany(userId, id.parse(companyId))
+    refresh()
+    revalidatePath('/settings/sources')
+    return {
+      success: true,
+      message: r.kind === 'jobs' ? 'Watching its job board: openings will appear in Discovery › Jobs.' : 'Added to "Check these yourself" in Settings › Sources (weekly).',
+    }
+  } catch (e) {
+    return failure(e, 'watchLocalCompany')
+  }
+}
+
+const bulkSchema = z.object({ ids: z.array(z.string().uuid()).min(1).max(BULK_LIMIT), action: z.enum(['watch', 'dismiss']) })
+
+export async function bulkCompanyAction(ids: string[], action: 'watch' | 'dismiss'): Promise<CompanyActionResult> {
+  try {
+    const userId = await requireUserId()
+    const input = bulkSchema.parse({ ids, action })
+    const r = await bulkCompanies(userId, input.ids, input.action)
+    refresh()
+    if (input.action === 'watch') revalidatePath('/settings/sources')
+    const what = `${r.done} ${r.done === 1 ? 'company' : 'companies'}`
+    const head = input.action === 'watch' ? `Watching ${what}` : `${what} marked not interested`
+    return { success: true, message: `${head}${r.skipped > 0 ? ` · ${r.skipped} skipped (no website)` : ''}` }
+  } catch (e) {
+    if (e instanceof z.ZodError) return { error: 'Select between 1 and 100 companies.' }
+    return failure(e, 'bulkCompanyAction')
   }
 }

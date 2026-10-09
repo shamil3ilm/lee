@@ -93,26 +93,37 @@ export function CompanySearch() {
   }
 
   return (
-    <section className="space-y-2 rounded-xl border bg-card p-3" aria-label="Find a company" data-testid="company-search">
-      <form onSubmit={find} className="flex flex-wrap items-end gap-2">
-        <div className="min-w-0 flex-1 space-y-1">
-          <Label htmlFor={inputId}>Find a company by name</Label>
+    <section className="space-y-2" aria-label="Find a company" data-testid="company-search">
+      <form onSubmit={find} role="search" className="flex items-center gap-2">
+        <Label htmlFor={inputId} className="sr-only">
+          Find a company by name
+        </Label>
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input
             id={inputId}
             value={query}
             onChange={(e) => setQuery(e.target.value.slice(0, 80))}
-            placeholder="CareStack, or Acme Payments, Dubai"
+            placeholder="Find a company by name (CareStack, or Acme Payments, Dubai)"
             autoComplete="off"
+            className="h-9 pl-8"
             data-testid="company-search-input"
           />
         </div>
-        <Button type="submit" size="sm" variant="outline" disabled={pending || query.trim().length < 2} data-testid="company-search-submit">
-          {pending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Search className="size-4" aria-hidden="true" />}
+        <Button type="submit" size="sm" variant="outline" className="h-9" disabled={pending || query.trim().length < 2} data-testid="company-search-submit">
+          {pending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
           Find
         </Button>
       </form>
       {options !== null ? (
-        options.length === 0 ? (
+        <div className="space-y-2 rounded-xl border bg-card p-3" data-testid="company-search-results">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-medium">Results for “{query.trim()}”</p>
+            <Button type="button" size="sm" variant="ghost" className="h-8" onClick={() => setOptions(null)}>
+              Close
+            </Button>
+          </div>
+        {options.length === 0 ? (
           <p className="text-sm text-muted-foreground" role="status">
             No match. Paste its website with “Add companies” instead.
           </p>
@@ -151,7 +162,8 @@ export function CompanySearch() {
               </Button>
             </div>
           </div>
-        )
+        )}
+        </div>
       ) : null}
     </section>
   )

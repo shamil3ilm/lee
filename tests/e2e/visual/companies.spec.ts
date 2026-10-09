@@ -28,7 +28,7 @@ for (const theme of ['light', 'dark'] as const) {
         await mkdir(OUT, { recursive: true })
         await page.goto('/discoveries?tab=companies')
         await expect(page.getByTestId('company-card').first()).toBeVisible()
-        await page.getByTestId('browse-directories').locator('summary').click()
+        await page.getByTestId('company-card').first().getByTestId('company-details-toggle').click()
         await noOverflow(page)
         await page.screenshot({ path: path.join(OUT, `${vp.name}-${theme}-companies.png`), fullPage: true })
 
@@ -38,6 +38,13 @@ for (const theme of ['light', 'dark'] as const) {
         await page.screenshot({ path: path.join(OUT, `${vp.name}-${theme}-companies-growth.png`) })
         await page.keyboard.press('Escape')
 
+        await page.getByTestId('company-filters-button').click()
+        await expect(page.getByTestId('company-filters-panel')).toBeVisible()
+        await noOverflow(page)
+        await page.screenshot({ path: path.join(OUT, `${vp.name}-${theme}-companies-filters.png`) })
+        await page.keyboard.press('Escape')
+
+        await page.getByTestId('company-card').nth(1).getByTestId('company-details-toggle').click()
         await page.getByTestId('company-card').nth(1).getByTestId('reach-out').click()
         await expect(page.getByTestId('reach-out-body')).not.toHaveValue('')
         const box = await page.getByRole('dialog').first().boundingBox()

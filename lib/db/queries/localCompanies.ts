@@ -136,7 +136,10 @@ export async function countForSource(sourceId: string, client: DbClient = db): P
 }
 
 export interface CompanyListOpts {
-  status: 'new' | 'saved' | 'dismissed'
+  /** 'all' = new and saved (everything in play). */
+  status: 'new' | 'saved' | 'dismissed' | 'all'
+  /** Watched (a job board or careers page), whatever the status. */
+  watching?: boolean
   /** Expanded region ids (selection + descendants). */
   regionIds?: readonly string[]
   industry?: string
@@ -148,14 +151,34 @@ export interface CompanyListOpts {
   minGrowth?: number
   /** "Under the radar" only. */
   gems?: boolean
-  /** Best fit first (default) or best growth first (unknown growth last). */
-  sort?: 'fit' | 'growth'
+  /** Best fit first (default), best growth, most open roles (unknown last), or newest. */
+  sort?: CompanySort
   limit?: number
   offset?: number
 }
 
+export type CompanySort = 'fit' | 'growth' | 'roles' | 'newest'
+
+function sortOrder(sort: CompanySort | undefined): SQL[] {
+  const fit = sql`${companyDiscoveries.fitScore} desc nulls last`
+  switch (sort) {
+    case 'growth':
+      return [sql`${companyDiscoveries.growthScore} desc nulls last`, fit]
+    case 'roles':
+      return [sql`(${companyDiscoveries.evidence}->>'openRoles')::int desc nulls last`, fit]
+    case 'newest':
+      return []
+    default:
+      return [fit]
+  }
+}
+
 function listWhere(userId: string, o: CompanyListOpts): SQL {
-  const conds: SQL[] = [eq(companyDiscoveries.userId, userId), eq(companyDiscoveries.status, o.status)]
+  const conds: SQL[] = [
+    eq(companyDiscoveries.userId, userId),
+    o.status === 'all' ? inArray(companyDiscoveries.status, ['new', 'saved']) : eq(companyDiscoveries.status, o.status),
+  ]
+  if (o.watching) conds.push(isNotNull(companyDiscoveries.watch))
   if (o.regionIds && o.regionIds.length > 0) conds.push(arrayOverlaps(companyDiscoveries.regionIds, [...o.regionIds]))
   if (o.industry) conds.push(arrayOverlaps(companyDiscoveries.industry, [o.industry]))
   if (o.stage) conds.push(eq(companyDiscoveries.stage, o.stage))
@@ -173,9 +196,7 @@ export async function listCompanies(userId: string, o: CompanyListOpts, client: 
     .from(companyDiscoveries)
     .where(listWhere(userId, o))
     .orderBy(
-      ...(o.sort === 'growth'
-        ? [sql`${companyDiscoveries.growthScore} desc nulls last`, sql`${companyDiscoveries.fitScore} desc nulls last`]
-        : [sql`${companyDiscoveries.fitScore} desc nulls last`]),
+      ...sortOrder(o.sort),
       desc(companyDiscoveries.createdAt),
       desc(companyDiscoveries.id),
     )
