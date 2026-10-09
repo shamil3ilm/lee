@@ -11,6 +11,9 @@ import { LINK_KIND_LABELS, LINK_KINDS, MAX_LINKS, type LinkKind, type ProfileLin
 const selectCls =
   'h-9 rounded-md border border-input bg-card px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background'
 
+const LABEL_HELP_ID = 'profile-link-label-help'
+const LABEL_HELP = "Shown in drafts and suggestions, e.g. 'Case study: payment approvals'. lee picks links by Kind to match each job."
+
 function newId(): string {
   return Math.random().toString(36).slice(2, 10)
 }
@@ -48,6 +51,18 @@ export function ProfileLinksCard({ initial }: { initial: ProfileLink[] }) {
       </CardHeader>
       <CardContent className="space-y-3">
         {links.length === 0 ? <p className="text-sm text-muted-foreground">No links yet.</p> : null}
+        {links.length > 0 ? (
+          <div className="grid gap-x-2 gap-y-0.5 text-xs sm:grid-cols-[10rem_1fr_1.4fr_auto]">
+            <span className="hidden font-medium text-muted-foreground sm:block">Kind</span>
+            <div>
+              <span className="font-medium text-muted-foreground">Label</span>
+              <p id={LABEL_HELP_ID} className="text-muted-foreground" data-testid="link-label-help">
+                {LABEL_HELP}
+              </p>
+            </div>
+            <span className="hidden font-medium text-muted-foreground sm:block">URL</span>
+          </div>
+        ) : null}
         {links.map((l, i) => (
           <div key={l.id} className="grid gap-2 sm:grid-cols-[10rem_1fr_1.4fr_auto] sm:items-center">
             <select
@@ -62,7 +77,7 @@ export function ProfileLinksCard({ initial }: { initial: ProfileLink[] }) {
                 </option>
               ))}
             </select>
-            <Input aria-label={`Link ${i + 1} label`} value={l.label} placeholder="Label, e.g. Case study: payment approvals" onChange={(e) => update(l.id, { label: e.target.value })} />
+            <Input aria-label={`Link ${i + 1} label`} aria-describedby={LABEL_HELP_ID} value={l.label} placeholder="Label, e.g. Case study: payment approvals" onChange={(e) => update(l.id, { label: e.target.value })} />
             <Input aria-label={`Link ${i + 1} URL`} value={l.url} type="url" onChange={(e) => update(l.id, { url: e.target.value })} />
             <Button type="button" size="sm" variant="ghost" className="h-9 w-9 justify-self-end p-0" onClick={() => remove(l.id)} aria-label={`Remove link ${i + 1}`}>
               <X className="size-4" />
