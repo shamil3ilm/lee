@@ -20,6 +20,7 @@ import { recordDueReminders } from '@/lib/reminders/service'
 import { takeUsageSnapshot } from '@/lib/usage/snapshot'
 import { pruneRadarWhatsNew } from '@/lib/db/retention/radar-new'
 import * as newQ from '@/lib/db/queries/radarNew'
+import * as coverageQ from '@/lib/db/queries/coverage'
 import { adoptWhatsNew } from '@/lib/radar/new/adopt'
 import { runWhatsNewSource } from '@/lib/radar/new/run'
 import { scheduleWhatsNew } from '@/lib/radar/new/schedule'
@@ -160,6 +161,14 @@ async function main(): Promise<void> {
       async () => {
         const counts = await discQ.countByRegion(id, { status: 'all', quarantine: 'exclude' })
         if ((counts.get('gcc') ?? 0) < 1) throw new Error('no GCC count')
+      },
+    ],
+    // Settings › Sources › Coverage: grouped scans over region_ids with date and array binds.
+    [
+      'coverage.regionActivity',
+      async () => {
+        const m = await coverageQ.regionActivity(id, ['gcc', 'kw', 'in'], 30)
+        if (!m.has('kw')) throw new Error('no Kuwait row')
       },
     ],
     // OAuth token encryption (lib/auth/account-tokens.ts): the one-time

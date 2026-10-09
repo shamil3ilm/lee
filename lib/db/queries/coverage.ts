@@ -42,7 +42,7 @@ export async function regionActivity(
     client.execute(sql`
       select r.id as id, d.status as status, count(*) as c
       from ${discoveries} d, unnest(d.region_ids) as r(id)
-      where d.user_id = ${userId} and d.created_at >= ${since} and r.id = any(${wanted})
+      where d.user_id = ${userId} and d.created_at >= ${since.toISOString()}::timestamptz and r.id = any(${wanted})
       group by r.id, d.status
     `),
     client.execute(sql`
@@ -54,7 +54,7 @@ export async function regionActivity(
     client.execute(sql`
       select r.id as id, count(distinct d.source_id) as c
       from ${discoveries} d, unnest(d.region_ids) as r(id)
-      where d.user_id = ${userId} and d.created_at >= ${yieldSince} and r.id = any(${wanted})
+      where d.user_id = ${userId} and d.created_at >= ${yieldSince.toISOString()}::timestamptz and r.id = any(${wanted})
       group by r.id
     `),
   ])
