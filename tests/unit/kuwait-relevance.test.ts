@@ -49,12 +49,22 @@ describe('Kuwait: KWD pay', () => {
 })
 
 describe('Kuwait: employer watch list', () => {
-  it('lists Kuwaiti employers with weekly watch links shipped in defaults v5', () => {
+  it('lists Kuwaiti employers; those with a public board are read automatically (defaults v6)', () => {
     const kw = WATCH_EMPLOYERS.filter((e) => e.country === 'KW').map((e) => e.key)
-    expect(kw).toEqual(expect.arrayContaining(['koc', 'knpc', 'zain', 'nbk', 'kfh', 'boubyan', 'agility', 'alshaya', 'talabat', 'ooredoo-kuwait', 'stc-kuwait', 'tap-payments']))
-    expect(DEFAULTS_VERSION).toBe(5)
-    const v5 = DEFAULT_SOURCES.filter((s) => s.since === 5).map((s) => s.key)
-    expect(v5).toEqual(expect.arrayContaining(['watch:kfh', 'watch:tap-payments']))
+    expect(kw).toEqual(
+      expect.arrayContaining(['koc', 'knpc', 'zain', 'nbk', 'kfh', 'boubyan', 'agility', 'alshaya', 'talabat', 'ooredoo-kuwait', 'stc-kuwait', 'tap-payments', 'alghanim', 'kuwait-airways']),
+    )
+    expect(DEFAULTS_VERSION).toBe(6)
+    const v6 = DEFAULT_SOURCES.filter((s) => s.since === 6)
+    expect(v6.map((s) => s.key)).toEqual(expect.arrayContaining(['oracle_orc:gulfbank', 'oracle_orc:kfh', 'rss:boubyan', 'rss:tap-payments', 'workable:agility', 'watch:alghanim']))
+    for (const s of v6.filter((x) => x.regions?.includes('kw') && x.kind !== 'watch')) {
+      expect(s.enabled, s.key).toBe(true)
+      expect(s.checkedOn).toBe('2026-10-09')
+    }
+    // Every adapter employer points at a source the catalog ships.
+    for (const e of WATCH_EMPLOYERS.filter((x) => x.methods.includes('adapter'))) {
+      expect(DEFAULT_SOURCES.some((s) => s.key === e.sourceKey), e.key).toBe(true)
+    }
     // talabat was already a v2 watch link: not duplicated.
     expect(DEFAULT_SOURCES.filter((s) => s.key === 'watch:talabat')).toHaveLength(1)
   })

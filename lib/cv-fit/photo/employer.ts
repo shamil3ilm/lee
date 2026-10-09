@@ -42,6 +42,8 @@ const SECTOR_KIND: Readonly<Record<WatchSector, EmployerKind>> = {
   mining: 'semi_gov',
   petrochemicals: 'semi_gov',
   events: 'semi_gov',
+  conglomerate: 'unknown',
+  food: 'unknown',
 }
 
 function watchMatch(name: string): WatchEmployer | undefined {

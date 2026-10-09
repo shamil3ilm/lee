@@ -51,7 +51,7 @@ export const ALERT_SITES: readonly AlertSite[] = [
     alertsUrl: 'https://www.linkedin.com/jobs/',
     steps: [
       'Open linkedin.com/jobs and search "Backend Developer" (then again for "Full Stack Developer").',
-      'Set Location to "United Arab Emirates" (repeat for Saudi Arabia, Qatar, India, or pick "Remote" under On-site/Remote).',
+      'Set Location to "Kuwait" (repeat for "United Arab Emirates", Saudi Arabia, Qatar, Bahrain, Oman, India, or pick "Remote" under On-site/Remote). Settings › Sources › Coverage has a ready search link per region.',
       'Under Experience level tick "Entry level" and "Associate" (junior / mid).',
       'Switch on "Set alert" at the top of the results; choose Daily and Email in Job alert settings.',
       COMMON_TIP,
@@ -60,11 +60,12 @@ export const ALERT_SITES: readonly AlertSite[] = [
   {
     id: 'indeed',
     label: 'Indeed',
-    senderDomains: ['indeed.com'],
+    // Indeed documents these three sending domains (help article 211829163).
+    senderDomains: ['indeed.com', 'indeedemail.com', 'indeedmail.com'],
     jobHosts: ['indeed.com'],
     alertsUrl: 'https://ae.indeed.com/',
     steps: [
-      'Open ae.indeed.com (UAE) or in.indeed.com (India); other GCC countries have their own sites (sa., qa., kw., bh., om.indeed.com).',
+      'Open kw.indeed.com (Kuwait), ae.indeed.com (UAE) or in.indeed.com (India); the other GCC countries have their own sites (sa., qa., bh., om.indeed.com).',
       'Search "backend developer" or "full stack developer" with the city or country as location.',
       'Filter Experience level to Entry level / Mid level where offered.',
       'Click "Get new jobs for this search by email" (or the bell icon) and confirm your email address.',
@@ -93,7 +94,7 @@ export const ALERT_SITES: readonly AlertSite[] = [
     alertsUrl: 'https://www.naukrigulf.com/',
     steps: [
       'Sign in to naukrigulf.com and search "Backend Developer" or "Full Stack Developer".',
-      'Pick Location UAE (repeat for Saudi Arabia, Qatar, Kuwait, Bahrain, Oman) and Experience 0–5 years.',
+      'Pick Location Kuwait (repeat for UAE, Saudi Arabia, Qatar, Bahrain, Oman) and Experience 0–5 years.',
       'Click "Create Job Alert" on the results page and choose daily email.',
       COMMON_TIP,
     ],
@@ -106,7 +107,7 @@ export const ALERT_SITES: readonly AlertSite[] = [
     alertsUrl: 'https://www.bayt.com/en/uae/jobs/',
     steps: [
       'Sign in to bayt.com and search "Backend Developer" or "Full Stack Developer".',
-      'Choose the country (UAE, Saudi Arabia, Qatar, Kuwait, Bahrain, Oman) and Career level "Mid career" or "Entry level".',
+      'Choose the country (Kuwait, UAE, Saudi Arabia, Qatar, Bahrain, Oman) and Career level "Mid career" or "Entry level".',
       'Click "Create job alert" (bell) on the results page and choose daily.',
       COMMON_TIP,
     ],

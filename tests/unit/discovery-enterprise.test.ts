@@ -49,6 +49,13 @@ describe('OracleOrcAdapter', () => {
     expect(decodeURIComponent(requests[0]!.url)).toContain('finder=findReqs;siteNumber=CX_1,limit=100,offset=0')
   })
 
+  it('accepts a named site such as Gulf Bank\'s "JobSearch-GulfBank", but no finder syntax', async () => {
+    serve(fx('orc.json'))
+    await new OracleOrcAdapter().fetch({ ...config, siteNumber: 'JobSearch-GulfBank' })
+    expect(decodeURIComponent(requests[0]!.url)).toContain('finder=findReqs;siteNumber=JobSearch-GulfBank,limit=100')
+    await expect(new OracleOrcAdapter().fetch({ ...config, siteNumber: 'CX_1,limit=1' })).rejects.toThrow()
+  })
+
   it('only talks to Oracle Cloud hosts', async () => {
     serve('{}')
     await expect(new OracleOrcAdapter().fetch({ ...config, host: 'evil.example' })).rejects.toThrow(/not allowed/)

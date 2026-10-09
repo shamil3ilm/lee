@@ -1,4 +1,5 @@
 import { DEFAULT_SOURCES_V3 } from './catalog-v3'
+import { DEFAULT_SOURCES_V6 } from './catalog-v6'
 
 /**
  * Starter data every account gets, applied once per DEFAULTS_VERSION (see
@@ -37,11 +38,19 @@ export interface DefaultSource {
   company?: DefaultCompany
   /** DEFAULTS_VERSION that introduced it; existing users get it once they're below this. */
   since: number
+  /**
+   * Region-taxonomy ids its jobs are in, when not just the employer's home
+   * country (lib/coverage reads it; e.g. a group hiring in Kuwait and the UAE).
+   */
+  regions?: readonly string[]
+  /** yyyy-mm-dd the board was last verified live, with its live job count. */
+  checkedOn?: string
 }
 
 /** Bump when adding defaults; users below it get only the newer ones. */
 // 5 — Kuwait employers on the watch list (2026-10-09).
-export const DEFAULTS_VERSION = 5
+// 6 — Kuwait and UAE employer boards from the coverage audit (2026-10-09).
+export const DEFAULTS_VERSION = 6
 
 export interface DefaultWatchTerm {
   term: string
@@ -73,33 +82,33 @@ export const DEFAULT_SOURCES: readonly DefaultSource[] = [
 
   // India — enabled
   {
-    key: 'lever:paytm', name: 'Paytm (Lever)', kind: 'lever', config: { company: 'paytm' }, enabled: true, since: 1,
+    key: 'lever:paytm', name: 'Paytm (Lever)', kind: 'lever', config: { company: 'paytm' }, enabled: true, since: 1, regions: ['delhi-ncr', 'bengaluru'],
     company: { name: 'Paytm', domain: 'paytm.com', website: 'https://paytm.com', headquartersCountry: 'India' },
   },
   {
-    key: 'lever:meesho', name: 'Meesho (Lever)', kind: 'lever', config: { company: 'meesho' }, enabled: true, since: 1,
+    key: 'lever:meesho', name: 'Meesho (Lever)', kind: 'lever', config: { company: 'meesho' }, enabled: true, since: 1, regions: ['bengaluru'],
     company: { name: 'Meesho', domain: 'meesho.com', website: 'https://meesho.com', headquartersCountry: 'India' },
   },
   {
-    key: 'greenhouse:inmobi', name: 'InMobi (Greenhouse)', kind: 'greenhouse', config: { company: 'inmobi' }, enabled: true, since: 1,
+    key: 'greenhouse:inmobi', name: 'InMobi (Greenhouse)', kind: 'greenhouse', config: { company: 'inmobi' }, enabled: true, since: 1, regions: ['bengaluru'],
     company: { name: 'InMobi', domain: 'inmobi.com', website: 'https://www.inmobi.com', headquartersCountry: 'India' },
   },
   {
-    key: 'ashby:sarvam', name: 'Sarvam AI (Ashby)', kind: 'ashby', config: { company: 'sarvam' }, enabled: true, since: 1,
+    key: 'ashby:sarvam', name: 'Sarvam AI (Ashby)', kind: 'ashby', config: { company: 'sarvam' }, enabled: true, since: 1, regions: ['bengaluru'],
     company: { name: 'Sarvam AI', domain: 'sarvam.ai', website: 'https://www.sarvam.ai', headquartersCountry: 'India' },
   },
 
   // India — added, switched off
   {
-    key: 'lever:cred', name: 'CRED (Lever)', kind: 'lever', config: { company: 'cred' }, enabled: false, since: 1,
+    key: 'lever:cred', name: 'CRED (Lever)', kind: 'lever', config: { company: 'cred' }, enabled: false, since: 1, regions: ['bengaluru'],
     company: { name: 'CRED', domain: 'cred.club', website: 'https://cred.club', headquartersCountry: 'India' },
   },
   {
-    key: 'lever:zeta', name: 'Zeta (Lever)', kind: 'lever', config: { company: 'zeta' }, enabled: false, since: 1,
+    key: 'lever:zeta', name: 'Zeta (Lever)', kind: 'lever', config: { company: 'zeta' }, enabled: false, since: 1, regions: ['bengaluru', 'hyderabad'],
     company: { name: 'Zeta', domain: 'zeta.tech', website: 'https://www.zeta.tech', headquartersCountry: 'India' },
   },
   {
-    key: 'greenhouse:groww', name: 'Groww (Greenhouse)', kind: 'greenhouse', config: { company: 'groww' }, enabled: false, since: 1,
+    key: 'greenhouse:groww', name: 'Groww (Greenhouse)', kind: 'greenhouse', config: { company: 'groww' }, enabled: false, since: 1, regions: ['bengaluru'],
     company: { name: 'Groww', domain: 'groww.in', website: 'https://groww.in', headquartersCountry: 'India' },
   },
 
@@ -142,7 +151,7 @@ export const DEFAULT_SOURCES: readonly DefaultSource[] = [
     company: { name: 'Tamara', domain: 'tamara.co', website: 'https://tamara.co', headquartersCountry: 'Saudi Arabia' },
   },
   {
-    key: 'pinpoint:tabby', name: 'Tabby (Pinpoint)', kind: 'pinpoint', config: { company: 'tabby', displayName: 'Tabby' }, enabled: true, since: 2, // 62
+    key: 'pinpoint:tabby', name: 'Tabby (Pinpoint)', kind: 'pinpoint', config: { company: 'tabby', displayName: 'Tabby' }, enabled: true, since: 2, regions: ['ae', 'sa', 'kw'], // 62; 43 on 2026-10-09 (4 Kuwait City)
     company: { name: 'Tabby', domain: 'tabby.ai', website: 'https://tabby.ai', headquartersCountry: 'Saudi Arabia' },
   },
   {
@@ -234,7 +243,7 @@ export const DEFAULT_SOURCES: readonly DefaultSource[] = [
   // `// n` = jobs read in the target countries on 2026-09-27.
   {
     key: 'oracle_orc:ibs', name: 'IBS Software (Oracle)', kind: 'oracle_orc', // 69; 35 in Kochi / Trivandrum
-    config: { host: 'fa-etbm-saasfaprod1.fa.ocs.oraclecloud.com', siteNumber: 'CX_1', displayName: 'IBS Software' }, enabled: true, since: 2,
+    config: { host: 'fa-etbm-saasfaprod1.fa.ocs.oraclecloud.com', siteNumber: 'CX_1', displayName: 'IBS Software' }, enabled: true, since: 2, regions: ['kochi', 'thiruvananthapuram'],
     company: { name: 'IBS Software', domain: 'ibsplc.com', website: 'https://www.ibsplc.com', headquartersCountry: 'India' },
   },
   {
@@ -407,6 +416,7 @@ export const DEFAULT_SOURCES: readonly DefaultSource[] = [
 
   // ── v3 (2026-10-08): GCC employer watch list (lib/defaults/catalog-v3.ts) ──
   ...DEFAULT_SOURCES_V3,
+  ...DEFAULT_SOURCES_V6,
 ]
 
 /**

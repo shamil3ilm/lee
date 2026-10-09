@@ -160,6 +160,8 @@ export const OUTBOUND_PARTIES: readonly OutboundParty[] = [
       '*.myworkdayjobs.com',
       '*.myworkdaysite.com',
       '*.oraclecloud.com',
+      '*.teamtailor.com',
+      'lde.tbe.taleo.net',
       'himalayas.app',
       'jobicy.com',
       'remotive.com',

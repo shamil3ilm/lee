@@ -43,7 +43,7 @@ function clean(s: unknown): string {
 
 const orcConfig = z.object({
   host: z.string(),
-  siteNumber: z.string().regex(/^[A-Za-z0-9_]{1,40}$/),
+  siteNumber: z.string().regex(/^[A-Za-z0-9_-]{1,40}$/),
   displayName: z.string().max(100),
 })
 
