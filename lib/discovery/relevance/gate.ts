@@ -2,6 +2,11 @@ import { ruleMode } from './discovery-prefs'
 import { locationOutcome } from './location-rule'
 import { emptyScan, GCC_CODES, mergeScans, scanPlaces, type PlaceScan } from './places'
 import { targetFamilies, type SearchPrefs } from './prefs'
+import { postingRegionIds } from './region-ids'
+import { isWithin } from '@/lib/regions/tree'
+
+/** Anywhere in a title, only GCC and Indian places count ("Laravel Developer Dubai"). */
+const TARGET_ROOTS = ['gcc', 'in']
 import { domainOutcome, type DomainOutcome } from './domain-rule'
 import { classifyRole, roleFamilyLabel } from './roles'
 import { detectSeniority, detectYearsRequired, type SeniorityLevel } from './seniority'
@@ -40,6 +45,8 @@ export interface GateResult {
   reasons: string[]
   /** Region tags for the Discovery "Region" filter (computed even when inactive). */
   regions: RegionTag[]
+  /** Region-taxonomy ids (deepest places + ancestors + remote scopes) for the hierarchical Region filter. */
+  regionIds: string[]
   seniority: SeniorityLevel | null
   /** Smallest years-of-experience requirement in the description, if any. */
   yearsRequired: number | null
@@ -132,7 +139,7 @@ function regionTags(places: PlaceScan, remote: boolean): RegionTag[] {
   return tags
 }
 
-export { acceptedCodes, firstForeign, hitsAccepted } from './location-rule'
+export { acceptance, acceptedFor, firstForeign } from './location-rule'
 
 /**
  * A recognised tech family outside the targets ("role: Frontend"). Never on
@@ -169,7 +176,9 @@ function roleReason(
  * so "Global Payments Engineer" is not read as "worldwide".
  */
 export function postingPlaces(job: Pick<GateInput, 'title' | 'location'>): PlaceScan {
-  const titleTargets: PlaceScan = { ...emptyScan(), regions: scanPlaces(job.title).regions }
+  const inTitle = scanPlaces(job.title)
+  const targetNodes = [...inTitle.nodes].filter((id) => TARGET_ROOTS.some((root) => isWithin(id, root)))
+  const titleTargets: PlaceScan = { ...emptyScan(), regions: inTitle.regions, nodes: new Set(targetNodes) }
   return mergeScans(
     scanPlaces(job.location, { trustCodes: true }),
     mergeScans(titleTargets, scanPlaces(titlePlaceText(job.title), { trustCodes: true })),
@@ -184,6 +193,13 @@ export function evaluateRelevance(job: GateInput, prefs: SearchPrefs): GateResul
   const seniority = detectSeniority(job.title)
   const yearsRequired = detectYearsRequired(job.descriptionMd)
   const regions = regionTags(mergeScans(located, restricted), remote)
+  const regionIds = postingRegionIds({
+    placeText: `${job.location ?? ''}\n${titlePlaceText(job.title)}`,
+    description: job.descriptionMd,
+    located,
+    restricted,
+    remote,
+  })
   const domain = domainOutcome({
     title: job.title,
     description: job.descriptionMd,
@@ -197,6 +213,7 @@ export function evaluateRelevance(job: GateInput, prefs: SearchPrefs): GateResul
   })
   const base = {
     regions,
+    regionIds,
     seniority,
     yearsRequired,
     families: role.families,

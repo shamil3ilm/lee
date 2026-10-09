@@ -1,5 +1,5 @@
 import { isRemotePosting, postingPlaces, type GateInput } from '@/lib/discovery/relevance/gate'
-import { GCC_CODES } from '@/lib/discovery/relevance/places'
+import { anyWithin } from '@/lib/regions/tree'
 import { REGION_LABELS, type Region } from '@/lib/variants/types'
 
 /**
@@ -21,12 +21,22 @@ export const REGION_FIT_MAX = 15
 
 const WESTERN = new Set(['US', 'CA', 'NA', 'GB', 'IE', 'EU', 'AU'])
 
+/** Region-taxonomy roots whose postings read like US / EU résumés. */
+const WESTERN_NODES = ['us', 'ca', 'gb', 'ie', 'europe', 'au', 'nz']
+
+/**
+ * Résumé conventions a job's readers expect, through the region hierarchy:
+ * a GCC variant fits any GCC node (the group, a country, an emirate, a
+ * city or a free zone); an India variant any India node.
+ */
 export function jobRegions(job: GateInput): Region[] {
   const places = postingPlaces(job)
+  const nodes = [...places.nodes]
   const out: Region[] = []
-  if (GCC_CODES.some((c) => places.regions.has(c))) out.push('gcc')
-  if (places.regions.has('IN')) out.push('india')
-  if (isRemotePosting(job) || [...places.foreign].some((c) => WESTERN.has(c))) out.push('remote')
+  if (anyWithin(nodes, 'gcc')) out.push('gcc')
+  if (anyWithin(nodes, 'in')) out.push('india')
+  const western = [...places.foreign].some((c) => WESTERN.has(c)) || WESTERN_NODES.some((w) => anyWithin(nodes, w))
+  if (isRemotePosting(job) || western) out.push('remote')
   return out
 }
 

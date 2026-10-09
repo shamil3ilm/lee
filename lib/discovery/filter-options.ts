@@ -5,7 +5,8 @@
 
 export type DiscoverySort = 'combined' | 'match' | 'benefits' | 'posted'
 export type DiscoveryStatusFilter = 'new' | 'shortlisted' | 'saved' | 'dismissed' | 'filtered' | 'quarantined'
-export type DiscoveryRegionFilter = 'all' | 'ae' | 'gcc' | 'in' | 'remote'
+/** Region selection: lib/regions node ids (empty = all regions). */
+export type DiscoveryRegionFilter = readonly string[]
 
 export const STATUS_LABELS: Readonly<Record<DiscoveryStatusFilter, string>> = {
   new: 'New',
@@ -21,14 +22,6 @@ export const SORT_LABELS: Readonly<Record<DiscoverySort, string>> = {
   match: 'Best fit',
   benefits: 'Benefits score',
   posted: 'Recently posted',
-}
-
-export const REGION_LABELS: Readonly<Record<DiscoveryRegionFilter, string>> = {
-  all: 'All regions',
-  ae: 'UAE',
-  gcc: 'GCC',
-  in: 'India',
-  remote: 'Remote',
 }
 
 /** The filters behind "More filters". */

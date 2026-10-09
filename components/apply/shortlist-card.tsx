@@ -2,6 +2,7 @@
 import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { PlaceLabel } from '@/components/regions/place-label'
 import { ChevronDown, Clock, ExternalLink, FileText, Loader2, Wand2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -21,7 +22,6 @@ import { BestCvLine } from '@/components/cv-fit/best-cv-line'
 import { laterAction, notForMeAction, prepareAction } from '@/app/(authed)/shortlist/actions'
 import { DISMISS_REASONS, DISMISS_REASON_LABELS } from '@/lib/apply/feedback'
 import type { RankReason } from '@/lib/apply/rank'
-import { joinMeta } from '@/lib/ui/meta'
 import { cn } from '@/lib/utils'
 import { Checkbox } from '@/components/ui/checkbox'
 
@@ -104,7 +104,11 @@ export function ShortlistCard({ item, selected, onSelectedChange, busy = false }
             <span className="mr-1.5 text-muted-foreground tabular-nums">#{item.rank}</span>
             {item.title}
           </label>
-          <p className="truncate text-xs text-muted-foreground">{joinMeta([item.companyName, item.location])}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {item.companyName}
+            {item.companyName && item.location ? ' · ' : null}
+            <PlaceLabel location={item.location} />
+          </p>
         </div>
         <MatchBadge
           match={item.fitScore ?? null}

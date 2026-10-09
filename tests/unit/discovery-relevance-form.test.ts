@@ -201,7 +201,8 @@ describe('views', () => {
 
   it('pre-ticks the Gulf and India before the first save', () => {
     const v = searchPrefsFormValues({ ...baseProfile, searchPrefsSavedAt: null, locationPrefs: [] } as unknown as UserProfile)
-    expect(v.regions).toEqual(['AE', 'SA', 'QA', 'KW', 'BH', 'OM', 'IN'])
+    // Region-taxonomy ids: the GCC group and India (each includes every place below it).
+    expect(v.regions).toEqual(['gcc', 'in'])
     expect(v.saved).toBe(false)
   })
 })

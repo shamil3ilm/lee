@@ -67,7 +67,7 @@ function escapeRegex(s: string): string {
  * Regex source for one alias: spaces, hyphens and dots between words are
  * interchangeable ("full stack" = "full-stack" = "fullstack").
  */
-function termSource(term: string): string {
+export function termSource(term: string): string {
   const t = normalizeForMatch(term)
   return t
     .split(/[\s-]+/)
@@ -77,8 +77,8 @@ function termSource(term: string): string {
 }
 
 /** Letters and digits in any script bound a match (Unicode-aware \b). */
-const LEFT = '(?<![\\p{L}\\p{N}])'
-const RIGHT = '(?![\\p{L}\\p{N}])'
+export const LEFT = '(?<![\\p{L}\\p{N}])'
+export const RIGHT = '(?![\\p{L}\\p{N}])'
 
 /** A compiled any-of matcher over normalized text; returns the hit or null. */
 export interface TermMatcher {

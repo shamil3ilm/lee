@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, inArray, isNotNull, lt, sql, type SQL } from 'drizzle-orm'
+import { and, arrayOverlaps, count, desc, eq, gte, inArray, isNotNull, lt, sql, type SQL } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import { discoveries } from '@/lib/db/schema'
@@ -14,9 +14,6 @@ export type NewDiscovery = typeof discoveries.$inferInsert
  */
 export type DiscoveryStatus = 'new' | 'shortlisted' | 'saved' | 'dismissed' | 'filtered'
 export const DISCOVERY_STATUSES: readonly DiscoveryStatus[] = ['new', 'shortlisted', 'saved', 'dismissed', 'filtered']
-/** Region filter values, stored in `discoveries.regions` by the relevance gate. */
-export type DiscoveryRegion = 'ae' | 'gcc' | 'in' | 'remote'
-export const DISCOVERY_REGIONS: readonly DiscoveryRegion[] = ['ae', 'gcc', 'in', 'remote']
 
 /**
  * `DbClient` is a union of the postgres-js and PGlite drivers, and the union
@@ -116,6 +113,8 @@ export interface GateColumns {
   filterReason: string | null
   relevanceKey: string
   regions: string[]
+  /** Region-taxonomy ids (lib/regions), ancestors included. */
+  regionIds: string[]
   relevanceNotes: RelevanceNotes
   rankAdjust: number
 }
@@ -158,6 +157,7 @@ export async function insertManyForSource(
                 filterReason: it.gate.filterReason,
                 relevanceKey: it.gate.relevanceKey,
                 regions: it.gate.regions,
+                regionIds: it.gate.regionIds,
                 relevanceNotes: it.gate.relevanceNotes as never,
                 rankAdjust: it.gate.rankAdjust,
               }
@@ -184,8 +184,12 @@ export interface ListOpts {
   /** Only rows with an AI score. */
   scoredOnly?: boolean
   sourceIds?: string[]
-  /** Region tag written by the relevance gate. */
-  region?: DiscoveryRegion
+  /**
+   * Region selection (lib/regions node ids). A row matches when its stored
+   * region_ids overlap the selection; ancestors are stored, so "kerala"
+   * matches a Kochi posting and "gcc" every Gulf one.
+   */
+  region?: readonly string[]
   sort?: 'combined' | 'match' | 'benefits' | 'posted'
   limit?: number
   /** Rows to skip — pairs with `limit` for inbox pagination. */
@@ -314,7 +318,7 @@ function listWhere(userId: string, opts: ListOpts): SQL {
   if (opts.sourceIds && opts.sourceIds.length > 0) {
     conds.push(inArray(discoveries.sourceId, opts.sourceIds))
   }
-  if (opts.region) conds.push(sql`${discoveries.regions} @> array[${opts.region}]::text[]`)
+  if (opts.region && opts.region.length > 0) conds.push(arrayOverlaps(discoveries.regionIds, [...opts.region]))
   if (opts.createdAfter) conds.push(gte(discoveries.createdAt, opts.createdAfter))
   const quarantine = opts.quarantine ?? 'exclude'
   if (quarantine === 'exclude') conds.push(discoveryNotQuarantinedSql())
@@ -542,6 +546,26 @@ export async function countByStatus(
     }
   }
   return out
+}
+
+/**
+ * Postings per region node under the list's filters (every row counts at
+ * each id it stores, so GCC ≥ UAE ≥ Dubai). One grouped scan over unnest().
+ */
+export async function countByRegion(
+  userId: string,
+  opts: ListOpts,
+  client: DbClient = db,
+): Promise<Map<string, number>> {
+  const rows = await client.execute(sql`
+    select r.id as id, count(*) as c
+    from ${discoveries}, unnest(${discoveries.regionIds}) as r(id)
+    where ${listWhere(userId, opts)}
+    group by r.id
+  `)
+  const list = (rows as unknown as { rows?: unknown[] }).rows ?? (rows as unknown as unknown[])
+  const typed = (Array.isArray(list) ? list : []) as Array<{ id: string; c: number | string }>
+  return new Map(typed.map((r) => [r.id, Number(r.c)]))
 }
 
 /** v17 §1 — how many discoveries sit in Scam Shield quarantine (any status). */

@@ -330,6 +330,14 @@ export const JD_GCC = [
 
 export const COMPARE_DISCOVERY_TITLE = 'Senior Backend Engineer, E-invoicing'
 
+/** Synthetic postings for the region filter journey: [title, location as boards write it]. */
+export const REGION_SEEDS: ReadonlyArray<readonly [string, string]> = [
+  ['Region Kochi Laravel Developer', 'Infopark, Kakkanad'],
+  ['Region Trivandrum PHP Engineer', 'Technopark, Trivandrum'],
+  ['Region Abu Dhabi Backend Developer', 'ADGM, Abu Dhabi'],
+  ['Region Riyadh API Engineer', 'Riyadh, SA'],
+]
+
 export const DISCOVERIES: SeedDiscovery[] = [
   { status: 'new', score: 91, benefits: 72, job: { title: 'Senior Backend Engineer, Ledger', companyName: 'Juspay', companyDomain: 'juspay.example', location: 'Bengaluru, IN', remoteType: 'hybrid', employmentType: 'fulltime', descriptionMd: JD_BACKEND, applyUrl: 'https://juspay.example/jobs/ledger', techStack: ['Go', 'PostgreSQL', 'Kafka'], salary: { min: 4_500_000, max: 6_000_000, currency: 'INR' } }, reasoning: { summary: 'Strong match: ledger + Go + Kafka.', strengths: ['Ledger migration experience', 'Go and Kafka in production'], red_flags: [], stack_overlap: ['Go', 'PostgreSQL', 'Kafka'], stack_gaps: [] } },
   // Prepared by tests/e2e/best-cv.spec.ts ("Use this CV"); no other spec relies on it staying new.
@@ -342,6 +350,14 @@ export const DISCOVERIES: SeedDiscovery[] = [
   { status: 'new', score: 88, benefits: 64, job: { title: 'Backend Engineer, Payouts', companyName: 'Paylane', companyDomain: 'paylane.example', location: 'Remote', remoteType: 'remote', employmentType: 'fulltime', descriptionMd: JD_PAYOUTS, applyUrl: 'https://boards.greenhouse.io/paylane/jobs/42', techStack: ['Go', 'PostgreSQL'] }, reasoning: { summary: 'Payouts in Go: strong overlap.', strengths: ['Payments background'], red_flags: [], stack_overlap: ['Go', 'PostgreSQL'], stack_gaps: [] } },
   { status: 'dismissed', score: 30, benefits: 20, job: { title: 'Frontend Engineer', companyName: 'Meesho', location: 'Bengaluru, IN', remoteType: 'hybrid', employmentType: 'fulltime', descriptionMd: 'React.', applyUrl: 'https://meesho.example/jobs/fe', techStack: ['React'] }, reasoning: { summary: 'Frontend role.' } },
   { status: 'dismissed', score: 76, benefits: 70, job: { title: COMPARE_DISCOVERY_TITLE, companyName: 'Dunefold Labs', companyDomain: 'dunefold.example', location: 'Dubai, AE', remoteType: 'onsite', employmentType: 'fulltime', descriptionMd: JD_GCC, applyUrl: 'https://dunefold.example/jobs/einvoicing', techStack: ['Go', 'PostgreSQL', 'Kafka'] }, reasoning: { summary: 'E-invoicing in Go.' } },
+  // Region filter (tests/e2e/regions.spec.ts): dismissed, so no other journey sees them.
+  ...REGION_SEEDS.map(([title, location]): SeedDiscovery => ({
+    status: 'dismissed',
+    score: 50,
+    benefits: null,
+    job: { title, companyName: 'Regionfold', location, remoteType: 'onsite', employmentType: 'fulltime', descriptionMd: 'Build APIs in PHP and Laravel.', applyUrl: `https://regionfold.example/jobs/${title.toLowerCase().replace(/\W+/g, '-')}`, techStack: ['PHP', 'Laravel'] },
+    reasoning: null,
+  })),
 ]
 
 /** A synthetic current job so the comparison card renders (the compare journey edits it). */

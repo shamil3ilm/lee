@@ -1,7 +1,9 @@
 import Link from 'next/link'
 import { ArrowRight, Lightbulb, ListChecks, Settings2 } from 'lucide-react'
 import { requireUserId } from '@/lib/auth/require-session'
-import { loadShortlistPage, type ShortlistEntryView } from '@/lib/apply/page-data'
+import { inRegions, loadShortlistPage, type ShortlistEntryView } from '@/lib/apply/page-data'
+import { parseRegionParam } from '@/lib/regions/selection'
+import { RegionFilter } from '@/components/regions/region-filter'
 import { PageHeader } from '@/components/page-header'
 import { EmptyState } from '@/components/empty-state'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
@@ -33,14 +35,22 @@ const STATE_BADGE: Record<Exclude<ShortlistEntryView['state'], 'open'>, { label:
  * explainable composite (lib/apply/rank.ts). Reads the snapshot the
  * `shortlist:user` job wrote after the morning polls, so it loads at once.
  */
-export default async function ShortlistPage() {
+export default async function ShortlistPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>
+}) {
   const userId = await requireUserId()
-  const [data, profile, funnel] = await Promise.all([
+  const region = parseRegionParam((await searchParams).region)
+  const [loaded, profile, funnel] = await Promise.all([
     loadShortlistPage(userId),
     getProfile(userId),
     // This week's apply funnel lives here, next to the work it measures.
     weekFunnel(userId, new Date()),
   ])
+  // Region filter (URL state): today's picks in the selected regions only.
+  const data = { ...loaded, open: inRegions(loaded.open, region) }
+  const hiddenByRegion = loaded.open.length - data.open.length
   const bannerFamilies = defaultsBannerFamilies(profile)
   const promptSet = data.open.length === 0 ? await loadAiModePrompts(userId) : null
   // Counts come from the same lists the page renders (audit F5).
@@ -72,7 +82,29 @@ export default async function ShortlistPage() {
 
       {bannerFamilies ? <DefaultsBanner families={bannerFamilies} from="/shortlist" /> : null}
 
-      {data.open.length === 0 ? (
+      {loaded.open.length > 0 || region.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter the shortlist">
+          <RegionFilter value={region} />
+          {hiddenByRegion > 0 ? (
+            <p className="text-xs text-muted-foreground" role="status">
+              {hiddenByRegion} more {hiddenByRegion === 1 ? 'pick' : 'picks'} outside these regions
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {data.open.length === 0 && hiddenByRegion > 0 ? (
+        <EmptyState
+          icon={ListChecks}
+          title="No picks in these regions today"
+          description="Pick a wider region, or clear the filter to see every pick."
+          action={
+            <Button asChild size="sm" variant="outline">
+              <Link href="/shortlist">Show all regions</Link>
+            </Button>
+          }
+        />
+      ) : data.open.length === 0 ? (
         <EmptyState
           icon={ListChecks}
           title={data.day ? 'Nothing left on today’s shortlist' : 'No shortlist yet'}

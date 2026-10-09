@@ -33,6 +33,9 @@ import { tailorProfile, TAILOR_JD } from '@/tests/fixtures/resume/tailor'
 import * as profileQ from '@/lib/db/queries/profile'
 import * as appsQ from '@/lib/db/queries/applications'
 import * as matchQ from '@/lib/db/queries/discoveryMatch'
+import * as discQ from '@/lib/db/queries/discoveries'
+import { enqueueRelevanceJob } from '@/lib/discovery/relevance/enqueue'
+import { JOB_TYPES } from '@/lib/queue/job-types'
 import { saveResumeProfile } from '@/lib/resume/service'
 import { createStarterVariants } from '@/lib/variants/service'
 import { confirmVariant, startPrepare } from '@/lib/apply/prepare'
@@ -105,6 +108,33 @@ async function main(): Promise<void> {
         const view = await loadTailorView(id, applicationId)
         await saveTailoredCopy(id, applicationId, { accepted: view.suggestions.map((s) => s.id), gaps: [] })
         if (!(await coverTailoringFor(id, applicationId))) throw new Error('the cover letter cannot read the tailoring')
+      },
+    ],
+    // Region hierarchy (lib/regions): the relevance backfill writes region_ids
+    // in one raw-SQL batch; the filter is an array overlap on the GIN index;
+    // "Group by region" counts over unnest().
+    [
+      'regions.backfill',
+      async () => {
+        await enqueueRelevanceJob(id)
+        await drain({ userId: id, types: [JOB_TYPES.discoveryRelevance], budgetMs: 20_000, maxJobs: 2, concurrency: 1 })
+        const tagged = await discQ.list(id, { status: 'all', region: ['gcc'] })
+        if (!tagged.some((r) => r.id === posting.id)) throw new Error('the backfill did not tag the Gulf posting')
+      },
+    ],
+    [
+      'regions.filter',
+      async () => {
+        await discQ.list(id, { status: 'all', region: ['kerala', 'dubai', 'remote'], sort: 'combined', limit: 25 })
+        await discQ.countList(id, { status: 'new', region: ['in'] })
+        await discQ.countByStatus(id, undefined, { region: ['gcc'] })
+      },
+    ],
+    [
+      'regions.groupCounts',
+      async () => {
+        const counts = await discQ.countByRegion(id, { status: 'all', quarantine: 'exclude' })
+        if ((counts.get('gcc') ?? 0) < 1) throw new Error('no GCC count')
       },
     ],
     ['analytics.sourceFunnel', () => analytics.sourceFunnel(id)],

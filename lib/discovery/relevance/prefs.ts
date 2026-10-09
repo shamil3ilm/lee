@@ -7,6 +7,8 @@ import {
   type DiscoveryPrefs,
 } from './discovery-prefs'
 import { isRegionCode, REGION_CODES, type RegionCode } from './places'
+import { migrateLegacyRegions, normalizeSelection, selectionCountries } from '@/lib/regions/selection'
+import { TAXONOMY_VERSION } from '@/lib/regions/taxonomy'
 import { resolveRoleFamily, SKILL_GROUPS } from './roles'
 import { isSeniorityLevel, SENIORITY_LEVELS, type SeniorityLevel } from './seniority'
 import { findTerms, normalizeForMatch } from './text'
@@ -17,9 +19,12 @@ import { familiesFromEvidence } from './roles'
 
 /**
  * Bump when the gate's rules or alias lists change in a way that should
- * re-evaluate stored discoveries (the key changes → rows are re-gated).
+ * re-evaluate stored discoveries (the key changes → rows are re-gated). The
+ * region taxonomy's version (lib/regions/taxonomy.ts) is hashed into every
+ * key too: a taxonomy change re-tags each stored posting's `region_ids`
+ * through the same batched backfill.
  */
-export const RELEVANCE_RULES_VERSION = 'r4'
+export const RELEVANCE_RULES_VERSION = 'r5'
 
 export type RemoteScope = 'worldwide' | 'regions' | 'none'
 export const REMOTE_SCOPES: readonly RemoteScope[] = ['worldwide', 'regions', 'none']
@@ -46,6 +51,12 @@ export interface SearchPrefs {
   /** Role types that match no family, matched literally against titles. */
   customRoles: string[]
   seniority: SeniorityLevel[]
+  /**
+   * Selected region-taxonomy nodes (lib/regions): "gcc", "kerala", "dubai"…
+   * A parent includes every descendant; children alone narrow.
+   */
+  regionIds: string[]
+  /** Target countries the selection touches (Kerala → IN, GCC → the six), for country-level consumers. */
   regions: RegionCode[]
   /** Other ISO-2 countries the user accepts (relocation targets, extra prefs). */
   otherCountries: string[]
@@ -72,6 +83,7 @@ export const EMPTY_PREFS: SearchPrefs = {
   roleFamilies: [],
   customRoles: [],
   seniority: [],
+  regionIds: [],
   regions: [],
   otherCountries: [],
   remoteScope: 'worldwide',
@@ -125,7 +137,18 @@ type PrefsSource = Pick<
   | 'dealbreakers'
   | 'searchPrefsSavedAt'
 > &
-  Partial<Pick<UserProfile, 'discoveryPrefs' | 'skills' | 'stackWeights' | 'resume' | 'learnedTitles'>>
+  Partial<Pick<UserProfile, 'discoveryPrefs' | 'skills' | 'stackWeights' | 'resume' | 'learnedTitles' | 'targetRegions'>>
+
+/**
+ * The saved region selection (node ids). Profiles saved before the region
+ * hierarchy have none: their `location_prefs` country codes migrate
+ * losslessly (AE → ae, IN → in, all six GCC countries → gcc).
+ */
+export function targetRegionIds(profile: Pick<PrefsSource, 'locationPrefs' | 'targetRegions'> | null | undefined): string[] {
+  if (!profile) return []
+  if (Array.isArray(profile.targetRegions)) return normalizeSelection(profile.targetRegions)
+  return migrateLegacyRegions(countriesFromLocationPrefs(profile.locationPrefs).filter(isRegionCode))
+}
 
 const INFRA = ['docker', 'kubernetes', 'k8s', 'terraform', 'helm', 'aws', 'gcp', 'google cloud', 'azure', 'ecs', 'eks']
 
@@ -166,12 +189,19 @@ export function searchPrefsFromProfile(profile: PrefsSource | null | undefined):
     : []
   const all = [...new Set([...countries, ...relocation])]
   const seniority = SENIORITY_LEVELS.filter((l) => (profile.seniorityLevels ?? []).includes(l))
+  // Relocation targets inside the GCC / India widen the selection to that country.
+  const regionIds = normalizeSelection([
+    ...targetRegionIds(profile),
+    ...migrateLegacyRegions(relocation.filter(isRegionCode)),
+  ])
+  const touched = selectionCountries(regionIds)
   return {
     active: profile.searchPrefsSavedAt != null,
     roleFamilies,
     customRoles,
     seniority,
-    regions: REGION_CODES.filter((c) => all.includes(c)),
+    regionIds,
+    regions: REGION_CODES.filter((c) => touched.includes(c)),
     otherCountries: all.filter((c) => !isRegionCode(c)),
     remoteScope: isRemoteScope(profile.remoteScope) ? profile.remoteScope : 'worldwide',
     include: clean(profile.keywords),
@@ -207,6 +237,7 @@ export function relevanceKey(prefs: SearchPrefs): string {
   if (!prefs.active) {
     // Unsaved preferences: only the domain rule runs, on provisional targets.
     const provisional = JSON.stringify([
+      TAXONOMY_VERSION,
       ruleMode(x, 'domain'),
       targetFamilies(prefs).slice().sort(),
       prefs.readySkills,
@@ -215,9 +246,11 @@ export function relevanceKey(prefs: SearchPrefs): string {
     return `${RELEVANCE_RULES_VERSION}:p:${fnv1a(provisional)}`
   }
   const canonical = JSON.stringify([
+    TAXONOMY_VERSION,
     [...prefs.roleFamilies].sort(),
     prefs.customRoles.map((r) => r.toLowerCase()).sort(),
     [...prefs.seniority].sort(),
+    [...prefs.regionIds].sort(),
     [...prefs.regions].sort(),
     [...prefs.otherCountries].sort(),
     prefs.remoteScope,

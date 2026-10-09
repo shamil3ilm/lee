@@ -31,7 +31,8 @@ export type ProfileSource = Pick<
   | 'dealbreakers'
   | 'searchPrefsSavedAt'
   | 'discoveryPrefs'
->
+> &
+  Partial<Pick<UserProfile, 'targetRegions'>>
 
 const LEVEL_RANK = new Map(LANGUAGE_LEVELS.map((l, i) => [l, i] as const))
 
@@ -73,6 +74,7 @@ export function matchProfileFrom(profile: ProfileSource | null, now: Date = new 
     seniority: prefs.seniority,
     roleFamilies: prefs.roleFamilies,
     customRoles: prefs.customRoles,
+    regionIds: prefs.regionIds,
     regions: prefs.regions,
     otherCountries: prefs.otherCountries,
     remoteScope: prefs.remoteScope,

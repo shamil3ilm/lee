@@ -3,6 +3,7 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { PlaceLabel } from '@/components/regions/place-label'
 import {
   ChevronDown,
   ChevronUp,
@@ -249,7 +250,9 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
             {/* Meta line from present parts only: no stray leading "·". */}
             {joinMeta([n.companyName, n.location]) ? (
               <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                {joinMeta([n.companyName, n.location])}
+                {n.companyName}
+                {n.companyName && n.location ? ' · ' : null}
+                <PlaceLabel location={n.location} />
               </p>
             ) : null}
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">

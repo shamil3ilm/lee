@@ -1,7 +1,8 @@
 import type { UserProfile } from '@/lib/db/queries/profile'
 import { EXCLUSION_RULES, noticeLabel, RULE_LABELS, ruleMode } from './discovery-prefs'
-import { regionLabel, REGION_CODES } from './places'
-import { searchPrefsFromProfile, targetFamilies, type RemoteScope } from './prefs'
+import { searchPrefsFromProfile, targetFamilies, targetRegionIds, type RemoteScope } from './prefs'
+import { SETTINGS_ROOTS } from '@/lib/regions/taxonomy'
+import { shortName } from '@/lib/regions/tree'
 import { parseLearnedTitles } from './learned'
 import { resolveRoleFamily, roleFamilyLabel } from './roles'
 import { SENIORITY_LABELS, type SeniorityLevel } from './seniority'
@@ -36,10 +37,7 @@ const REMOTE_LABEL: Readonly<Record<RemoteScope, string>> = {
 
 export function lookingForView(profile: UserProfile | null): LookingForView {
   const p = searchPrefsFromProfile(profile)
-  const allGcc = ['AE', 'SA', 'QA', 'KW', 'BH', 'OM'].every((c) => p.regions.includes(c as never))
-  const regions = allGcc
-    ? ['GCC', ...(p.regions.includes('IN') ? ['India'] : [])]
-    : p.regions.map(regionLabel)
+  const regions = targetRegionIds(profile).map(shortName)
   return {
     active: p.active,
     roles: [...p.roleFamilies.map(roleFamilyLabel), ...p.customRoles],
@@ -89,8 +87,8 @@ export function searchPrefsFormValues(profile: UserProfile | null): SearchPrefsF
     roleFamilies: p.roleFamilies,
     customRoles: custom.join(', '),
     seniority: p.seniority,
-    // Before the first save, pre-tick the seeded location prefs.
-    regions: !p.active && p.regions.length === 0 ? [...REGION_CODES] : p.regions,
+    // Before the first save, pre-select the seeded target regions (GCC, India).
+    regions: !p.active && p.regionIds.length === 0 ? [...SETTINGS_ROOTS] : targetRegionIds(profile),
     otherCountries: p.otherCountries.filter((c) => !(profile?.willingToRelocateTo ?? []).includes(c)).join(', '),
     remoteScope: p.remoteScope,
     remotePref: profile?.remotePref ?? 'any',

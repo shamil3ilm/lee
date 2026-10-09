@@ -1,13 +1,17 @@
-import { normalizeForMatch, repairMojibake, termMatcher, type TermMatcher } from './text'
+import { resolveLocation } from '@/lib/regions/normalize'
+import { allNodes, countriesOf, isWithin, shortName } from '@/lib/regions/tree'
+import { US_CITIES, US_STATES } from '@/lib/regions/data-world'
+import { normalizeForMatch, repairMojibake, termMatcher } from './text'
 
 /**
- * Maintained place lists for the relevance gate.
+ * Place lists for the relevance gate.
  *
- * TARGET regions (the GCC and India) carry generous alias lists — cities,
- * emirates, states, tech parks, common misspellings, Arabic names — because
- * the gate must never drop a Gulf or Indian posting over a spelling. FOREIGN
- * places are only used to recognise "this posting is somewhere else"; an
- * unrecognised place is treated as unknown (kept), never as foreign.
+ * TARGET regions (the GCC and India) come from the region taxonomy
+ * (lib/regions): generous alias lists — cities, emirates, states, tech
+ * parks, misspellings, Arabic — resolved by the one location normaliser,
+ * because the gate must never drop a Gulf or Indian posting over a
+ * spelling. FOREIGN places are only used to recognise "this posting is
+ * somewhere else"; an unrecognised place is unknown (kept), never foreign.
  */
 
 export const REGION_CODES = ['AE', 'SA', 'QA', 'KW', 'BH', 'OM', 'IN'] as const
@@ -21,90 +25,23 @@ export interface TargetRegion {
   aliases: readonly string[]
 }
 
-export const TARGET_REGIONS: readonly TargetRegion[] = [
-  {
-    code: 'AE',
-    label: 'UAE',
-    aliases: [
-      'uae', 'u.a.e', 'united arab emirates', 'the emirates', 'emirates',
-      'dubai', 'dubayy', 'dxb', 'abu dhabi', 'abudhabi', 'abu-dhabi', 'sharjah', 'ajman',
-      'ras al khaimah', 'ras al-khaimah', 'rak', 'fujairah', 'umm al quwain', 'al ain',
-      'jebel ali', 'difc', 'dmcc', 'dubai internet city', 'dubai silicon oasis', 'jlt',
-      'masdar', 'khalifa city', 'mussafah', 'business bay', 'dubai media city', 'mbz city',
-      'mohammed bin zayed city', 'abu zabi',
-      'دبي', 'أبوظبي', 'أبو ظبي', 'ابوظبي', 'الشارقة', 'عجمان', 'الإمارات', 'الامارات',
-      'الإمارات العربية المتحدة', 'العين', 'رأس الخيمة', 'الفجيرة', 'أم القيوين',
-    ],
-  },
-  {
-    code: 'SA',
-    label: 'Saudi Arabia',
-    aliases: [
-      'saudi arabia', 'saudi', 'ksa', 'k.s.a', 'kingdom of saudi arabia', 'saudia',
-      'riyadh', 'riyad', 'ar riyad', 'jeddah', 'jiddah', 'jedda', 'dammam', 'khobar',
-      'al khobar', 'al-khobar', 'alkhobar', 'dhahran', 'mecca', 'makkah', 'medina',
-      'madinah', 'al madinah', 'neom', 'jubail', 'al jubail', 'yanbu', 'tabuk', 'abha',
-      'qassim', 'buraidah', 'taif', 'kaec', 'king abdullah economic city', 'eastern province',
-      'السعودية', 'المملكة العربية السعودية', 'الرياض', 'جدة', 'الدمام', 'الخبر',
-      'الظهران', 'مكة', 'المدينة المنورة', 'نيوم', 'الجبيل', 'ينبع', 'تبوك',
-    ],
-  },
-  {
-    code: 'QA',
-    label: 'Qatar',
-    aliases: [
-      'qatar', 'doha', 'lusail', 'al wakrah', 'al rayyan', 'ras laffan', 'mesaieed',
-      'قطر', 'الدوحة', 'لوسيل', 'الريان',
-    ],
-  },
-  {
-    code: 'KW',
-    label: 'Kuwait',
-    aliases: [
-      'kuwait', 'kuwait city', 'al kuwait', 'salmiya', 'hawalli', 'farwaniya', 'ahmadi',
-      'jahra', 'shuwaikh', 'الكويت', 'مدينة الكويت',
-    ],
-  },
-  {
-    code: 'BH',
-    label: 'Bahrain',
-    aliases: [
-      'bahrain', 'kingdom of bahrain', 'manama', 'muharraq', 'riffa', 'isa town', 'seef',
-      'sitra', 'البحرين', 'المنامة', 'المحرق',
-    ],
-  },
-  {
-    code: 'OM',
-    label: 'Oman',
-    aliases: [
-      'oman', 'sultanate of oman', 'muscat', 'masqat', 'salalah', 'sohar', 'nizwa', 'duqm',
-      'seeb', 'عمان', 'عُمان', 'سلطنة عمان', 'مسقط', 'صلالة', 'صحار',
-    ],
-  },
-  {
-    code: 'IN',
-    label: 'India',
-    aliases: [
-      'india', 'bharat', 'pan india', 'pan-india', 'anywhere in india', 'remote india',
-      'bengaluru', 'bangalore', 'banglore', 'bengalore', 'kochi', 'cochin', 'ernakulam',
-      'kakkanad', 'infopark', 'kerala', 'trivandrum', 'thiruvananthapuram', 'technopark',
-      'kozhikode', 'calicut', 'thrissur', 'kannur', 'kollam', 'palakkad', 'hyderabad',
-      'secunderabad', 'hitec city', 'gachibowli', 'chennai', 'madras', 'pune', 'poona',
-      'hinjewadi', 'mumbai', 'bombay', 'navi mumbai', 'thane', 'gurgaon', 'gurugram',
-      'noida', 'greater noida', 'delhi', 'new delhi', 'ncr', 'delhi ncr', 'faridabad',
-      'ghaziabad', 'kolkata', 'calcutta', 'ahmedabad', 'gandhinagar', 'gift city',
-      'jaipur', 'chandigarh', 'mohali', 'panchkula', 'indore', 'bhopal', 'coimbatore',
-      'mysore', 'mysuru', 'mangalore', 'mangaluru', 'hubli', 'visakhapatnam', 'vizag',
-      'vijayawada', 'bhubaneswar', 'nagpur', 'nashik', 'aurangabad', 'lucknow', 'kanpur',
-      'vadodara', 'baroda', 'surat', 'rajkot', 'trichy', 'tiruchirappalli', 'madurai',
-      'goa', 'dehradun', 'agra', 'patna', 'ranchi', 'raipur', 'guwahati', 'ludhiana',
-      'amritsar', 'jodhpur', 'udaipur', 'varanasi', 'prayagraj', 'meerut', 'karnataka',
-      'tamil nadu', 'telangana', 'maharashtra', 'haryana', 'uttar pradesh', 'gujarat',
-      'west bengal', 'andhra pradesh', 'odisha', 'madhya pradesh', 'rajasthan', 'punjab',
-      'uttarakhand',
-    ],
-  },
-]
+/** Every spelling of a place in `countryId`'s subtree (names, aliases, areas). */
+function subtreeAliases(countryId: string): string[] {
+  const out = new Set<string>()
+  for (const n of allNodes()) {
+    if (n.kind === 'remote' || !isWithin(n.id, countryId)) continue
+    for (const a of [n.name.toLowerCase(), ...n.aliases]) out.add(a)
+    for (const area of n.areas ?? []) for (const a of area.aliases) out.add(a)
+  }
+  return [...out]
+}
+
+/** Target regions, derived from the taxonomy so every spelling lives in one place. */
+export const TARGET_REGIONS: readonly TargetRegion[] = REGION_CODES.map((code) => ({
+  code,
+  label: shortName(code.toLowerCase()),
+  aliases: subtreeAliases(code.toLowerCase()),
+}))
 
 const REGION_BY_CODE = new Map(TARGET_REGIONS.map((r) => [r.code, r] as const))
 
@@ -155,26 +92,6 @@ interface ForeignPlace {
   label: string
   aliases: readonly string[]
 }
-
-const US_STATES = [
-  'alabama', 'alaska', 'arizona', 'arkansas', 'california', 'colorado', 'connecticut',
-  'delaware', 'florida', 'hawaii', 'idaho', 'illinois', 'indiana', 'iowa', 'kansas',
-  'kentucky', 'louisiana', 'maine', 'maryland', 'massachusetts', 'michigan', 'minnesota',
-  'mississippi', 'missouri', 'montana', 'nebraska', 'nevada', 'new hampshire', 'new jersey',
-  'new mexico', 'north carolina', 'north dakota', 'ohio', 'oklahoma', 'oregon',
-  'pennsylvania', 'rhode island', 'south carolina', 'south dakota', 'tennessee', 'texas',
-  'utah', 'vermont', 'virginia', 'washington state', 'west virginia', 'wisconsin', 'wyoming',
-]
-const US_CITIES = [
-  'new york', 'new york city', 'nyc', 'manhattan', 'brooklyn', 'san francisco', 'sf bay area',
-  'bay area', 'los angeles', 'seattle', 'austin', 'boston', 'chicago', 'denver', 'atlanta',
-  'dallas', 'houston', 'miami', 'san diego', 'san jose', 'palo alto', 'mountain view',
-  'redwood city', 'menlo park', 'sunnyvale', 'santa clara', 'cupertino', 'oakland',
-  'cincinnati', 'wichita', 'portland', 'philadelphia', 'washington dc', 'washington, dc',
-  'pittsburgh', 'detroit', 'minneapolis', 'phoenix', 'salt lake city', 'raleigh', 'nashville',
-  'charlotte', 'columbus', 'indianapolis', 'st. louis', 'kansas city', 'baltimore', 'tampa',
-  'orlando', 'las vegas', 'sacramento', 'irvine', 'boulder', 'cambridge, ma',
-]
 
 const FOREIGN_PLACES: readonly ForeignPlace[] = [
   {
@@ -232,40 +149,21 @@ const FOREIGN_PLACES: readonly ForeignPlace[] = [
   },
 ]
 
-/** Upper-case tokens only trusted in a location field, matched case-sensitively. */
-const LOCATION_CODES: ReadonlyArray<{ re: RegExp; region?: RegionCode; foreign?: string }> = [
-  { re: /(?<![A-Za-z])(?:UAE|U\.A\.E\.?|AE)(?![A-Za-z])/, region: 'AE' },
-  { re: /(?<![A-Za-z])KSA(?![A-Za-z])/, region: 'SA' },
-  // ISO 3166 alpha-3 codes, as Workday / Oracle backends write them.
-  { re: /(?<![A-Za-z])ARE(?![A-Za-z])/, region: 'AE' },
-  { re: /(?<![A-Za-z])SAU(?![A-Za-z])/, region: 'SA' },
-  { re: /(?<![A-Za-z])QAT(?![A-Za-z])/, region: 'QA' },
-  { re: /(?<![A-Za-z])KWT(?![A-Za-z])/, region: 'KW' },
-  { re: /(?<![A-Za-z])BHR(?![A-Za-z])/, region: 'BH' },
-  { re: /(?<![A-Za-z])OMN(?![A-Za-z])/, region: 'OM' },
-  { re: /(?<![A-Za-z])(?:QA|KW|BH|OM)(?![A-Za-z])/ },
+/**
+ * Upper-case foreign tokens only trusted in a location field, matched
+ * case-sensitively. Target-region codes (UAE, KSA, ARE, SA…) are read by the
+ * region normaliser.
+ */
+const FOREIGN_CODES: ReadonlyArray<{ re: RegExp; foreign: string }> = [
   { re: /(?<![A-Za-z])(?:US|USA|U\.S\.A?\.?)(?![A-Za-z])/, foreign: 'US' },
   { re: /(?<![A-Za-z])UK(?![A-Za-z])/, foreign: 'GB' },
   { re: /(?<![A-Za-z])EU(?![A-Za-z])/, foreign: 'EU' },
   { re: /(?<![A-Za-z])(?:EST|PST|CST|MST|EDT|PDT|ET|PT)(?![A-Za-z])/, foreign: 'US' },
 ]
-const GULF_CODE_TOKEN: Readonly<Record<string, RegionCode>> = { QA: 'QA', KW: 'KW', BH: 'BH', OM: 'OM' }
-
-/**
- * A bare ISO-2 "SA" (SuccessFactors: "Riyadh, SA", or just "SA") is Saudi
- * Arabia — unless the text names South Africa, which some boards also
- * abbreviate "SA".
- */
-const SAUDI_ISO2 = /(?<![A-Za-z])SA(?![A-Za-z])/
-const SOUTH_AFRICA = /south africa|johannesburg|cape town|durban|pretoria/
 
 /** UTC/GMT offsets from +3 to +5:30 sit on Gulf and Indian working hours. */
-const GULF_INDIA_TZ = /(?:utc|gmt)\s*\+\s*0?(?:3|4|5)(?::?(?:00|30))?(?![\d])|\b(?:gst|gulf standard time|ist|india standard time)\b/
+export const GULF_INDIA_TZ = /(?:utc|gmt)\s*\+\s*0?(?:3|4|5)(?::?(?:00|30))?(?![\d])|\b(?:gst|gulf standard time|ist|india standard time)\b/
 
-const TARGET_MATCHERS: ReadonlyArray<{ code: RegionCode; match: TermMatcher }> = TARGET_REGIONS.map((r) => ({
-  code: r.code,
-  match: termMatcher(r.aliases),
-}))
 const BROAD_MATCHERS = BROAD_AREAS.map((b) => ({ ...b, match: termMatcher(b.aliases) }))
 const FOREIGN_MATCHERS = FOREIGN_PLACES.map((f) => ({ code: f.code, label: f.label, match: termMatcher(f.aliases) }))
 
@@ -295,10 +193,23 @@ export interface PlaceScan {
   foreign: Set<string>
   /** The text that matched each foreign code (normalized), for reasons. */
   foreignNames: Map<string, string>
+  /** Deepest region-taxonomy nodes named (lib/regions), e.g. "kochi", "dubai", "de". */
+  nodes: Set<string>
 }
 
 export function emptyScan(): PlaceScan {
-  return { regions: new Set(), covered: new Set(), worldwide: false, foreign: new Set(), foreignNames: new Map() }
+  return { regions: new Set(), covered: new Set(), worldwide: false, foreign: new Set(), foreignNames: new Map(), nodes: new Set() }
+}
+
+/** Taxonomy places → the target-region codes they lie in. */
+function addResolved(raw: string, trustCodes: boolean, scan: PlaceScan): void {
+  for (const place of resolveLocation(raw, { trustCodes }).places) {
+    scan.nodes.add(place.id)
+    for (const c of countriesOf(place.id)) {
+      const code = c.toUpperCase()
+      if (isRegionCode(code)) scan.regions.add(code)
+    }
+  }
 }
 
 /**
@@ -311,7 +222,7 @@ export function scanPlaces(raw: string | null | undefined, opts: { trustCodes?: 
   const scan = emptyScan()
   if (!raw) return scan
   const text = normalizeForMatch(raw)
-  for (const t of TARGET_MATCHERS) if (t.match(text)) scan.regions.add(t.code)
+  addResolved(raw, opts.trustCodes === true, scan)
   for (const b of BROAD_MATCHERS) {
     if (!b.match(text)) continue
     if (b.id === 'WORLD') scan.worldwide = true
@@ -324,7 +235,7 @@ export function scanPlaces(raw: string | null | undefined, opts: { trustCodes?: 
     scan.foreign.add(f.code)
     scan.foreignNames.set(f.code, hit)
   }
-  if (opts.trustCodes) addLocationCodes(repairMojibake(raw), scan)
+  if (opts.trustCodes) addForeignCodes(repairMojibake(raw), scan)
   // "America" inside "Latin America"/"North America" is not the US.
   if (scan.foreign.has('US') && (scan.foreign.has('LATAM') || scan.foreign.has('NA'))) {
     if (!/\b(?:united states|usa|u\.s)\b/.test(text)) scan.foreign.delete('US')
@@ -332,18 +243,8 @@ export function scanPlaces(raw: string | null | undefined, opts: { trustCodes?: 
   return scan
 }
 
-function addLocationCodes(raw: string, scan: PlaceScan): void {
-  if (SAUDI_ISO2.test(raw) && !SOUTH_AFRICA.test(normalizeForMatch(raw))) scan.regions.add('SA')
-  for (const c of LOCATION_CODES) {
-    const m = c.re.exec(raw)
-    if (!m) continue
-    if (c.region) scan.regions.add(c.region)
-    else if (c.foreign) scan.foreign.add(c.foreign)
-    else {
-      const code = GULF_CODE_TOKEN[m[0]]
-      if (code) scan.regions.add(code)
-    }
-  }
+function addForeignCodes(raw: string, scan: PlaceScan): void {
+  for (const c of FOREIGN_CODES) if (c.re.test(raw)) scan.foreign.add(c.foreign)
 }
 
 export function mergeScans(a: PlaceScan, b: PlaceScan): PlaceScan {
@@ -353,10 +254,11 @@ export function mergeScans(a: PlaceScan, b: PlaceScan): PlaceScan {
     worldwide: a.worldwide || b.worldwide,
     foreign: new Set([...a.foreign, ...b.foreign]),
     foreignNames: new Map([...b.foreignNames, ...a.foreignNames]),
+    nodes: new Set([...a.nodes, ...b.nodes]),
   }
 }
 
 /** True when the scan names nothing at all. */
 export function isEmptyScan(s: PlaceScan): boolean {
-  return s.regions.size === 0 && s.covered.size === 0 && !s.worldwide && s.foreign.size === 0
+  return s.regions.size === 0 && s.covered.size === 0 && !s.worldwide && s.foreign.size === 0 && s.nodes.size === 0
 }

@@ -1,5 +1,5 @@
 import { isRemotePosting, postingPlaces } from '@/lib/discovery/relevance/gate'
-import { GCC_CODES, regionLabel, type RegionCode } from '@/lib/discovery/relevance/places'
+import { anyWithin, countryOf, shortName } from '@/lib/regions/tree'
 import { findTerms, normalizeForMatch } from '@/lib/discovery/relevance/text'
 
 /**
@@ -35,9 +35,13 @@ const DACH = [
 
 export function photoCountry(job: CountryInput): PhotoCountry {
   const places = postingPlaces({ title: job.title, location: job.location })
-  const gcc = [...places.regions].filter((c): c is RegionCode => (GCC_CODES as readonly string[]).includes(c))
-  if (gcc.length > 0) return { kind: 'gcc', label: gcc.map((c) => regionLabel(c)).join(', ') }
-  if (places.regions.has('IN')) return { kind: 'india', label: 'India' }
+  const nodes = [...places.nodes]
+  // Any GCC node (the group, a country, a city or a free zone) follows GCC conventions.
+  if (anyWithin(nodes, 'gcc')) {
+    const countries = [...new Set(nodes.map(countryOf).filter((c): c is string => c !== null && anyWithin([c], 'gcc')))]
+    return { kind: 'gcc', label: countries.length > 0 ? countries.map(shortName).join(', ') : 'GCC' }
+  }
+  if (anyWithin(nodes, 'in')) return { kind: 'india', label: 'India' }
   const text = normalizeForMatch(`${job.location ?? ''} ${job.title}`)
   const avoid = [...places.foreign].find((c) => c in AVOID_FOREIGN)
   if (avoid) return { kind: 'avoid', label: AVOID_FOREIGN[avoid]! }
