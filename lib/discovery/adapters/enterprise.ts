@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { XMLParser } from 'fast-xml-parser'
 import type { AdapterContext, DiscoveryAdapter, DiscoveryItem, NormalizedJob } from './types'
-import { discoveryFetch } from './http'
+import { untrustedDiscoveryFetch } from './http'
 import { searchPrefsFor, toDate } from './prefs'
 import { enrichSome, htmlToText, workModeOf } from './html-text'
 import { locationMatchesCountries } from '../search-prefs'
@@ -120,7 +120,7 @@ export class OracleOrcAdapter implements DiscoveryAdapter {
     for (let page = 0; page < ORC_MAX_PAGES; page++) {
       const finder = `findReqs;siteNumber=${cfg.siteNumber},limit=${ORC_PAGE},offset=${page * ORC_PAGE},sortBy=POSTING_DATES_DESC`
       const url = `https://${host}/hcmRestApi/resources/latest/recruitingCEJobRequisitions?onlyData=true&expand=requisitionList&finder=${encodeURIComponent(finder)}`
-      const res = await discoveryFetch('oracle_orc', url, { headers: { accept: 'application/json' } }, ORC_TIMEOUT_MS)
+      const res = await untrustedDiscoveryFetch('oracle_orc', url, { headers: { accept: 'application/json' } }, ORC_TIMEOUT_MS)
       if (!res.ok) throw new Error(`oracle_orc ${res.status}`)
       const body = (await res.json()) as OrcResponse
       const block = body.items?.[0]
@@ -143,7 +143,7 @@ async function withOrcDetail(item: DiscoveryItem, host: string, siteNumber: stri
   if (job.descriptionMd.length >= THIN_DESCRIPTION) return item
   const finder = `ById;Id="${item.sourceItemId}",siteNumber=${siteNumber}`
   const url = `https://${host}/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails?onlyData=true&expand=all&finder=${encodeURIComponent(finder)}`
-  const res = await discoveryFetch('oracle_orc', url, { headers: { accept: 'application/json' } }, ORC_DETAIL_TIMEOUT_MS)
+  const res = await untrustedDiscoveryFetch('oracle_orc', url, { headers: { accept: 'application/json' } }, ORC_DETAIL_TIMEOUT_MS)
   if (!res.ok) return item
   const d = ((await res.json()) as { items?: OrcDetail[] }).items?.[0]
   const text = d ? orcText([d.ExternalDescriptionStr, d.ExternalResponsibilitiesStr, d.ExternalQualificationsStr]) : ''
@@ -231,7 +231,7 @@ export class SuccessFactorsAdapter implements DiscoveryAdapter {
   async fetch(config: unknown, ctx?: AdapterContext): Promise<DiscoveryItem[]> {
     const cfg = sfConfig.parse(config)
     const host = safeHost(cfg.host)
-    const res = await discoveryFetch('successfactors', `https://${host}/sitemal.xml`, {
+    const res = await untrustedDiscoveryFetch('successfactors', `https://${host}/sitemal.xml`, {
       headers: { accept: 'application/rss+xml, application/xml' },
     })
     if (!res.ok) throw new Error(`successfactors ${res.status}`)
@@ -343,7 +343,7 @@ export class PhenomAdapter implements DiscoveryAdapter {
         selected_fields: {},
         locationData: {},
       }
-      const res = await discoveryFetch('phenom', `https://${host}/widgets`, {
+      const res = await untrustedDiscoveryFetch('phenom', `https://${host}/widgets`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', accept: 'application/json' },
         body: JSON.stringify(body),

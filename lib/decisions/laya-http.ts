@@ -8,25 +8,28 @@ import type {
   YesNoResult,
 } from './types'
 import { LayaUnavailableError } from './types'
-import { fetchWithTimeout, LAYA_TIMEOUT_MS } from '@/lib/net/timeout'
+import { LAYA_TIMEOUT_MS } from '@/lib/net/timeout'
+// The endpoint is user-configurable (Settings / playground body / env), so
+// every call goes through the SSRF guard, not just the save-time check.
+import { safeFetch } from '@/lib/net/safe-fetch'
 import { runAfterResponse } from '@/lib/server/after-response'
 
 /**
- * Laya decision provider — HTTP client for the public Laya Gradio Space
+ * Laya decision provider â€” HTTP client for the public Laya Gradio Space
  * (or any compatible endpoint set via LAYA_ENDPOINT).
  *
  * v8.1: real implementation. Talks to a Gradio 6.x Space using the
  * two-step call pattern:
  *
- *   1. POST /gradio_api/call/{fn_name}  { data: [...] } → { event_id }
- *   2. GET  /gradio_api/call/{fn_name}/{event_id}       → SSE stream
+ *   1. POST /gradio_api/call/{fn_name}  { data: [...] } â†’ { event_id }
+ *   2. GET  /gradio_api/call/{fn_name}/{event_id}       â†’ SSE stream
  *
  * The default endpoint is the public demo Space
  * `https://convaiinnovations-laya-demo.hf.space`; override with the
  * LAYA_ENDPOINT env var to point at a self-hosted mirror.
  *
  * Every error path throws `LayaUnavailableError` so the composed chain
- * provider in ./index.ts cleanly falls back to Groq → heuristic without
+ * provider in ./index.ts cleanly falls back to Groq â†’ heuristic without
  * callers needing to catch. Do not throw anything else from this class.
  */
 
@@ -41,13 +44,13 @@ type LayaAnswer = {
   choice?: string
   pick?: string
   // Jev-compatible `noul` answers carry the probability the statement is
-  // true in a field literally named `noul` (0–1). See docs.typesafe.ai/api.
+  // true in a field literally named `noul` (0â€“1). See docs.typesafe.ai/api.
   noul?: number
   probabilities?: Record<string, number>
   probability?: number
   confidence?: number
-  // Laya: probability of the reported answer — the one calibrated number on
-  // every question type. Its `confidence` is 1 − normalised entropy, which
+  // Laya: probability of the reported answer â€” the one calibrated number on
+  // every question type. Its `confidence` is 1 âˆ’ normalised entropy, which
   // does not match Jev's definition, so thresholds must not mix them.
   answer_confidence?: number
   value?: number
@@ -69,8 +72,8 @@ export class LayaHttpDecisionProvider implements DecisionProvider {
   }
 
   /**
-   * v10 — log every completed Laya decision call so it shows up in analytics
-   * alongside Gemini/Groq generations. Best-effort — logging must never
+   * v10 â€” log every completed Laya decision call so it shows up in analytics
+   * alongside Gemini/Groq generations. Best-effort â€” logging must never
    * break the call. Called from choice/yesNo/score after the SSE round-trip.
    *
    * The inserted id was never consumed by any caller, so the write is now
@@ -222,10 +225,10 @@ export class LayaHttpDecisionProvider implements DecisionProvider {
     }
     if (this.apiKey) headers.authorization = `Bearer ${this.apiKey}`
 
-    // Step 1: POST the call → { event_id }
+    // Step 1: POST the call â†’ { event_id }
     let postRes: Response
     try {
-      postRes = await fetchWithTimeout(
+      postRes = await safeFetch(
         url,
         {
           method: 'POST',
@@ -253,7 +256,7 @@ export class LayaHttpDecisionProvider implements DecisionProvider {
     // Step 2: GET SSE stream and parse the final data frame.
     let getRes: Response
     try {
-      getRes = await fetchWithTimeout(
+      getRes = await safeFetch(
         `${url}/${eventId}`,
         { headers },
         { timeoutMs: LAYA_TIMEOUT_MS, label: 'laya GET' },
@@ -303,7 +306,7 @@ export class LayaHttpDecisionProvider implements DecisionProvider {
       return JSON.parse(rawSlot) as LayaRaw
     } catch (e) {
       throw new LayaUnavailableError(
-        `laya SSE raw_json not parseable: ${getMessage(e)} — ${rawSlot.slice(0, 200)}`,
+        `laya SSE raw_json not parseable: ${getMessage(e)} â€” ${rawSlot.slice(0, 200)}`,
       )
     }
   }
@@ -311,9 +314,9 @@ export class LayaHttpDecisionProvider implements DecisionProvider {
 
 /**
  * Extract the first answer from Laya's response, tolerant of two shapes:
- *   { answers: { answer: {...} } }   ← common
- *   { answer: {...} }                 ← flat
- *   [ {...} ]                          ← positional fallback
+ *   { answers: { answer: {...} } }   â† common
+ *   { answer: {...} }                 â† flat
+ *   [ {...} ]                          â† positional fallback
  */
 function extractAnswer(raw: LayaRaw | undefined): LayaAnswer | undefined {
   if (!raw) return undefined

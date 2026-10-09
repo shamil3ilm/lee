@@ -21,7 +21,8 @@ export function jdTarget(applyUrl: string | null | undefined): JdTarget | null {
   const gh = GREENHOUSE.exec(applyUrl)
   if (gh) return { kind: 'greenhouse', api: `https://boards-api.greenhouse.io/v1/boards/${gh[1]}/jobs/${gh[2]}` }
   const lv = LEVER.exec(applyUrl)
-  if (lv) return { kind: 'lever', api: `https://api.lever.co/v0/postings/${lv[1]}/${lv[2]}` }
+  // A slug of only dots ("..") would walk up api.lever.co's path.
+  if (lv && !/^\.+$/.test(lv[1] ?? '')) return { kind: 'lever', api: `https://api.lever.co/v0/postings/${lv[1]}/${lv[2]}` }
   return null
 }
 

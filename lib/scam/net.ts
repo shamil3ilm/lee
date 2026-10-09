@@ -1,4 +1,4 @@
-import { assertSafeUrl } from '@/lib/ingest/ssrf'
+import { safeFetch } from '@/lib/net/safe-fetch'
 
 /**
  * v17 §1 — optional, zero-cost network checks for Scam Shield:
@@ -17,7 +17,6 @@ export const DOH_URL = 'https://cloudflare-dns.com/dns-query'
 export const DEFAULT_TIMEOUT_MS = 4000
 const MAX_BYTES = 256 * 1024
 const MAX_REDIRECTS = 3
-const REDIRECTS = new Set([301, 302, 303, 307, 308])
 
 export interface NetDeps {
   fetchImpl?: typeof fetch
@@ -74,7 +73,6 @@ async function readCapped(res: Response): Promise<string> {
  * cannot hang the pipeline). Throws; public helpers below catch.
  */
 export async function fetchJsonSafe(url: string, accept: string, deps: NetDeps = {}): Promise<unknown> {
-  const fetchImpl = deps.fetchImpl ?? fetch
   const timeoutMs = deps.timeoutMs ?? DEFAULT_TIMEOUT_MS
   const controller = new AbortController()
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -87,23 +85,15 @@ export async function fetchJsonSafe(url: string, accept: string, deps: NetDeps =
     }, timeoutMs)
   })
   const work = (async (): Promise<unknown> => {
-    let current = assertSafeUrl(url)
-    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-      const res = await fetchImpl(current, {
-        signal: controller.signal,
-        redirect: 'manual',
-        headers: { accept, 'user-agent': 'employ-app/0.1 (+personal-tool)' },
-      })
-      if (REDIRECTS.has(res.status)) {
-        const loc = res.headers.get('location')
-        if (!loc) throw new HttpError(res.status)
-        current = assertSafeUrl(new URL(loc, current).toString())
-        continue
-      }
-      if (!res.ok) throw new HttpError(res.status)
-      return JSON.parse(await readCapped(res)) as unknown
-    }
-    throw new Error('too many redirects')
+    // safeFetch: SSRF-checked (DNS included) and pinned on every hop —
+    // rdap.org redirects to per-TLD registry servers.
+    const res = await safeFetch(
+      url,
+      { signal: controller.signal, headers: { accept, 'user-agent': 'employ-app/0.1 (+personal-tool)' } },
+      { timeoutMs, label: 'scam lookup', maxRedirects: MAX_REDIRECTS, httpsOnly: true, fetchImpl: deps.fetchImpl },
+    )
+    if (!res.ok) throw new HttpError(res.status)
+    return JSON.parse(await readCapped(res)) as unknown
   })()
   try {
     return await Promise.race([work, timeout])

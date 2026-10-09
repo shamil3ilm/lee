@@ -218,7 +218,7 @@ describe('POST /api/decisions/playground', () => {
         question: 'Match?',
         providers: ['heuristic', 'laya'],
         // Provide an endpoint so laya doesn't need to look up profile config.
-        layaEndpoint: 'https://example.invalid.local',
+        layaEndpoint: 'https://laya.example.invalid',
       }),
     )
     expect(res.status).toBe(200)
@@ -229,7 +229,7 @@ describe('POST /api/decisions/playground', () => {
     const heur = body.results.find((r) => r.provider === 'heuristic')!
     const laya = body.results.find((r) => r.provider === 'laya')!
     expect(heur.ok).toBe(true)
-    // laya was told to hit example.invalid.local; fetch is mocked to fail
+    // laya was told to hit laya.example.invalid; fetch is mocked to fail
     // → row must be ok:false with an error message.
     expect(laya.ok).toBe(false)
     expect(laya.error).toBeTruthy()
@@ -310,7 +310,7 @@ describe('POST /api/decisions/playground', () => {
     const u = await makeUser(`pg-profile-laya-${Math.random()}@x.com`)
     await profileQ.upsert(u.id, {
       decisionProvider: 'laya',
-      layaEndpoint: 'https://from-profile.invalid.local',
+      layaEndpoint: 'https://from-profile.example.invalid',
     })
     authMock.mockResolvedValue({ user: { id: u.id } })
 
@@ -334,7 +334,7 @@ describe('POST /api/decisions/playground', () => {
       }),
     )
     expect(res.status).toBe(200)
-    expect(seen.some((u) => u.includes('from-profile.invalid.local'))).toBe(true)
+    expect(seen.some((u) => u.includes('from-profile.example.invalid'))).toBe(true)
 
     fetchSpy.mockRestore()
   })

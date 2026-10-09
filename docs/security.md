@@ -25,3 +25,29 @@ owns the control, so new code can reuse it instead of re-inventing it.
   CLI (`node_modules/mammoth/bin/mammoth`); the library entry that lee imports
   (`mammoth.extractRawText` / `convertToHtml`) never loads it, so the code is
   unreachable from lee. Accepted; re-check when mammoth drops argparse.
+
+## Outbound requests and SSRF
+
+Every outbound call is either **fixed-host** (the host is a constant in code:
+Google, GitHub, AI providers, public job-board APIs) or **variable-host** (the
+URL or host comes from a user or a third party). Variable-host calls must use
+`safeFetch` (`lib/net/safe-fetch.ts`) or a wrapper on it
+(`untrustedDiscoveryFetch`, `fetchPage`):
+
+- `lib/net/ssrf.ts`: http/https only, no `user:pass@`, no local names
+  (`localhost`, `*.local`, `*.internal`, single-label), no blocked address in
+  any spelling (`lib/net/ip.ts`: IPv4 private/CGNAT/loopback/link-local/
+  benchmarking/multicast/reserved; IPv6 loopback/link-local/ULA/multicast and
+  IPv4-mapped/compatible/NAT64/6to4 forms), and every DNS answer checked.
+- `safeFetch`: connection pinned to the vetted address (undici `Agent` with a
+  fixed `lookup`), redirects followed manually and re-checked (default 5
+  hops), credentials dropped cross-origin, body capped (default 5 MB).
+
+Variable-host call sites: RSS, JSON-LD, Workday, Oracle ORC, SuccessFactors
+and Phenom sources; URL import / profile import / Google Alerts feed
+(`fetchPage`); radar brief sources; Scam Shield RDAP (redirects to per-TLD
+registries); the Laya endpoint and its key check.
+
+`tests/unit/outbound-fetch-guard.test.ts` fails when a variable-host module
+calls a raw fetch, or when any server file adds a raw fetch without being
+classified in its reviewed fixed-host list.

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { AdapterContext, DiscoveryAdapter, DiscoveryItem, NormalizedJob } from './types'
-import { discoveryFetch } from './http'
+import { untrustedDiscoveryFetch } from './http'
 import { employmentTypeOf, searchPrefsFor, toDate } from './prefs'
 import { enrichSome, htmlToText, workModeOf } from './html-text'
 import { COUNTRY_NAMES, locationMatchesCountries } from '../search-prefs'
@@ -201,7 +201,7 @@ export class WorkdayAdapter implements DiscoveryAdapter {
     const endpoint = `https://${site.host}/wday/cxs/${site.tenant}/${site.site}/jobs`
     const companyName = cfg.displayName ?? site.tenant
     const post = async (appliedFacets: Record<string, string[]>, offset: number): Promise<WorkdayResponse> => {
-      const res = await discoveryFetch('workday', endpoint, {
+      const res = await untrustedDiscoveryFetch('workday', endpoint, {
         method: 'POST',
         headers: { 'content-type': 'application/json', accept: 'application/json' },
         body: JSON.stringify({ appliedFacets, limit: PAGE_SIZE, offset, searchText: cfg.searchText ?? '' }),
@@ -238,7 +238,7 @@ export class WorkdayAdapter implements DiscoveryAdapter {
     }
     const base = `https://${site.host}/wday/cxs/${site.tenant}/${site.site}`
     return enrichSome([...items.values()], DETAIL_MAX, DETAIL_CONCURRENCY, async (item) => {
-      const res = await discoveryFetch('workday', `${base}${item.sourceItemId}`, { headers: { accept: 'application/json' } })
+      const res = await untrustedDiscoveryFetch('workday', `${base}${item.sourceItemId}`, { headers: { accept: 'application/json' } })
       return res.ok ? withWorkdayDetail(item, (await res.json()) as WorkdayDetail) : item
     })
   }

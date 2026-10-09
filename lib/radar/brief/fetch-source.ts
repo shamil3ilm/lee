@@ -1,5 +1,6 @@
 import { extractMainText } from '@/lib/ingest/html-clean'
 import { assertSafeUrl } from '@/lib/ingest/ssrf'
+import { safeFetch } from '@/lib/net/safe-fetch'
 import { REPUTATION_USER_AGENT } from '@/lib/reputation/http'
 import { defaultLimiter, type HostLimiter } from '@/lib/reputation/rate-limit'
 import { robotsAllows } from './robots'
@@ -16,7 +17,6 @@ export const SOURCE_MAX_BYTES = 1024 * 1024
 export const SOURCE_TEXT_MAX = 20_000
 export const SOURCE_TIMEOUT_MS = 10_000
 const MAX_REDIRECTS = 3
-const REDIRECTS = new Set([301, 302, 303, 307, 308])
 
 export interface SourceFetchDeps {
   fetchImpl?: typeof fetch
@@ -32,24 +32,26 @@ export class SourceBlockedError extends Error {
 }
 
 async function get(url: URL, deps: SourceFetchDeps, accept: string): Promise<Response> {
-  let current = url
-  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-    await (deps.limiter ?? defaultLimiter).wait(current.host)
-    const res = await (deps.fetchImpl ?? fetch)(current, {
-      redirect: 'manual',
-      headers: { 'user-agent': REPUTATION_USER_AGENT, accept },
-      signal: AbortSignal.timeout(deps.timeoutMs ?? SOURCE_TIMEOUT_MS),
-    })
-    if (!REDIRECTS.has(res.status)) return res
-    const loc = res.headers.get('location')
-    if (!loc) return res
-    current = assertSafeUrl(new URL(loc, current).toString())
-  }
-  throw new Error('too many redirects')
+  await (deps.limiter ?? defaultLimiter).wait(url.host)
+  // safeFetch re-checks (DNS included) and re-pins every redirect hop.
+  return safeFetch(
+    url,
+    { headers: { 'user-agent': REPUTATION_USER_AGENT, accept } },
+    {
+      timeoutMs: deps.timeoutMs ?? SOURCE_TIMEOUT_MS,
+      label: 'radar source',
+      maxRedirects: MAX_REDIRECTS,
+      maxBytes: SOURCE_MAX_BYTES,
+      httpsOnly: true,
+      fetchImpl: deps.fetchImpl,
+    },
+  )
 }
 
 async function readCapped(res: Response): Promise<string> {
-  const text = await res.text()
+  const text = await res.text().catch((e: unknown) => {
+    throw new Error(/too large/.test(String(e)) ? 'source too large' : String(e))
+  })
   if (text.length > SOURCE_MAX_BYTES) throw new Error('source too large')
   return text
 }

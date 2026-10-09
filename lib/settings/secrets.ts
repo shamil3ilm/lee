@@ -4,6 +4,7 @@ import { resolveKey } from '@/lib/lab/providers/registry'
 import { DEFAULT_LAYA_ENDPOINT } from '@/lib/decisions/laya-http'
 import { fetchWithTimeout } from '@/lib/net/timeout'
 import { assertSafeUrl } from '@/lib/ingest/ssrf'
+import { safeFetch } from '@/lib/net/safe-fetch'
 import { checkNeonKey, NeonApiError, neonErrorMessage } from '@/lib/usage/neon-api'
 import { parseAdzunaKey } from '@/lib/discovery/adapters/adzuna'
 import {
@@ -99,14 +100,13 @@ export async function checkServiceKey(
     return { ok: false, error: `${label} endpoint must be a public https URL.`, rejected: false }
   }
   try {
-    const init: RequestInit = {
-      method: 'GET',
-      redirect: 'manual',
-      headers: { authorization: `Bearer ${key}` },
-    }
-    const res = opts.fetchImpl
-      ? await opts.fetchImpl(url, init)
-      : await fetchWithTimeout(url, init, { timeoutMs: CHECK_TIMEOUT_MS, label: `${id}-check` })
+    // safeFetch also checks the resolved addresses and pins the connection;
+    // maxRedirects 0 refuses any redirect.
+    const res = await safeFetch(
+      url,
+      { method: 'GET', headers: { authorization: `Bearer ${key}` } },
+      { timeoutMs: CHECK_TIMEOUT_MS, label: `${id}-check`, maxRedirects: 0, httpsOnly: true, fetchImpl: opts.fetchImpl },
+    )
     if (res.ok) return { ok: true, error: null, rejected: false }
     if (res.status === 401 || res.status === 403) {
       return { ok: false, error: `${label} rejected this key.`, rejected: true }

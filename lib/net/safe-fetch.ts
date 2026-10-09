@@ -130,7 +130,10 @@ export async function safeFetch(input: string | URL, init: RequestInit, opts: Sa
     const dispatcher = pinnedAgent(addr)
     let res: Response
     try {
-      res = await transport(url.toString(), { ...init, method, body, headers, redirect: 'manual', signal, dispatcher })
+      // Plain-object headers: what every fetch implementation (and test
+      // double) understands.
+      const plainHeaders = Object.fromEntries(headers.entries())
+      res = await transport(url.toString(), { ...init, method, body, headers: plainHeaders, redirect: 'manual', signal, dispatcher })
     } catch (e) {
       void dispatcher.close().catch(() => undefined)
       if (isTimeoutError(e)) throw timeoutError(opts.label, opts.timeoutMs, e)
