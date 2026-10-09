@@ -131,7 +131,8 @@ test('edit the master profile, build a variant, preview it and publish to the po
   await expect(page.getByTestId('preview-json')).not.toContainText('+91 90000 00000')
 
   await page.getByRole('button', { name: 'Publish', exact: true }).click()
-  await expectToast(page, 'Published 1.0.0')
+  // Durable state, not the transient toast: CI runners can take longer than a toast stays up.
+  await expect(page.getByTestId('publish-status')).toContainText('1.0.0', { timeout: 30_000 })
   await expect(page.getByTestId('publish-status')).toContainText('Published')
   await expect(page.getByTestId('publish-status').getByRole('link', { name: 'view commit' })).toBeVisible()
   let file = await stubFile(page)
@@ -160,7 +161,7 @@ test('edit the master profile, build a variant, preview it and publish to the po
   await expectToast(page, /Profile saved/)
   await page.goto('/settings/publish')
   await page.getByRole('button', { name: 'Publish', exact: true }).click()
-  await expectToast(page, 'Published 1.0.1')
+  await expect(page.getByTestId('publish-status')).toContainText('1.0.1', { timeout: 30_000 })
   file = await stubFile(page)
   expect(file.commits).toBe(2)
   expect(file.text).toContain('"label": "Payments Backend Engineer"')
@@ -168,8 +169,8 @@ test('edit the master profile, build a variant, preview it and publish to the po
   // 5. Photo: uploaded on Résumé (cropped in the browser), private, used by the GCC variant.
   await page.goto('/settings/resume')
   await page.getByTestId('photo-input').setInputFiles({ name: 'synthetic.png', mimeType: 'image/png', buffer: await syntheticPng(page) })
-  await expectToast(page, 'Photo saved')
-  await expect(page.getByTestId('profile-photo')).toBeVisible()
+  // The crop + upload can be slow on CI; wait for the stored photo, not the toast.
+  await expect(page.getByTestId('profile-photo')).toBeVisible({ timeout: 30_000 })
   const stored = await page.request.get('/api/profile/photo')
   expect(stored.headers()['content-type']).toBe('image/jpeg')
   expect(stored.headers()['cache-control']).toContain('private')

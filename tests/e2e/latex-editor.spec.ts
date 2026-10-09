@@ -111,7 +111,8 @@ test('LaTeX editor: compile menu, auto-compile badge, autocomplete, shortcut com
   await expect(problems).toBeVisible()
   const problem = problems.getByRole('button', { name: /Undefined control sequence/ })
   await expect(problem).toContainText('main.tex:2')
-  await expect(page.locator('.cm-lintRange-error').first()).toBeVisible()
+  // CodeMirror draws lint marks lazily (and may scroll them out of view): assert they exist.
+  await expect(page.locator('.cm-lintRange-error').first()).toBeAttached({ timeout: 30_000 })
 
   // Click the error: the cursor lands on line 2 and the PDF comes back.
   await problem.click()
