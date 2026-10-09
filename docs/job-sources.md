@@ -537,31 +537,31 @@ through the relevance gate. Status counts what ships by default; live yield
 is in the next table.
 
 <!-- coverage-matrix:start -->
-| Region | Status | Employer boards (on / off) | Broad & park sources | Alert links | Watched by hand | Browse boards | Company directories (auto) | Seed companies | Browse directories | Fixture postings kept |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Kuwait | green | 6 / 0 | himalayas | 5 | 12 | 4 | Flat6Labs | 11 | 3 | 35 / 35 |
-| UAE | green | 9 / 15 | himalayas, jobicy | 5 | 14 | 3 | Flat6Labs | 19 | 9 | 21 / 21 |
-| Saudi Arabia | green | 6 / 9 | himalayas | 5 | 5 | 1 | Flat6Labs | 17 | 3 | 16 / 16 |
-| Qatar | amber | 1 / 0 | himalayas | 5 | 4 | 1 | QSTP, Flat6Labs | 5 | 2 | 8 / 8 |
-| Bahrain | amber | 2 / 0 | himalayas | 5 | 1 | 1 | StartUp Bahrain, Flat6Labs | 0 | 2 | 8 / 8 |
-| Oman | amber | 1 / 0 | himalayas | 5 | 2 | 1 | Flat6Labs | 0 | 1 | 10 / 10 |
-| Kochi | amber | 2 / 0 | himalayas, adzuna, infopark, ksum | 3 | 0 | 0 | Technopark, Infopark, Kerala Cyberpark, UL Cyberpark, NASSCOM members | 14 | 6 | 9 / 9 |
-| Trivandrum | amber | 2 / 0 | himalayas, adzuna, technopark, ksum | 3 | 0 | 0 | Technopark, Infopark, Kerala Cyberpark, UL Cyberpark, NASSCOM members | 21 | 6 | 6 / 6 |
-| Calicut | amber | 0 / 2 | himalayas, adzuna, cyberpark, ul_cyberpark, ksum | 3 | 0 | 0 | Technopark, Infopark, Kerala Cyberpark, UL Cyberpark, NASSCOM members | 2 | 6 | 4 / 4 |
-| Bengaluru | green | 4 / 3 | himalayas, adzuna | 3 | 0 | 0 | NASSCOM members | 0 | 3 | 8 / 8 |
-| Hyderabad | amber | 0 / 1 | himalayas, adzuna | 3 | 0 | 0 | NASSCOM members | 0 | 3 | 6 / 6 |
-| Chennai | red | 0 / 0 | himalayas, adzuna | 3 | 0 | 0 | NASSCOM members | 0 | 3 | 5 / 5 |
-| Pune | red | 0 / 0 | himalayas, adzuna | 3 | 0 | 0 | NASSCOM members | 0 | 3 | 6 / 6 |
-| Delhi NCR | amber | 1 / 0 | himalayas, adzuna | 3 | 0 | 0 | NASSCOM members | 0 | 3 | 6 / 6 |
-| Mumbai | red | 0 / 0 | himalayas, adzuna | 3 | 0 | 0 | NASSCOM members | 0 | 3 | 6 / 6 |
-| Remote | green | 0 / 0 | himalayas, remoteok, weworkremotely, remotive, workingnomads, jobicy, hn_whoishiring | 1 | 0 | 0 | — | 0 | 0 | 9 / 9 |
-| Europe | amber | 0 / 1 | hn_whoishiring | 3 | 0 | 0 | — | 0 | 0 | 1 / 2 |
-| UK | amber | 0 / 1 | hn_whoishiring | 3 | 0 | 0 | — | 0 | 0 | 1 / 1 |
-| US | amber | 0 / 15 | hn_whoishiring | 3 | 0 | 0 | — | 0 | 0 | 1 / 1 |
-| Canada | red | 0 / 0 | — | 3 | 0 | 0 | — | 0 | 0 | 1 / 1 |
-| Australia | red | 0 / 0 | — | 3 | 0 | 0 | — | 0 | 0 | 1 / 1 |
-| Singapore | amber | 0 / 1 | — | 3 | 0 | 0 | — | 0 | 0 | 1 / 1 |
-| Malaysia | red | 0 / 0 | — | 3 | 0 | 0 | — | 0 | 0 | 1 / 1 |
+| Region | Status | Employer boards (on / off) | Broad & park sources | Alert links | Watched by hand | Browse boards | Company directories (auto) | Map / register areas | Seed companies | Browse directories | Fixture postings kept |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Kuwait | green | 6 / 0 | himalayas | 5 | 12 | 4 | Flat6Labs | 6 | 32 | 5 | 35 / 35 |
+| UAE | green | 9 / 15 | himalayas, jobicy | 5 | 14 | 3 | Flat6Labs | 6 | 19 | 10 | 21 / 21 |
+| Saudi Arabia | green | 6 / 9 | himalayas | 5 | 5 | 1 | Flat6Labs | 7 | 17 | 4 | 16 / 16 |
+| Qatar | amber | 1 / 0 | himalayas | 5 | 4 | 1 | QSTP, Flat6Labs | 2 | 5 | 3 | 8 / 8 |
+| Bahrain | amber | 2 / 0 | himalayas | 5 | 1 | 1 | StartUp Bahrain, Flat6Labs | 2 | 0 | 3 | 8 / 8 |
+| Oman | amber | 1 / 0 | himalayas | 5 | 2 | 1 | Flat6Labs | 2 | 0 | 2 | 10 / 10 |
+| Kochi | amber | 2 / 0 | himalayas, adzuna, infopark, ksum | 3 | 0 | 0 | Technopark, Infopark, Kerala Cyberpark, UL Cyberpark, NASSCOM members | 3 | 14 | 6 | 9 / 9 |
+| Trivandrum | amber | 2 / 0 | himalayas, adzuna, technopark, ksum | 3 | 0 | 0 | Technopark, Infopark, Kerala Cyberpark, UL Cyberpark, NASSCOM members | 3 | 21 | 6 | 6 / 6 |
+| Calicut | amber | 0 / 2 | himalayas, adzuna, cyberpark, ul_cyberpark, ksum | 3 | 0 | 0 | Technopark, Infopark, Kerala Cyberpark, UL Cyberpark, NASSCOM members | 3 | 2 | 6 | 4 / 4 |
+| Bengaluru | green | 4 / 3 | himalayas, adzuna | 3 | 0 | 0 | NASSCOM members | 3 | 0 | 4 | 8 / 8 |
+| Hyderabad | amber | 0 / 1 | himalayas, adzuna | 3 | 0 | 0 | NASSCOM members | 3 | 0 | 4 | 6 / 6 |
+| Chennai | red | 0 / 0 | himalayas, adzuna | 3 | 0 | 0 | NASSCOM members | 3 | 0 | 4 | 5 / 5 |
+| Pune | red | 0 / 0 | himalayas, adzuna | 3 | 0 | 0 | NASSCOM members | 3 | 0 | 4 | 6 / 6 |
+| Delhi NCR | amber | 1 / 0 | himalayas, adzuna | 3 | 0 | 0 | NASSCOM members | 5 | 0 | 4 | 6 / 6 |
+| Mumbai | red | 0 / 0 | himalayas, adzuna | 3 | 0 | 0 | NASSCOM members | 3 | 0 | 4 | 6 / 6 |
+| Remote | green | 0 / 0 | himalayas, remoteok, weworkremotely, remotive, workingnomads, jobicy, hn_whoishiring | 1 | 0 | 0 | — | 0 | 0 | 0 | 9 / 9 |
+| Europe | amber | 0 / 1 | hn_whoishiring | 3 | 0 | 0 | — | 0 | 0 | 0 | 1 / 2 |
+| UK | amber | 0 / 1 | hn_whoishiring | 3 | 0 | 0 | — | 0 | 0 | 0 | 1 / 1 |
+| US | amber | 0 / 15 | hn_whoishiring | 3 | 0 | 0 | — | 0 | 0 | 0 | 1 / 1 |
+| Canada | red | 0 / 0 | — | 3 | 0 | 0 | — | 0 | 0 | 0 | 1 / 1 |
+| Australia | red | 0 / 0 | — | 3 | 0 | 0 | — | 0 | 0 | 0 | 1 / 1 |
+| Singapore | amber | 0 / 1 | — | 3 | 0 | 0 | — | 0 | 0 | 0 | 1 / 1 |
+| Malaysia | red | 0 / 0 | — | 3 | 0 | 0 | — | 0 | 0 | 0 | 1 / 1 |
 <!-- coverage-matrix:end -->
 
 ### Live check (2026-10-09)

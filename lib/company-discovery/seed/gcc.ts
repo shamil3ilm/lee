@@ -41,6 +41,30 @@ export const KUWAIT_SEED: readonly SeedCompany[] = [
   { name: 'Kuwait Finance House', website: 'https://www.kfh.com', regionIds: ['kw'], industries: ['banking'], aliases: ['KFH'], source: S, checkedOn: D },
   { name: 'National Bank of Kuwait', website: 'https://www.nbk.com', regionIds: ['kw'], industries: ['banking'], aliases: ['NBK'], source: S, checkedOn: D },
   { name: 'Cofe', website: 'https://www.cofeapp.com', regionIds: ['kw'], industries: ['ecommerce', 'software'], aliases: ['COFE App'], source: S, checkedOn: D },
+  // Non-tech employers with in-house IT, data and analyst teams (banks,
+  // insurance, airlines, retail, hospitals, logistics). Homepages checked
+  // live on 2026-10-09; careers routes are in lib/defaults/watch-employers.ts.
+  { name: 'Gulf Bank', website: 'https://www.e-gulfbank.com', regionIds: ['kuwait-city'], industries: ['banking'], aliases: ['Gulf Bank K.S.C.P.'], source: S, checkedOn: D },
+  { name: 'Burgan Bank', website: 'https://burgan.com', regionIds: ['kuwait-city'], industries: ['banking'], aliases: ['Burgan Bank K.P.S.C.'], source: S, checkedOn: D },
+  { name: 'Warba Bank', website: 'https://www.warbabank.com', regionIds: ['kuwait-city'], industries: ['banking'], source: S, checkedOn: D },
+  { name: 'Commercial Bank of Kuwait', website: 'https://www.cbk.com', regionIds: ['kuwait-city'], industries: ['banking'], aliases: ['CBK'], source: S, checkedOn: D },
+  { name: 'Bank of Kuwait and the Middle East', website: 'https://www.eahli.com', regionIds: ['kuwait-city'], industries: ['banking'], aliases: ['ABK', 'Al Ahli Bank of Kuwait'], source: S, checkedOn: D },
+  { name: 'Kuwait International Bank', website: 'https://www.kib.com.kw', regionIds: ['kuwait-city'], industries: ['banking'], aliases: ['KIB'], source: S, checkedOn: D },
+  { name: 'Gulf Insurance Group', website: 'https://www.gig.com.kw', regionIds: ['kw'], industries: [], aliases: ['GIG', 'GIG Kuwait'], source: S, checkedOn: D },
+  { name: 'Agility', website: 'https://agility.com', regionIds: ['kw'], industries: [], aliases: ['Agility Public Warehousing Company', 'Agility Logistics'], source: S, checkedOn: D },
+  { name: 'Alghanim Industries', website: 'https://www.alghanim.com', regionIds: ['kw'], industries: [], aliases: ['Ali Alghanim & Sons'], source: S, checkedOn: D },
+  { name: 'X-cite', website: 'https://www.xcite.com', regionIds: ['kw'], industries: ['ecommerce'], aliases: ['Xcite', 'X-cite by Alghanim Electronics'], source: S, checkedOn: D },
+  { name: 'Alshaya Group', website: 'https://www.alshaya.com', regionIds: ['kw'], industries: ['ecommerce'], aliases: ['M.H. Alshaya', 'Alshaya'], note: 'The site refuses automated clients (403); checked by name and domain only.', source: S, checkedOn: D },
+  { name: 'The Sultan Center', website: 'https://www.sultan-center.com', regionIds: ['kw'], industries: ['ecommerce'], aliases: ['TSC', 'Sultan Center'], source: S, checkedOn: D },
+  { name: 'Americana Restaurants', website: 'https://www.americanarestaurants.com', regionIds: ['kw'], industries: [], aliases: ['Americana', 'Kuwait Food Company'], source: S, checkedOn: D },
+  { name: 'Mabanee', website: 'https://www.mabanee.com', regionIds: ['kw'], industries: [], aliases: ['Mabanee Company'], source: S, checkedOn: D },
+  { name: 'Kuwait Airways', website: 'https://kuwaitairways.com', regionIds: ['farwaniya'], industries: [], source: S, checkedOn: D },
+  { name: 'Jazeera Airways', website: 'https://www.jazeeraairways.com', regionIds: ['farwaniya'], industries: [], note: 'The site refuses automated clients (403); checked by name and domain only.', source: S, checkedOn: D },
+  { name: 'Ooredoo Kuwait', website: 'https://www.ooredoo.com.kw', regionIds: ['kw'], industries: ['telecom'], aliases: ['Wataniya Telecom', 'National Mobile Telecommunications Company'], source: S, checkedOn: D },
+  { name: 'stc Kuwait', website: 'https://www.stc.com.kw', regionIds: ['kw'], industries: ['telecom'], aliases: ['Kuwait Telecommunications Company', 'VIVA'], note: 'The site refuses automated clients (403); checked by name and domain only.', source: S, checkedOn: D },
+  { name: 'Dar Al Shifa Hospital', website: 'https://www.daralshifa.com', regionIds: ['hawalli'], industries: [], source: S, checkedOn: D },
+  { name: 'Al Seef Hospital', website: 'https://www.alseefhospital.com', regionIds: ['salmiya'], industries: [], note: 'The home page answers but carries no descriptive title.', source: S, checkedOn: D },
+  { name: 'EQUATE Petrochemical', website: 'https://www.equate.com', regionIds: ['ahmadi'], industries: [], aliases: ['EQUATE'], source: S, checkedOn: D },
 ]
 
 export const KSA_SEED: readonly SeedCompany[] = [

@@ -25,7 +25,9 @@ export const OSM_AREAS: readonly OsmArea[] = [
   { id: 'kuwait-city', label: 'Kuwait City', regionId: 'kuwait-city', places: ['kw', 'kuwait-city'], bbox: [29.33, 47.9, 29.4, 48.02] },
   { id: 'salmiya', label: 'Salmiya', regionId: 'salmiya', places: ['kw', 'salmiya'], bbox: [29.31, 48.04, 29.35, 48.1] },
   { id: 'hawalli', label: 'Hawalli', regionId: 'hawalli', places: ['kw', 'hawalli'], bbox: [29.3, 47.99, 29.35, 48.04] },
-  { id: 'farwaniya', label: 'Farwaniya', regionId: 'kw', places: ['kw'], bbox: [29.24, 47.9, 29.3, 47.99] },
+  { id: 'farwaniya', label: 'Farwaniya', regionId: 'farwaniya', places: ['kw', 'farwaniya'], bbox: [29.24, 47.9, 29.3, 47.99] },
+  // Fahaheel, Mangaf and Mahboula (Ahmadi governorate's business strip).
+  { id: 'ahmadi', label: 'Fahaheel / Mangaf', regionId: 'ahmadi', places: ['kw', 'ahmadi'], bbox: [29.05, 48.07, 29.13, 48.15] },
   // UAE
   { id: 'dubai', label: 'Dubai', regionId: 'dubai', places: ['ae', 'dubai'], bbox: [24.95, 55.05, 25.35, 55.45] },
   { id: 'abu-dhabi', label: 'Abu Dhabi', regionId: 'abu-dhabi', places: ['ae', 'abu-dhabi'], bbox: [24.3, 54.3, 24.55, 54.7] },
@@ -65,7 +67,7 @@ export interface GleifArea {
 }
 
 export const GLEIF_AREAS: readonly GleifArea[] = [
-  { id: 'kw', label: 'Kuwait', country: 'KW', regionId: 'kw', places: ['kw', 'kuwait-city', 'salmiya', 'hawalli'] },
+  { id: 'kw', label: 'Kuwait', country: 'KW', regionId: 'kw', places: ['kw', 'kuwait-city', 'salmiya', 'hawalli', 'farwaniya', 'ahmadi', 'jahra', 'mubarak-al-kabeer'] },
   { id: 'bh', label: 'Bahrain', country: 'BH', regionId: 'bh', places: ['bh', 'manama'] },
   { id: 'qa', label: 'Qatar', country: 'QA', regionId: 'qa', places: ['qa', 'doha'] },
   { id: 'om', label: 'Oman', country: 'OM', regionId: 'om', places: ['om', 'muscat'] },

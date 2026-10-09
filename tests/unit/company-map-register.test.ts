@@ -264,7 +264,7 @@ describe('area cursors and cadence', () => {
       expect(isRegionId(a.regionId), a.id).toBe(true)
       for (const p of a.places) expect(isRegionId(p), `${a.id}:${p}`).toBe(true)
     }
-    expect(areasFor(OSM_AREAS, selectedPlaces(['kw'])).map((a) => a.id)).toEqual(['kuwait-city', 'salmiya', 'hawalli', 'farwaniya'])
+    expect(areasFor(OSM_AREAS, selectedPlaces(['kw'])).map((a) => a.id)).toEqual(['kuwait-city', 'salmiya', 'hawalli', 'farwaniya', 'ahmadi'])
     expect(areasFor(OSM_AREAS, selectedPlaces(['kochi'])).map((a) => a.id)).toEqual(['kochi'])
   })
 

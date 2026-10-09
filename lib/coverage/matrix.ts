@@ -2,6 +2,7 @@ import { WATCH_EMPLOYERS } from '@/lib/defaults/watch-employers'
 import { SEED_COMPANIES } from '@/lib/company-discovery/seed'
 import { AUTO_DIRECTORIES } from '@/lib/company-discovery/sources/registry'
 import { BROWSE_DIRECTORIES } from '@/lib/company-discovery/sources/browse'
+import { GLEIF_AREAS, MCA_STATES, OSM_AREAS } from '@/lib/company-discovery/sources/register-areas'
 import { isWithin } from '@/lib/regions/tree'
 import { catalogBoardsFor } from './compute'
 import { PLAYBOOKS } from './playbooks'
@@ -35,6 +36,8 @@ export interface MatrixRow {
   /** Company sources: automatic directories, seed companies, browse-only directories. */
   companyDirectories: string[]
   seedCompanies: number
+  /** OpenStreetMap / GLEIF / MCA areas read for the region. */
+  mapRegisterAreas: number
   browseDirectories: number
   /** Synthetic fixture postings for the region kept by the relevance gate (filled by the script). */
   fixtureKept?: string
@@ -70,6 +73,7 @@ export function matrixRow(p: RegionPlaybook): MatrixRow {
     browseBoards: p.boards.length,
     companyDirectories: AUTO_DIRECTORIES.filter((d) => d.places.some((pl) => p.covers.some((c) => isWithin(pl, c) || isWithin(c, pl)))).map((d) => d.label),
     seedCompanies: SEED_COMPANIES.filter((s) => inCovers(s.regionIds, p.covers)).length,
+    mapRegisterAreas: [...OSM_AREAS, ...GLEIF_AREAS, ...MCA_STATES].filter((a) => inCovers([a.regionId], p.covers)).length,
     browseDirectories: group ? BROWSE_DIRECTORIES.filter((d) => d.region === group).length : 0,
   }
 }
@@ -87,11 +91,11 @@ export function matrixStatus(r: MatrixRow): 'green' | 'amber' | 'red' {
 
 export function matrixMarkdown(rows: readonly MatrixRow[]): string {
   const head =
-    '| Region | Status | Employer boards (on / off) | Broad & park sources | Alert links | Watched by hand | Browse boards | Company directories (auto) | Seed companies | Browse directories | Fixture postings kept |'
-  const sep = '|---|---|---|---|---|---|---|---|---|---|---|'
+    '| Region | Status | Employer boards (on / off) | Broad & park sources | Alert links | Watched by hand | Browse boards | Company directories (auto) | Map / register areas | Seed companies | Browse directories | Fixture postings kept |'
+  const sep = '|---|---|---|---|---|---|---|---|---|---|---|---|'
   const lines = rows.map((r) => {
     const s = matrixStatus(r)
-    return `| ${r.label} | ${s} | ${r.boardsOn} / ${r.boardsOff} | ${r.kinds.join(', ') || '—'} | ${r.alertSites} | ${r.watchOnly} | ${r.browseBoards} | ${r.companyDirectories.join(', ') || '—'} | ${r.seedCompanies} | ${r.browseDirectories} | ${r.fixtureKept ?? '—'} |`
+    return `| ${r.label} | ${s} | ${r.boardsOn} / ${r.boardsOff} | ${r.kinds.join(', ') || '—'} | ${r.alertSites} | ${r.watchOnly} | ${r.browseBoards} | ${r.companyDirectories.join(', ') || '—'} | ${r.mapRegisterAreas} | ${r.seedCompanies} | ${r.browseDirectories} | ${r.fixtureKept ?? '—'} |`
   })
   return [head, sep, ...lines].join('\n')
 }
