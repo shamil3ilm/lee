@@ -51,3 +51,42 @@ registries); the Laya endpoint and its key check.
 `tests/unit/outbound-fetch-guard.test.ts` fails when a variable-host module
 calls a raw fetch, or when any server file adds a raw fetch without being
 classified in its reviewed fixed-host list.
+
+## OAuth tokens at rest: `lib/crypto/token-vault.ts`
+
+**The shared module for any stored OAuth/API token** (Google today; the
+GitHub and LinkedIn connections should adopt it as-is).
+
+```ts
+import { encryptToken, decryptToken, isEncrypted } from '@/lib/crypto/token-vault'
+const stored = encryptToken(plain)      // 'enc:v1:<iv>.<tag>.<ciphertext>' (base64url)
+const plain2 = decryptToken(stored)     // plaintext; legacy plaintext passes through
+isEncrypted(stored)                     // true for an envelope
+```
+
+- Crypto: AES-256-GCM with a random 12-byte IV per value, reusing the
+  service-key key management in `lib/lab/crypto.ts` (key = HKDF-SHA256 of
+  `AUTH_SECRET`). The GCM tag makes tampering (or a changed `AUTH_SECRET`)
+  fail loudly on decrypt. `v1` is the envelope version, so a future dedicated
+  `ENCRYPTION_KEY` with key ids can be `v2` without breaking old rows.
+- `encryptToken` is idempotent (an envelope is returned unchanged) and
+  `null`/`undefined`/`''` pass through, so it is safe on optional columns and
+  in migrations.
+- Store in a plain `text` column; never log or return the decrypted value to
+  a client.
+
+How Google uses it (`lib/auth/account-tokens.ts`):
+
+- the Auth.js adapter is wrapped (`withEncryptedAccountTokens`): `linkAccount`
+  encrypts `access_token`, `refresh_token` and `id_token`; `getAccount`
+  decrypts; the sign-in re-consent patch is encrypted too;
+- `lib/google/tokens.ts` is the only reader of token values (Gmail, Calendar,
+  Drive and the Picker all go through it): it decrypts, stores refreshed
+  access tokens encrypted, and re-encrypts a legacy plaintext row on first
+  read (compare-and-set, so a concurrent refresh is not overwritten);
+- one-time migration: `pnpm tsx scripts/encrypt-oauth-tokens.ts` (idempotent;
+  also exercised by `scripts/pg-smoke.ts` against real Postgres).
+
+For a new provider: encrypt on write (adapter `linkAccount` or your own
+insert), decrypt only at the point of use, and add a "stored value is not
+plaintext" test like `tests/integration/google-token-encryption.test.ts`.

@@ -3,6 +3,9 @@ import { db } from '@/lib/db/client'
 import { accounts } from '@/lib/db/schema'
 import { env } from '@/lib/env'
 import { fetchWithTimeout, GOOGLE_TOKEN_TIMEOUT_MS } from '@/lib/net/timeout'
+import { decryptToken, encryptToken } from '@/lib/crypto/token-vault'
+import { reencryptIfPlaintext } from '@/lib/auth/account-tokens'
+import { logger } from '@/lib/logger'
 
 /**
  * Raised when a user has not linked a Google account (or has linked one but
@@ -59,11 +62,21 @@ interface RefreshResponse {
  * openid/email scope — user must re-authorize).
  */
 export async function getGoogleTokens(userId: string): Promise<GoogleTokens> {
-  const row = await db.query.accounts.findFirst({
+  const stored = await db.query.accounts.findFirst({
     where: and(eq(accounts.userId, userId), eq(accounts.provider, 'google')),
   })
-  if (!row?.access_token || !row.refresh_token) {
+  if (!stored?.access_token || !stored.refresh_token) {
     throw new NoGoogleAccountError('No Google account linked')
+  }
+  // Tokens are encrypted at rest (lib/crypto/token-vault.ts). A row written
+  // before encryption is re-saved encrypted on this first read.
+  await reencryptIfPlaintext(stored).catch((err: unknown) => {
+    logger.warn('google_token_reencrypt_failed', { err: err instanceof Error ? err.message : String(err) })
+  })
+  const row = {
+    ...stored,
+    access_token: decryptToken(stored.access_token),
+    refresh_token: decryptToken(stored.refresh_token),
   }
   const nowSec = Math.floor(Date.now() / 1000)
   // Only reuse the stored access_token if it lives at least another 60s. This
@@ -101,7 +114,7 @@ export async function getGoogleTokens(userId: string): Promise<GoogleTokens> {
 
   await db
     .update(accounts)
-    .set({ access_token: json.access_token, expires_at: newExpires })
+    .set({ access_token: encryptToken(json.access_token), expires_at: newExpires })
     .where(and(eq(accounts.userId, userId), eq(accounts.provider, 'google')))
 
   return {
@@ -136,7 +149,7 @@ export async function mintScopedAccessToken(
         client_id: env.AUTH_GOOGLE_ID,
         client_secret: env.AUTH_GOOGLE_SECRET,
         grant_type: 'refresh_token',
-        refresh_token: row.refresh_token,
+        refresh_token: decryptToken(row.refresh_token),
         scope,
       }),
     },

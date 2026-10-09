@@ -12,6 +12,7 @@ import { logger } from '@/lib/logger'
 import type { TestLogin } from './test-login-provider'
 import { ensureDefaults } from '@/lib/defaults/ensure'
 import { runAfterResponse } from '@/lib/server/after-response'
+import { encryptAccountTokenPatch, withEncryptedAccountTokens } from './account-tokens'
 
 // v17 §9.1 — local-only E2E test sign-in. The literal NODE_ENV check is
 // folded to `false` by `next build`, so the dynamic import (and the provider
@@ -47,14 +48,18 @@ export const authConfig = {
       return edgeAuthConfig.callbacks.signIn(params)
     },
   },
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  adapter: DrizzleAdapter(db as any, {
-    usersTable: users,
-    accountsTable: accounts,
-    sessionsTable: sessions,
-    verificationTokensTable: verificationTokens,
+  // OAuth tokens are encrypted before they reach `accounts` (and decrypted
+  // on adapter reads); see lib/auth/account-tokens.ts.
+  adapter: withEncryptedAccountTokens(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any),
+    DrizzleAdapter(db as any, {
+      usersTable: users,
+      accountsTable: accounts,
+      sessionsTable: sessions,
+      verificationTokensTable: verificationTokens,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any),
+  ),
   events: {
     // Auth.js's DrizzleAdapter only INSERTS the accounts row (via linkAccount)
     // on first signin. Re-consenting with expanded scopes returns fresh
@@ -87,7 +92,7 @@ export const authConfig = {
       try {
         await db
           .update(accounts)
-          .set(patch)
+          .set(encryptAccountTokenPatch(patch))
           .where(
             and(
               eq(accounts.userId, user.id),
