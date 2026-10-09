@@ -111,10 +111,18 @@ test('edit the master profile, build a variant, preview it and publish to the po
   expect((await pdfRes.body()).subarray(0, 5).toString()).toBe('%PDF-')
   // The second view is served from the PDF cache: no new compile.
   expect((await latexStats(page)).compiles).toBe(before.compiles + 1)
+  // Download .docx: the saved version as an ATS-friendly Word file (a zip).
+  const docxHref = await page.getByTestId('variant-docx').getAttribute('href')
+  const docxRes = await page.request.get(docxHref!)
+  expect(docxRes.status()).toBe(200)
+  expect(docxRes.headers()['content-type']).toContain('wordprocessingml.document')
+  expect(docxRes.headers()['content-disposition']).toMatch(/attachment; filename=".+\.docx"/)
+  expect((await docxRes.body()).subarray(0, 2).toString()).toBe('PK')
   await pdfStatus.getByRole('link', { name: 'Open in the LaTeX editor' }).click()
   // CodeMirror renders only the lines in view: check the top of the file.
   await expect(page.locator('.cm-content')).toContainText('(Classic layout)')
-  await expect(page.locator('.cm-content')).toContainText('\documentclass[10pt, letterpaper]{article}')
+  // A GCC variant prints on A4 (its region default).
+  await expect(page.locator('.cm-content')).toContainText('\\documentclass[10pt, a4paper]{article}')
 
   // 3. Publish: repository, token (checked against the stub), preview, publish.
   await page.goto('/settings/publish')
