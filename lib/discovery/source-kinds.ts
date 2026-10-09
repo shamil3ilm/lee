@@ -140,6 +140,13 @@ export const SOURCE_KINDS: readonly SourceKindMeta[] = [
     needs: 'none',
     catalogOnly: true,
   },
+  {
+    id: 'local_companies',
+    label: 'Local companies',
+    description: 'Companies and startups lee found for Discovery › Companies (Wikidata, GitHub, YC, your connections; weekly)',
+    needs: 'none',
+    catalogOnly: true,
+  },
   { id: 'rss', label: 'RSS feed', description: 'Any jobs RSS feed URL', needs: 'url', placeholder: 'https://example.com/jobs.rss' },
   { id: 'jsonld', label: 'JSON-LD JobPosting', description: 'A page with JSON-LD JobPosting markup', needs: 'url', placeholder: 'https://example.com/careers' },
 ]

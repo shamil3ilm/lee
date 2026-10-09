@@ -68,7 +68,7 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 /** Files that make network calls (fetch, an SDK base URL, a CDN import). */
-const NETWORK = /(?<![\w.$])(?:fetch|fetchWithTimeout|discoveryFetch|untrustedDiscoveryFetch|safeFetch|requestText|requestJson)\s*\(|baseUrl:|import\(\s*[`'"]https:/
+const NETWORK = /(?<![\w.$])(?:fetch|fetchWithTimeout|discoveryFetch|untrustedDiscoveryFetch|safeFetch|requestText|requestJson|companyJson|companyGet)\s*\(|baseUrl:|import\(\s*[`'"]https:/
 
 function hostsIn(src: string): string[] {
   const out = new Set<string>()

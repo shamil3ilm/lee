@@ -118,6 +118,29 @@ export const EVENT_CATALOG: Readonly<Record<string, EventSpec>> = {
     message: (c) =>
       `Added from text or link: ${n(c, 'imported')} imported · ${n(c, 'duplicates')} already in Discovery · ${n(c, 'enriched')} from an ATS`,
   },
+  // Company discovery (lib/company-discovery). Counts and source ids only.
+  company_discovery_run: {
+    category: 'source',
+    persist: true,
+    message: (c) =>
+      `Company discovery: ${n(c, 'fetched')} found · ${n(c, 'new')} new · ${n(c, 'updated')} updated${n(c, 'failed') > 0 ? ` · ${plural(n(c, 'failed'), 'source')} failed` : ''}`,
+  },
+  company_discovery_source_failed: {
+    category: 'source',
+    strings: ['source'],
+    message: (c) => `Company discovery source ${s(c, 'source') || '?'} failed: ${s(c, 'err')}`,
+  },
+  company_enrich_done: {
+    category: 'source',
+    persist: true,
+    message: (c) =>
+      `Company enrichment: ${n(c, 'checked')} checked · ${n(c, 'careers')} careers pages · ${n(c, 'boards')} job boards · ${n(c, 'blocked')} skipped by robots.txt`,
+  },
+  company_careers_changed: {
+    category: 'source',
+    persist: true,
+    message: (c) => `Careers pages changed: ${n(c, 'changed')} of ${n(c, 'checked')} watched`,
+  },
   // Company reputation (lib/reputation)
   reputation_refreshed: {
     category: 'source',

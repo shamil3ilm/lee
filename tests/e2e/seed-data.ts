@@ -385,6 +385,63 @@ export const COMPANY_DISCOVERIES = [
   { score: 58, company: { name: 'Plane', domain: 'plane.example', description: 'Open-source project management.', industry: ['developer tools'], size: '11-50', stage: 'seed', hqCountry: 'IN', hqCity: 'Bengaluru', techStack: ['Python', 'TypeScript'] }, reasoning: { summary: 'Dev tools, smaller team.' } },
 ]
 
+/**
+ * Local companies (Discovery › Companies), SYNTHETIC: invented names and
+ * `.example` domains. One Kuwaiti payments company with a Lever board (Watch
+ * jobs), one Dubai ERP startup with a careers page only (Watch careers page)
+ * and one Kochi software house.
+ */
+export const LOCAL_COMPANIES = [
+  {
+    key: 'd:dinarpay.example',
+    name: 'Dinar Pay Example',
+    website: 'https://dinarpay.example',
+    domain: 'dinarpay.example',
+    regionIds: ['kuwait-city', 'kw', 'gcc'],
+    industry: ['payments', 'fintech'],
+    sizeBand: '11-50',
+    stage: 'startup',
+    sourceTags: ['wikidata', 'github'],
+    atsKind: 'lever',
+    atsSlug: 'dinarpay-example',
+    careersUrl: 'https://jobs.lever.co/dinarpay-example',
+    evidence: { openRoles: 2, contactEmails: ['careers@dinarpay.example'], languages: ['PHP', 'TypeScript'], description: 'Payments platform for Gulf merchants.' },
+    fitScore: 88,
+  },
+  {
+    key: 'd:falconerp.example',
+    name: 'Falcon ERP Example',
+    website: 'https://falconerp.example',
+    domain: 'falconerp.example',
+    regionIds: ['dubai', 'ae', 'gcc'],
+    industry: ['erp', 'einvoicing'],
+    sizeBand: '51-200',
+    stage: 'scaleup',
+    sourceTags: ['paste'],
+    atsKind: null,
+    atsSlug: null,
+    careersUrl: 'https://falconerp.example/careers',
+    evidence: { description: 'E-invoicing and ERP for SMEs.' },
+    fitScore: 71,
+  },
+  {
+    key: 'd:backwater.example',
+    name: 'Backwater Software Example',
+    website: 'https://backwater.example',
+    domain: 'backwater.example',
+    regionIds: ['kochi', 'kerala', 'in'],
+    industry: ['it_services'],
+    sizeBand: '11-50',
+    stage: 'startup',
+    sourceTags: ['directory:technopark'],
+    atsKind: null,
+    atsSlug: null,
+    careersUrl: null,
+    evidence: {},
+    fitScore: 52,
+  },
+] as const
+
 export const AI_CALLS = [
   ...Array.from({ length: 8 }, () => ({ provider: 'gemini', kind: 'score_job', promptTokens: 1800, completionTokens: 220, latencyMs: 1400, status: 'ok' })),
   ...Array.from({ length: 3 }, () => ({ provider: 'gemini', kind: 'cover_letter', promptTokens: 2600, completionTokens: 600, latencyMs: 3200, status: 'ok', userRating: 5 })),

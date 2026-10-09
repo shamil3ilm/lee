@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { requireUserId } from '@/lib/auth/require-session'
-import * as companyDiscoveriesQ from '@/lib/db/queries/companyDiscoveries'
 import * as sourcesQ from '@/lib/db/queries/sources'
 import { toRiskView } from '@/lib/scam/view'
 import { getProfile } from '@/lib/profile/service'
@@ -9,15 +8,12 @@ import { PageHeader } from '@/components/page-header'
 import { DiscoveryInbox } from '@/components/discovery-inbox'
 import { DiscoveryFilters } from '@/components/discovery-filters'
 import type {
-  DiscoveryCompanySummary,
   DiscoveryRowJob,
-  DiscoveryRowCompany,
   DiscoveryReasoning,
 } from '@/components/discovery-row'
 import { DiscoveryPager } from '@/components/discovery/pager'
 import { ShortlistHeaderLink } from '@/components/apply/shortlist-strip'
 import { NoticeArea } from '@/components/discovery/notice-area'
-import type { NormalizedCompany } from '@/lib/discovery/adapters/types'
 import { PAGE_SIZE_COOKIE } from '@/lib/discovery/pager'
 import { loadRoleSuggestions } from '@/lib/discovery/relevance/service'
 import { relevanceStale } from '@/lib/discovery/relevance/service'
@@ -32,12 +28,15 @@ import { LazyDiscoveriesBoard } from '@/components/board/lazy'
 import { parseBoardView, viewHref, type BoardView } from '@/lib/board/view'
 import { lastCheck } from '@/lib/discovery/poll-stats'
 import { relativeFromNow } from '@/lib/ui/date'
-import { catchUp, loadBoard, loadJobs, parseDiscoveryParams, type DiscoveryParams, type JobsData } from './data'
+import { catchUp, loadBoard, loadJobs, parseDiscoveryParams, type JobsData } from './data'
 import { AiModeDialog } from '@/components/discovery/ai-mode-dialog'
 import { PasteImportDialog } from '@/components/discovery/paste-import-dialog'
 import { loadAiModePrompts, type AiModePromptSet } from '@/lib/discovery/ai-mode/load'
 import { discoveryNotices } from './notices'
 import { RegionGroups } from '@/components/regions/region-groups'
+import { CompaniesTab } from '@/components/companies/companies-tab'
+import { parseCompanyParams } from './companies-data'
+import { searchPrefsFromProfile } from '@/lib/discovery/relevance/prefs'
 
 /** "Last checked 2h ago · 12 new" from the sources' last poll results. */
 function lastCheckedLine(sources: Parameters<typeof lastCheck>[0]): string | null {
@@ -142,10 +141,23 @@ export default async function DiscoveriesPage({
     )
   }
 
+  if (p.tab === 'companies') {
+    return (
+      <div className="space-y-4">
+        <PageHeader
+          title="Discovery"
+          description="Local companies and startups worth approaching, even without a posting."
+          className="mb-0"
+        />
+        <TabBar tab={p.tab} />
+        <CompaniesTab userId={userId} params={parseCompanyParams(sp, p.size)} prefs={searchPrefsFromProfile(profile)} searchParams={sp} />
+      </div>
+    )
+  }
+
   const sourceNameById = new Map(sources.map((s) => [s.id, s.name] as const))
-  const jobs = p.tab === 'jobs' ? await loadJobs(userId, p) : null
-  const companies = p.tab === 'companies' ? await loadCompanies(userId, p, sourceNameById) : null
-  const total = jobs?.total ?? companies?.total ?? 0
+  const jobs = await loadJobs(userId, p)
+  const total = jobs.total
 
   return (
     <div className="space-y-4">
@@ -154,14 +166,12 @@ export default async function DiscoveriesPage({
         description={`Scored jobs and companies from your sources.${checked ? ` ${checked}.` : ''}`}
         className="mb-0"
         actions={
-          p.tab === 'jobs' ? (
-            <FindMoreActions promptSet={promptSet} shortlist={shortlist}>
-              <div className="flex items-center gap-1">
-                <ViewToggle sp={sp} view={view} explicit={explicit} />
-                <DiscoveryOverflowMenu sources={sourceOptions} />
-              </div>
-            </FindMoreActions>
-          ) : undefined
+          <FindMoreActions promptSet={promptSet} shortlist={shortlist}>
+            <div className="flex items-center gap-1">
+              <ViewToggle sp={sp} view={view} explicit={explicit} />
+              <DiscoveryOverflowMenu sources={sourceOptions} />
+            </div>
+          </FindMoreActions>
         }
       />
       <TabBar tab={p.tab} />
@@ -171,8 +181,8 @@ export default async function DiscoveriesPage({
         status={p.status}
         minScore={p.minScore}
         sort={p.sort}
-        quarantinedCount={jobs?.quarantinedCount ?? 0}
-        filteredCount={jobs?.filteredCount ?? 0}
+        quarantinedCount={jobs.quarantinedCount}
+        filteredCount={jobs.filteredCount}
         region={p.region}
         sourceId={p.sourceId}
         sources={sourceOptions}
@@ -182,22 +192,14 @@ export default async function DiscoveriesPage({
         byRegion={p.byRegion}
         canGroupByRegion
       />
-      {jobs?.regionGroups ? <RegionGroups groups={jobs.regionGroups} searchParams={sp} selected={p.region} /> : null}
-      {jobs ? (
-        <DiscoveryInbox
-          kind="jobs"
-          items={toJobRows(jobs, sourceNameById)}
-          quarantineView={p.status === 'quarantined'}
-          filteredView={p.status === 'filtered'}
-          pager={<DiscoveryPager searchParams={sp} page={p.page} size={p.size} total={total} position="top" />}
-        />
-      ) : (
-        <DiscoveryInbox
-          kind="companies"
-          items={companies?.rows ?? []}
-          pager={<DiscoveryPager searchParams={sp} page={p.page} size={p.size} total={total} position="top" />}
-        />
-      )}
+      {jobs.regionGroups ? <RegionGroups groups={jobs.regionGroups} searchParams={sp} selected={p.region} /> : null}
+      <DiscoveryInbox
+        kind="jobs"
+        items={toJobRows(jobs, sourceNameById)}
+        quarantineView={p.status === 'quarantined'}
+        filteredView={p.status === 'filtered'}
+        pager={<DiscoveryPager searchParams={sp} page={p.page} size={p.size} total={total} position="top" />}
+      />
       {total > p.size ? (
         <DiscoveryPager searchParams={sp} page={p.page} size={p.size} total={total} position="bottom" />
       ) : null}
@@ -238,35 +240,6 @@ function toJobRows(jobs: JobsData, sourceNameById: Map<string, string>): Discove
   })
 }
 
-/** Company discoveries: one page plus one count query for the pager. */
-async function loadCompanies(
-  userId: string,
-  p: DiscoveryParams,
-  names: Map<string, string>,
-): Promise<{ rows: DiscoveryRowCompany[]; total: number }> {
-  const opts = {
-    status: p.status === 'saved' || p.status === 'dismissed' ? p.status : ('new' as const),
-    minScore: p.minScore > 0 ? p.minScore : undefined,
-  }
-  const [rows, total] = await Promise.all([
-    companyDiscoveriesQ.list(userId, { ...opts, limit: p.size, offset: (p.page - 1) * p.size }),
-    companyDiscoveriesQ.countList(userId, opts),
-  ])
-  return {
-    total,
-    rows: rows.map((d) => ({
-      id: d.id,
-      status: d.status,
-      matchScore: d.matchScore,
-      createdAt: d.createdAt.toISOString(),
-      sourceName: names.get(d.sourceId) ?? 'unknown',
-      normalized: toCompanySummary(d.normalized),
-      reasoning: (d.matchReasoning as DiscoveryReasoning | null) ?? null,
-      scoredByCallId: d.scoredByCallId,
-    })),
-  }
-}
-
 function ViewToggle({
   sp,
   view,
@@ -286,18 +259,6 @@ function ViewToggle({
       listHref={viewHref('/discoveries', sp, 'list')}
     />
   )
-}
-
-function toCompanySummary(value: unknown): DiscoveryCompanySummary {
-  const n = (value ?? {}) as Partial<NormalizedCompany>
-  return {
-    name: n.name ?? 'Unknown',
-    domain: n.domain ?? null,
-    website: n.website ?? null,
-    size: n.size ?? null,
-    stage: n.stage ?? null,
-    techStack: Array.isArray(n.techStack) ? n.techStack : [],
-  }
 }
 
 function TabBar({ tab }: { tab: 'jobs' | 'companies' }): React.ReactElement {

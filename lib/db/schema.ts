@@ -624,10 +624,61 @@ export const companyDiscoveries = pgTable(
     scoredByCallId: uuid('scored_by_call_id').references(() => aiCallLogs.id, {
       onDelete: 'set null',
     }),
+    // Local companies & startups (lib/company-discovery). Compact columns
+    // for the filters and the fit ranking; rarer facts live in `evidence`.
+    /** Region-taxonomy ids (lib/regions), ancestors included. */
+    regionIds: text('region_ids').array().notNull().default([]),
+    /** Industry tags (lib/company-discovery/industry.ts): fintech, payments, erp, software… */
+    industry: text('industry').array().notNull().default([]),
+    /** '1-10' | '11-50' | '51-200' | '201-1000' | '1000+'. */
+    sizeBand: text('size_band'),
+    /** 'startup' | 'scaleup' | 'enterprise'. */
+    stage: text('stage'),
+    /** Where it came from: wikidata, github, yc, linkedin, paste, directory:<id>. */
+    sourceTags: text('source_tags').array().notNull().default([]),
+    website: text('website'),
+    /** Registrable host without www (dedupe across sources). */
+    domain: text('domain'),
+    careersUrl: text('careers_url'),
+    /** A supported ATS found on the careers page: greenhouse, lever, ashby, workable, recruitee, pinpoint. */
+    atsKind: text('ats_kind'),
+    atsSlug: text('ats_slug'),
+    /** Small facts with their source (CompanyEvidence): logo, inception, employees, GitHub languages, open roles, contact emails. */
+    evidence: jsonb('evidence').notNull().default({}),
+    /** Deterministic company fit (0–100) and its chips (CompanyFit). */
+    fitScore: smallint('fit_score'),
+    fitDetail: jsonb('fit_detail'),
+    /** 'pending' | 'done' | 'blocked' (robots) | 'failed'; null = not queued. */
+    enrichStatus: text('enrich_status'),
+    enrichedAt: timestamp('enriched_at', { withTimezone: true }),
+    /** 'jobs' (an ATS source) | 'careers' (careers-page watch); null = not watched. */
+    watch: text('watch'),
+    watchSourceId: uuid('watch_source_id').references(() => sources.id, { onDelete: 'set null' }),
+    /** Careers-page change detection (only when robots allow): text hash and dates. */
+    careersHash: text('careers_hash'),
+    careersCheckedAt: timestamp('careers_checked_at', { withTimezone: true }),
+    careersChangedAt: timestamp('careers_changed_at', { withTimezone: true }),
+    /** "Not relevant" reason: industry | size | region | government | other. */
+    dismissReason: text('dismiss_reason'),
+    /** The speculative application made from "Reach out". */
+    applicationId: uuid('application_id').references(() => applications.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
+    userDomainIx: index('company_discoveries_user_domain_idx')
+      .on(t.userId, t.domain)
+      .where(sql`${t.domain} is not null`),
+    userFitIx: index('company_discoveries_user_status_fit_idx').on(t.userId, t.status, t.fitScore),
+    userEnrichIx: index('company_discoveries_user_enrich_idx')
+      .on(t.userId, t.enrichStatus)
+      .where(sql`${t.enrichStatus} = 'pending'`),
+    watchSourceIx: index('company_discoveries_watch_source_idx')
+      .on(t.watchSourceId)
+      .where(sql`${t.watchSourceId} is not null`),
+    applicationIx: index('company_discoveries_application_idx')
+      .on(t.applicationId)
+      .where(sql`${t.applicationId} is not null`),
     srcCompanyUq: uniqueIndex('company_discoveries_source_company_uq').on(
       t.sourceId,
       t.sourceCompanyId,

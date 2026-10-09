@@ -18,6 +18,7 @@ import { contentStems } from '@/lib/cv-score/text'
 import { replacementVerb, weakOpenerOf } from '@/lib/cv-score/dimensions/impact'
 import type { CallMeta } from './log'
 import type { ReputationSummaryInput, ReputationSummaryResult } from './prompts/reputation-summary'
+import type { SpeculativeOutreachInput, SpeculativeOutreachResult } from './prompts/speculative-outreach'
 import type { RadarBriefInput, RadarBriefResult } from './prompts/radar-brief'
 import type {
   LinkedInPostInput,
@@ -93,6 +94,7 @@ export class FixtureAIProvider implements AIProvider {
       assessRequirementFit?: (input: RequirementFitInput) => RequirementFitResult
       rewriteCvBullets?: (input: BulletRewriteInput) => BulletRewriteResult
       summarizeReputation?: (input: ReputationSummaryInput) => ReputationSummaryResult
+      draftSpeculativeOutreach?: (input: SpeculativeOutreachInput) => SpeculativeOutreachResult
       narrateComparison?: (input: CompareNarrativeInput) => CompareNarrativeResult
       suggestRoles?: (input: SuggestRolesInput) => SuggestRolesResult
       proposeResumeVariant?: (input: ResumeVariantInput) => ResumeVariantResult
@@ -321,6 +323,21 @@ export class FixtureAIProvider implements AIProvider {
     await this.emitLoggedCallId('company_reputation_summary', meta)
     if (this.fixtures.summarizeReputation) return this.fixtures.summarizeReputation(input)
     return pseudoReputationSummary(input)
+  }
+  async draftSpeculativeOutreach(input: SpeculativeOutreachInput, meta?: CallMeta): Promise<SpeculativeOutreachResult> {
+    await this.emitLoggedCallId('speculative_outreach', meta)
+    if (this.fixtures.draftSpeculativeOutreach) return this.fixtures.draftSpeculativeOutreach(input)
+    // Deterministic: a short note from the facts only (passes the fact lock).
+    const skills = input.candidate.skills.slice(0, 3).join(', ')
+    const body = [
+      `Hello ${input.company.name} team,`,
+      '',
+      `I am ${input.candidate.name}, ${input.candidate.headline}.${skills ? ` I work with ${skills}.` : ''}`,
+      'Could we have a short chat about engineering roles on your team, now or later?',
+      '',
+      `Thank you,\n${input.candidate.name}`,
+    ].join('\n')
+    return { subject: input.channel === 'email' ? `Engineering at ${input.company.name}` : null, body }
   }
 }
 

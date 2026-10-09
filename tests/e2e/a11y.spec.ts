@@ -20,6 +20,8 @@ const ROUTES = [
   '/discoveries?status=filtered',
   // Region filter: a hierarchical selection with chips, and "Group by region".
   '/discoveries?status=dismissed&region=kerala,dubai&by=region',
+  // Local companies & startups.
+  '/discoveries?tab=companies',
   '/shortlist?region=kerala',
   '/compare',
   '/applications',
@@ -56,7 +58,7 @@ const ROUTES = [
 ]
 
 /** Routes checked for 24px targets at phone width (WCAG 2.5.8). */
-const PHONE_ROUTES = ['/', '/discoveries', '/shortlist', '/settings/search', '/settings/sources', '/compare', '/applications', '/todos', '/analytics', '/radar/sources', '/settings/notifications', '/settings/variants', '/settings/integrations', '/settings/linkedin']
+const PHONE_ROUTES = ['/', '/discoveries', '/discoveries?tab=companies', '/shortlist', '/settings/search', '/settings/sources', '/compare', '/applications', '/todos', '/analytics', '/radar/sources', '/settings/notifications', '/settings/variants', '/settings/integrations', '/settings/linkedin']
 
 interface Violation {
   id: string

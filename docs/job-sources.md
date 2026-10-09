@@ -331,3 +331,82 @@ nationals-only.
 Excluded, nationals only (never added as sources or watch links): Jadarat
 (Saudi Arabia), Kawader (Qatar), Kuwait Civil Service Commission, the UAE
 federal government portal (FAHR) and Abu Dhabi government jobs.
+
+## Company discovery: local companies and startups (2026-10-09)
+
+Discovery › Companies lists companies that may never post on a job portal,
+especially in the GCC and Kerala, ranked by an explainable company fit
+(`lib/company-discovery`). A weekly job per user collects them; a bounded
+enrichment queue then finds each company's careers page and job board.
+
+### Sources: read automatically
+
+| Source | Endpoint | Terms / robots | Bounds |
+|---|---|---|---|
+| Wikidata Query Service | `GET query.wikidata.org/sparql` (companies whose HQ (P159) is a target city or in one, or whose country (P17) is a target country, with an industry (P452) in lee's list, not dissolved; website, inception, employees, logo) | Data CC0. WDQS manual: 60 s per query, 60 s of processing per minute per client, informative User-Agent with contact details required (`lee/1.0 (+https://getlee.vercel.app; …)`). robots.txt disallows `/sparql` for crawlers; the endpoint is a public API | one query per country, `LIMIT 400`, 2 s apart |
+| GitHub organisations | `GET api.github.com/search/users?q=type:org location:"Dubai"`, then `/orgs/{login}` and `/orgs/{login}/repos` in enrichment | REST Search API: 10 requests a minute unauthenticated, 30 with a token (the user's GitHub connection, else the deployment's `GITHUB_TOKEN`). Acceptable Use forbids using GitHub information for spam or selling personal data: lee searches **organisations only** (`type:org`), stores no person's data and sends nothing | 6 locations a run (starred countries always, the rest rotating weekly), 20 orgs each, 6.5 s apart |
+| YC companies (yc-oss) | `GET yc-oss.github.io/api/companies/all.json` (~10.5 MB, 6,283 companies on 2026-10-09) | The github.com/yc-oss/api repository has **no licence**, and YC's own terms forbid scraping ycombinator.com. lee never fetches ycombinator.com; from the open copy it keeps facts only (name, website, location, team size, industry tags) and links to the YC profile; no descriptions or logos | one fetch a week, 16 MB cap; active GCC / India companies only (India 226, UAE 17, Saudi 5 on 2026-10-09) |
+| Technopark company list | `GET technopark.in/api/paginated-companies?page=N` (the JSON its own /company-list page calls; 497 companies, 25 pages) | robots.txt disallows only `/cgi-bin/`; no terms against reading it (privacy/cookie policy only) | 3 pages a week, rotating |
+| QSTP directory (Doha) | `GET qstp.qa/wp-json/wp/v2/directory?per_page=100` (WordPress REST API; 95 entries) | robots.txt `Disallow:` (empty); privacy policy only, no scraping clause | once a week |
+| Your LinkedIn connections | the export you imported (`linkedin_connections`) | your own data | companies with ≥ 2 connections, 30 a run; counts feed the warm-intro chip |
+| "Add companies" | text or links you paste (e.g. a Google AI Mode answer from the prompts in the dialog, opened in your own browser) | lee never contacts Google | 40 companies per paste |
+
+Company websites are read only during enrichment, only after robots.txt
+(lee's token or `*`; an unreadable robots.txt stops the check), through
+`safeFetch`: the home page, then a linked careers page or `/careers`,
+`/jobs`, `/join-us`, `/work-with-us`; at most 4 pages of 1.5 MB per
+company, 6 companies per job, 10 jobs a week. A link to Greenhouse, Lever,
+Ashby, Workable, Recruitee, Pinpoint, Workday or Teamtailor offers
+**Watch jobs** (a source of that kind, polled by the existing adapter);
+SmartRecruiters, BambooHR, Zoho Recruit and others stay links. Role
+addresses (careers@, jobs@, hr@ …) on the company's own domain are kept;
+personal addresses are never kept or guessed. **Watch careers page** adds a
+weekly "Check these yourself" link; when robots.txt allowed the page, its
+text hash is compared weekly and a change adds a to-do.
+
+### Directories: browse links only (never fetched)
+
+| Directory | Region | Why not read |
+|---|---|---|
+| Hub71 startups | Abu Dhabi | Terms of use ban "any robot, spider, scraper, data mining tool" |
+| in5 (now infive.ae) | Dubai | TECOM terms: personal, non-commercial use only; REST API needs sign-in |
+| Dubai Internet City community directory | Dubai | TECOM terms (its backend API is undocumented) |
+| Dubai Silicon Oasis / DTEC members | Dubai | DSO terms forbid spiders and robots; DTEC personal use only |
+| DIFC public register / Innovation Hub | Dubai | Vercel bot checkpoint (429); FinTech Hive's old host no longer resolves |
+| ADGM public registers | Abu Dhabi | Cloudflare challenge (403) |
+| Central Bank of Kuwait Innovation Hub participants | Kuwait | Terms: "for personal usage only" |
+| Kuwait National Fund for SME Development | Kuwait | Sucuri JavaScript challenge; Sirdab Lab's domain no longer resolves |
+| Misk Hub / Monsha'at | Saudi Arabia | No public startup list (the Misk Accelerator page is 404); Monsha'at did not answer |
+| Flat6Labs portfolio | KSA / UAE / Egypt | Allowed by robots (company sitemap), but HTML only; browse for now |
+| QDB startups | Qatar | Akamai 403 |
+| StartUp Bahrain ecosystem | Bahrain | Allowed by robots, one Framer page; browse for now |
+| Bahrain FinTech Bay partners | Bahrain | Terms only render with JavaScript (unread) |
+| Oman SME Authority (Riyada) | Oman | No company directory (riyada.om has lapsed; sme.gov.om) |
+| Infopark, Kerala Cyberpark, UL Cyberpark companies | Kerala | Allowed by robots, HTML lists; browse for now |
+| Kerala Startup Mission | Kerala | No startup directory API (a short showcase only) |
+| Startup India search | India | `api.startupindia.gov.in/robots.txt`: `Disallow: /` |
+
+### Ranking (company fit, 0–100)
+
+Deterministic chips: region (inside your regions 22 · broader 11 · unknown
+7), a starred region (+10 top priority, +6 preferred), domain (an industry
+that serves your target role families: payments, fintech, banking,
+e-invoicing, ERP, data 22 · general software 16), tech (GitHub languages
+you have ready: top language 13 · any 9), size/stage (your preference 8 ·
+none 4), hiring (open roles 15 · a job board 10 · a careers page 6), warm
+intro (LinkedIn connections, 10). Public-sector / nationals-first names are
+capped at 10 and flagged.
+
+### Live check (2026-10-09)
+
+Through lee's own parsers and client (`pnpm tsx scripts/company-discovery-audit.ts`):
+
+| Source | Region | Count | Sample (public company data) |
+|---|---|---|---|
+| Wikidata | UAE | 147 (Dubai 70, Abu Dhabi 15, Sharjah 4, Ajman 1) | Eat App, Lune Technologies, DeepSolve |
+| Wikidata | Saudi Arabia | 42 (Riyadh 24, Jeddah 5) | Mantiqi, Naseej, Saudi Cloud Computing Company |
+| Wikidata | Qatar | 11 (Doha 8) | — |
+| Wikidata | Kuwait | 18 (first try timed out at WDQS's 60 s; retried in 5 s) | Kuwait Finance House, Gulf Bank of Kuwait, KlippiK, Zayn Technology |
+| Wikidata | Kerala | Kochi 8 · Kozhikode 4 · Trivandrum 3 · Kerala-level 4 (of 165 for all Indian target cities, Bengaluru 70) | Codenex Solutions, Asianet Web |
+| GitHub orgs | Dubai · Abu Dhabi · Riyadh · Doha · Kuwait | 20 each (first page; Kuwait 368 in total) | Vinelab, namshi · tiiuae · mrsool, ElmCompany · qcri, dibsyhq · Tap-Payments, JoinCODED |
+| GitHub orgs | Kochi · Trivandrum · Kozhikode | 20 each (first page) | ileafsolutions, flycatch · zyxware, PIT-Solutions · Genskill, efeone |

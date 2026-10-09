@@ -39,6 +39,16 @@ export type DiscoveryEmailSummary =
   | { kind: 'discovery-email'; sent: false; reason?: 'disabled' | 'no_matches' | 'no_google_account' }
 
 export type ShortlistSummary = { kind: 'shortlist'; candidates: number; shortlisted: number }
+export type CompanyDiscoverySummary = {
+  kind: 'company-discovery'
+  fetched: number
+  new: number
+  updated: number
+  failed: number
+  paused?: boolean
+  careersChanged?: number
+}
+export type CompanyEnrichSummary = { kind: 'company-enrich'; checked: number; careers: number; boards: number; blocked: number; remaining: number }
 
 export type { RadarRunSummary } from '@/lib/radar/summary'
 export type { WhatsNewRunSummary } from '@/lib/radar/new/summary'
@@ -48,6 +58,8 @@ export type JobSummary =
   | RadarRunSummary
   | WhatsNewRunSummary
   | ShortlistSummary
+  | CompanyDiscoverySummary
+  | CompanyEnrichSummary
   | GmailSyncSummary
   | DigestSummary
   | FollowupsSummary
@@ -172,6 +184,15 @@ export function describeSummary(summary: JobSummary | null | undefined): string 
       return describeRadarSummary(summary)
     case 'radar-new':
       return describeWhatsNewSummary(summary)
+    case 'company-discovery': {
+      if (summary.paused) return 'Paused by the usage throttle'
+      const parts = [`${summary.fetched} found`, `${summary.new} new`, `${summary.updated} updated`]
+      if (summary.failed > 0) parts.push(`${plural(summary.failed, 'source')} failed`)
+      if (summary.careersChanged) parts.push(`${plural(summary.careersChanged, 'careers page')} changed`)
+      return parts.join(' · ')
+    }
+    case 'company-enrich':
+      return `${summary.checked} checked · ${summary.careers} careers pages · ${summary.boards} job boards · ${summary.blocked} skipped by robots.txt`
     default:
       return ''
   }

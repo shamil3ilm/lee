@@ -52,6 +52,13 @@ export async function findOrCreateByDomain(
   return existing
 }
 
+/** A company with no known domain (e.g. a speculative approach from company discovery). */
+export async function createWithoutDomain(userId: string, name: string, client: DbClient = db): Promise<Company> {
+  const [row] = await client.insert(companies).values({ userId, name }).returning()
+  if (!row) throw new Error('failed to insert company')
+  return row
+}
+
 export async function listWatched(userId: string, client: DbClient = db): Promise<Company[]> {
   return client.query.companies.findMany({
     where: and(eq(companies.userId, userId), eq(companies.isWatched, true)),

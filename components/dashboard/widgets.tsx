@@ -183,6 +183,7 @@ export async function PipelineWidget({ userId }: Pick<WidgetProps, 'userId'>) {
   const rows = await loadApplications(userId)
   const counts: Record<ApplicationStatus, number> = {
     saved: 0,
+    speculative: 0,
     applied: 0,
     screen: 0,
     interview: 0,

@@ -2,6 +2,7 @@ import { TONE_TEXT, type StageTone } from '@/lib/ui/tones'
 
 export const APPLICATION_STATUSES = [
   'saved',
+  'speculative',
   'applied',
   'screen',
   'interview',
@@ -14,6 +15,8 @@ export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number]
 
 export const STATUS_LABELS: Record<ApplicationStatus, string> = {
   saved: 'Saved',
+  // A note to a company with no open role (Discovery › Companies › Reach out).
+  speculative: 'Speculative',
   applied: 'Applied',
   screen: 'Screen',
   interview: 'Interview',
@@ -44,6 +47,7 @@ export type BadgeVariant =
 /** Each pipeline stage's tone: badges, kanban columns and charts agree. */
 export const STATUS_TONE: Record<ApplicationStatus, StageTone> = {
   saved: 'saved',
+  speculative: 'applied',
   applied: 'applied',
   screen: 'screen',
   interview: 'interview',
@@ -56,6 +60,7 @@ export const STATUS_BADGE: Record<ApplicationStatus, BadgeVariant> = STATUS_TONE
 
 export const STATUS_ACCENT: Record<ApplicationStatus, string> = {
   saved: TONE_TEXT.saved,
+  speculative: TONE_TEXT.applied,
   applied: TONE_TEXT.applied,
   screen: TONE_TEXT.screen,
   interview: TONE_TEXT.interview,
@@ -66,6 +71,7 @@ export const STATUS_ACCENT: Record<ApplicationStatus, string> = {
 
 export const ACTIVE_STATUSES: readonly ApplicationStatus[] = [
   'saved',
+  'speculative',
   'applied',
   'screen',
   'interview',

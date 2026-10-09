@@ -21,6 +21,7 @@ import type { InterviewStage } from '@/lib/db/queries/stages'
 import type { CallMeta } from './log'
 import type { CompareNarrativeInput, CompareNarrativeResult } from './prompts/compare-narrative'
 import type { ReputationSummaryInput, ReputationSummaryResult } from './prompts/reputation-summary'
+import type { SpeculativeOutreachInput, SpeculativeOutreachResult } from './prompts/speculative-outreach'
 import type { RadarBriefInput, RadarBriefResult } from './prompts/radar-brief'
 import type {
   LinkedInPostInput,
@@ -212,6 +213,10 @@ export interface AIProvider {
   // Company reputation — on-demand draft; the caller drops claims whose
   // cites are not real signal ids and the user confirms before saving.
   summarizeReputation(input: ReputationSummaryInput, meta?: CallMeta): Promise<ReputationSummaryResult>
+  // Company discovery "Reach out" — optional AI rewrite of the speculative
+  // note; lib/company-discovery/outreach.ts keeps it only if it passes the
+  // fact lock, else the deterministic template is used.
+  draftSpeculativeOutreach?(input: SpeculativeOutreachInput, meta?: CallMeta): Promise<SpeculativeOutreachResult>
   // Compare with my current job — on-demand narrative over facts lee
   // computed; the caller drops uncited claims and invented figures, and the
   // user confirms before saving.

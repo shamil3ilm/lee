@@ -20,7 +20,8 @@ export interface FunnelCounts {
  * "saved" applications haven't entered the response funnel yet.
  */
 export function buildFunnelCounts(
-  byStatus: Record<ApplicationStatus, number>,
+  // "speculative" (a note to a company with no opening) is outside the response funnel, like "saved".
+  byStatus: Record<Exclude<ApplicationStatus, 'speculative'>, number> & Partial<Record<'speculative', number>>,
 ): FunnelCounts {
   const applied = byStatus.applied + byStatus.screen + byStatus.interview + byStatus.offer
   const screen = byStatus.screen + byStatus.interview + byStatus.offer

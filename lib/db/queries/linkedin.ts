@@ -98,6 +98,26 @@ export async function byCompanyMatch(userId: string, key: string, limit = 5): Pr
   return { count, rows }
 }
 
+/**
+ * Connections per company (normalized key), most first: the warm-intro
+ * signal and the "companies you know people at" source of company
+ * discovery. Counts and the company name only.
+ */
+export async function companyCounts(userId: string, limit = 2_000): Promise<Array<{ key: string; company: string; n: number }>> {
+  const rows = await db
+    .select({
+      key: linkedinConnections.companyKey,
+      company: sql<string>`min(${linkedinConnections.company})`,
+      n: sql<number>`count(*)::int`,
+    })
+    .from(linkedinConnections)
+    .where(and(eq(linkedinConnections.userId, userId), sql`${linkedinConnections.companyKey} <> ''`))
+    .groupBy(linkedinConnections.companyKey)
+    .orderBy(sql`count(*) desc`, linkedinConnections.companyKey)
+    .limit(limit)
+  return rows.map((r) => ({ key: r.key, company: r.company, n: Number(r.n) }))
+}
+
 export async function deleteAllConnections(userId: string): Promise<number> {
   const rows = await db.delete(linkedinConnections).where(eq(linkedinConnections.userId, userId)).returning()
   return rows.length

@@ -4,6 +4,8 @@ import { ROLE_FAMILIES } from '@/lib/discovery/relevance/roles'
 import { SENIORITY_LABELS, SENIORITY_LEVELS } from '@/lib/discovery/relevance/seniority'
 import { REGION_CODES } from '@/lib/discovery/relevance/places'
 import { RegionField } from '@/components/regions/region-field'
+import { PreferredRegionsField } from '@/components/regions/preferred-regions-field'
+import { STAGE_LABELS, STAGES } from '@/lib/company-discovery/types'
 import { WORK_MODE_LABELS, WORK_MODES } from '@/lib/discovery/relevance/work-mode'
 import { NativeSelect } from '@/components/ui/native-select'
 import { CountryPicker } from './country-picker'
@@ -60,6 +62,15 @@ export function TargetSections({ values }: SectionProps) {
         description="Pick a whole region (GCC, India, Kerala) or narrow to cities (Dubai, Kochi). Spellings, IT parks and free zones are matched for you (Cochin, Trivandrum/Technopark, Calicut/Cyberpark, DIFC…)."
       >
         <RegionField name="region" defaultValue={values.regions} label="Target regions" />
+      </PrefsFieldset>
+      <PreferredRegionsField defaultValue={values.preferredRegions} />
+      <PrefsFieldset
+        legend="Company size for company discovery"
+        description="Discovery › Companies ranks these higher. Leave all unticked for no preference."
+      >
+        {STAGES.map((st) => (
+          <ChoiceChip key={st} name="companyStage" value={st} label={STAGE_LABELS[st]} defaultChecked={values.companyStages.includes(st)} />
+        ))}
       </PrefsFieldset>
       <CountryPicker
         name="otherCountries"

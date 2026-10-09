@@ -49,6 +49,8 @@ const registry: Record<string, DiscoveryAdapter> = {
   watch: new WatchAdapter(),
   // Openings the user added from pasted text or links: nothing to poll.
   manual_import: new WatchAdapter('manual_import'),
+  // Company discovery (lib/company-discovery) fills it weekly: nothing to poll.
+  local_companies: new WatchAdapter('local_companies'),
   workingnomads: new WorkingNomadsAdapter(),
   technopark: new TechnoparkAdapter(),
   infopark: new InfoparkAdapter(),

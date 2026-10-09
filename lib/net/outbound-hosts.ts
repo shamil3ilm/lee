@@ -134,7 +134,7 @@ export const OUTBOUND_PARTIES: readonly OutboundParty[] = [
     name: 'GitHub',
     hosts: ['api.github.com', 'raw.githubusercontent.com'],
     sends:
-      'Your GitHub username (to list your public repos); the portfolio profile.json you publish, to your own repository; AI Radar repository searches and READMEs.',
+      'Your GitHub username (to list your public repos); the portfolio profile.json you publish, to your own repository; AI Radar repository searches and READMEs; organisation searches by city for company discovery.',
     group: 'documents',
   },
   // Job sources
@@ -188,6 +188,22 @@ export const OUTBOUND_PARTIES: readonly OutboundParty[] = [
     hosts: [],
     sends:
       'Pages and feeds at URLs you enter (RSS feeds, careers pages, Workday/SuccessFactors/Phenom sites, URLs you import). Fetched by lee’s server; private-network addresses are refused.',
+    group: 'jobs',
+  },
+  {
+    id: 'company-directories',
+    name: 'Company discovery sources (Wikidata Query Service, yc-oss, QSTP directory)',
+    hosts: ['query.wikidata.org', 'yc-oss.github.io', 'qstp.qa'],
+    sends:
+      'Weekly: your target regions as place ids (Wikidata), and plain requests for public company lists. GitHub org searches send city names (see GitHub). No personal data.',
+    group: 'jobs',
+  },
+  {
+    id: 'company-sites',
+    name: 'Company websites (careers-page check)',
+    hosts: [],
+    sends:
+      'The robots.txt, home page and careers page of companies in Discovery › Companies, only where robots.txt allows lee; nothing about you.',
     group: 'jobs',
   },
   // Research and lookups

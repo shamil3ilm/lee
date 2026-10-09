@@ -363,6 +363,41 @@ async function main(): Promise<void> {
     })
   }
 
+  // Local companies (Discovery › Companies): the hidden "Local companies"
+  // source and three synthetic companies with fit chips.
+  const { companyFit } = await import('@/lib/company-discovery/fit')
+  type CompanyEvidence = import('@/lib/company-discovery/types').CompanyEvidence
+  const { fitContextFrom } = await import('@/lib/company-discovery/service')
+  const { searchPrefsFromProfile } = await import('@/lib/discovery/relevance/prefs')
+  const [local] = await db.insert(s.sources).values({ userId, name: 'Local companies', kind: 'local_companies', config: {}, enabled: false }).returning()
+  const fitCtx = fitContextFrom(searchPrefsFromProfile(await db.query.userProfile.findFirst({ where: eq(s.userProfile.userId, userId) })))
+  for (const [i, c] of data.LOCAL_COMPANIES.entries()) {
+    const fit = companyFit({ name: c.name, regionIds: c.regionIds, industry: c.industry, stage: c.stage, atsKind: c.atsKind, careersUrl: c.careersUrl, evidence: JSON.parse(JSON.stringify(c.evidence)) as CompanyEvidence }, fitCtx)
+    await db.insert(s.companyDiscoveries).values({
+      userId,
+      sourceId: local!.id,
+      sourceCompanyId: c.key,
+      raw: {},
+      normalized: { kind: 'company', name: c.name, website: c.website, domain: c.domain },
+      status: 'new',
+      website: c.website,
+      domain: c.domain,
+      regionIds: [...c.regionIds],
+      industry: [...c.industry],
+      sizeBand: c.sizeBand,
+      stage: c.stage,
+      sourceTags: [...c.sourceTags],
+      atsKind: c.atsKind,
+      atsSlug: c.atsSlug,
+      careersUrl: c.careersUrl,
+      evidence: c.evidence,
+      fitScore: fit.score,
+      fitDetail: fit.chips,
+      enrichStatus: 'done',
+      createdAt: ago(i + 1),
+    })
+  }
+
   // Run records (Settings › Background jobs) and persisted events (Settings ›
   // Logs). No idempotency keys, so "Run now" still schedules today's jobs.
   const run = (type: string, userIdOrNull: string | null, daysAgo: number, extra: Partial<typeof s.queueJobs.$inferInsert>) => ({

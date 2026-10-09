@@ -49,6 +49,20 @@ import { db } from '@/lib/db/client'
 import { accounts } from '@/lib/db/schema'
 import { encryptPlaintextAccountTokens } from '@/lib/auth/account-tokens'
 import { decryptToken, isEncrypted } from '@/lib/crypto/token-vault'
+import { refreshFits, runCompanyDiscovery } from '@/lib/company-discovery/service'
+import { enrichPending } from '@/lib/company-discovery/enrich'
+import * as localCompaniesQ from '@/lib/db/queries/localCompanies'
+import * as linkedinQ from '@/lib/db/queries/linkedin'
+import {
+  GITHUB_ORGS_KUWAIT,
+  HOME_WITH_BOARD,
+  QSTP_DIRECTORY,
+  ROBOTS_ALLOW_ALL,
+  TECHNOPARK_PAGE,
+  WIKIDATA_KW,
+  YC_ALL,
+  fakeFetch,
+} from '@/tests/fixtures/company-discovery'
 
 type Check = readonly [name: string, run: () => Promise<unknown>]
 
@@ -164,6 +178,49 @@ async function main(): Promise<void> {
         if (!row || !isEncrypted(row.refresh_token) || decryptToken(row.refresh_token) !== '1//smoke-plain' || row.id_token !== null) {
           throw new Error('tokens not encrypted as expected')
         }
+      },
+    ],
+    // Company discovery (lib/company-discovery): the array-union upsert, the
+    // overlap / jsonb filters, the facet arrays, the fit backfill and the
+    // enrichment writes, all offline (fixture transport).
+    [
+      'companies.run',
+      async () => {
+        await profileQ.upsert(id, { targetRegions: ['kw', 'qa', 'kerala'], discoveryPrefs: { preferredRegions: [{ id: 'kw', level: 'top' }] } as never })
+        await linkedinQ.upsertConnections(id, [{ name: 'Smoke Sample', company: 'Dinar Pay', companyKey: 'dinar pay', position: 'Engineer', connectedOn: null, email: null }])
+        const fetchImpl = fakeFetch([
+          { match: (u) => u.host === 'query.wikidata.org', body: WIKIDATA_KW },
+          { match: (u) => u.host === 'api.github.com', body: GITHUB_ORGS_KUWAIT },
+          { match: (u) => u.host === 'yc-oss.github.io', body: YC_ALL },
+          { match: (u) => u.host === 'technopark.in', body: TECHNOPARK_PAGE },
+          { match: (u) => u.host === 'qstp.qa', body: QSTP_DIRECTORY },
+        ])
+        const r = await runCompanyDiscovery(id, { fetchImpl, limiter: NO_WAIT, githubToken: null, now })
+        if (r.new < 3) throw new Error(`expected companies, got ${JSON.stringify(r)}`)
+        const again = await runCompanyDiscovery(id, { fetchImpl, limiter: NO_WAIT, githubToken: null, now })
+        if (again.new !== 0 || again.updated < 1) throw new Error(`re-run inserted or missed rows: ${JSON.stringify(again)}`)
+      },
+    ],
+    [
+      'companies.list',
+      async () => {
+        const opts = { status: 'new' as const, regionIds: ['kw'], industry: 'payments', hiring: false, warm: true, sourceTag: 'wikidata' }
+        const rows = await localCompaniesQ.listCompanies(id, { ...opts, limit: 25 })
+        await localCompaniesQ.countCompanies(id, { ...opts, stage: 'startup', hiring: true })
+        const f = await localCompaniesQ.facets(id)
+        if (rows.length < 1 || !f.sources.includes('wikidata')) throw new Error('filters or facets returned nothing')
+      },
+    ],
+    ['companies.refreshFits', () => refreshFits(id)],
+    [
+      'companies.enrich',
+      async () => {
+        const fetchImpl = fakeFetch([
+          { match: (u) => u.pathname === '/robots.txt', body: ROBOTS_ALLOW_ALL, type: 'text/plain' },
+          { match: (u) => u.pathname === '/', body: HOME_WITH_BOARD },
+          { match: (u) => u.host === 'api.github.com', body: {} },
+        ])
+        await enrichPending(id, { fetchImpl, limiter: NO_WAIT, limit: 10, countOpenRoles: async () => 2 })
       },
     ],
     ['analytics.sourceFunnel', () => analytics.sourceFunnel(id)],

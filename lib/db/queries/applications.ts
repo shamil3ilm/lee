@@ -6,6 +6,7 @@ export type Application = typeof applications.$inferSelect
 export type NewApplication = typeof applications.$inferInsert
 export type ApplicationStatus =
   | 'saved'
+  | 'speculative'
   | 'applied'
   | 'screen'
   | 'interview'

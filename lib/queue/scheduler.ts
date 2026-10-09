@@ -7,6 +7,7 @@ import { enqueueMany, type EnqueueSpec } from './queue'
 import { applyDefaults } from '@/lib/defaults/apply'
 import { radarSourcesByUser } from '@/lib/radar/schedule'
 import type { RadarSource } from '@/lib/radar/types'
+import { weeklyCompanySpec } from '@/lib/company-discovery/schedule'
 
 export interface ScheduleResult {
   day: string
@@ -60,6 +61,9 @@ export function planUserJobs(
       // A failed source is recorded, not retried; one extra try covers a crash.
       maxAttempts: 2,
     })),
+    // Company discovery (lib/company-discovery): planned daily, keyed per ISO
+    // week, so it runs once a week per user.
+    weeklyCompanySpec(userId, now),
   ]
 }
 

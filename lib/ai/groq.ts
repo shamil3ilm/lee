@@ -69,6 +69,13 @@ import {
   CV_BULLET_REWRITE_PROMPT_VERSION,
 } from './prompts/cv-bullet-rewrite'
 import {
+  buildSpeculativeOutreachPrompt,
+  SPECULATIVE_OUTREACH_PROMPT_VERSION,
+  speculativeOutreachResultSchema,
+  type SpeculativeOutreachInput,
+  type SpeculativeOutreachResult,
+} from './prompts/speculative-outreach'
+import {
   buildReputationSummaryPrompt,
   REPUTATION_SUMMARY_PROMPT_VERSION,
   reputationSummaryResultSchema,
@@ -446,6 +453,15 @@ export class GroqProvider implements AIProvider {
       promptVersion: CV_BULLET_REWRITE_PROMPT_VERSION,
     })
     return bulletRewriteResultSchema.parse(JSON.parse(raw))
+  }
+
+  async draftSpeculativeOutreach(input: SpeculativeOutreachInput, meta: CallMeta = {}): Promise<SpeculativeOutreachResult> {
+    const raw = await this.generate(buildSpeculativeOutreachPrompt(input), {
+      ...meta,
+      kind: 'speculative_outreach',
+      promptVersion: SPECULATIVE_OUTREACH_PROMPT_VERSION,
+    })
+    return speculativeOutreachResultSchema.parse(JSON.parse(raw))
   }
 
   async summarizeReputation(

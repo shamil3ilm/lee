@@ -22,6 +22,9 @@ import { runRadarSource } from '@/lib/radar/run'
 import { runWhatsNewSource } from '@/lib/radar/new/run'
 import { NEW_SOURCES } from '@/lib/radar/new/types'
 import { RADAR_SOURCES } from '@/lib/radar/types'
+import { runCompanyDiscovery } from '@/lib/company-discovery/service'
+import { checkWatchedCareers, enrichPending } from '@/lib/company-discovery/enrich'
+import { enqueueEnrichment } from '@/lib/company-discovery/schedule'
 import { JOB_TYPES } from './job-types'
 import { createRegistry, defineHandler, type HandlerRegistry } from './registry'
 import type { DigestSkipReason, DiscoverySourceSummary } from './run-summary'
@@ -394,6 +397,56 @@ const radarNew = defineHandler({
   },
 })
 
+/**
+ * Weekly company discovery (lib/company-discovery): Wikidata, GitHub orgs,
+ * YC, park directories and the user's connections for the target regions;
+ * then the weekly careers-page change check, then the first enrichment
+ * batch. Non-essential: the weekly run is skipped under the usage throttle,
+ * "Find now" runs regardless.
+ */
+const companyDiscovery = defineHandler({
+  type: JOB_TYPES.companyDiscovery,
+  scope: 'user',
+  payload: z.object({ trigger: z.enum(['weekly', 'manual']).default('weekly') }),
+  // GitHub search at 6.5 s × 6 locations, Wikidata at 2 s per country, YC once.
+  timeoutMs: 150_000,
+  minBudgetMs: 60_000,
+  async run({ job, payload, deadline }): Promise<JobResult> {
+    if (payload.trigger === 'weekly' && (await isThrottled('pause_nonessential'))) {
+      return {
+        metrics: { company_discovery_paused_by_usage: 1 },
+        summary: { kind: 'company-discovery', fetched: 0, new: 0, updated: 0, failed: 0, paused: true },
+      }
+    }
+    const end = Math.min(deadline - 20_000, Date.now() + 120_000)
+    const r = await runCompanyDiscovery(userId(job), { deadline: end })
+    const careers = await checkWatchedCareers(userId(job)).catch(() => ({ checked: 0, changed: 0 }))
+    await enqueueEnrichment(userId(job))
+    return {
+      metrics: { companies_found: r.fetched, companies_new: r.new, company_sources_failed: r.failed, careers_changed: careers.changed },
+      warnings: r.sources.filter((s) => s.error).map((s) => `company source ${s.source}: ${s.error}`),
+      summary: { kind: 'company-discovery', fetched: r.fetched, new: r.new, updated: r.updated, failed: r.failed, careersChanged: careers.changed },
+    }
+  },
+})
+
+/** A few companies' careers pages and job boards (robots.txt first); continues in the next batch. */
+const companyEnrich = defineHandler({
+  type: JOB_TYPES.companyEnrich,
+  scope: 'user',
+  payload: USER_PAYLOAD,
+  timeoutMs: 120_000,
+  minBudgetMs: 30_000,
+  async run({ job, deadline }): Promise<JobResult> {
+    const s = await enrichPending(userId(job), { deadline: Math.min(deadline - 15_000, Date.now() + 100_000) })
+    if (s.remaining > 0 && s.checked > 0) await enqueueEnrichment(userId(job))
+    return {
+      metrics: { companies_enriched: s.checked, company_boards_found: s.boards, company_robots_blocked: s.blocked },
+      summary: { kind: 'company-enrich', checked: s.checked, careers: s.careers, boards: s.boards, blocked: s.blocked, remaining: s.remaining },
+    }
+  },
+})
+
 export const appHandlers = [
   reminders,
   followups,
@@ -409,6 +462,8 @@ export const appHandlers = [
   shortlist,
   radarSource,
   radarNew,
+  companyDiscovery,
+  companyEnrich,
 ] as const
 
 export const appRegistry: HandlerRegistry = createRegistry(appHandlers)

@@ -22,7 +22,8 @@ import { businessDaysBetween, cadenceFor, isGccAgencyPosting, stepDue, stepOfDra
  */
 
 // Statuses where a follow-up nudge still makes sense.
-const ACTIVE_STATUSES = ['applied', 'screen'] as const
+// 'speculative': a note sent to a company with no open role (same cadence).
+const ACTIVE_STATUSES = ['speculative', 'applied', 'screen'] as const
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 const RECENT_EMAIL_LOOKBACK_MS = 3 * MS_PER_DAY

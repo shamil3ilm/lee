@@ -18,6 +18,8 @@ export const JOB_TYPES = {
   shortlist: 'shortlist:user',
   radarSource: 'radar-source:user+source',
   radarNew: 'radar-new:source',
+  companyDiscovery: 'company-discovery:user',
+  companyEnrich: 'company-enrich:user',
 } as const
 
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES]
@@ -53,6 +55,9 @@ export const JOB_PRIORITY: Readonly<Record<JobType, number>> = {
   [JOB_TYPES.radarSource]: 65,
   // What's new: one shared fetch per source for every account, before the per-user radar jobs.
   [JOB_TYPES.radarNew]: 64,
+  // Weekly local-company discovery and its bounded enrichment: last, non-essential.
+  [JOB_TYPES.companyDiscovery]: 72,
+  [JOB_TYPES.companyEnrich]: 74,
 }
 
 /** Short human labels for Settings › Background jobs (no internals). */
@@ -71,6 +76,8 @@ export const JOB_LABELS: Readonly<Record<string, string>> = {
   [JOB_TYPES.shortlist]: 'Daily shortlist',
   [JOB_TYPES.radarSource]: 'AI Radar source',
   [JOB_TYPES.radarNew]: "AI Radar what's new (shared)",
+  [JOB_TYPES.companyDiscovery]: 'Company discovery (weekly)',
+  [JOB_TYPES.companyEnrich]: 'Company careers check',
 }
 
 export function jobLabel(type: string): string {
@@ -112,4 +119,13 @@ export const jobKeys = {
   radarSource: (userId: string, source: string, day: string) => `radar-source:${userId}:${source}:${day}`,
   /** Radar › Refresh now: at most once per UTC hour per source. */
   radarSourceManual: (userId: string, source: string, hour: string) => `radar-source:${userId}:${source}:now:${hour}`,
+  /** Weekly: once per ISO week (`2026-W41`) per user. */
+  companyDiscovery: (userId: string, isoWeek: string) => `company-discovery:${userId}:${isoWeek}`,
+  /** Discovery › Companies › Find now: at most once per UTC day. */
+  companyDiscoveryManual: (userId: string, day: string) => `company-discovery:${userId}:now:${day}`,
+  /** Enrichment batches: numbered within the week, so a week has at most COMPANY_ENRICH_BATCHES. */
+  companyEnrich: (userId: string, isoWeek: string, n: number) => `company-enrich:${userId}:${isoWeek}:${n}`,
 } as const
+
+/** Enrichment jobs per user per ISO week (each checks a few companies). */
+export const COMPANY_ENRICH_BATCHES = 10
