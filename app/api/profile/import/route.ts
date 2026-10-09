@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { importProfile } from '@/lib/profile/importer'
+import { parseCvImport } from '@/lib/profile/importer'
+import { profileEditableInLee } from '@/lib/profile/edit-mode'
 import { getAIProviderForUser } from '@/lib/ai'
 import { withAiUsage } from '@/lib/ai/usage'
 import { logger } from '@/lib/logger'
 
+// Parses an uploaded CV / profile markdown into a REVIEW (nothing is saved
+// here): the client shows the items and applies the ticked ones with
+// applyCvImportAction (app/(authed)/settings/profile/cv-import-actions.ts).
 // Regular route handler for file uploads. Server Actions re-encode FormData
 // through a closure protocol that strips file bytes; a plain POST endpoint
 // receives multipart bodies verbatim. Client POSTs with `fetch` + FormData.
@@ -62,11 +66,9 @@ export async function POST(req: Request): Promise<NextResponse> {
     }
 
     const ai = await getAIProviderForUser(userId)
-    const { usage } = await withAiUsage({ userId }, () =>
-      importProfile({ userId, cvText, profileMd, ai }),
-    )
+    const { result, usage } = await withAiUsage({ userId }, () => parseCvImport({ userId, cvText, profileMd, ai }))
 
-    return NextResponse.json({ success: true, usage })
+    return NextResponse.json({ success: true, usage, ...result, editable: profileEditableInLee() })
   } catch (err) {
     logger.error('importProfile route failed', {
       err: err instanceof Error ? err.message : String(err),

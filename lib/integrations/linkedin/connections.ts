@@ -30,8 +30,13 @@ export function toConnectionInputs(rows: readonly LinkedInConnectionRow[], inclu
   return [...byKey.values()]
 }
 
-export async function importConnections(userId: string, rows: readonly LinkedInConnectionRow[], includeEmails: boolean): Promise<number> {
-  return linkedinQ.upsertConnections(userId, toConnectionInputs(rows, includeEmails))
+export async function importConnections(
+  userId: string,
+  rows: readonly LinkedInConnectionRow[],
+  includeEmails: boolean,
+  importBatchId: string | null = null,
+): Promise<number> {
+  return linkedinQ.upsertConnections(userId, toConnectionInputs(rows, includeEmails), importBatchId)
 }
 
 export interface ReferralHint {

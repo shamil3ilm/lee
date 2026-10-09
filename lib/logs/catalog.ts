@@ -75,6 +75,26 @@ export const EVENT_CATALOG: Readonly<Record<string, EventSpec>> = {
     message: (c) => `${s(c, 'jobLabel') || 'Job'} failed (attempt ${n(c, 'attempt')}): ${s(c, 'err')}`,
   },
   source_first_poll_queued: { category: 'source', persist: true, strings: ['source'], message: () => 'First poll queued' },
+  // Profile imports, undo and reset (lib/import, lib/reset). Counts and the
+  // import source only — never names, skills or page text.
+  profile_import_applied: {
+    category: 'app',
+    persist: true,
+    strings: ['source', 'mode'],
+    message: (c) => `Profile import (${s(c, 'source') || '?'}) ${s(c, 'mode') === 'saved' ? 'saved' : 'suggested for the portfolio'}`,
+  },
+  import_undone: {
+    category: 'app',
+    persist: true,
+    strings: ['source'],
+    message: (c) =>
+      `Undid a ${s(c, 'source') || ''} import: ${plural(n(c, 'removed'), 'item')} removed, ${n(c, 'restored')} restored${n(c, 'connections') > 0 ? `, ${plural(n(c, 'connections'), 'connection')} removed` : ''}`,
+  },
+  profile_reset: {
+    category: 'app',
+    persist: true,
+    message: (c) => `Profile details reset (${plural(Object.values(c).filter((v) => typeof v === 'number').length, 'part')})`,
+  },
   // Error screens (app/error.tsx and friends report here via /api/client-errors)
   client_render_error: {
     category: 'app',

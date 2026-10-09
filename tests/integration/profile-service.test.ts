@@ -5,7 +5,7 @@ import {
   getProfile,
   saveProfile,
 } from '@/lib/profile/service'
-import { importProfile } from '@/lib/profile/importer'
+import { parseCvImport } from '@/lib/profile/importer'
 import { FixtureAIProvider } from '@/lib/ai/fixtures'
 import { makeUser } from '@/tests/factories'
 
@@ -54,9 +54,10 @@ describe('getProfile', () => {
   })
 })
 
-describe('importProfile', () => {
-  it('parses via ai and creates profile with seeded location_prefs', async () => {
+describe('parseCvImport', () => {
+  it('parses via ai into review items and saves nothing', async () => {
     const u = await makeUser()
+    await saveProfile(u.id, { headline: 'Engineer', skills: ['typescript'] })
     const ai = new FixtureAIProvider({
       parseProfile: () => ({
         headline: 'Senior Backend Engineer',
@@ -70,12 +71,17 @@ describe('importProfile', () => {
       }),
     })
 
-    const p = await importProfile({ userId: u.id, cvText: '...cv...', ai })
-    expect(p.headline).toBe('Senior Backend Engineer')
-    expect(p.skills).toEqual(['typescript', 'postgres'])
-    expect(p.yearsExperience).toBe(10)
-    // Default seeds applied since this is the first save.
-    expect(p.locationPrefs).toEqual(DEFAULT_LOCATION_PREFS)
-    expect(p.benefitPrefs).toEqual(DEFAULT_BENEFIT_PREFS)
+    const { proposal, items } = await parseCvImport({ userId: u.id, cvText: '...cv...', ai })
+    expect(proposal.yearsExperience).toBe(10)
+    const by = (label: string) => items.find((i) => i.label === label)
+    expect(by('Headline')).toMatchObject({ status: 'update', isPublic: true })
+    expect(by('typescript')).toMatchObject({ status: 'duplicate' })
+    expect(by('postgres')).toMatchObject({ status: 'new', hasReadiness: true })
+    expect(by('fintech')).toMatchObject({ section: 'matching', isPublic: false })
+    const p = await getProfile(u.id)
+    expect(p?.headline).toBe('Engineer')
+    expect(p?.skills).toEqual(['typescript'])
+    expect(p?.locationPrefs).toEqual(DEFAULT_LOCATION_PREFS)
+    expect(p?.benefitPrefs).toEqual(DEFAULT_BENEFIT_PREFS)
   })
 })

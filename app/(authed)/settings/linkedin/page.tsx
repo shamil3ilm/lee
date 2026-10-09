@@ -5,6 +5,7 @@ import { listComposerSources } from '@/lib/integrations/linkedin/composer'
 import { loadOptimizer } from '@/lib/integrations/linkedin/optimizer-service'
 import { getLinkedInStatus } from '@/lib/integrations/linkedin/service'
 import { getResumeProfile } from '@/lib/resume/service'
+import { profileEditableInLee } from '@/lib/profile/edit-mode'
 import { PageHeader } from '@/components/page-header'
 import { SECTION_ANCHOR, SectionNav } from '@/components/section-nav'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -55,7 +56,7 @@ export default async function LinkedInSettingsPage() {
           <CardTitle className="text-base">Import your LinkedIn data</CardTitle>
         </CardHeader>
         <CardContent>
-          <ExportImport profile={profile} />
+          <ExportImport profile={profile} editable={profileEditableInLee()} />
         </CardContent>
       </Card>
       <Card id="linkedin-hiring-posts" className={SECTION_ANCHOR}>

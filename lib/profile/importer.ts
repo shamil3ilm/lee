@@ -1,33 +1,39 @@
 import type { AIProvider } from '@/lib/ai'
-import type { NewUserProfile, UserProfile } from '@/lib/db/queries/profile'
-import { saveProfile } from './service'
+import * as profileQ from '@/lib/db/queries/profile'
+import type { ImportItem } from '@/lib/import/types'
+import { getResumeProfile } from '@/lib/resume/service'
+import { buildCvImportItems, cvProposalFrom, type CvImportContext, type CvProposal } from './cv-import'
 
-export interface ImportProfileArgs {
+/**
+ * SERVER-ONLY. CV / profile-markdown import, step 1: parse through the AI
+ * provider into a proposal and review items. Nothing is saved; the user
+ * confirms items and applyCvImportAction applies them (lib/profile/cv-import.ts).
+ */
+
+export interface ParseCvImportArgs {
   userId: string
   cvText?: string
   profileMd?: string
   ai: AIProvider
 }
 
-/**
- * Parse a CV / profile markdown blob through the AI provider and persist the
- * result via `saveProfile`. First-time saves get the default location/benefit
- * seeds applied by `saveProfile`.
- */
-export async function importProfile(args: ImportProfileArgs): Promise<UserProfile> {
-  const { userId, cvText, profileMd, ai } = args
-  const parsed = await ai.parseProfile({ cvText, profileMd })
-
-  const patch: Partial<NewUserProfile> = {
-    headline: parsed.headline ?? null,
-    summaryMd: parsed.summary_md ?? null,
-    skills: parsed.skills,
-    industries: parsed.industries,
-    roleTypes: parsed.role_types,
-    seniority: parsed.seniority ?? null,
-    yearsExperience: parsed.years_experience ?? null,
-    stackWeights: parsed.stack_weights,
+export async function cvImportContext(userId: string): Promise<CvImportContext> {
+  const [row, { profile: resume }] = await Promise.all([profileQ.get(userId), getResumeProfile(userId)])
+  return {
+    headline: row?.headline ?? null,
+    summaryMd: row?.summaryMd ?? null,
+    skills: row?.skills ?? [],
+    industries: row?.industries ?? [],
+    roleTypes: row?.roleTypes ?? [],
+    seniority: row?.seniority ?? null,
+    yearsExperience: row?.yearsExperience ?? null,
+    stackWeights: (row?.stackWeights ?? {}) as Record<string, number>,
+    resume,
   }
+}
 
-  return saveProfile(userId, patch)
+export async function parseCvImport(args: ParseCvImportArgs): Promise<{ proposal: CvProposal; items: ImportItem[] }> {
+  const parsed = await args.ai.parseProfile({ cvText: args.cvText, profileMd: args.profileMd })
+  const proposal = cvProposalFrom(parsed)
+  return { proposal, items: buildCvImportItems(proposal, await cvImportContext(args.userId)) }
 }

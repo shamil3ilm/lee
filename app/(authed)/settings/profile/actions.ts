@@ -5,9 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { refreshMatchesAfterSave } from '@/lib/discovery/match/enqueue'
 import { requireUserId } from '@/lib/auth/require-session'
 import { saveProfile } from '@/lib/profile/service'
-import { importProfile } from '@/lib/profile/importer'
-import { getAIProviderForUser, findModel } from '@/lib/ai'
-import { withAiUsage } from '@/lib/ai/usage'
+import { findModel } from '@/lib/ai'
 import { logger } from '@/lib/logger'
 import type { NewUserProfile } from '@/lib/db/queries/profile'
 
@@ -99,64 +97,6 @@ export async function saveProfileAction(formData: FormData): Promise<ActionResul
       err: err instanceof Error ? err.message : String(err),
     })
     return { error: 'Could not save profile.' }
-  }
-}
-
-async function extractTextFromFile(file: File): Promise<string> {
-  const name = file.name.toLowerCase()
-  const bytes = new Uint8Array(await file.arrayBuffer())
-
-  if (name.endsWith('.pdf')) {
-    // unpdf is designed for serverless / edge — no fs, no worker file, no
-    // module-load-time file reads (pdf-parse's failure mode on Vercel).
-    const { extractText, getDocumentProxy } = await import('unpdf')
-    const doc = await getDocumentProxy(bytes)
-    const { text } = await extractText(doc, { mergePages: true })
-    return Array.isArray(text) ? text.join('\n') : (text as string)
-  }
-  if (name.endsWith('.docx')) {
-    const mod = await import('mammoth')
-    const result = await mod.extractRawText({ buffer: Buffer.from(bytes) })
-    return result.value
-  }
-  // .md / .txt / anything else — treat as utf-8 text
-  return new TextDecoder('utf-8').decode(bytes)
-}
-
-export async function importProfileAction(
-  _prev: ActionResult | null,
-  formData: FormData,
-): Promise<ActionResult> {
-  try {
-    const userId = await requireUserId()
-
-    const cvFile = formData.get('cv')
-    const mdFile = formData.get('profile_md')
-
-    let cvText: string | undefined
-    let profileMd: string | undefined
-
-    if (cvFile instanceof File && cvFile.size > 0) {
-      cvText = await extractTextFromFile(cvFile)
-    }
-    if (mdFile instanceof File && mdFile.size > 0) {
-      profileMd = await extractTextFromFile(mdFile)
-    }
-
-    if (!cvText && !profileMd) {
-      return { error: 'Provide a CV or profile markdown file to import.' }
-    }
-
-    const ai = await getAIProviderForUser(userId)
-    // Scoped so the parse call's log row is attributed to the user.
-    await withAiUsage({ userId }, () => importProfile({ userId, cvText, profileMd, ai }))
-    revalidatePath('/settings/profile')
-    return { success: true }
-  } catch (err) {
-    logger.error('importProfile failed', {
-      err: err instanceof Error ? err.message : String(err),
-    })
-    return { error: 'Could not import profile.' }
   }
 }
 

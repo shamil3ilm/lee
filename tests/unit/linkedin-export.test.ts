@@ -3,7 +3,9 @@ import { strToU8, zipSync } from 'fflate'
 import { parseCsv, readTable } from '@/lib/integrations/linkedin/export/csv'
 import { linkedinDate, linkedinExportSchema, parseLinkedInExport } from '@/lib/integrations/linkedin/export/parse'
 import { readLinkedInExportZip } from '@/lib/integrations/linkedin/export/unzip'
-import { applyImportSelection, buildImportSuggestions, bulletLines } from '@/lib/integrations/linkedin/review'
+import { buildImportItems, bulletLines, intentionName } from '@/lib/integrations/linkedin/review'
+import { applyLinkedInSelection } from '@/lib/integrations/linkedin/review-apply'
+import { initialSelection } from '@/lib/import/selection'
 import { companyKey } from '@/lib/integrations/linkedin/company-key'
 import { toConnectionInputs } from '@/lib/integrations/linkedin/connections'
 import { referralDraft } from '@/lib/integrations/linkedin/referral-draft'
@@ -83,41 +85,70 @@ describe('import review', () => {
   const files = Object.fromEntries(Object.entries(EXPORT_CSVS).map(([k, v]) => [k.toLowerCase(), v]))
   const data = parseLinkedInExport(files)
 
-  it('marks what the master profile already has as duplicates', () => {
-    const s = buildImportSuggestions(syntheticProfile(), data)
+  it('marks each item new, duplicate or update against the master profile', () => {
+    const s = buildImportItems(syntheticProfile(), data)
     const status = (label: string) => s.find((x) => x.label === label)?.status
-    expect(status('Backend Engineer · PayFlow')).toBe('duplicate')
+    expect(['duplicate', 'update']).toContain(status('Backend Engineer · PayFlow'))
     expect(status('Software Engineer · Gulf Fintech')).toBe('new')
     expect(status('Go')).toBe('duplicate')
     expect(status('Laravel')).toBe('new')
-    expect(status('Example Institute of Technology')).toBe('duplicate')
-    expect(status('Open Ledger')).toBe('duplicate')
-    expect(status('AWS Certified Developer')).toBe('duplicate')
+    expect(status('Open Ledger')).not.toBe('new')
     expect(status('CKA')).toBe('new')
+    // Defaults: new ticked, duplicates and updates unticked; nothing "mine".
+    const sel = initialSelection(s)
+    expect(sel.picked).toEqual(s.filter((x) => x.status === 'new').map((x) => x.key))
+    expect(sel.mine).toEqual([])
+    // Readiness only on new items that carry it.
+    expect(s.filter((x) => x.hasReadiness).every((x) => x.status === 'new' && ['skills', 'projects', 'work'].includes(x.section))).toBe(true)
   })
 
-  it('adds only ticked new items; new readiness items are not ready unless marked mine; duplicates never added', () => {
+  it('shows the differing fields of an update', () => {
     const profile = syntheticProfile()
-    const s = buildImportSuggestions(profile, data)
+    const moved = { ...profile, certificates: profile.certificates.map((c) => (c.name === 'AWS Certified Developer' ? { ...c, issuer: 'Someone else' } : c)) }
+    const item = buildImportItems(moved, data).find((x) => x.label === 'AWS Certified Developer')!
+    expect(item.status).toBe('update')
+    expect(item.diff).toContainEqual(expect.objectContaining({ field: 'issuer', mine: 'Someone else' }))
+  })
+
+  it('adds only ticked new items with provenance; learning unless mine; updates take only the diff; duplicates never added', () => {
+    const profile = syntheticProfile()
+    const moved = { ...profile, certificates: profile.certificates.map((c) => (c.name === 'AWS Certified Developer' ? { ...c, issuer: 'Someone else' } : c)) }
+    const s = buildImportItems(moved, data)
     const key = (label: string) => s.find((x) => x.label === label)!.key
     let n = 0
-    const next = applyImportSelection(
-      profile,
+    const prov = { source: 'linkedin' as const, importedAt: '2026-10-09T08:00:00.000Z' }
+    const r = applyLinkedInSelection(
+      moved,
       data,
-      { keys: [key('Laravel'), key('Kafka'), key('ZATCA Toolkit'), key('Software Engineer · Gulf Fintech'), key('Go'), key('Malayalam')], own: [key('Kafka')] },
+      s,
+      { picked: [key('Laravel'), key('Kafka'), key('ZATCA Toolkit'), key('Software Engineer · Gulf Fintech'), key('Go'), key('Malayalam'), key('AWS Certified Developer')], mine: [key('Kafka')] },
+      prov,
       () => `id-${++n}`,
     )
+    const next = r.profile
     const imported = next.skills.find((g) => g.name === 'From LinkedIn')!
-    expect(imported.skills.map((x) => [x.name, x.interviewReady])).toEqual([
-      ['Laravel', false],
-      ['Kafka', true],
+    expect(imported.skills.map((x) => [x.name, x.depth, x.interviewReady, x.source, x.importedAt])).toEqual([
+      ['Laravel', 'learning', false, 'linkedin', prov.importedAt],
+      ['Kafka', 'own', true, 'linkedin', prov.importedAt],
     ])
-    expect(next.projects.find((p) => p.name === 'ZATCA Toolkit')).toMatchObject({ interviewReady: false, domainReady: false, startDate: '2024-01' })
-    expect(next.work.at(-1)).toMatchObject({ name: 'Gulf Fintech', position: 'Software Engineer', startDate: '2017-01', endDate: '2017-12' })
+    expect(next.projects.find((p) => p.name === 'ZATCA Toolkit')).toMatchObject({ depth: 'learning', interviewReady: false, domainReady: false, startDate: '2024-01' })
+    expect(next.work.at(-1)).toMatchObject({ name: 'Gulf Fintech', position: 'Software Engineer', startDate: '2017-01', endDate: '2017-12', source: 'linkedin' })
     expect(next.work).toHaveLength(profile.work.length + 1)
     expect(next.skills.flatMap((g) => g.skills).filter((x) => x.name === 'Go')).toHaveLength(1)
     expect(next.languages.at(-1)).toMatchObject({ language: 'Malayalam', fluency: 'native' })
-    expect(next.certificates).toEqual(profile.certificates)
+    const aws = next.certificates.find((c) => c.name === 'AWS Certified Developer')!
+    expect(aws.issuer).not.toBe('Someone else')
+    expect(aws.id).toBe(moved.certificates.find((c) => c.name === 'AWS Certified Developer')!.id)
+    expect(r.updated).toEqual([expect.objectContaining({ section: 'certificates', before: expect.objectContaining({ issuer: 'Someone else' }) })])
+    expect(r.counts).toMatchObject({ skills: 2, projects: 1, work: 1, languages: 1, certificatesUpdated: 1 })
+  })
+
+  it('names readiness intentions by item', () => {
+    const s = buildImportItems(syntheticProfile(), data)
+    const work = s.find((x) => x.label === 'Software Engineer · Gulf Fintech')!
+    expect(intentionName(data, work.key)).toEqual({ section: 'work', name: 'Gulf Fintech | Software Engineer' })
+    expect(intentionName(data, s.find((x) => x.label === 'Laravel')!.key)).toEqual({ section: 'skills', name: 'Laravel' })
+    expect(intentionName(data, 'languages:0')).toBeNull()
   })
 
   it('turns bullet lines into highlights and the rest into the summary', () => {

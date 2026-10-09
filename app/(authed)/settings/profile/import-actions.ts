@@ -9,16 +9,16 @@ import * as profileQ from '@/lib/db/queries/profile'
 import { fetchPage } from '@/lib/ingest/fetch'
 import { saveProfile } from '@/lib/profile/service'
 import { MAX_LINKS, profileLinkSchema } from '@/lib/profile/links'
-import {
-  applyImport,
-  extractPageSections,
-  IMPORT_SECTIONS,
-  proposeImport,
-  type ImportProposal,
-  type ImportSection,
-} from '@/lib/profile/url-import'
-import { queueRelevanceReevaluation } from '@/lib/discovery/relevance/enqueue'
-import { reevaluateRelevance } from '@/lib/discovery/relevance/service'
+import { detectTerms, extractPageSections, readLinkedProfile } from '@/lib/profile/url-import'
+import { buildUrlImportItems, pageSkillGroup, proposalFrom, urlProposalSchema, type UrlImportContext, type UrlProposal } from '@/lib/profile/url-import-review'
+import { applyUrlSelection } from '@/lib/profile/url-import-apply'
+import { profileEditableInLee } from '@/lib/profile/edit-mode'
+import { readProfileLinks } from '@/lib/profile/links'
+import { cleanSelection } from '@/lib/import/selection'
+import { commitImport, portfolioProfileUrl } from '@/lib/import/service'
+import { suggestionSnippets, type ImportApplyResult } from '@/lib/import/result'
+import type { ImportItem } from '@/lib/import/types'
+import { getResumeProfile, ResumeValidationError } from '@/lib/resume/service'
 import { logger } from '@/lib/logger'
 
 export type LinksResult = { success: true } | { error: string }
@@ -39,18 +39,30 @@ export async function saveProfileLinksAction(links: unknown): Promise<LinksResul
 }
 
 export type PreviewResult =
-  | { success: true; proposal: ImportProposal; aiUsed: boolean }
+  | { success: true; proposal: UrlProposal; items: ImportItem[]; aiUsed: boolean; editable: boolean }
   | { error: string }
 
 /** Text sent to the AI parse (the same parse as CV import). */
 const AI_TEXT_CAP = 8_000
 
+async function importContext(userId: string): Promise<UrlImportContext> {
+  const [row, { profile: resume }] = await Promise.all([profileQ.get(userId), getResumeProfile(userId)])
+  return {
+    headline: row?.headline ?? null,
+    summaryMd: row?.summaryMd ?? null,
+    skills: row?.skills ?? [],
+    resume,
+    links: readProfileLinks(row?.links),
+    linked: readLinkedProfile(row?.linkedProfile),
+  }
+}
+
 /**
  * Fetch a public résumé/portfolio page server-side (SSRF-safe: https only,
  * no private hosts, 2 MB cap, 10 s timeout, every redirect re-checked),
- * strip scripts and styles, and propose per-section changes. Nothing is
- * saved here. The AI parse is optional: without a key the proposal uses
- * the deterministic sections and domain terms only.
+ * strip scripts and styles, and propose items to review. Nothing is saved
+ * here. The AI parse is optional: without a key the proposal uses the
+ * deterministic sections and domain terms only.
  */
 export async function previewUrlImportAction(rawUrl: string): Promise<PreviewResult> {
   try {
@@ -75,45 +87,48 @@ export async function previewUrlImportAction(rawUrl: string): Promise<PreviewRes
     } catch (err) {
       logger.warn('url_import_ai_skipped', { err: err instanceof Error ? err.message : String(err) })
     }
-    const profile = await profileQ.get(userId)
-    return { success: true, proposal: proposeImport({ url: rawUrl.trim(), profile, sections, parsed }), aiUsed: parsed !== null }
+    const proposal = proposalFrom(rawUrl.trim(), sections, parsed, detectTerms(sections.text))
+    const items = buildUrlImportItems(proposal, await importContext(userId))
+    return { success: true, proposal, items, aiUsed: parsed !== null, editable: profileEditableInLee() }
   } catch (err) {
     logger.error('previewUrlImport failed', { err: err instanceof Error ? err.message : String(err) })
     return { error: 'Could not import that page.' }
   }
 }
 
-const item = z.string().max(300)
-const proposalSchema = z.object({
-  url: z.string().url().max(500),
-  skills: z.object({ add: z.array(z.string().max(80)).max(40), current: z.array(z.string()).max(200) }),
-  headline: z.object({ from: z.string().nullable(), to: z.string().max(300) }).nullable(),
-  summary: z.object({ from: z.string().nullable(), to: z.string().max(4_000) }).nullable(),
-  experience: z.object({ add: z.array(item).max(40) }),
-  projects: z.object({ add: z.array(item).max(40) }),
-  metrics: z.object({ add: z.array(item).max(40) }),
-  text: z.string().max(12_000),
-})
-
-/** Save the sections the user ticked; the rest of the proposal is discarded. */
-export async function applyUrlImportAction(proposal: unknown, sections: unknown): Promise<LinksResult> {
+/**
+ * Apply the ticked items. The items are rebuilt here from the proposal and
+ * the current profile (never trusted from the client). Public facts are
+ * written only while profile editing in lee is on; otherwise they come back
+ * as suggestions for the portfolio and the chosen readiness is kept.
+ */
+export async function applyUrlImportAction(proposal: unknown, selection: unknown): Promise<ImportApplyResult> {
   try {
     const userId = await requireUserId()
-    const p = proposalSchema.safeParse(proposal)
-    const s = z.array(z.enum(IMPORT_SECTIONS)).max(IMPORT_SECTIONS.length).safeParse(sections)
-    if (!p.success || !s.success) return { error: 'Nothing to save.' }
-    const profile = await profileQ.get(userId)
-    const patch = applyImport(profile, p.data, new Set<ImportSection>(s.data))
-    if (Object.keys(patch).length === 0) return { success: true }
-    await saveProfile(userId, patch)
-    // New skills can change relevance (e.g. infrastructure experience).
-    const r = await reevaluateRelevance(userId, { deadline: Date.now() + 3_000 })
-    if (r.remaining) await queueRelevanceReevaluation(userId)
+    const p = urlProposalSchema.safeParse(proposal)
+    if (!p.success) return { ok: false, error: 'Nothing to save.' }
+    const ctx = await importContext(userId)
+    const items = buildUrlImportItems(p.data, ctx)
+    const sel = cleanSelection(items, selection)
+    if (!sel || sel.picked.length === 0) return { ok: false, error: 'Tick at least one item.' }
+    const editable = profileEditableInLee()
+    const importedAt = new Date()
+    const r = applyUrlSelection(ctx, p.data, items, sel, { source: 'url', importedAt: importedAt.toISOString() }, editable)
+    const batch = await commitImport(userId, { source: 'url', editable, importedAt, ...r })
     revalidatePath('/settings/profile')
+    revalidatePath('/settings/resume')
     revalidatePath('/discoveries')
-    return { success: true }
+    return {
+      ok: true,
+      mode: batch.mode === 'saved' ? 'saved' : 'suggested',
+      batchId: batch.id,
+      saved: editable ? sel.picked.length : sel.picked.filter((k) => items.some((i) => i.key === k && !i.isPublic)).length,
+      snippets: editable ? [] : suggestionSnippets(items, sel, pageSkillGroup(p.data.url)),
+      profileUrl: editable ? null : await portfolioProfileUrl(userId),
+    }
   } catch (err) {
+    if (err instanceof ResumeValidationError) return { ok: false, error: err.message }
     logger.error('applyUrlImport failed', { err: err instanceof Error ? err.message : String(err) })
-    return { error: 'Could not save the imported sections.' }
+    return { ok: false, error: 'Could not save the imported items.' }
   }
 }

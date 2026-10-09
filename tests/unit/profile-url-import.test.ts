@@ -1,13 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import {
-  applyImport,
-  detectTerms,
-  extractPageSections,
-  proposeImport,
-  readLinkedProfile,
-} from '@/lib/profile/url-import'
+import { detectTerms, extractPageSections, readLinkedProfile } from '@/lib/profile/url-import'
+import { buildUrlImportItems, proposalFrom, type UrlImportContext } from '@/lib/profile/url-import-review'
+import { applyUrlSelection } from '@/lib/profile/url-import-apply'
+import { emptyResumeProfile } from '@/lib/resume/types'
 import { suggestRoles } from '@/lib/discovery/relevance/suggest'
 import { readProfileLinks, suggestLinksForJob, type ProfileLink } from '@/lib/profile/links'
 
@@ -49,43 +46,89 @@ describe('profile import from a public page', () => {
     }
   })
 
-  it('proposes only what is new, section by section', () => {
-    const p = proposeImport({
-      url: 'https://alex.example/resume',
-      profile: { skills: ['PHP', 'Laravel'], headline: 'Developer', summaryMd: null, linkedProfile: null },
-      sections,
-      parsed: { headline: 'Backend developer (payments)', summary_md: null, skills: ['PHP', 'Laravel', 'MySQL'], industries: [], role_types: [], stack_weights: {} },
-    })
-    expect(p.skills.add).toContain('MySQL')
-    expect(p.skills.add).not.toContain('PHP')
-    expect(p.skills.add.map((s) => s.toLowerCase())).not.toContain('laravel')
-    expect(p.headline).toEqual({ from: 'Developer', to: 'Backend developer (payments)' })
-    expect(p.summary).toBeNull()
-    expect(p.experience.add).toHaveLength(4)
+  it('finds GitHub and LinkedIn profile links, never mailto', () => {
+    expect(sections.links).toEqual([
+      { url: 'https://github.com/alex-example', kind: 'github' },
+      { url: 'https://www.linkedin.com/in/alex-example', kind: 'linkedin' },
+    ])
   })
 
-  it('saves only the accepted sections', () => {
-    const p = proposeImport({ url: 'https://alex.example/resume', profile: null, sections, parsed: null })
-    const now = new Date('2026-10-02T00:00:00Z')
-    const patch = applyImport({ skills: ['PHP'], linkedProfile: null }, p, new Set(['experience', 'metrics'] as const), now)
-    expect(patch.skills).toBeUndefined()
-    expect(patch.headline).toBeUndefined()
-    const linked = readLinkedProfile(patch.linkedProfile)!
-    expect(linked.experience).toHaveLength(4)
-    expect(linked.projects).toEqual([])
-    expect(linked.metrics).toHaveLength(2)
-    expect(linked.fetchedAt).toBe(now.toISOString())
-    expect(applyImport(null, p, new Set())).toEqual({})
+  const parsed = { headline: 'Backend developer (payments)', summary_md: null, skills: ['PHP', 'Laravel', 'MySQL'], industries: [], role_types: [], stack_weights: {} }
+  const ctx = (over: Partial<UrlImportContext> = {}): UrlImportContext => ({
+    headline: 'Developer',
+    summaryMd: null,
+    skills: ['PHP', 'Laravel'],
+    resume: emptyResumeProfile(),
+    links: [{ id: 'gh', label: 'GitHub', url: 'https://github.com/someone-else', kind: 'github' }],
+    linked: null,
+    ...over,
   })
 
-  it('feeds role suggestions like the CV', () => {
-    const p = proposeImport({ url: 'https://alex.example/resume', profile: null, sections, parsed: null })
-    const patch = applyImport(null, p, new Set(['experience', 'projects', 'metrics'] as const))
+  it('lists every item with new / duplicate / update', () => {
+    const p = proposalFrom('https://alex.example/resume', sections, parsed, detectTerms(sections.text))
+    const items = buildUrlImportItems(p, ctx())
+    const by = (label: string) => items.find((i) => i.label === label)
+    expect(by('MySQL')).toMatchObject({ section: 'skills', status: 'new', hasReadiness: true, isPublic: true })
+    expect(by('PHP')).toMatchObject({ status: 'duplicate', hasReadiness: false })
+    expect(by('Headline')).toMatchObject({ status: 'update', diff: [{ mine: 'Developer', imported: 'Backend developer (payments)' }] })
+    expect(by('GitHub')).toMatchObject({ section: 'links', status: 'update' })
+    expect(by('LinkedIn')).toMatchObject({ section: 'links', status: 'new' })
+    expect(items.filter((i) => i.section === 'projects')).toHaveLength(2)
+    expect(items.filter((i) => i.section === 'evidence' && !i.isPublic)).toHaveLength(6)
+  })
+
+  const now = '2026-10-02T00:00:00.000Z'
+  const prov = { source: 'url' as const, importedAt: now }
+
+  it('editable: saves only the ticked items, learning unless mine, with provenance', () => {
+    const p = proposalFrom('https://alex.example/resume', sections, parsed, detectTerms(sections.text))
+    const items = buildUrlImportItems(p, ctx())
+    const key = (pred: (l: string) => boolean) => items.find((i) => pred(i.label))!.key
+    const mysql = key((l) => l === 'MySQL')
+    const proj = key((l) => l.startsWith('Invoice compliance toolkit'))
+    const exp = items.filter((i) => i.key.startsWith('evidence:experience:'))
+    let n = 0
+    const r = applyUrlSelection(ctx(), p, items, { picked: [mysql, proj, exp[1]!.key, exp[2]!.key, key((l) => l === 'GitHub')], mine: [proj, exp[1]!.key] }, prov, true, () => `id-${++n}`)
+    expect(r.patch.headline).toBeUndefined()
+    expect(r.patch.skills).toBeUndefined() // MySQL is learning: the flat list only gets "mine" skills
+    const skills = r.resume!.skills.flatMap((g) => g.skills)
+    expect(skills).toEqual([expect.objectContaining({ name: 'MySQL', depth: 'learning', interviewReady: false, source: 'url', importedAt: now })])
+    expect(r.resume!.skills[0]!.name).toBe('From alex.example')
+    expect(r.resume!.projects).toEqual([expect.objectContaining({ depth: 'own', interviewReady: true, source: 'url' })])
+    expect(r.patch.links).toEqual([{ id: 'gh', label: 'GitHub', url: 'https://github.com/alex-example', kind: 'github' }])
+    expect(r.changes.linksUpdated).toEqual([expect.objectContaining({ id: 'gh' })])
+    const linked = readLinkedProfile(r.patch.linkedProfile)!
+    expect(linked.experience).toEqual([exp[1]!.label])
+    expect(linked.learning.experience).toEqual([exp[2]!.label])
+    expect(linked.fetchedAt).toBe(now)
+    expect(r.intentions).toEqual([])
+  })
+
+  it('not editable: public facts become intentions only; page evidence is still saved', () => {
+    const p = proposalFrom('https://alex.example/resume', sections, parsed, detectTerms(sections.text))
+    const items = buildUrlImportItems(p, ctx())
+    const mysql = items.find((i) => i.label === 'MySQL')!.key
+    const head = items.find((i) => i.label === 'Headline')!.key
+    const exp = items.find((i) => i.key === 'evidence:experience:1')!.key
+    const r = applyUrlSelection(ctx(), p, items, { picked: [mysql, head, exp], mine: [mysql] }, prov, false)
+    expect(r.resume).toBeNull()
+    expect(r.patch.headline).toBeUndefined()
+    expect(r.patch.skills).toBeUndefined()
+    expect(r.patch.links).toBeUndefined()
+    expect(r.intentions).toEqual([{ section: 'skills', name: 'MySQL', mine: true }])
+    expect(readLinkedProfile(r.patch.linkedProfile)!.learning.experience).toHaveLength(1)
+  })
+
+  it('feeds role suggestions only through lines marked mine', () => {
+    const p = proposalFrom('https://alex.example/resume', sections, null, [])
+    const items = buildUrlImportItems(p, ctx())
+    const lines = items.filter((i) => i.section === 'evidence').map((i) => i.key)
     const base = { headline: null, summaryMd: null, careerNarrativeMd: null, skills: ['PHP'], industries: [], roleTypes: [], yearsExperience: null, stackWeights: {}, dismissedRoleSuggestions: [] }
-    const without = suggestRoles({ profile: base, masterCv: null }).suggestions.map((s) => s.id)
-    const withPage = suggestRoles({ profile: { ...base, linkedProfile: patch.linkedProfile }, masterCv: null }).suggestions.map((s) => s.id)
-    expect(without).not.toContain('payments')
-    expect(withPage).toEqual(expect.arrayContaining(['payments', 'platform_backend', 'einvoicing']))
+    const learning = applyUrlSelection(ctx(), p, items, { picked: lines, mine: [] }, prov, false)
+    const mine = applyUrlSelection(ctx(), p, items, { picked: lines, mine: lines }, prov, false)
+    const ids = (linkedProfile: unknown) => suggestRoles({ profile: { ...base, linkedProfile }, masterCv: null }).suggestions.map((s) => s.id)
+    expect(ids(learning.patch.linkedProfile)).not.toContain('payments')
+    expect(ids(mine.patch.linkedProfile)).toContain('payments')
   })
 })
 

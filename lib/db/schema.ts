@@ -1715,3 +1715,5 @@ export * from './schema-radar-new'
 export * from './schema-cv-fit'
 // Connect GitHub / LinkedIn: connections, OAuth states, repo stats, LinkedIn import.
 export * from './schema-integrations'
+// Import provenance: one row per confirmed import (Undo last import, Reset).
+export * from './schema-import'

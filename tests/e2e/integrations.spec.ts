@@ -67,8 +67,8 @@ test('import a LinkedIn export, then see a referral hint on a discovery', async 
   const review = page.getByTestId('linkedin-import-review')
   await expect(review).toBeVisible()
   await expect(review.getByText('Laravel')).toBeVisible()
-  await page.getByTestId('linkedin-import-apply').click()
-  await expectToast(page, /saved 4 connections/)
+  await review.getByTestId('import-apply').click()
+  await expectToast(page, /Saved 4 connections/)
   await expect(page.getByTestId('linkedin-connections')).toContainText('Priya Example')
   await expect(page.getByTestId('linkedin-checklist')).toBeVisible()
 

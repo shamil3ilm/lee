@@ -38,11 +38,15 @@ export interface ConnectionInput {
 
 const CHUNK = 500
 
-/** Insert or refresh (natural key: name + company). Idempotent on re-import. */
-export async function upsertConnections(userId: string, rows: readonly ConnectionInput[]): Promise<number> {
+/**
+ * Insert or refresh (natural key: name + company). Idempotent on re-import.
+ * New rows are tagged with `importBatchId`; refreshed rows keep the batch
+ * that first added them, so undoing a re-import never removes older ones.
+ */
+export async function upsertConnections(userId: string, rows: readonly ConnectionInput[], importBatchId: string | null = null): Promise<number> {
   let n = 0
   for (let i = 0; i < rows.length; i += CHUNK) {
-    const chunk = rows.slice(i, i + CHUNK).map((r) => ({ userId, ...r }))
+    const chunk = rows.slice(i, i + CHUNK).map((r) => ({ userId, ...r, importBatchId }))
     if (chunk.length === 0) continue
     await db
       .insert(linkedinConnections)
@@ -127,6 +131,23 @@ export async function byName(userId: string, name: string, limit = 3): Promise<L
     .from(linkedinConnections)
     .where(and(eq(linkedinConnections.userId, userId), sql`lower(${linkedinConnections.name}) = ${n}`))
     .limit(limit)
+}
+
+/** Rows a given import batch added. */
+export async function countConnectionsByBatch(userId: string, importBatchId: string): Promise<number> {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(linkedinConnections)
+    .where(and(eq(linkedinConnections.userId, userId), eq(linkedinConnections.importBatchId, importBatchId)))
+  return row?.n ?? 0
+}
+
+export async function deleteConnectionsByBatch(userId: string, importBatchId: string): Promise<number> {
+  const rows = await db
+    .delete(linkedinConnections)
+    .where(and(eq(linkedinConnections.userId, userId), eq(linkedinConnections.importBatchId, importBatchId)))
+    .returning()
+  return rows.length
 }
 
 export async function deleteAllConnections(userId: string): Promise<number> {

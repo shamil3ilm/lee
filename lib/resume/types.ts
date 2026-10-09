@@ -55,6 +55,19 @@ const readinessShape = {
   studyTarget: dateField,
 }
 
+/**
+ * Where an item came from when an importer added it (absent = typed in
+ * lee or pulled from the portfolio). `importedAt` is the import batch's
+ * ISO timestamp: together with `source` it identifies one batch, so
+ * "Undo last import" and Reset can remove exactly what an import added.
+ */
+export const IMPORT_SOURCES = ['url', 'linkedin', 'cv', 'github'] as const
+export type ImportSource = (typeof IMPORT_SOURCES)[number]
+const provenanceShape = {
+  source: z.enum(IMPORT_SOURCES).optional(),
+  importedAt: z.string().max(40).optional(),
+}
+
 /** Fill the readiness flags from `depth` when never set; ready implies domain-ready. */
 function withReadyDefault(value: unknown): unknown {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return value
@@ -138,6 +151,7 @@ export const workSchema = z.object({
   highlights: z.array(highlightSchema).max(30).default([]),
   keywords: z.array(text(200).min(1)).max(40).default([]),
   visibility: visibilityMap,
+  ...provenanceShape,
 })
 export type WorkItem = z.infer<typeof workSchema>
 
@@ -153,6 +167,7 @@ export const projectSchema = z.preprocess(
     keywords: z.array(text(200).min(1)).max(40).default([]),
     highlights: z.array(highlightSchema).max(30).default([]),
     visibility: visibilityMap,
+    ...provenanceShape,
     ...readinessShape,
   }),
 )
@@ -173,6 +188,7 @@ export const skillSchema = z.preprocess(
     id: idSchema,
     name: text(200).min(1),
     kind: z.enum(SKILL_KINDS).default('tech'),
+    ...provenanceShape,
     ...readinessShape,
   }),
 )
@@ -197,6 +213,7 @@ export const educationSchema = z.object({
   endDate: dateField,
   score: text(100).default(''),
   visibility: visibilityMap,
+  ...provenanceShape,
 })
 export type EducationItem = z.infer<typeof educationSchema>
 
@@ -208,6 +225,7 @@ export const languageItemSchema = z.object({
   language: text(60).min(1),
   fluency: z.enum(LANGUAGE_FLUENCIES).default('professional'),
   visibility: visibilityMap,
+  ...provenanceShape,
 })
 export type LanguageItem = z.infer<typeof languageItemSchema>
 
@@ -218,6 +236,7 @@ export const certificateSchema = z.object({
   date: dateField,
   url: text(500).default(''),
   visibility: visibilityMap,
+  ...provenanceShape,
 })
 export type CertificateItem = z.infer<typeof certificateSchema>
 

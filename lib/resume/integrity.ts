@@ -70,3 +70,9 @@ export function profileIntegrityErrors(profile: ResumeProfile): string[] {
   }
   return errors
 }
+
+/** Drop case studies whose work item or highlight is gone (after a reset or an undone import). */
+export function dropDanglingCaseStudies(p: ResumeProfile): ResumeProfile {
+  const ok = p.portfolio.caseStudies.filter((cs) => p.work.some((w) => w.id === cs.workId && w.highlights.some((h) => h.id === cs.highlightId)))
+  return ok.length === p.portfolio.caseStudies.length ? p : { ...p, portfolio: { ...p.portfolio, caseStudies: ok } }
+}

@@ -151,6 +151,8 @@ export const linkedinConnections = pgTable(
     position: text('position').notNull().default(''),
     connectedOn: date('connected_on'),
     email: text('email'),
+    /** The import batch that first added this row (profile_import_batches.id); Undo last import removes those. */
+    importBatchId: uuid('import_batch_id'),
   },
   (t) => ({
     userNameCompanyUq: uniqueIndex('linkedin_connections_user_name_company_uq').on(t.userId, t.name, t.companyKey),

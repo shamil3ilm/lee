@@ -88,8 +88,9 @@ function buildCorpus({ profile, masterCv }: SuggestionInput): Corpus {
       ...(cv?.projects ?? []).flatMap((p) => p.tech ?? []),
     ]),
     // An imported résumé/portfolio page (lib/profile/url-import.ts) counts
-    // like the profile's own text and the CV's bullets.
-    profileText: joinNorm([profile?.headline, profile?.summaryMd, profile?.careerNarrativeMd, page?.text]),
+    // through the lines the user marked "Mine" only (below, with the CV's
+    // bullets); its raw text and "learning" lines never feed suggestions.
+    profileText: joinNorm([profile?.headline, profile?.summaryMd, profile?.careerNarrativeMd]),
     cvText: joinNorm([
       cv?.basics.headline,
       cv?.summary,
