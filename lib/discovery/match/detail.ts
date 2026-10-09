@@ -1,5 +1,6 @@
 import {
   MATCH_COMPONENT_KEYS,
+  type MatchCeiling,
   type MatchComponent,
   type MatchComponentKey,
   type MatchDetail,
@@ -54,5 +55,12 @@ export function toMatchDetail(value: unknown): MatchDetail | null {
       : [],
     missing: strings(d.missing),
     matched: strings(d.matched),
+    ...ceilingOf(d.ceiling),
   }
+}
+
+function ceilingOf(v: unknown): { ceiling?: MatchCeiling } {
+  if (!v || typeof v !== 'object') return {}
+  const c = v as Record<string, unknown>
+  return typeof c.score === 'number' && typeof c.reason === 'string' ? { ceiling: { score: c.score, reason: c.reason } } : {}
 }

@@ -272,10 +272,17 @@ const LIST_COLUMNS = {
  * neither does.
  */
 export function blendedSql(): SQL<number | null> {
+  // The Match detail's ceiling (mandatory language unmet, title only) holds
+  // the blend down, as cappedFit does on the card.
   return sql<number | null>`(case
-    when ${discoveries.matchScore} is null then ${discoveries.fitScore}
-    when ${discoveries.fitScore} is null then ${discoveries.matchScore}
-    else round((${discoveries.fitScore} + ${discoveries.matchScore}) / 2.0) end)`
+    when ${discoveries.matchScore} is null and ${discoveries.fitScore} is null then null
+    else least(
+      (case
+        when ${discoveries.matchScore} is null then ${discoveries.fitScore}
+        when ${discoveries.fitScore} is null then ${discoveries.matchScore}
+        else round((${discoveries.fitScore} + ${discoveries.matchScore}) / 2.0) end),
+      coalesce((${discoveries.fitDetail} -> 'ceiling' ->> 'score')::numeric, 100)
+    ) end)`
 }
 
 function listOrder(sort: ListOpts['sort']): SQL[] {

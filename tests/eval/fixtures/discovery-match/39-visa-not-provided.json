@@ -1,0 +1,23 @@
+{
+  "name": "Dubai role that says the visa is NOT provided: no boost",
+  "inputs": {
+    "profile": {
+      "discoveryPrefs": {
+        "basedIn": "IN",
+        "sponsorshipFor": ["AE", "SA", "QA", "KW", "BH", "OM"]
+      }
+    },
+    "job": {
+      "title": "Laravel Developer",
+      "location": "Dubai, UAE",
+      "descriptionMd": "PHP, Laravel and MySQL. Visa is not provided; medical insurance provided."
+    }
+  },
+  "expect": {
+    "pass": true,
+    "boosts": [],
+    "match": {
+      "labels": ["Visa: not mentioned (you need sponsorship in UAE)"]
+    }
+  }
+}

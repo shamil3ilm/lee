@@ -1,7 +1,7 @@
 import { checkLine, responsibilitiesComponent } from '@/lib/discovery/match/coverage'
 import type { JdLine, ParsedJd } from '@/lib/discovery/match/jd'
 import { extractRequirements, REQ_WEIGHTS } from '@/lib/discovery/match/requirements'
-import { creditFor } from '@/lib/discovery/match/skills'
+import { requirementCredit } from '@/lib/discovery/match/skills'
 import type { MatchJob, RequirementCheck } from '@/lib/discovery/match/types'
 import { familiesServed } from '@/lib/variants/starter'
 import type { Region } from '@/lib/variants/types'
@@ -102,7 +102,7 @@ function skillCoverage(input: FitJobInput, evidence: VariantEvidence): CoverageO
   const empty: Coverage = { met: 0, partial: 0, missing: 0, total: 0 }
   const reqs = extractRequirements(input.job, input.jd)
   if (reqs.length === 0) return { share: 0.5, label: 'No requirements stated', must: empty, covered: [] }
-  const credits = reqs.map((r) => ({ r, ...creditFor(r.canonical, evidence.skills) }))
+  const credits = reqs.map((r) => ({ r, ...requirementCredit(r, evidence.skills) }))
   const total = credits.reduce((s, c) => s + REQ_WEIGHTS[c.r.weight], 0)
   const earned = credits.reduce((s, c) => s + REQ_WEIGHTS[c.r.weight] * c.credit, 0)
   const have = credits.filter((c) => c.credit > 0)

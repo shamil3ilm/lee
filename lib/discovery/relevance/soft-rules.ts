@@ -6,6 +6,7 @@ import { SKILL_GROUPS } from './roles'
 import {
   detectContract,
   detectLanguages,
+  detectMandatoryLanguages,
   detectNationalsOnly,
   detectNationalsPreferred,
   detectPresenceRequired,
@@ -117,12 +118,13 @@ function titleCase(s: string): string {
 function languageRules(input: SoftRuleInput, prefs: SearchPrefs, add: Add, out: SoftRuleResult): void {
   // Without a language list we cannot tell a mismatch from a match.
   if (prefs.extra.languages.length === 0) return
+  const mandatory = new Set(detectMandatoryLanguages(input))
   for (const m of detectLanguages(input)) {
     if (m.language === 'english') continue
     const level = levelOf(prefs, m.language)
     const rank = level ? (LEVEL_RANK.get(level) ?? 0) : -1
     if (rank >= PROFESSIONAL) out.boosts.push(`language: ${titleCase(m.language)}`)
-    else if (m.required) add('language', `language: ${titleCase(m.language)} required (you: ${level ?? 'none'})`)
+    else if (m.required || mandatory.has(m.language)) add('language', `language: ${titleCase(m.language)} required (you: ${level ?? 'none'})`)
   }
 }
 

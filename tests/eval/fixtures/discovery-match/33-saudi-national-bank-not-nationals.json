@@ -1,0 +1,24 @@
+{
+  "name": "Riyadh payments JD naming Saudi National Bank: an employer name, not a nationals-only role",
+  "inputs": {
+    "profile": {
+      "discoveryPrefs": {
+        "basedIn": "IN",
+        "sponsorshipFor": ["AE", "SA", "QA", "KW", "BH", "OM"]
+      }
+    },
+    "job": {
+      "title": "Backend Developer",
+      "location": "Riyadh, KSA",
+      "descriptionMd": "## Requirements\n- PHP and Laravel\n- Experience integrating with Saudi National Bank (SNB) and Al Rajhi payment APIs\n- MySQL"
+    }
+  },
+  "expect": {
+    "pass": true,
+    "reasons": [],
+    "match": {
+      "min": 60,
+      "labels": ["Visa: not mentioned (you need sponsorship in Saudi Arabia)"]
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "'AWS/Azure/GCP' asks for one cloud: an AWS profile meets it; 'PHP/Laravel or Go' is met by Laravel",
+  "inputs": {
+    "profile": {
+      "skills": ["PHP", "Laravel", "MySQL", "AWS"]
+    },
+    "job": {
+      "title": "Backend Developer",
+      "location": "Bengaluru, Karnataka",
+      "descriptionMd": "## Requirements\n- PHP/Laravel or Go\n- AWS/Azure/GCP\n- Kafka"
+    }
+  },
+  "expect": {
+    "pass": true,
+    "match": {
+      "missing": ["Kafka (required)"]
+    }
+  }
+}

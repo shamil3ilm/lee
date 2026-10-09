@@ -1,0 +1,24 @@
+{
+  "name": "Riyadh role: 'Iqama provided, transferable iqama not required': visa offered, no presence note",
+  "inputs": {
+    "profile": {
+      "discoveryPrefs": {
+        "basedIn": "IN",
+        "sponsorshipFor": ["AE", "SA", "QA", "KW", "BH", "OM"]
+      }
+    },
+    "job": {
+      "title": "PHP Developer",
+      "location": "Riyadh, KSA",
+      "descriptionMd": "Laravel and MySQL. Iqama provided. Transferable iqama not required. Visa & air ticket."
+    }
+  },
+  "expect": {
+    "pass": true,
+    "boosts": ["visa / relocation offered"],
+    "infos": [],
+    "match": {
+      "labels": ["Visa: offered for Saudi Arabia"]
+    }
+  }
+}

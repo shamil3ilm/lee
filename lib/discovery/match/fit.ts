@@ -1,7 +1,7 @@
 import { isRemotePosting } from '../relevance/gate'
+import { parseJd, type ParsedJd } from './jd'
 import {
   detectSeniority,
-  detectYearsRequired,
   levelForYears,
   SENIORITY_LABELS,
   SENIORITY_LEVELS,
@@ -38,15 +38,21 @@ function rangeLabel(levels: readonly SeniorityLevel[]): string {
   return lo === hi ? lo : `${lo}–${hi}`
 }
 
+/** Most a strong, ready area can add back to a seniority stretch. */
+export const STRENGTH_OFFSET_MAX = 3
+
 /**
- * A stretch above your level in one of your strong, ready areas costs half:
- * "Seniority: Senior (you target Junior–Mid-level) · strong payments match".
+ * A stretch above your level in one of your strong, ready areas costs a
+ * little less (at most +3): "Seniority: Senior (you target Junior–Mid-level)
+ * · strong payments match". Years asked come from the parsed JD (overall
+ * or per must-have line: "2+ years as a data analyst", "1–3 years in X").
  */
 export function seniorityComponent(
   job: MatchJob,
   p: Pick<MatchProfile, 'seniority' | 'years' | 'skills' | 'domains'>,
+  jd: Pick<ParsedJd, 'years'> = parseJd(job),
 ): MatchComponent {
-  const base = seniorityBase(job, p)
+  const base = seniorityBase(job, p, jd.years)
   if (base.points >= base.max || !/\(you target|asks \d+\+ yrs, you have/.test(base.label)) return base
   const strength = strengthIn(
     `${job.title}
@@ -55,36 +61,51 @@ ${job.descriptionMd ?? ''}`,
     strengthsFrom(p.skills, p.domains),
   )
   if (!strength) return base
-  return { ...base, points: base.points + Math.ceil((base.max - base.points) / 2), label: `${base.label} · strong ${strength} match` }
+  const offset = Math.min(STRENGTH_OFFSET_MAX, Math.ceil((base.max - base.points) / 2))
+  return { ...base, points: base.points + offset, label: `${base.label} · strong ${strength} match` }
 }
 
-function seniorityBase(job: MatchJob, p: Pick<MatchProfile, 'seniority' | 'years'>): MatchComponent {
+type Read = MatchComponent
+
+function titleRead(title: SeniorityLevel, targets: readonly SeniorityLevel[], c: (points: number, label: string) => Read): Read {
+  const max = FIT_MAX.seniority
+  const name = SENIORITY_LABELS[title]
+  if (targets.length === 0) return c(10, `Seniority: ${name}`)
+  if (targets.includes(title)) return c(max, `Seniority: ${name} fits`)
+  const top = Math.max(...targets.map(rank))
+  const bottom = Math.min(...targets.map(rank))
+  if (rank(title) < bottom) return c(8, `Seniority: ${name}, below ${rangeLabel(targets)}`)
+  return c(rank(title) - top === 1 ? 4 : 0, `Seniority: ${name} (you target ${rangeLabel(targets)})`)
+}
+
+/**
+ * Years asked vs years you have: full points within a year of the ask,
+ * otherwise falling off faster than the ratio, (you / asked)^1.5: 2 years
+ * for "5+" earns 4 of 15, 3 for "5+" earns 7.
+ */
+function yearsRead(years: number, p: Pick<MatchProfile, 'seniority' | 'years'>, targets: readonly SeniorityLevel[], c: (points: number, label: string) => Read): Read {
+  const max = FIT_MAX.seniority
+  if (p.years !== null) {
+    const label = `Seniority: asks ${years}+ yrs, you have ${p.years}`
+    if (years <= p.years + 1) return c(max, label)
+    return c(Math.round(max * Math.pow(Math.max(0, p.years) / years, 1.5)), label)
+  }
+  if (targets.length === 0) return c(10, `Seniority: asks ${years}+ yrs`)
+  const fits = rank(levelForYears(years)) <= Math.max(...targets.map(rank))
+  return c(fits ? 13 : 3, `Seniority: asks ${years}+ yrs`)
+}
+
+function seniorityBase(job: MatchJob, p: Pick<MatchProfile, 'seniority' | 'years'>, years: number | null): MatchComponent {
   const max = FIT_MAX.seniority
   const c = (points: number, label: string): MatchComponent => ({ key: 'seniority', label, points, max })
   const targets = targetLevels(p)
   const title = detectSeniority(job.title)
-  const years = detectYearsRequired(job.descriptionMd)
-  if (title) {
-    const name = SENIORITY_LABELS[title]
-    if (targets.length === 0) return c(10, `Seniority: ${name}`)
-    if (targets.includes(title)) return c(max, `Seniority: ${name} fits`)
-    const top = Math.max(...targets.map(rank))
-    const bottom = Math.min(...targets.map(rank))
-    if (rank(title) < bottom) return c(8, `Seniority: ${name}, below ${rangeLabel(targets)}`)
-    return c(rank(title) - top === 1 ? 4 : 0, `Seniority: ${name} (you target ${rangeLabel(targets)})`)
-  }
-  if (years !== null) {
-    if (p.years !== null) {
-      const you = `you have ${p.years}`
-      if (years <= p.years + 1) return c(max, `Seniority: asks ${years}+ yrs, ${you}`)
-      if (years <= p.years + 3) return c(7, `Seniority: asks ${years}+ yrs, ${you}`)
-      return c(0, `Seniority: asks ${years}+ yrs, ${you}`)
-    }
-    if (targets.length === 0) return c(10, `Seniority: asks ${years}+ yrs`)
-    const fits = rank(levelForYears(years)) <= Math.max(...targets.map(rank))
-    return c(fits ? 13 : 3, `Seniority: asks ${years}+ yrs`)
-  }
-  return c(12, 'Seniority: not stated')
+  const reads = [title ? titleRead(title, targets, c) : null, years !== null ? yearsRead(years, p, targets, c) : null].filter(
+    (r): r is Read => r !== null,
+  )
+  if (reads.length === 0) return c(12, 'Seniority: not stated')
+  // A title and a years ask: the stricter read wins (a Senior title asking 5+ years).
+  return reads.reduce((a, b) => (b.points < a.points ? b : a))
 }
 
 export { regionComponent } from './region'

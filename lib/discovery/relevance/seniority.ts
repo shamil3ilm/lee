@@ -92,6 +92,8 @@ const YEARS_PATTERNS: readonly RegExp[] = [
   /(\d{1,2})\s*(?:\+|plus)?\s*(?:(?:-|to)\s*\d{1,2}\s*)?\+?\s*(?:years?|yrs?)'?\s+(?:of\s+)?(?:[a-z/+#.-]+\s+){0,4}?(?:experience|exp)\b/g,
   /\bexperience\s*(?:of|:|-)?\s*(?:at least|minimum(?: of)?|min)?\s*(\d{1,2})\s*\+?\s*(?:(?:-|to)\s*\d{1,2}\s*)?(?:years?|yrs?)\b/g,
   /\b(?:at least|minimum(?: of)?|min)\s*(\d{1,2})\s*\+?\s*(?:years?|yrs?)\b/g,
+  // "2+ years as a data analyst", "1–3 years in Laravel", "3 years working with PHP".
+  /\b(\d{1,2})\s*\+?\s*(?:(?:-|to)\s*\d{1,2}\s*)?\+?\s*(?:years?|yrs?)\s+(?:as an?|in|working (?:as|in|with|on))\s/g,
 ]
 
 /**

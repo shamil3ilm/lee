@@ -1,4 +1,4 @@
-import { BAND_LABELS, blendScores, FIT_FORMULA, scoreBand } from '@/lib/discovery/match/blend'
+import { BAND_LABELS, cappedFit, FIT_FORMULA, scoreBand } from '@/lib/discovery/match/blend'
 import type { MatchComponent, MatchDetail, RequirementCheck } from '@/lib/discovery/match/types'
 import { cn } from '@/lib/utils'
 
@@ -99,7 +99,7 @@ function Breakdown({ match, ai, benefits, filtered }: Pick<MatchWhyProps, 'match
 }
 
 export function MatchWhy({ match, ai, detail, filtered, benefits, extra }: MatchWhyProps) {
-  const fit = blendScores(match, ai)
+  const fit = cappedFit(match, ai, detail)
   return (
     <div data-testid="match-why" className="space-y-2.5">
       <div>
@@ -109,7 +109,11 @@ export function MatchWhy({ match, ai, detail, filtered, benefits, extra }: Match
         </p>
         {detail?.confidence === 'title_only' ? (
           <p className="mt-1 rounded-md bg-warning-soft px-2 py-1 text-xs text-warning" data-testid="match-low-confidence">
-            Low confidence: title only. Paste or fetch the JD to score it properly.
+            Low confidence: title only. Paste or fetch the JD to score it properly. Capped at {detail.ceiling?.score ?? 55} until then.
+          </p>
+        ) : detail?.ceiling ? (
+          <p className="mt-1 rounded-md bg-danger-soft px-2 py-1 text-xs text-danger" data-testid="match-ceiling">
+            {detail.ceiling.reason}: capped at {detail.ceiling.score} (weak fit) while you don’t speak it well.
           </p>
         ) : null}
       </div>

@@ -1,0 +1,23 @@
+{
+  "name": "Abu Dhabi role for Emirati candidates only: filtered (people phrase, no 'nationals' word)",
+  "inputs": {
+    "profile": {
+      "discoveryPrefs": {
+        "basedIn": "IN",
+        "sponsorshipFor": ["AE", "SA", "QA", "KW", "BH", "OM"]
+      }
+    },
+    "job": {
+      "title": "Laravel Developer",
+      "location": "Abu Dhabi, AE",
+      "descriptionMd": "Emirati candidates only. PHP and Laravel."
+    }
+  },
+  "expect": {
+    "pass": false,
+    "reasons": ["visa: nationals only"],
+    "match": {
+      "labels": ["Visa: nationals only (e.g. Emiratisation, Saudization)"]
+    }
+  }
+}

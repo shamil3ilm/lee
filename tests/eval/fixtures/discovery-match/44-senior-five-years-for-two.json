@@ -1,0 +1,21 @@
+{
+  "name": "Dubai Senior Backend asking 5+ years, profile has 2: seniority drops hard; the Laravel offset is capped",
+  "inputs": {
+    "profile": {
+      "yearsExperience": 2
+    },
+    "job": {
+      "title": "Senior Backend Engineer",
+      "location": "Dubai, UAE",
+      "descriptionMd": "## Requirements\n- 5+ years of backend experience\n- PHP/Laravel or Go\n- Kafka and Kubernetes"
+    }
+  },
+  "expect": {
+    "pass": true,
+    "match": {
+      "max": 50,
+      "missing": ["Kafka (required)", "Kubernetes (required)"],
+      "labels": ["Seniority: Senior (you target Junior–Mid-level) · strong Laravel match"]
+    }
+  }
+}

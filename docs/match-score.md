@@ -21,24 +21,29 @@ shifts (`lib/discovery/match/jd.ts`).
 
 | Component | Points | Rule |
 |---|---|---|
-| Skills | 0…35 | Weighted overlap of the JD's skills with ready skills: must-have 2, mentioned 1, nice-to-have ½. Full credit for the skill or a concept it satisfies (Laravel for "a PHP framework", Looker for "a BI tool"); half for a close sibling (MySQL for PostgreSQL, Tableau for Power BI). No recognisable stack: 18 for a tech role, 0 otherwise. |
+| Skills | 0…35 | Weighted overlap of the JD's skills with ready skills: must-have 2, mentioned 1, nice-to-have ½. Full credit for the skill or a concept it satisfies (Laravel for "a PHP framework", Looker for "a BI tool"); half for a close sibling (MySQL for PostgreSQL, Tableau for Power BI). Alternatives in one line ("Power BI or Tableau", "AWS/Azure/GCP", "PHP/Laravel or Go") are one requirement, met by any member and missing as one ("Power BI or Tableau (required)"). No recognisable stack: 18 for a tech role, 0 otherwise. |
 | Responsibilities | 0…10 | Share of JD duties that name a ready skill or share two content words with a ready highlight. |
 | Role | 0…10 | The JD's role family vs your targets; the title only nudges. Title and JD agree 10; the JD reads as a target under an unusual title 8 ("new title"); title says a target but the JD reads another family 3. |
-| Seniority | 0…15 | Title level and years asked vs your levels and years; a stretch in a strong ready area (payments, ZATCA, Laravel, integrations, data) recovers half. |
+| Seniority | 0…15 | Title level and years asked vs your levels and years (years read overall or per must-have line: "2+ years as a data analyst", "1–3 years in Laravel"); with both, the stricter read wins. Within a year of the ask is full; below that, 15 × (yours ÷ asked)^1.5 (2 years for "5+" earns 4). A stretch in a strong ready area (payments, ZATCA, Laravel, integrations, data) recovers up to 3. |
 | Region | 0…10 | Matched through the region hierarchy (`lib/regions`: GCC includes every Gulf city, Kerala includes Kochi, Trivandrum and Kozhikode). On-site in your regions 10, broader than your selection ("India" for a Kerala-only search) 7, relocation offered elsewhere 6; remote where you live 10, hours within ±4 h 9, worldwide 8, unclear 5, restricted elsewhere 0. |
 | Work mode | 0…5 | Remote / hybrid / on-site vs your preference. |
 | Pay | −5…+5 | Stated pay vs your floor for that region (GCC pegs). |
-| Language | −10…+3 | A language required at a level you do not have is −10 and a missing must-have. |
-| Visa | −15…+5 | GCC: visa offered +5, nationals preferred −5, nationals only −15. |
+| Language | −25…+3 | A language required at a level you do not have is −10 and a missing must-have; a MANDATORY one ("Arabic fluency required", "must be fluent in Arabic", "native Arabic speaker") is −25 and caps the Fit at 34 (weak). |
+| Visa | −15…+5 | GCC: visa offered +5 (also benefit-list wording: "employment visa, medical and air ticket provided", "visa + accommodation", "company visa", "iqama provided", "transferable iqama not required"; never when the sentence says it is not provided), nationals preferred −5, nationals only −15. |
 | Domain | 0…+10 | Payments and e-invoicing/ZATCA with ready evidence, +5 each. |
 
-The sum is clamped to 0–100. "Why this score" lists each component, every
+The sum is clamped to 0–100, then to the detail's **ceiling** when it has
+one (mandatory language unmet: 34; title only: 55). The card, the Fit
+filter and sort (`blendedSql`) and the shortlist rank all apply it to the
+Match / AI blend too (`cappedFit`). Rules version `m3`.
+
+"Why this score" lists each component, every
 must-have and nice-to-have as met / partial / missing with the profile line
 that backs it, and the missing must-haves ("Kubernetes (required)",
 "Arabic fluency (required)").
 
 A posting with no usable JD (email alerts, Google Alerts, watch links) is
-marked **Low confidence: title only**; "Fetch the full JD" (Greenhouse and
+marked **Low confidence: title only** and capped at 55; "Fetch the full JD" (Greenhouse and
 Lever public APIs) or "Paste the JD to score properly" stores the JD and
 re-scores the row.
 
@@ -81,7 +86,10 @@ Only clear mismatches are filtered, always with the reason. Defaults
   lower; Principal, Director, Head of, VP and a 10+ year Architect are
   filtered.
 - **Nationals only** (hard): Emiratisation, Saudization and other
-  nationals-only roles are skipped; "nationals preferred" ranks lower.
+  nationals-only roles are skipped; "nationals preferred" ranks lower. The
+  phrase must be about candidates ("Saudi nationals only", "for Kuwaiti
+  nationals", "Emirati candidates only"); employer and proper names
+  ("Saudi National Bank", "UAE national carriers") never count.
 - **Remote from home**: worldwide, APAC/EMEA, where you live, or working
   hours within ±4 h pass; US-only, residency, right-to-work and US-hours-only
   are filtered; a bare "Remote" gets an "unclear eligibility" chip.
