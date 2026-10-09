@@ -1,51 +1,25 @@
 import * as publishQ from '@/lib/db/queries/portfolioPublish'
-import { logger } from '@/lib/logger'
-import { getResumeProfile, saveResumeProfile } from '@/lib/resume/service'
+import { getResumeProfile } from '@/lib/resume/service'
 import type { ResumeProfile } from '@/lib/resume/types'
 import { resolvePortfolioToken, type PortfolioTokenVia } from '@/lib/integrations/github/publish-token'
 import { checkPortfolioProfile } from './checks'
 import { publishConfigSchema, toTarget, type RepoTarget } from './config'
-import { diffDocuments, type Choices, type DiffSection, type SectionDiff } from './diff'
-import { getFile, putFile, type RemoteFile } from './github'
-import {
-  contentHash,
-  formatLastModified,
-  nextVersion,
-  serializeProfileJson,
-  toJsonResume,
-  type JsonDoc,
-} from './map'
-import { applyRepoSections } from './reverse'
+import type { RemoteFile } from './github'
+import { formatLastModified, nextVersion, serializeProfileJson, toJsonResume, type JsonDoc } from './map'
 
 /**
- * Publish the master profile's public fields to the portfolio repo.
+ * Shared plumbing for the portfolio repository: the repo target + token
+ * (lib/portfolio/source.ts reads profile.json with it, variant-publish.ts
+ * writes variants/<slug>.json with it) and the document lee would write.
  *
- *  1. GET profile.json (its sha).
- *  2. sha ≠ the one lee last wrote → it was edited by hand: return a
- *     field-level diff (repo vs lee) and wait for the user's choice. Nothing
- *     is ever overwritten silently.
- *  3. With a resolution: re-GET; still the same sha → apply "take repo"
- *     sections to the master profile, then PUT with that sha.
- *  4. PUT 409/422 (changed in between) → re-fetch and return the diff.
- *  5. Record sha, content hash, version and commit.
+ * The main profile.json is NOT written by lee: the portfolio is the source
+ * of the public facts and lee pulls it (lib/portfolio/pull.ts). A future
+ * write-through (commit to profile.json, then re-pull) belongs behind
+ * PROFILE_EDIT_IN_LEE in lib/portfolio/sync-flags.ts, built from
+ * `buildDocument` + `putFile` with the last pulled sha.
  */
 
-export const COMMIT_SUBJECT = 'chore(profile): sync from lee'
-
 export type ConflictReason = 'edited' | 'deleted' | 'changed_during_publish' | 'unreadable'
-
-export type PublishOutcome =
-  | { status: 'published'; version: string; commitUrl: string | null; commitSha: string; publishedAt: string }
-  | { status: 'up_to_date' }
-  | { status: 'conflict'; reason: ConflictReason; repoSha: string | null; diff: SectionDiff[] }
-  | { status: 'invalid'; errors: string[] }
-  | { status: 'not_configured'; error: string }
-
-export interface Resolution {
-  /** The repo sha the user resolved against (null = file missing). */
-  repoSha: string | null
-  choices: Choices
-}
 
 export interface PublishContext {
   userId: string
@@ -57,7 +31,7 @@ export interface PublishContext {
   now: Date
 }
 
-/** Repo target, token and publish state, or why Publish can't run yet. */
+/** Repo target, token and publish state, or why the repository can't be used yet. */
 export async function loadPublishContext(userId: string, now: Date): Promise<PublishContext | { error: string }> {
   const state = await publishQ.get(userId)
   const config = state ? publishConfigSchema.safeParse(state) : null
@@ -88,91 +62,9 @@ export function repoVersion(repo: JsonDoc | null): string | null {
   return typeof v === 'string' ? v : null
 }
 
-function conflict(reason: ConflictReason, remote: RemoteFile, repo: JsonDoc | null, lee: JsonDoc): PublishOutcome {
-  const diff = diffDocuments(repo ?? {}, lee)
-  logger.warn('profile_publish_conflict', { reason, sections: diff.length })
-  return { status: 'conflict', reason, repoSha: remote.exists ? remote.sha : null, diff }
-}
-
-export function commitMessage(changed: readonly SectionDiff[], created: boolean): string {
-  const summary = created
-    ? 'First sync of profile.json from lee.'
-    : changed.length > 0
-      ? `Updated: ${changed.map((d) => d.section).join(', ')}.`
-      : 'Refreshed metadata.'
-  return `${COMMIT_SUBJECT}\n\n${summary}`
-}
-
-/** Preview: the JSON lee would publish and the portfolio build's verdict on it. */
+/** lee's copy of profile.json (its public facts) and the portfolio build's verdict on it. */
 export async function previewPublish(userId: string, now = new Date()): Promise<{ json: string; errors: string[] }> {
   const [{ profile }, state] = await Promise.all([getResumeProfile(userId), publishQ.get(userId)])
   const doc = buildDocument(profile, state?.lastVersion ?? null, now)
   return { json: serializeProfileJson(doc), errors: checkPortfolioProfile(doc) }
-}
-
-export async function publishProfile(
-  userId: string,
-  opts: { resolution?: Resolution; now?: Date } = {},
-): Promise<PublishOutcome> {
-  const ctx = await loadPublishContext(userId, opts.now ?? new Date())
-  if ('error' in ctx) return { status: 'not_configured', error: ctx.error }
-  const remote = await getFile(ctx.target, ctx.token)
-  const repo = parseRepo(remote)
-  let { profile } = await getResumeProfile(userId)
-  const previous = ctx.state.lastVersion ?? repoVersion(repo)
-
-  if (opts.resolution) {
-    const currentSha = remote.exists ? remote.sha : null
-    if (currentSha !== opts.resolution.repoSha) {
-      return conflict('changed_during_publish', remote, repo, buildDocument(profile, previous, ctx.now))
-    }
-    const fromRepo = Object.entries(opts.resolution.choices)
-      .filter(([, side]) => side === 'repo')
-      .map(([s]) => s as DiffSection)
-    if (fromRepo.length > 0 && repo) profile = (await saveResumeProfile(userId, applyRepoSections(profile, repo, fromRepo))).profile
-  } else if (remote.exists && remote.sha !== ctx.state.lastSha) {
-    const lee = buildDocument(profile, previous, ctx.now)
-    if (!repo) return conflict('unreadable', remote, null, lee)
-    if (diffDocuments(repo, lee).length > 0) return conflict('edited', remote, repo, lee)
-  } else if (!remote.exists && ctx.state.lastSha) {
-    return conflict('deleted', remote, null, buildDocument(profile, previous, ctx.now))
-  }
-
-  const doc = buildDocument(profile, previous, ctx.now)
-  const errors = checkPortfolioProfile(doc)
-  if (errors.length > 0) return { status: 'invalid', errors }
-  const hash = contentHash(doc)
-  if (remote.exists && repo && contentHash(repo) === hash) {
-    await publishQ.recordPublish(userId, {
-      lastSha: remote.sha,
-      lastHash: hash,
-      lastVersion: repoVersion(repo) ?? previous ?? nextVersion(null),
-      lastCommitSha: ctx.state.lastCommitSha,
-      lastCommitUrl: ctx.state.lastCommitUrl,
-      publishedAt: ctx.state.publishedAt,
-    })
-    return { status: 'up_to_date' }
-  }
-
-  const changed = repo ? diffDocuments(repo, doc) : []
-  const put = await putFile(ctx.target, ctx.token, {
-    text: serializeProfileJson(doc),
-    message: commitMessage(changed, !remote.exists),
-    sha: remote.exists ? remote.sha : null,
-  })
-  if (!put.ok) {
-    const fresh = await getFile(ctx.target, ctx.token)
-    return conflict('changed_during_publish', fresh, parseRepo(fresh), doc)
-  }
-  const version = ((doc.meta as JsonDoc).version as string) ?? nextVersion(previous)
-  await publishQ.recordPublish(userId, {
-    lastSha: put.contentSha,
-    lastHash: hash,
-    lastVersion: version,
-    lastCommitSha: put.commitSha,
-    lastCommitUrl: put.commitUrl,
-    publishedAt: ctx.now,
-  })
-  logger.info('profile_published', { version, sections: changed.length, created: !remote.exists, via: ctx.via })
-  return { status: 'published', version, commitUrl: put.commitUrl, commitSha: put.commitSha, publishedAt: ctx.now.toISOString() }
 }

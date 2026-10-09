@@ -253,20 +253,21 @@ export const EVENT_CATALOG: Readonly<Record<string, EventSpec>> = {
   // Usage
   usage_snapshot: { category: 'usage', persist: true, message: () => 'Usage snapshot taken' },
   usage_early_retention: { category: 'usage', persist: true, message: () => 'Early retention ran (storage high)' },
-  // Publish to portfolio (lib/portfolio/publish.ts). Context is numbers and
-  // a version string only: never the token, never the file content.
-  profile_published: {
+  // Portfolio → profile sync (lib/portfolio/pull.ts). Context is counts and
+  // the trigger / source only: never the token, never the file content.
+  portfolio_pull: {
     category: 'app',
     persist: true,
-    strings: ['version'],
+    strings: ['trigger', 'source'],
     message: (c) =>
-      `Profile published to the portfolio (${s(c, 'version') || 'new version'}, ${plural(n(c, 'sections'), 'section')} changed)`,
+      n(c, 'sections') > 0
+        ? `Profile synced from the portfolio (${plural(n(c, 'sections'), 'section')} updated${n(c, 'orphaned') > 0 ? `, ${plural(n(c, 'orphaned'), 'item')} removed` : ''})`
+        : 'Profile synced from the portfolio (no changes)',
   },
-  profile_publish_conflict: {
+  portfolio_pull_failed: {
     category: 'app',
-    persist: true,
-    message: (c) =>
-      `Portfolio profile.json changed outside lee (${s(c, 'reason') || 'edited'}): ${plural(n(c, 'sections'), 'section')} ${n(c, 'sections') === 1 ? 'differs' : 'differ'} — waiting for your choice`,
+    strings: ['trigger'],
+    message: (c) => `Portfolio sync failed (${s(c, 'trigger') || 'sync'})`,
   },
   // Playground (v13 core engine). Context: skill/item ids, formats, numbers.
   // Never answers, profile text or study notes.

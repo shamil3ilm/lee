@@ -12,10 +12,13 @@ import { ProjectsCard } from './projects-card'
 import { SkillsCard } from './skills-card'
 import { WorkCard } from './work-card'
 import { SECTION_ANCHOR } from '@/components/section-nav'
+import { FactsLockProvider } from './controls'
 
 interface ResumeEditorProps {
   initial: ResumeProfile
   stored: boolean
+  /** Public facts come from the portfolio: read-only here (see FactsLockProvider). */
+  locked?: boolean
 }
 
 /**
@@ -23,7 +26,7 @@ interface ResumeEditorProps {
  * résumé facts. One Save writes the whole profile (validated and
  * fact-locked on the server) and refreshes the derived master CV.
  */
-export function ResumeEditor({ initial, stored }: ResumeEditorProps) {
+export function ResumeEditor({ initial, stored, locked = false }: ResumeEditorProps) {
   const [profile, setProfile] = useState<ResumeProfile>(initial)
   const [dirty, setDirty] = useState(!stored)
   const [problems, setProblems] = useState<string[]>([])
@@ -66,6 +69,7 @@ export function ResumeEditor({ initial, stored }: ResumeEditorProps) {
   )
 
   return (
+    <FactsLockProvider value={locked}>
     <div className="space-y-6">
       {!stored ? (
         <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
@@ -101,5 +105,6 @@ export function ResumeEditor({ initial, stored }: ResumeEditorProps) {
       </div>
       {saveBar}
     </div>
+    </FactsLockProvider>
   )
 }

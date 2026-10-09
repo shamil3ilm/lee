@@ -7,13 +7,15 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { checkDomainWording, checkFactLock, factLockMessage } from '@/lib/resume/fact-lock'
 import { highlightSchema, type Highlight } from '@/lib/resume/types'
-import { visibilityOf } from '@/lib/resume/visibility'
+import { isPublicItem, visibilityOf } from '@/lib/resume/visibility'
 import { addWording, removeWording } from '@/lib/resume/wordings'
-import { move, newClientId, ReadinessControls, removeAt, replaceAt, RowActions, VisibilityToggle } from './controls'
+import { addedVisibility, move, newClientId, ReadinessControls, removeAt, replaceAt, RowActions, VisibilityToggle } from './controls'
 
 interface HighlightsEditorProps {
   owner: string
   value: Highlight[]
+  /** The owning item's public facts come from the portfolio: public highlights are read-only. */
+  factsLocked?: boolean
   onChange: (next: Highlight[]) => void
 }
 
@@ -51,15 +53,19 @@ function WordingAdder({ highlight, onAdd }: { highlight: Highlight; onAdd: (next
 }
 
 /** Highlights with stable ids, readiness, visibility and fact-locked wordings. */
-export function HighlightsEditor({ owner, value, onChange }: HighlightsEditorProps) {
+export function HighlightsEditor({ owner, value, factsLocked = false, onChange }: HighlightsEditorProps) {
   const set = (i: number, h: Highlight): void => onChange(replaceAt(value, i, h))
   return (
     <div className="space-y-3">
-      {value.map((h, i) => (
+      {value.map((h, i) => {
+        const ro = factsLocked && isPublicItem('highlight', h)
+        return (
         <div key={h.id} className="space-y-2 rounded-md border p-3">
           <div className="flex items-start gap-2">
-            <Textarea aria-label={`${owner} highlight ${i + 1}`} rows={2} value={h.text} onChange={(e) => set(i, { ...h, text: e.target.value })} className="min-w-0 flex-1 text-sm" />
-            <RowActions index={i} count={value.length} label={`highlight ${i + 1}`} onMove={(d) => onChange(move(value, i, d))} onRemove={() => onChange(removeAt(value, i))} />
+            <Textarea aria-label={`${owner} highlight ${i + 1}`} rows={2} value={h.text} readOnly={ro} onChange={(e) => set(i, { ...h, text: e.target.value })} className="min-w-0 flex-1 text-sm" />
+            {ro ? null : (
+              <RowActions index={i} count={value.length} label={`highlight ${i + 1}`} onMove={(d) => onChange(move(value, i, d))} onRemove={() => onChange(removeAt(value, i))} />
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <VisibilityToggle label={`Highlight ${i + 1}`} value={visibilityOf('highlight', h, '_item')} onChange={(v) => set(i, { ...h, visibility: { ...h.visibility, _item: v } })} />
@@ -84,9 +90,15 @@ export function HighlightsEditor({ owner, value, onChange }: HighlightsEditorPro
           ) : null}
           <WordingAdder highlight={h} onAdd={(next) => set(i, next)} />
         </div>
-      ))}
-      <Button type="button" size="sm" variant="outline" onClick={() => onChange([...value, highlightSchema.parse({ id: newClientId('h'), text: 'New highlight', depth: 'own' })])}>
-        <Plus className="size-3.5" /> Add highlight
+        )
+      })}
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        onClick={() => onChange([...value, highlightSchema.parse({ id: newClientId('h'), text: 'New highlight', depth: 'own', visibility: addedVisibility(factsLocked) })])}
+      >
+        <Plus className="size-3.5" /> {factsLocked ? 'Add private highlight' : 'Add highlight'}
       </Button>
     </div>
   )

@@ -1497,6 +1497,21 @@ export const portfolioPublish = pgTable('portfolio_publish', {
   lastCommitSha: text('last_commit_sha'),
   lastCommitUrl: text('last_commit_url'),
   publishedAt: timestamp('published_at', { withTimezone: true }),
+  // Portfolio → lee sync (lib/portfolio/pull.ts). The portfolio's
+  // profile.json is the source of the public facts; lee pulls it.
+  /** Blob sha (GitHub) or `site:<sha1>` (site fallback) of the last applied pull. */
+  pulledSha: text('pulled_sha'),
+  pulledAt: timestamp('pulled_at', { withTimezone: true }),
+  /** Last time lee looked at the source (throttles the on-open check). */
+  pullCheckedAt: timestamp('pull_checked_at', { withTimezone: true }),
+  /** 'github' | 'site': where the last pull came from. */
+  pullSource: text('pull_source'),
+  /** User-facing reason the last check failed; null when it worked. */
+  pullError: text('pull_error'),
+  /** What the last applied pull changed: SectionDiff[] (read-only diagnostic). */
+  lastPullDiff: jsonb('last_pull_diff').$type<unknown[]>().notNull().default([]),
+  /** lee-only overlay data of items the portfolio removed (OrphanOverlay[]). */
+  orphans: jsonb('orphans').$type<unknown[]>().notNull().default([]),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 

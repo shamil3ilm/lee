@@ -8,6 +8,7 @@ import { applyDefaults } from '@/lib/defaults/apply'
 import { radarSourcesByUser } from '@/lib/radar/schedule'
 import type { RadarSource } from '@/lib/radar/types'
 import { weeklyCompanySpec } from '@/lib/company-discovery/schedule'
+import { listPullUsers } from '@/lib/db/queries/portfolioPublish'
 
 export interface ScheduleResult {
   day: string
@@ -62,6 +63,18 @@ export function planUserJobs(
       maxAttempts: 2,
     })),
   ]
+}
+
+/** The daily portfolio → profile sync for one user (idempotent per UTC day). */
+export function portfolioPullSpec(userId: string, day: string, now: Date): EnqueueSpec {
+  return {
+    type: JOB_TYPES.portfolioPull,
+    userId,
+    runAfter: now,
+    idempotencyKey: jobKeys.portfolioPull(userId, day),
+    priority: JOB_PRIORITY[JOB_TYPES.portfolioPull],
+    maxAttempts: 2,
+  }
 }
 
 /**
@@ -123,7 +136,7 @@ export async function scheduleDailyJobs(now: Date = new Date()): Promise<Schedul
   for (const u of await db.select({ id: users.id }).from(users)) {
     await applyDefaults(u.id)
   }
-  const [allUsers, activeSources, radar, withPrefs] = await Promise.all([
+  const [allUsers, activeSources, radar, withPrefs, portfolioUsers] = await Promise.all([
     db.select({ id: users.id }).from(users),
     db
       .select({ id: sources.id, userId: sources.userId })
@@ -133,6 +146,8 @@ export async function scheduleDailyJobs(now: Date = new Date()): Promise<Schedul
     radarSourcesByUser(),
     // Company discovery needs target regions: users who saved Settings › Search.
     db.select({ id: userProfile.userId }).from(userProfile).where(isNotNull(userProfile.searchPrefsSavedAt)),
+    // Portfolio → profile sync (lib/portfolio/pull.ts): users with a repository or an earlier pull.
+    listPullUsers(),
   ])
   const byUser = new Map<string, string[]>()
   for (const s of activeSources) byUser.set(s.userId, [...(byUser.get(s.userId) ?? []), s.id])
@@ -156,6 +171,7 @@ export async function scheduleDailyJobs(now: Date = new Date()): Promise<Schedul
     // Company discovery (lib/company-discovery): planned daily, keyed per ISO
     // week, so it runs once a week per user.
     ...withPrefs.map((u) => weeklyCompanySpec(u.id, now)),
+    ...portfolioUsers.map((id) => portfolioPullSpec(id, day, now)),
   ]
   const { created } = await enqueueMany(specs)
   return { day, users: allUsers.length, planned: specs.length, enqueued: created }

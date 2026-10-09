@@ -1,10 +1,27 @@
 import { waitForHydration } from './ready'
 import { test, expect, type Page } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { E2E_GITHUB_STUB_URL, E2E_LATEX_STUB_URL } from './env'
 
-// Master profile → variant → publish, end to end. The seeded legacy master
-// CV is migrated into the master profile on first visit; Publish talks to
-// tests/e2e/github-stub.mjs (GITHUB_API_URL), never to GitHub.
+const AXE_SOURCE = readFileSync(path.resolve('node_modules/axe-core/axe.min.js'), 'utf8')
+
+/** Serious / critical axe violations on the page as it is now (as in a11y.spec.ts). */
+async function axeViolations(page: Page): Promise<string[]> {
+  await page.addScriptTag({ content: AXE_SOURCE })
+  return page.evaluate(async () => {
+    type V = { id: string; impact: string | null; nodes: Array<{ target: string[] }> }
+    const axe = (window as unknown as { axe: { run: (ctx: unknown, opts: unknown) => Promise<{ violations: V[] }> } }).axe
+    // The dev overlay and transient toasts are not part of the page under test.
+    const r = await axe.run({ exclude: [['nextjs-portal'], ['[data-sonner-toaster]']] }, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] }, resultTypes: ['violations'] })
+    return r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).slice(0, 3).join(' | ')}`)
+  })
+}
+
+// Master profile → variant → portfolio sync, end to end. The seeded legacy master
+// CV is migrated into the master profile on first visit. The portfolio's
+// profile.json (tests/e2e/github-stub.mjs via GITHUB_API_URL, never GitHub)
+// becomes the source of the public facts once it exists.
 
 async function expectToast(page: Page, text: string | RegExp): Promise<void> {
   await expect(page.locator('[data-sonner-toast]').filter({ hasText: text }).first()).toBeVisible()
@@ -45,7 +62,7 @@ async function syntheticPng(page: Page): Promise<Buffer> {
 
 test.describe.configure({ retries: 0 })
 
-test('edit the master profile, build a variant, preview it and publish to the portfolio', async ({ page }) => {
+test('edit the master profile, build a variant, sync the profile from the portfolio and publish a variant page', async ({ page }) => {
   // 1. Résumé: the legacy master CV arrives as the master profile.
   await page.goto('/settings/resume')
   await expect(page.getByRole('heading', { name: 'Résumé', level: 1 })).toBeVisible()
@@ -135,47 +152,58 @@ test('edit the master profile, build a variant, preview it and publish to the po
   await expectToast(page, 'Token saved')
   await expect(page.getByRole('list', { name: 'Token check' })).toContainText('Contents: read')
 
+  // 4. The portfolio is the source: profile.json does not exist yet, so lee
+  //    stays editable. Mark one highlight's readiness in lee (overlay) first.
   await page.reload()
+  await expect(page.getByTestId('portfolio-sync-status')).toHaveText('Not synced from your portfolio yet.')
   await expect(page.getByText('Passes the portfolio build’s checks.')).toBeVisible()
   await page.getByText('Show profile.json').click()
-  await expect(page.getByTestId('preview-json')).toContainText('"name": "Asha Menon"')
-  await expect(page.getByTestId('preview-json')).not.toContainText('+91 90000 00000')
-
-  await page.getByRole('button', { name: 'Publish', exact: true }).click()
-  // Durable state, not the transient toast: CI runners can take longer than a toast stays up.
-  await expect(page.getByTestId('publish-status')).toContainText('1.0.0', { timeout: 30_000 })
-  await expect(page.getByTestId('publish-status')).toContainText('Published')
-  await expect(page.getByTestId('publish-status').getByRole('link', { name: 'view commit' })).toBeVisible()
-  let file = await stubFile(page)
-  expect(file.commits).toBe(1)
-  expect(file.text).toContain('"canonical": "https://asha.example.dev/profile.json"')
-  expect(file.text).not.toContain('+91 90000 00000')
-
-  // 4. A hand edit on GitHub is never overwritten silently.
-  const edited = file.text!.replace('"label": "Senior Backend Engineer"', '"label": "Backend Engineer (edited on GitHub)"')
-  await page.request.post(`${E2E_GITHUB_STUB_URL}/__test/edit`, { data: edited, headers: { 'content-type': 'text/plain' } })
-  await page.getByRole('button', { name: 'Publish', exact: true }).click()
-  const conflict = page.getByRole('region', { name: 'Changes in the repository' })
-  await expect(conflict).toContainText('edited outside lee')
-  await expect(conflict).toContainText('Backend Engineer (edited on GitHub)')
-  await conflict.getByRole('group', { name: 'Basics' }).getByLabel('Take the repo’s').check()
-  await conflict.getByRole('button', { name: 'Publish with these choices' }).click()
-  // Taking the repo's basics makes lee match the file: nothing left to commit.
-  await expectToast(page, 'Already up to date')
-  file = await stubFile(page)
-  expect(file.commits).toBe(1)
-  // …and the hand edit is now a lee fact, so the next publish keeps it.
+  const leeCopy = (await page.getByTestId('preview-json').textContent())!
+  expect(leeCopy).toContain('"name": "Asha Menon"')
+  expect(leeCopy).not.toContain('+91 90000 00000')
   await page.goto('/settings/resume')
-  await expect(page.locator('#basics-label')).toHaveValue('Backend Engineer (edited on GitHub)')
-  await page.locator('#basics-label').fill('Payments Backend Engineer')
+  await page.getByLabel('Project ledgerkit: how well you know it').selectOption('learning')
   await page.getByRole('button', { name: 'Save profile' }).first().click()
   await expectToast(page, /Profile saved/)
+
+  // The portfolio repository gets profile.json, edited on GitHub (a new headline).
+  const edited = leeCopy.replace('"label": "Senior Backend Engineer"', '"label": "Backend Engineer (edited on GitHub)"')
+  expect(edited).not.toBe(leeCopy)
+  await page.request.post(`${E2E_GITHUB_STUB_URL}/__test/edit`, { data: edited, headers: { 'content-type': 'text/plain' } })
+
+  // Opening Profile syncs it…
+  await page.goto('/settings/profile')
+  await expect(page.getByTestId('portfolio-sync-status')).toContainText('Synced from portfolio ·')
+  await expect(page.getByRole('link', { name: 'Sync with portfolio' })).toHaveAttribute('href', '/settings/publish#portfolio-sync')
+  // …and Résumé shows the new content read-only, with lee's readiness kept.
+  await page.goto('/settings/resume')
+  const lock = page.getByTestId('portfolio-lock')
+  await expect(lock).toContainText('Your portfolio is the source. Edit there; lee syncs automatically.')
+  await expect(lock.getByRole('link', { name: /Edit in your portfolio/ })).toHaveAttribute('href', 'https://github.com/example-asha/portfolio/edit/main/profile.json')
+  await expect(page.locator('#basics-label')).toHaveValue('Backend Engineer (edited on GitHub)')
+  await expect(page.locator('#basics-label')).toHaveAttribute('readonly', '')
+  await expect(page.getByLabel('Project ledgerkit: how well you know it')).toHaveValue('learning')
+  await expect(page.getByRole('button', { name: 'Add job' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Add private job' })).toBeVisible()
+  // The lee-only overlay is still editable.
+  await page.getByLabel('Project ledgerkit: how well you know it').selectOption('ai_assisted')
+  await page.getByRole('button', { name: 'Save profile' }).first().click()
+  await expectToast(page, /Profile saved/)
+  await expect(await axeViolations(page)).toEqual([])
+  // Nothing was written to the repository: the portfolio stays the source.
+  let file = await stubFile(page)
+  expect(file.commits).toBe(0)
+  expect(file.text).toBe(edited)
+
+  // Settings › Portfolio: the sync line and the last sync's diff (read-only).
   await page.goto('/settings/publish')
-  await page.getByRole('button', { name: 'Publish', exact: true }).click()
-  await expect(page.getByTestId('publish-status')).toContainText('1.0.1', { timeout: 30_000 })
-  file = await stubFile(page)
-  expect(file.commits).toBe(2)
-  expect(file.text).toContain('"label": "Payments Backend Engineer"')
+  await expect(page.getByTestId('portfolio-sync-status')).toContainText('Synced from portfolio ·')
+  await page.getByText(/What changed in the last sync/).click()
+  await expect(page.getByRole('region', { name: 'What changed in the last sync' })).toContainText('Backend Engineer (edited on GitHub)')
+  await expect(page.getByRole('button', { name: 'Publish', exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Sync now' }).click()
+  await expectToast(page, /Synced/)
+  await expect(await axeViolations(page)).toEqual([])
 
   // 5. Photo: uploaded on Résumé (cropped in the browser), private, used by the GCC variant.
   await page.goto('/settings/resume')
@@ -206,13 +234,14 @@ test('edit the master profile, build a variant, preview it and publish to the po
   await expectToast(page, /Published .* \(1\.0\.0\)/)
   await expect(row.getByTestId('variant-page-url')).toHaveAttribute('href', 'https://asha.example.dev/resume/gcc-backend.html')
   const variantFile = await stubFile(page, 'variants/gcc-backend.json')
-  expect(variantFile.commits).toBe(3)
+  expect(variantFile.commits).toBe(1)
   expect(variantFile.text).toContain('"canonical": "https://asha.example.dev/variants/gcc-backend.json"')
   expect(variantFile.text).toContain('Idempotent payouts API in Go at 2M+ requests per day and 99.99% availability')
   expect(variantFile.text).not.toContain('+91 90000 00000')
   expect(variantFile.text).not.toContain('lee-photo')
   // profile.json is untouched by a variant publish.
-  expect((await stubFile(page)).text).toBe(file.text)
+  file = await stubFile(page)
+  expect(file.text).toBe(edited)
 
   await page.goto(variantUrl)
   await expect(page.getByTestId('variant-public-url')).toHaveAttribute('href', 'https://asha.example.dev/resume/gcc-backend.html')

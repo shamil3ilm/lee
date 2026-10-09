@@ -79,8 +79,8 @@ export async function checkServiceKey(
   key: string,
   opts: { layaEndpoint?: string | null; fetchImpl?: typeof fetch } = {},
 ): Promise<CheckResult> {
-  // Needs the repository: checked by lib/portfolio/token-check.ts from Settings › Publish.
-  if (id === 'github_portfolio') return { ok: false, error: 'Test this token in Settings › Publish.', rejected: false }
+  // Needs the repository: checked by lib/portfolio/token-check.ts from Settings › Portfolio.
+  if (id === 'github_portfolio') return { ok: false, error: 'Test this token in Settings › Portfolio.', rejected: false }
   if (id === 'neon') return checkNeon(key)
   if (id === 'google_places') return checkGooglePlaces(key, opts.fetchImpl)
   if (id === 'adzuna') return checkAdzuna(key, opts.fetchImpl)

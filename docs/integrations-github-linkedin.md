@@ -22,7 +22,7 @@ Docs: [Registering a GitHub App](https://docs.github.com/en/apps/creating-github
    - **Webhook:** untick **Active**. lee needs no events.
 2. Set the **permissions**. Ask for the minimum:
    - Repository › **Metadata: Read-only**. GitHub makes this mandatory once you pick any repository permission.
-   - Repository › **Contents: Read and write**. This is used to commit `profile.json` and to read `package.json` / `composer.json`.
+   - Repository › **Contents: Read and write**. This is used to read `profile.json` (lee syncs your public profile from it), to commit the variant pages you publish, and to read `package.json` / `composer.json`.
    - Account › **Starring: Read-only**. This one is optional; it is only for "Suggest my starred repos for Radar".
    - Nothing else.
 3. **Where can this GitHub App be installed?** Choose "Only on this account" for a personal deployment, or "Any account" for the invite beta.
@@ -51,12 +51,12 @@ Docs: [Registering a GitHub App](https://docs.github.com/en/apps/creating-github
   - The state is single use, valid for 10 minutes, and bound to the signed-in user and to an httpOnly cookie on the callback path (`lib/integrations/oauth-state.ts`).
 - **Refresh** follows [Refreshing user access tokens](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/refreshing-user-access-tokens). A refresh invalidates the old pair, so lee stores the new pair right away.
 - **Disconnect** calls `DELETE /applications/{client_id}/grant` ([OAuth applications API](https://docs.github.com/en/rest/apps/oauth-applications)), which revokes every token. It also deletes the stored tokens and the cached repo stats. The app stays installed until the user uninstalls it.
-- **Publish to portfolio** prefers an [installation token](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/authenticating-as-a-github-app-installation):
+- **Portfolio sync and variant pages** prefer an [installation token](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/authenticating-as-a-github-app-installation):
   - It is signed with the app JWT (RS256, `exp` at most 10 minutes; see [the JWT docs](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-json-web-token-jwt-for-a-github-app)).
   - It is valid for 1 hour, narrowed to the one configured repository and to `contents: write` + `metadata: read`.
   - The installation id comes from the user's own token (`GET /user/installations`), so it is always that user's installation.
-  - If GitHub refuses (the repo is not in the installation), Publish falls back to the fine-grained token saved in Settings › Publish.
-  - The sha/conflict flow is unchanged.
+  - If GitHub refuses (the repo is not in the installation), lee falls back to the fine-grained token saved in Settings › Portfolio.
+  - lee only READS the main `profile.json`: the portfolio is the source of the public profile and lee syncs from it (see [resume-and-portfolio.md](resume-and-portfolio.md#sync-from-the-portfolio-libportfoliopullts)). It writes only the variant pages (`variants/<slug>.json`) you publish.
 - **Résumé › From GitHub** lists:
   - the user's public repos and the repos granted to the app;
   - for each: languages, stars, the user's commit count (`/commits?author=`, counted from the `Link` header), the last commit, and the PR count (`/search/issues?q=repo:… is:pr author:…`; search allows 30 requests a minute, see [the search docs](https://docs.github.com/en/rest/search/search)).

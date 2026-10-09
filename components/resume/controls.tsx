@@ -1,4 +1,5 @@
 'use client'
+import { createContext, useContext } from 'react'
 import { ArrowDown, ArrowUp, Eye, EyeOff, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/ui/native-select'
@@ -6,6 +7,24 @@ import { DEPTH_LABELS } from '@/lib/resume/readiness'
 import { DEPTHS, type Depth, type Visibility } from '@/lib/resume/types'
 import { cn } from '@/lib/utils'
 import { Checkbox } from '@/components/ui/checkbox'
+
+/**
+ * Public facts come from the portfolio (lib/portfolio/lock.ts): when true,
+ * public fields and items are shown read-only and visibility can't change;
+ * the lee-only overlay (readiness, wordings, kinds, stack) and private
+ * items stay editable. New items are added as private.
+ */
+const FactsLockContext = createContext(false)
+export const FactsLockProvider = FactsLockContext.Provider
+
+export function useFactsLocked(): boolean {
+  return useContext(FactsLockContext)
+}
+
+/** Visibility for an item added while facts are locked: private, so it never touches the portfolio. */
+export function addedVisibility(locked: boolean): Record<string, Visibility> {
+  return locked ? { _item: 'private' } : {}
+}
 
 /** Immutable list helpers. */
 export function replaceAt<T>(list: readonly T[], i: number, next: T): T[] {
@@ -34,16 +53,18 @@ interface VisibilityToggleProps {
 
 /** Public / private switch for one field or item. */
 export function VisibilityToggle({ value, onChange, label }: VisibilityToggleProps) {
+  const locked = useFactsLocked()
   const isPublic = value === 'public'
   return (
     <button
       type="button"
       onClick={() => onChange(isPublic ? 'private' : 'public')}
+      disabled={locked}
       aria-pressed={isPublic}
-      aria-label={`${label}: ${isPublic ? 'public' : 'private'} (toggle)`}
-      title={isPublic ? 'Public: published to your portfolio' : 'Private: never published'}
+      aria-label={`${label}: ${isPublic ? 'public' : 'private'}${locked ? '' : ' (toggle)'}`}
+      title={locked ? (isPublic ? 'Public: from your portfolio' : 'Private: only in lee') : isPublic ? 'Public: on your portfolio' : 'Private: never published'}
       className={cn(
-        'inline-flex h-6 shrink-0 items-center gap-1 rounded-md border px-1.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'inline-flex h-6 shrink-0 items-center gap-1 rounded-md border px-1.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default',
         isPublic ? 'border-transparent bg-info-soft text-info' : 'border-transparent bg-neutral-soft text-neutral',
       )}
     >
@@ -88,7 +109,7 @@ export function ReadinessControls({ value, onChange, label, compact = false }: R
           </option>
         ))}
       </NativeSelect>
-      {value.depth !== 'own' ? (
+      {value.depth !== 'own' || !value.interviewReady ? (
         <>
           <label className="inline-flex items-center gap-1.5">
             <Checkbox

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 import type { PortfolioSettings, WorkItem } from '@/lib/resume/types'
-import { newClientId, removeAt, replaceAt, RowActions, move } from './controls'
+import { newClientId, removeAt, replaceAt, RowActions, move, useFactsLocked } from './controls'
 import { csv, fromCsv } from './work-card'
 
 interface PortfolioCardProps {
@@ -18,15 +18,21 @@ interface PortfolioCardProps {
 
 /** meta.x-portfolio inputs: page name, canonical URL, case studies, the 60-second view. */
 export function PortfolioCard({ value, work, onChange }: PortfolioCardProps) {
+  const locked = useFactsLocked()
   const q = value.quickView
   const setQ = (patch: Partial<PortfolioSettings['quickView']>): void => onChange({ ...value, quickView: { ...q, ...patch } })
   return (
     <Card>
       <CardHeader>
         <CardTitle>Portfolio page</CardTitle>
-        <CardDescription>Only used by Publish: the site name, the file’s canonical URL, case studies and the 60-second view.</CardDescription>
+        <CardDescription>
+          {locked
+            ? 'From your portfolio’s profile.json: the site name, the file’s canonical URL, case studies and the 60-second view.'
+            : 'The site name, the file’s canonical URL (lee reads your portfolio’s profile.json from its site when no repository is set), case studies and the 60-second view.'}
+        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent>
+        <fieldset disabled={locked} className="min-w-0 space-y-5">
         <div className="grid gap-3 sm:grid-cols-2">
           <FormField htmlFor="pf-display" label="Display name">
             <Input id="pf-display" value={value.displayName} onChange={(e) => onChange({ ...value, displayName: e.target.value })} />
@@ -113,6 +119,7 @@ export function PortfolioCard({ value, work, onChange }: PortfolioCardProps) {
             <Plus className="size-3.5" /> Add result
           </Button>
         </div>
+        </fieldset>
       </CardContent>
     </Card>
   )

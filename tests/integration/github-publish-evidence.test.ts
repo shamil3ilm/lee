@@ -7,7 +7,8 @@ import { completeGitHubConnect, startGitHubConnect } from '@/lib/integrations/gi
 import { refreshRepoStats } from '@/lib/integrations/github/repo-stats'
 import { suggestRadarFollows } from '@/lib/integrations/github/follow'
 import * as connQ from '@/lib/db/queries/integrationConnections'
-import { publishProfile } from '@/lib/portfolio/publish'
+import { serializeProfileJson, toJsonResume } from '@/lib/portfolio/map'
+import { pullPortfolio } from '@/lib/portfolio/pull'
 import { getResumeProfile, saveResumeProfile } from '@/lib/resume/service'
 import { pruneGitHubRepoStats } from '@/lib/db/retention/github'
 import { fakeGitHub, type FakeGitHub } from '@/tests/fixtures/fake-github'
@@ -37,6 +38,12 @@ async function userWithProfile(): Promise<string> {
   return me.id
 }
 
+/** The portfolio's profile.json: the synthetic profile with one hand edit. */
+function portfolioFile(): string {
+  const p = syntheticProfile()
+  return serializeProfileJson(toJsonResume({ ...p, basics: { ...p.basics, label: 'Payments Engineer' } }, { version: '1.0.0', lastModified: '2026-10-01T00:00:00Z' }))
+}
+
 async function connect(userId: string): Promise<void> {
   const start = await startGitHubConnect(userId)
   if (!start.ok) throw new Error(start.error)
@@ -57,16 +64,19 @@ afterEach(() => {
   }
 })
 
-describe('Publish with the GitHub connection', () => {
-  it('uses a repo-scoped installation token when connected (sha flow unchanged)', async () => {
+describe('Portfolio sync with the GitHub connection', () => {
+  it('reads profile.json with a repo-scoped installation token when connected', async () => {
     setup('ghs_SYNTHETICinstallation000000000000000000')
     const userId = await userWithProfile()
     await connect(userId)
-    const r = await publishProfile(userId, { now: NOW })
-    expect(r).toMatchObject({ status: 'published', version: '1.0.0' })
-    expect(contents.puts[0]!.authorization).toBe(`Bearer ${app.installationToken}`)
-    expect(app.installationTokenRequests).toEqual([{ repositories: ['portfolio'], permissions: { contents: 'write', metadata: 'read' } }])
-    expect(await publishProfile(userId, { now: NOW })).toEqual({ status: 'up_to_date' })
+    contents.editByHand(portfolioFile())
+    const r = await pullPortfolio(userId, { trigger: 'manual', now: NOW, ignoreThrottle: true })
+    expect(r).toMatchObject({ status: 'pulled' })
+    const reads = contents.requests.filter((q) => q.url.includes('/contents/'))
+    expect(reads.length).toBeGreaterThan(0)
+    expect(reads.every((q) => q.authorization === `Bearer ${app.installationToken}`)).toBe(true)
+    expect(app.installationTokenRequests[0]).toMatchObject({ repositories: ['portfolio'] })
+    expect(contents.puts).toHaveLength(0)
   })
 
   it('falls back to the fine-grained token when the repo is not in the installation', async () => {
@@ -75,9 +85,9 @@ describe('Publish with the GitHub connection', () => {
     await keysQ.upsert(userId, 'github_portfolio', PAT)
     await connect(userId)
     app.state.refuseRepos.add('portfolio')
-    const r = await publishProfile(userId, { now: NOW })
-    expect(r).toMatchObject({ status: 'published' })
-    expect(contents.puts[0]!.authorization).toBe(`Bearer ${PAT}`)
+    contents.editByHand(portfolioFile())
+    expect(await pullPortfolio(userId, { trigger: 'manual', now: NOW, ignoreThrottle: true })).toMatchObject({ status: 'pulled' })
+    expect(contents.requests.filter((q) => q.url.includes('/contents/')).every((q) => q.authorization === `Bearer ${PAT}`)).toBe(true)
   })
 
   it('never mints an installation token for a repository owned by another account (e.g. an org)', async () => {
@@ -87,25 +97,28 @@ describe('Publish with the GitHub connection', () => {
     await connect(userId)
     await publishQ.saveConfig(userId, { repo: 'example-org/portfolio', branch: 'main', path: 'profile.json' })
     // The fake has no example-org repo: only which token was tried matters here.
-    await publishProfile(userId, { now: NOW }).catch(() => null)
+    await pullPortfolio(userId, { trigger: 'manual', now: NOW, ignoreThrottle: true }).catch(() => null)
     expect(contents.requests.every((r) => r.authorization === `Bearer ${PAT}`)).toBe(true)
     expect(app.installationTokenRequests).toHaveLength(0)
   })
 
-  it('without a connection, publishes with the fine-grained token as before', async () => {
+  it('without a connection, reads with the fine-grained token as before', async () => {
     setup(PAT)
     const userId = await userWithProfile()
     await keysQ.upsert(userId, 'github_portfolio', PAT)
-    expect(await publishProfile(userId, { now: NOW })).toMatchObject({ status: 'published' })
+    contents.editByHand(portfolioFile())
+    expect(await pullPortfolio(userId, { trigger: 'manual', now: NOW, ignoreThrottle: true })).toMatchObject({ status: 'pulled' })
     expect(app.installationTokenRequests).toHaveLength(0)
   })
 
-  it('is not configured with neither a connection nor a token', async () => {
+  it('without a connection or a token, GitHub is not used (the site fallback is tried instead)', async () => {
     setup(PAT)
     const userId = await userWithProfile()
     const saveEnv = process.env.GITHUB_PORTFOLIO_TOKEN
     delete process.env.GITHUB_PORTFOLIO_TOKEN
-    expect(await publishProfile(userId, { now: NOW })).toEqual({ status: 'not_configured', error: 'Connect GitHub or save a GitHub token first.' })
+    const r = await pullPortfolio(userId, { trigger: 'manual', now: NOW, ignoreThrottle: true })
+    expect(r.status).toBe('error')
+    expect(contents.requests.filter((q) => q.url.includes('/contents/'))).toHaveLength(0)
     if (saveEnv !== undefined) process.env.GITHUB_PORTFOLIO_TOKEN = saveEnv
   })
 })

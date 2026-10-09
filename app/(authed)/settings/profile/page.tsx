@@ -9,6 +9,9 @@ import { UrlImportCard } from '@/components/profile/url-import-card'
 import { readProfileLinks } from '@/lib/profile/links'
 import { SectionNav, SECTION_ANCHOR } from '@/components/section-nav'
 import { ReturnLink } from '@/components/settings/return-link'
+import { PortfolioSyncCard } from '@/components/portfolio/sync-card'
+import { pullOnOpen } from '@/lib/portfolio/pull'
+import { loadSyncStatus } from '@/lib/portfolio/sync-status'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,6 +19,7 @@ const SECTIONS = [
   { id: 'cv-import', label: 'Import CV' },
   { id: 'url-import', label: 'Import from a link' },
   { id: 'profile-links', label: 'Links' },
+  { id: 'portfolio-sync', label: 'Portfolio' },
   { id: 'profile-details', label: 'Details' },
 ]
 
@@ -29,7 +33,9 @@ export default async function ProfileSettingsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const userId = await requireUserId()
-  const [profile, sp] = await Promise.all([getProfile(userId), searchParams])
+  // The portfolio is the source of the public profile: pull it first (throttled).
+  await pullOnOpen(userId)
+  const [profile, sp, sync] = await Promise.all([getProfile(userId), searchParams, loadSyncStatus(userId)])
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <ReturnLink from={sp.from} />
@@ -43,6 +49,9 @@ export default async function ProfileSettingsPage({
       </div>
       <UrlImportCard />
       <ProfileLinksCard initial={readProfileLinks(profile?.links)} />
+      <div id="portfolio-sync" className={SECTION_ANCHOR}>
+        <PortfolioSyncCard status={sync} />
+      </div>
       <div id="profile-details" className={SECTION_ANCHOR}>
         <ProfileForm profile={profile} />
       </div>

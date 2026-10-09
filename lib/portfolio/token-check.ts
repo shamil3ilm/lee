@@ -2,7 +2,7 @@ import type { RepoTarget } from './config'
 import { getFile, getRepo, GitHubError, probeWrite } from './github'
 
 /**
- * Settings › Publish › Test: does this token have Contents read
+ * Settings › Portfolio › Test: does this token have Contents read
  * and write on exactly the configured repository — and nothing broader?
  *
  *   1. fine-grained token (github_pat_…): classic tokens reach every repo

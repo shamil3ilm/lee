@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/native-select'
-import { visibilityOf } from '@/lib/resume/visibility'
+import { isPublicItem, visibilityOf } from '@/lib/resume/visibility'
 import { skillSchema, SKILL_KINDS, type SkillGroup, type SkillKind } from '@/lib/resume/types'
-import { move, newClientId, ReadinessControls, removeAt, replaceAt, RowActions, VisibilityToggle } from './controls'
+import { addedVisibility, move, newClientId, ReadinessControls, removeAt, replaceAt, RowActions, useFactsLocked, VisibilityToggle } from './controls'
 
 interface SkillsCardProps {
   value: SkillGroup[]
@@ -45,6 +45,7 @@ function AddSkill({ onAdd }: { onAdd: (name: string) => void }) {
 }
 
 export function SkillsCard({ value, onChange }: SkillsCardProps) {
+  const locked = useFactsLocked()
   const setGroup = (i: number, g: SkillGroup): void => onChange(replaceAt(value, i, g))
   return (
     <Card>
@@ -55,14 +56,19 @@ export function SkillsCard({ value, onChange }: SkillsCardProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {value.map((g, i) => (
+        {value.map((g, i) => {
+          // A public group's name and skill list come from the portfolio; kind and readiness stay editable.
+          const ro = locked && isPublicItem('skills', g)
+          return (
           <section key={g.id} aria-label={g.name || `Skill group ${i + 1}`} className="space-y-3 rounded-lg border p-3">
             <div className="flex flex-wrap items-center gap-2">
-              <Input aria-label={`Skill group ${i + 1} name`} value={g.name} className="h-8 max-w-xs flex-1" onChange={(e) => setGroup(i, { ...g, name: e.target.value })} />
+              <Input aria-label={`Skill group ${i + 1} name`} value={g.name} readOnly={ro} className="h-8 max-w-xs flex-1" onChange={(e) => setGroup(i, { ...g, name: e.target.value })} />
               <VisibilityToggle label={`Group ${g.name}`} value={visibilityOf('skills', g, '_item')} onChange={(v) => setGroup(i, { ...g, visibility: { ...g.visibility, _item: v } })} />
-              <div className="ml-auto">
-                <RowActions index={i} count={value.length} label={`group ${g.name}`} onMove={(d) => onChange(move(value, i, d))} onRemove={() => onChange(removeAt(value, i))} />
-              </div>
+              {ro ? null : (
+                <div className="ml-auto">
+                  <RowActions index={i} count={value.length} label={`group ${g.name}`} onMove={(d) => onChange(move(value, i, d))} onRemove={() => onChange(removeAt(value, i))} />
+                </div>
+              )}
             </div>
             <ul className="divide-y">
               {g.skills.map((s, j) => (
@@ -81,17 +87,20 @@ export function SkillsCard({ value, onChange }: SkillsCardProps) {
                     ))}
                   </NativeSelect>
                   <ReadinessControls label={s.name} value={s} compact onChange={(patch) => setGroup(i, { ...g, skills: replaceAt(g.skills, j, { ...s, ...patch }) })} />
-                  <button type="button" aria-label={`Remove ${s.name}`} className="ml-auto text-muted-foreground hover:text-foreground" onClick={() => setGroup(i, { ...g, skills: removeAt(g.skills, j) })}>
-                    <X className="size-3.5" />
-                  </button>
+                  {ro ? null : (
+                    <button type="button" aria-label={`Remove ${s.name}`} className="ml-auto text-muted-foreground hover:text-foreground" onClick={() => setGroup(i, { ...g, skills: removeAt(g.skills, j) })}>
+                      <X className="size-3.5" />
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
-            <AddSkill onAdd={(name) => setGroup(i, { ...g, skills: [...g.skills, skillSchema.parse({ id: newClientId('sk'), name, depth: 'own' })] })} />
+            {ro ? null : <AddSkill onAdd={(name) => setGroup(i, { ...g, skills: [...g.skills, skillSchema.parse({ id: newClientId('sk'), name, depth: 'own' })] })} />}
           </section>
-        ))}
-        <Button type="button" size="sm" variant="outline" onClick={() => onChange([...value, { id: newClientId('g'), name: 'New group', level: '', skills: [], visibility: {} }])}>
-          <Plus className="size-3.5" /> Add skill group
+          )
+        })}
+        <Button type="button" size="sm" variant="outline" onClick={() => onChange([...value, { id: newClientId('g'), name: 'New group', level: '', skills: [], visibility: addedVisibility(locked) }])}>
+          <Plus className="size-3.5" /> {locked ? 'Add private skill group' : 'Add skill group'}
         </Button>
       </CardContent>
     </Card>

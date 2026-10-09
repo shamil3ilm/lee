@@ -7,6 +7,7 @@ import {
   type Basics,
   type Highlight,
   type ResumeProfile,
+  type Skill,
   type Visibility,
 } from '@/lib/resume/types'
 import type { DiffSection } from './diff'
@@ -17,11 +18,16 @@ import type { DiffSection } from './diff'
  * publish reproduces the repo. Matching items keep their ids, flags,
  * alternates and readiness (work/projects/skills by name, education by
  * institution, highlights by text); lee's PRIVATE items are kept — the
- * repo never had them. New items are `own` (the user wrote them by hand).
+ * repo never had them. New items are NOT interview-ready (only defensible
+ * claims): the user marks them ready in lee, which keeps that flag across
+ * every later pull.
  */
 
 type Doc = Record<string, unknown>
 type Item = Record<string, unknown>
+
+/** Readiness of an item lee first sees in the portfolio: not claimed until the user says so. */
+const NOT_READY = { depth: 'own' as const, interviewReady: false, domainReady: false }
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '')
 const strs = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
@@ -45,7 +51,7 @@ function mergeHighlights(existing: readonly Highlight[], texts: readonly string[
       used.add(atIndex.id)
       return { ...atIndex, text }
     }
-    return highlightSchema.parse({ id: makeId(), text, depth: 'own' })
+    return highlightSchema.parse({ id: makeId(), text, ...NOT_READY })
   })
   return [...kept, ...existing.filter((h) => !isPublicItem('highlight', h))]
 }
@@ -145,7 +151,7 @@ function applySection(p: ResumeProfile, repo: Doc, section: DiffSection, makeId:
       const projects = items(repo.projects).map((r) => {
         const cur = m.find(str(r.name))
         return {
-          ...(cur ?? { depth: 'own' as const, interviewReady: true, domainReady: true, ownedAspects: '', studyNotes: '', studyTarget: '' }),
+          ...(cur ?? { ...NOT_READY, ownedAspects: '', studyNotes: '', studyTarget: '' }),
           id: cur?.id ?? makeId(),
           name: str(r.name),
           description: str(r.description),
@@ -161,15 +167,21 @@ function applySection(p: ResumeProfile, repo: Doc, section: DiffSection, makeId:
     }
     case 'skills': {
       const m = byKey(p.skills, (g) => g.name, 'skills')
+      const allSkills = p.skills.filter((g) => isPublicItem('skills', g)).flatMap((g) => g.skills)
+      const used = new Set<string>()
       const skills = items(repo.skills).map((r) => {
         const cur = m.find(str(r.name))
         return {
           id: cur?.id ?? makeId(),
           name: str(r.name),
           level: str(r.level),
-          skills: strs(r.keywords).map(
-            (name) => cur?.skills.find((s) => s.name.toLowerCase() === name.toLowerCase()) ?? skillSchema.parse({ id: makeId(), name, depth: 'own' }),
-          ),
+          skills: strs(r.keywords).map((name) => {
+            const same = (s: Skill): boolean => s.name.toLowerCase() === name.toLowerCase() && !used.has(s.id)
+            // This group's skill, else one moved from another group (keeps id, kind, readiness), else new.
+            const skill = cur?.skills.find(same) ?? allSkills.find(same) ?? skillSchema.parse({ id: makeId(), name, ...NOT_READY })
+            used.add(skill.id)
+            return skill
+          }),
           visibility: { ...(cur?.visibility ?? {}), _item: 'public' as const },
         }
       })

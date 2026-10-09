@@ -4,6 +4,9 @@ import type { Document } from '@/lib/db/queries/documents'
 import type { UserProfile } from '@/lib/db/queries/profile'
 import { masterCvSchema } from '@/lib/documents/types'
 import { canonicalJson } from '@/lib/portfolio/canonical'
+import { publicFactsChanged } from '@/lib/portfolio/apply'
+import { publicFactsLocked } from '@/lib/portfolio/lock'
+import { LOCKED_MESSAGE } from '@/lib/portfolio/sync-flags'
 import { readProfileLinks } from '@/lib/profile/links'
 import { noticeLabel, parseDiscoveryPrefs } from '@/lib/discovery/relevance/discovery-prefs'
 import { toMasterCv } from './derive'
@@ -102,10 +105,35 @@ export interface SaveResult {
   masterDocument: Document | null
 }
 
-/** Save the profile and refresh the derived master_cv snapshot when it changed. */
-export async function saveResumeProfile(userId: string, input: unknown): Promise<SaveResult> {
+/** A save that would change public facts while they come from the portfolio (lib/portfolio/lock.ts). */
+export class PublicFactsLockedError extends ResumeValidationError {
+  constructor() {
+    super([LOCKED_MESSAGE])
+    this.name = 'PublicFactsLockedError'
+  }
+}
+
+export interface SaveOptions {
+  /**
+   * 'portfolio': a pull from the portfolio (lib/portfolio/pull.ts), the one
+   * writer of public facts while they are read-only in lee.
+   */
+  source?: 'user' | 'portfolio'
+}
+
+/**
+ * Save the profile and refresh the derived master_cv snapshot when it
+ * changed. While the user's portfolio is the source (lib/portfolio/lock.ts)
+ * a save that changes a public fact is refused; the lee-only overlay
+ * (readiness, wordings, skill kinds, private items) saves as usual.
+ */
+export async function saveResumeProfile(userId: string, input: unknown, opts: SaveOptions = {}): Promise<SaveResult> {
   const profile = validateResumeProfile(input)
-  const wordingProblems = newWordingErrors(await readStoredProfile(userId), profile)
+  const previous = await readStoredProfile(userId)
+  if (opts.source !== 'portfolio' && publicFactsChanged(previous, profile) && (await publicFactsLocked(userId))) {
+    throw new PublicFactsLockedError()
+  }
+  const wordingProblems = newWordingErrors(previous, profile)
   if (wordingProblems.length > 0) throw new ResumeValidationError(wordingProblems)
   await profileQ.upsert(userId, { resume: profile })
   const cv = toMasterCv(profile)

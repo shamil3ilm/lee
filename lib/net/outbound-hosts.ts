@@ -134,7 +134,15 @@ export const OUTBOUND_PARTIES: readonly OutboundParty[] = [
     name: 'GitHub',
     hosts: ['api.github.com', 'raw.githubusercontent.com'],
     sends:
-      'Your GitHub username (to list your public repos); the portfolio profile.json you publish, to your own repository; AI Radar repository searches and READMEs; organisation searches by city for company discovery.',
+      'Your GitHub username (to list your public repos); reads your portfolio’s profile.json from your own repository (lee syncs your public profile from it) and writes the variant pages you publish there; AI Radar repository searches and READMEs; organisation searches by city for company discovery.',
+    group: 'documents',
+  },
+  {
+    id: 'portfolio-site',
+    name: 'Your portfolio site',
+    hosts: [],
+    sends:
+      'Only when no portfolio repository is set: a plain request for /profile.json on the canonical address in your portfolio settings, to sync your public profile. Nothing about you is sent; private-network addresses are refused.',
     group: 'documents',
   },
   // Job sources

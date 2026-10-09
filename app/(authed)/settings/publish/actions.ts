@@ -6,9 +6,7 @@ import * as keysQ from '@/lib/db/queries/labProviderKeys'
 import * as publishQ from '@/lib/db/queries/portfolioPublish'
 import { logger } from '@/lib/logger'
 import { PORTFOLIO_TOKEN_ID, publishConfigSchema, toTarget } from '@/lib/portfolio/config'
-import { parseChoices } from '@/lib/portfolio/diff'
 import { GitHubError } from '@/lib/portfolio/github'
-import { publishProfile, type PublishOutcome } from '@/lib/portfolio/publish'
 import { checkPortfolioToken, type TokenCheckResult } from '@/lib/portfolio/token-check'
 import { publishVariant, unpublishVariant, type VariantPublishOutcome, type VariantUnpublishOutcome } from '@/lib/portfolio/variant-publish'
 import { VariantError } from '@/lib/variants/service'
@@ -91,34 +89,6 @@ export async function testPortfolioTokenAction(): Promise<Result<{ check: TokenC
     return { success: true, check: await checkPortfolioToken(target, key) }
   } catch (err) {
     return fail('testPortfolioToken', err)
-  }
-}
-
-export async function publishAction(): Promise<Result<{ outcome: PublishOutcome }>> {
-  try {
-    const userId = await requireUserId()
-    const outcome = await publishProfile(userId)
-    revalidatePath(PATH)
-    return { success: true, outcome }
-  } catch (err) {
-    return fail('publishProfile', err)
-  }
-}
-
-const resolutionSchema = z.object({ repoSha: z.string().regex(/^[0-9a-f]{40}$/).nullable(), choices: z.unknown() })
-
-/** Publish after the user chose a side per section (repo or lee). */
-export async function resolveConflictAction(input: unknown): Promise<Result<{ outcome: PublishOutcome }>> {
-  try {
-    const userId = await requireUserId()
-    const parsed = resolutionSchema.safeParse(input)
-    if (!parsed.success) return { error: 'Invalid choice.' }
-    const outcome = await publishProfile(userId, { resolution: { repoSha: parsed.data.repoSha, choices: parseChoices(parsed.data.choices) } })
-    revalidatePath(PATH)
-    revalidatePath('/settings/resume')
-    return { success: true, outcome }
-  } catch (err) {
-    return fail('resolvePublishConflict', err)
   }
 }
 

@@ -20,6 +20,7 @@ export const JOB_TYPES = {
   radarNew: 'radar-new:source',
   companyDiscovery: 'company-discovery:user',
   companyEnrich: 'company-enrich:user',
+  portfolioPull: 'portfolio-pull:user',
 } as const
 
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES]
@@ -58,6 +59,9 @@ export const JOB_PRIORITY: Readonly<Record<JobType, number>> = {
   // Weekly local-company discovery and its bounded enrichment: last, non-essential.
   [JOB_TYPES.companyDiscovery]: 72,
   [JOB_TYPES.companyEnrich]: 74,
+  // Daily portfolio → profile sync: one GitHub read; early, so the day's
+  // match and shortlist jobs see the latest public facts.
+  [JOB_TYPES.portfolioPull]: 8,
 }
 
 /** Short human labels for Settings › Background jobs (no internals). */
@@ -78,6 +82,7 @@ export const JOB_LABELS: Readonly<Record<string, string>> = {
   [JOB_TYPES.radarNew]: "AI Radar what's new (shared)",
   [JOB_TYPES.companyDiscovery]: 'Company discovery (weekly)',
   [JOB_TYPES.companyEnrich]: 'Company careers check',
+  [JOB_TYPES.portfolioPull]: 'Portfolio sync',
 }
 
 export function jobLabel(type: string): string {
@@ -125,6 +130,7 @@ export const jobKeys = {
   companyDiscoveryManual: (userId: string, day: string) => `company-discovery:${userId}:now:${day}`,
   /** Enrichment batches: numbered within the week, so a week has at most COMPANY_ENRICH_BATCHES. */
   companyEnrich: (userId: string, isoWeek: string, n: number) => `company-enrich:${userId}:${isoWeek}:${n}`,
+  portfolioPull: (userId: string, day: string) => `portfolio-pull:${userId}:${day}`,
 } as const
 
 /** Enrichment jobs per user per ISO week (each checks a few companies). */

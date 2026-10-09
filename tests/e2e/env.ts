@@ -51,6 +51,8 @@ export const E2E_ENV: Readonly<Record<string, string>> = {
   HF_TOKEN: '',
   GITHUB_PORTFOLIO_TOKEN: '',
   GITHUB_API_URL: E2E_GITHUB_STUB_URL,
+  // Portfolio sync: re-check the (stub) repository on every page open.
+  PORTFOLIO_PULL_THROTTLE_MS: '0',
   // Connect GitHub / LinkedIn against the local stubs (dummy app credentials).
   GITHUB_WEB_URL: E2E_GITHUB_STUB_URL,
   GITHUB_APP_ID: '1',

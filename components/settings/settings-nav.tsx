@@ -30,7 +30,7 @@ export const SETTINGS_GROUPS: readonly SettingsNavGroup[] = [
       { href: '/settings/current-job', label: 'Current job' },
       { href: '/settings/variants', label: 'Variants' },
       { href: '/settings/study', label: 'Study list' },
-      { href: '/settings/publish', label: 'Publish' },
+      { href: '/settings/publish', label: 'Portfolio' },
       { href: '/settings/linkedin', label: 'LinkedIn' },
       { href: '/settings/notifications', label: 'Notifications' },
     ],

@@ -8,9 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import type { CvProjects } from '@/lib/documents/types'
-import { visibilityOf } from '@/lib/resume/visibility'
+import { isPublicItem, visibilityOf } from '@/lib/resume/visibility'
 import { projectSchema, type ProjectItem } from '@/lib/resume/types'
-import { move, newClientId, ReadinessControls, removeAt, replaceAt, RowActions, VisibilityToggle } from './controls'
+import { addedVisibility, move, newClientId, ReadinessControls, removeAt, replaceAt, RowActions, useFactsLocked, VisibilityToggle } from './controls'
 import { HighlightsEditor } from './highlights-editor'
 import { csv, fromCsv } from './work-card'
 
@@ -69,6 +69,7 @@ function GitHubImport({ onImport }: { onImport: (items: ProjectItem[]) => void }
 }
 
 export function ProjectsCard({ value, onChange }: ProjectsCardProps) {
+  const locked = useFactsLocked()
   const set = (i: number, patch: Partial<ProjectItem>): void => onChange(replaceAt(value, i, { ...value[i]!, ...patch }))
   return (
     <Card>
@@ -81,6 +82,7 @@ export function ProjectsCard({ value, onChange }: ProjectsCardProps) {
       <CardContent className="space-y-5">
         {value.map((p, i) => {
           const id = `project-${p.id}`
+          const ro = locked && isPublicItem('projects', p)
           return (
             <section key={p.id} aria-label={p.name || `Project ${i + 1}`} className="space-y-3 rounded-lg border p-3 sm:p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -88,9 +90,12 @@ export function ProjectsCard({ value, onChange }: ProjectsCardProps) {
                   <VisibilityToggle label={`Project ${p.name || i + 1}`} value={visibilityOf('projects', p, '_item')} onChange={(v) => set(i, { visibility: { ...p.visibility, _item: v } })} />
                   <ReadinessControls label={`Project ${p.name || i + 1}`} value={p} onChange={(patch) => set(i, patch)} />
                 </div>
-                <RowActions index={i} count={value.length} label={`project ${p.name || i + 1}`} onMove={(d) => onChange(move(value, i, d))} onRemove={() => onChange(removeAt(value, i))} />
+                {ro ? null : (
+                  <RowActions index={i} count={value.length} label={`project ${p.name || i + 1}`} onMove={(d) => onChange(move(value, i, d))} onRemove={() => onChange(removeAt(value, i))} />
+                )}
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
+                <fieldset disabled={ro} className="contents">
                 <FormField htmlFor={`${id}-name`} label="Name">
                   <Input id={`${id}-name`} value={p.name} onChange={(e) => set(i, { name: e.target.value })} />
                 </FormField>
@@ -103,22 +108,31 @@ export function ProjectsCard({ value, onChange }: ProjectsCardProps) {
                 <FormField htmlFor={`${id}-keywords`} label="Stack" hint="(comma separated)">
                   <Input id={`${id}-keywords`} value={csv(p.keywords)} onChange={(e) => set(i, { keywords: fromCsv(e.target.value) })} />
                 </FormField>
+                </fieldset>
                 {p.depth !== 'own' ? (
                   <FormField htmlFor={`${id}-owned`} label="What you own" hint="(private)">
                     <Input id={`${id}-owned`} value={p.ownedAspects} placeholder="The domain model and the clearance rules" onChange={(e) => set(i, { ownedAspects: e.target.value })} />
                   </FormField>
                 ) : null}
               </div>
-              <HighlightsEditor owner={p.name || `Project ${i + 1}`} value={p.highlights} onChange={(highlights) => set(i, { highlights })} />
+              <HighlightsEditor owner={p.name || `Project ${i + 1}`} value={p.highlights} factsLocked={ro} onChange={(highlights) => set(i, { highlights })} />
             </section>
           )
         })}
         <div className="flex flex-wrap gap-2">
-          <Button type="button" size="sm" variant="outline" onClick={() => onChange([...value, projectSchema.parse({ id: newClientId('pr'), name: 'New project', depth: 'own' })])}>
-            <Plus className="size-3.5" /> Add project
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => onChange([...value, projectSchema.parse({ id: newClientId('pr'), name: 'New project', depth: 'own', visibility: addedVisibility(locked) })])}
+          >
+            <Plus className="size-3.5" /> {locked ? 'Add private project' : 'Add project'}
           </Button>
         </div>
-        <GitHubImport onImport={(items) => onChange([...value, ...items.filter((x) => !value.some((p) => p.name.toLowerCase() === x.name.toLowerCase()))])} />
+        {/* GitHub import adds public projects: only while public facts are edited in lee. */}
+        {locked ? null : (
+          <GitHubImport onImport={(items) => onChange([...value, ...items.filter((x) => !value.some((p) => p.name.toLowerCase() === x.name.toLowerCase()))])} />
+        )}
       </CardContent>
     </Card>
   )

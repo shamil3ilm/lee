@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 /**
- * Where profile.json lives: Settings › Publish. Validated so the
+ * Where profile.json lives: Settings › Portfolio. Validated so the
  * values can be put into a GitHub API path safely (no "..", no leading
  * slash, the file must be .json).
  */

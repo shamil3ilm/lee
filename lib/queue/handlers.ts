@@ -25,6 +25,7 @@ import { RADAR_SOURCES } from '@/lib/radar/types'
 import { runCompanyDiscovery } from '@/lib/company-discovery/service'
 import { checkWatchedCareers, enrichPending } from '@/lib/company-discovery/enrich'
 import { enqueueEnrichment } from '@/lib/company-discovery/schedule'
+import { pullPortfolio } from '@/lib/portfolio/pull'
 import { JOB_TYPES } from './job-types'
 import { createRegistry, defineHandler, type HandlerRegistry } from './registry'
 import type { DigestSkipReason, DiscoverySourceSummary } from './run-summary'
@@ -447,6 +448,31 @@ const companyEnrich = defineHandler({
   },
 })
 
+/**
+ * Daily portfolio → profile sync (lib/portfolio/pull.ts): one read of the
+ * portfolio's profile.json; applied only when its sha moved. A source that
+ * is down is recorded on the state row (shown in Settings › Portfolio) and
+ * is not retried: tomorrow's run and the next page open try again.
+ */
+const portfolioPull = defineHandler({
+  type: JOB_TYPES.portfolioPull,
+  scope: 'user',
+  payload: USER_PAYLOAD,
+  timeoutMs: 45_000,
+  async run({ job }): Promise<JobResult> {
+    const r = await pullPortfolio(userId(job), { trigger: 'daily', ignoreThrottle: true })
+    return {
+      metrics: {
+        portfolio_pulled: r.status === 'pulled' ? 1 : 0,
+        portfolio_sections: r.status === 'pulled' ? r.sections : 0,
+        portfolio_orphaned: r.status === 'pulled' ? r.orphaned : 0,
+        portfolio_pull_failed: r.status === 'error' ? 1 : 0,
+      },
+      ...(r.status === 'error' ? { warnings: ['portfolio sync failed'] } : {}),
+    }
+  },
+})
+
 export const appHandlers = [
   reminders,
   followups,
@@ -464,6 +490,7 @@ export const appHandlers = [
   radarNew,
   companyDiscovery,
   companyEnrich,
+  portfolioPull,
 ] as const
 
 export const appRegistry: HandlerRegistry = createRegistry(appHandlers)

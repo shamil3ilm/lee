@@ -2,7 +2,9 @@
 
 ## One source of facts
 
-The **master profile** (`user_profile.resume`, schema in `lib/resume/types.ts`) is the only place résumé facts are edited: Settings › Profile › Résumé.
+The **master profile** (`user_profile.resume`, schema in `lib/resume/types.ts`) holds every résumé fact lee uses: Settings › Profile › Résumé.
+
+**Your portfolio is the source of the public facts.** Once a portfolio is connected (Settings › Portfolio), lee pulls its `profile.json` and the master profile becomes *the latest pull + a lee-only overlay* (see [Sync from the portfolio](#sync-from-the-portfolio-libportfoliopullts)). Public facts are then edited in the portfolio, not in lee. Without a portfolio, lee works as before and every fact is edited here.
 
 - Every work item, project, skill, highlight and wording has a stable id.
 - Every field has a public/private flag (`visibility`; defaults in `lib/resume/visibility.ts`). Public by default: name, label, email, website, summary, country, links, work, projects, skills, education, languages, certificates. Private by default: phone, location detail, photo, nationality, visa status, notice period, expected salary, date of birth, marital status. Search preferences live in other columns and are never exported.
@@ -156,17 +158,27 @@ Prepare step 2 and the application page. It starts from the application's varian
 
 The variant's region rules still apply: Remote / US / EU and India never show a photo. When the advice is Recommended and a photo is uploaded, **Use the photo version** switches to the best-fitting GCC variant with Photo on, or creates one ("… · Photo") from the best GCC variant. Without a photo it links to Settings › Résumé with guidance: a recent, professional head-and-shoulders shot on a plain background. When the advice is Avoid and the chosen variant shows the photo, it says so.
 
-## Publish to portfolio (`lib/portfolio`)
+## Sync from the portfolio (`lib/portfolio/pull.ts`)
 
-`profile.json` is JSON Resume v1.2.1 plus `meta.x-portfolio`, in the format described in the portfolio repo's README ("lee sync").
+`profile.json` is JSON Resume v1.2.1 plus `meta.x-portfolio`, in the format described in the portfolio repo's README ("lee sync"). The portfolio's copy is the source of the public facts: basics, work, projects, skills, education, languages, certifications, links and the portfolio page (canonical URL, display name, case studies, the 60-second view).
 
-1. **Map.** Only public fields are mapped (`map.ts`). Depth and readiness are never written.
-2. **Validate.** The file is validated with a TypeScript port of the portfolio's own validator and schema (`validate.ts`, `checks.ts`, `profile.schema.json`). `tests/unit/portfolio-validate-parity.test.ts` runs the original JavaScript validator (vendored in `tests/fixtures/portfolio`) against more than 600 generated documents and requires identical errors. A file with errors is never sent.
-3. **Fetch.** A GET returns the file's sha. If the sha differs from `portfolio_publish.last_sha`, the file was edited by hand: lee shows a field-level diff per section, and the user keeps lee's side or takes the repo's, per section or wholesale. Taking the repo's side writes it into the master profile, so lee stays the source.
-4. **Write.** A PUT sends that sha with "chore(profile): sync from lee" and a summary. A 409 or 422 means the file changed in between: lee re-fetches it and shows the new diff.
-5. **Record.** The sha, content hash, version and commit URL are stored. The events `profile_published` and `profile_publish_conflict` are logged without the token or the file content.
+1. **Read** (`source.ts`). lee reads the file from the configured repository, branch and path through the GitHub contents API, with the same token as variant publishing (below). When no repository or token is set, or GitHub fails, it fetches `<canonical origin>/profile.json`, where the canonical URL is the one in the portfolio settings: https only, that one host, no redirects, through the SSRF guard (`lib/net/safe-fetch.ts`).
+2. **When.** On opening Settings › Profile, Résumé or Portfolio when the last check is older than about 10 minutes (`PULL_THROTTLE_MS`; `PORTFOLIO_PULL_THROTTLE_MS` overrides it, e2e uses 0); once a day in the queue (`portfolio-pull:user`, planned by the 09:00 scheduler, no extra cron); and on **Sync now**. An unchanged sha applies nothing.
+3. **Apply** (`apply.ts`, `reverse.ts`). Every section that differs (`diff.ts`) is taken from the portfolio, without a per-section choice. Items are matched by the same keys as before (work, projects and skill groups by name, education by institution, highlights by text, then position), so they keep their ids, readiness, wordings, a work item's private stack and variant references. **New items are not interview-ready** until you mark them (only defensible claims). Private items and private fields are never touched. On the very first pull, public items lee has that the portfolio never had are kept as **private** items rather than dropped.
+4. **Removed items** leave lee's public data. If one carried lee-only overlay (readiness, notes, wordings, a domain skill kind, a stack), that overlay is kept in an **orphan list** on Settings › Portfolio (`portfolio_publish.orphans`, `overlay.ts`) until you clear it — never dropped silently.
+5. **Record.** The pulled sha, time, source and the diff of the last applied pull are stored on `portfolio_publish` (`pulled_sha`, `pulled_at`, `pull_checked_at`, `pull_source`, `pull_error`, `last_pull_diff`). "What changed in the last sync" on Settings › Portfolio shows that diff, read-only. A pull that changes the profile queues the match-score / best-CV re-evaluation like any profile save. The event `portfolio_pull` logs counts and the trigger only, never the token or the content. A pull never writes to the repository.
 
-With **Connect GitHub** (Settings › Integrations, see [integrations-github-linkedin.md](integrations-github-linkedin.md)), Publish first uses a 1-hour installation token of the user's own lee GitHub App installation, narrowed to the configured repository (Contents write, Metadata read). When there is no connection or the repository is not in the installation, it falls back to the fine-grained token below. The sha and conflict flow is the same either way.
+### Public facts are read-only in lee
+
+`PROFILE_EDIT_IN_LEE` (`lib/portfolio/sync-flags.ts`) is **off**. Once lee has pulled the portfolio, a save that changes any public fact is refused on the server (`saveResumeProfile` → `PublicFactsLockedError`, "Your portfolio is the source. Edit there; lee syncs automatically."). The Résumé editor shows public fields and items read-only, without add/move/remove or visibility controls, with an **Edit in your portfolio** link to GitHub's editor (`https://github.com/<owner>/<repo>/edit/<branch>/<path>`). Still editable in lee: readiness and depth, owned aspects and study notes, alternate wordings, skill kinds, a work item's stack, private fields (phone, visa status, …) and private items (added as private). Importers should check `profileEditableInLee()` / `canEditPublicFacts(userId)` (`lib/portfolio/lock.ts`) before adding public facts.
+
+A later write-through (commit `profile.json` with the last pulled sha, then re-pull) belongs behind that flag; it is not built.
+
+### The repository connection
+
+With **Connect GitHub** (Settings › Integrations, see [integrations-github-linkedin.md](integrations-github-linkedin.md)), lee first uses a 1-hour installation token of the user's own lee GitHub App installation, narrowed to the configured repository (Contents write, Metadata read). When there is no connection or the repository is not in the installation, it falls back to the fine-grained token below.
+
+Settings › Portfolio also shows **lee's copy of profile.json** (its public facts, checked with a TypeScript port of the portfolio's own validator: `validate.ts`, `checks.ts`, `profile.schema.json`; `tests/unit/portfolio-validate-parity.test.ts` runs the original JavaScript validator against more than 600 generated documents). A new portfolio repository can start from it.
 
 The fallback token is the `github_portfolio` entry in the encrypted key store. Its Test does four checks:
 
@@ -191,6 +203,6 @@ Each variant has a "Publish this variant to the portfolio too" toggle, **off by 
 3. **Record.** The sha, hash, version, commit URL and time are stored on `resume_variants.portfolio_*`. The published recipe version gets `published_at`. The events `variant_published` and `variant_publish_conflict` are logged without the token or the content.
 4. **Unpublish.** Unpublish asks for confirmation, then deletes the file through the contents API ("chore(profile): remove variant <slug> (lee)") and turns the toggle off. Turning the toggle off on a published variant goes through the same confirmation, and a published variant's address can't change until it is unpublished.
 
-Settings › Profile › Publish lists the enabled variants (and any still on the portfolio, archived ones included) with Publish, Unpublish, the last commit and the **public URL**, `<portfolio origin>/resume/<slug>.html`. The variant editor shows the same URL.
+Settings › Portfolio lists the enabled variants (and any still on the portfolio, archived ones included) with Publish, Unpublish, the last commit and the **public URL**, `<portfolio origin>/resume/<slug>.html`. The variant editor shows the same URL.
 
 The portfolio repo's build (`scripts/build-resume.mjs`) validates every `variants/*.json` with the same schema, checks the canonical against the file name, and renders `resume/<slug>.html` from the résumé template. The page has a "Tailored résumé" label, a canonical link and `noindex`. The build also deletes the page of a removed variant. Its Regenerate pages workflow watches `variants/**`.
