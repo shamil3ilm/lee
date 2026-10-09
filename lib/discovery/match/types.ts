@@ -107,7 +107,8 @@ export interface MatchProfile {
   remotePref: string
   /** Spoken languages (lower-case name → level); English is assumed. */
   languages: ReadonlyMap<string, LanguageLevel>
-  extra: Pick<DiscoveryPrefs, 'basedIn' | 'sponsorshipFor' | 'payFloors' | 'relocationIfSponsored' | 'relocationCountries'>
+  extra: Pick<DiscoveryPrefs, 'basedIn' | 'sponsorshipFor' | 'payFloors' | 'relocationIfSponsored' | 'relocationCountries'> &
+    Partial<Pick<DiscoveryPrefs, 'preferredRegions'>>
   /** Search preferences saved at least once. */
   prefsActive: boolean
 }

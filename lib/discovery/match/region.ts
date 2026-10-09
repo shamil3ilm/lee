@@ -5,6 +5,7 @@ import { emptyScan, mergeScans } from '../relevance/places'
 import { EMPTY_PREFS, type SearchPrefs } from '../relevance/prefs'
 import { migrateLegacyRegions } from '@/lib/regions/selection'
 import { shortName } from '@/lib/regions/tree'
+import { preferredHit, preferredPoints, PREFERRED_BOOST } from '@/lib/regions/preferred'
 import type { MatchComponent, MatchJob, MatchProfile } from './types'
 
 /**
@@ -16,12 +17,25 @@ import type { MatchComponent, MatchJob, MatchProfile } from './types'
  *   not stated 5 · elsewhere 0;
  *   remote in your regions (or where you live) 10 · hours fit your time
  *   zone 9 · worldwide 8 · eligibility unclear 5 · restricted elsewhere 0.
+ * A place inside a STARRED region (lib/regions/preferred) adds +5 (top
+ * priority) or +3 (preferred) on top, with a "Preferred: Kuwait" label; the
+ * component's max grows by the same amount, so unstarred regions are never
+ * penalised.
  */
 
 export const REGION_MAX = 10
 export const REGION_BROADER = 7
 
 type RegionProfile = Pick<MatchProfile, 'regionIds' | 'regions' | 'otherCountries' | 'remoteScope' | 'extra'>
+
+/** In-region points plus the starred-region boost, if the place is starred. */
+function inRegion(places: Iterable<string>, p: RegionProfile, label: string): MatchComponent {
+  const hit = preferredHit(places, p.extra.preferredRegions ?? [])
+  const boost = preferredPoints(hit, 'match')
+  return hit
+    ? { key: 'region', label: `${label} · ${hit.label}`, points: REGION_MAX + boost, max: REGION_MAX + PREFERRED_BOOST.match.top }
+    : { key: 'region', label, points: REGION_MAX, max: REGION_MAX }
+}
 
 function asPrefs(p: RegionProfile): SearchPrefs {
   const regionIds = p.regionIds && p.regionIds.length > 0 ? [...p.regionIds] : migrateLegacyRegions(p.regions)
@@ -67,14 +81,14 @@ export function regionComponent(job: MatchJob, p: RegionProfile): MatchComponent
     const where = acceptance(eligible, home)
     if (where === 'in' || where === 'partial') {
       const label = acceptedVia(eligible, home) ?? ([...eligible.nodes][0] ? shortName([...eligible.nodes][0]!) : 'your regions')
-      return c(REGION_MAX, `Remote in ${label}`)
+      return inRegion(eligible.nodes, p, `Remote in ${label}`)
     }
     return c(9, 'Remote, hours fit your time zone')
   }
   if (outcome.boost) return c(6, outcome.boost)
   if (outcome.reason) return c(0, `Region: ${what(outcome.reason)} (outside your regions)`)
   const fit = acceptance(located, targets)
-  if (fit === 'in') return c(REGION_MAX, `Region: ${acceptedVia(located, targets) ?? 'your regions'}`)
+  if (fit === 'in') return inRegion(located.nodes, p, `Region: ${acceptedVia(located, targets) ?? 'your regions'}`)
   if (fit === 'partial') {
     const broad = [...located.nodes][0]
     return c(REGION_BROADER, `Region: ${broad ? shortName(broad) : 'broader area'} (city not stated)`)

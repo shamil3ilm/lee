@@ -75,6 +75,10 @@ export interface SearchPrefsFormValues {
   notice: string[]
   /** What drafts may state (region block). */
   share: ShareSettings
+  /** Starred regions (ranking boost). */
+  preferredRegions: Array<{ id: string; level: 'top' | 'preferred' }>
+  /** Company stages preferred in company discovery. */
+  companyStages: string[]
   saved: boolean
   /** Titles lee learned, newest first. */
   learnedTitles: Array<{ key: string; related: boolean; family: string | null; at: string }>
@@ -108,6 +112,8 @@ export function searchPrefsFormValues(profile: UserProfile | null): SearchPrefsF
     languages: p.extra.languages.map((l) => ({ name: l.name, level: l.level })),
     notice: p.extra.noticePeriods,
     share: p.extra.share,
+    preferredRegions: p.extra.preferredRegions,
+    companyStages: p.extra.companyStages,
     saved: p.active,
     learnedTitles: Object.entries(parseLearnedTitles(profile?.learnedTitles))
       .map(([key, v]) => ({ key, ...v }))

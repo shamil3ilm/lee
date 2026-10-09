@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { preferredRegionSchema, MAX_PREFERRED } from '@/lib/regions/preferred'
 
 /**
  * Extra discovery preferences stored as one validated jsonb column
@@ -150,6 +151,13 @@ export const discoveryPrefsSchema = z.object({
   /** ISO-2 countries or place groups (EU, AU…); empty = any country. */
   relocationCountries: z.array(z.string().regex(/^[A-Z_]{2,10}$/)).max(30).catch([]),
   share: shareSchema.catch(DEFAULT_SHARE).default(DEFAULT_SHARE),
+  /**
+   * Starred regions (lib/regions/preferred): a ranking boost in the Match
+   * Score, the shortlist and company discovery; never a filter.
+   */
+  preferredRegions: z.array(preferredRegionSchema).max(MAX_PREFERRED).catch([]).default([]),
+  /** Company stages the user prefers in company discovery; empty = no preference. */
+  companyStages: z.array(z.enum(['startup', 'scaleup', 'enterprise'])).max(3).catch([]).default([]),
 })
 export type DiscoveryPrefs = z.infer<typeof discoveryPrefsSchema>
 
@@ -163,6 +171,8 @@ export const EMPTY_DISCOVERY_PREFS: DiscoveryPrefs = {
   relocationIfSponsored: true,
   relocationCountries: [],
   share: DEFAULT_SHARE,
+  preferredRegions: [],
+  companyStages: [],
 }
 
 /** Parse the stored jsonb leniently: unknown or broken parts fall back to defaults. */

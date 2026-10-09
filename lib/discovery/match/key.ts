@@ -41,6 +41,7 @@ export function matchKey(p: MatchProfile): string {
     sorted(p.extra.payFloors.map((f) => `${f.scope}:${f.amount}:${f.currency}:${f.period}`)),
     p.extra.relocationIfSponsored,
     sorted(p.extra.relocationCountries),
+    sorted((p.extra.preferredRegions ?? []).map((r) => `${r.id}:${r.level}`)),
   ])
   return `${MATCH_SCORE_VERSION}:${fnv1a(canonical)}`
 }

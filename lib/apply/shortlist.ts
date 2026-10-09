@@ -64,7 +64,7 @@ export async function buildShortlistForUser(userId: string, now: Date = new Date
     variantSummaries(userId),
   ])
   const loaded = await loadCandidates(userId, { now, feedback, excludeIds: acted })
-  const ctx = { now, targetFamilies: prefs.roleFamilies, targetRegions: targetRegionIds(prefs) }
+  const ctx = { now, targetFamilies: prefs.roleFamilies, targetRegions: targetRegionIds(prefs), preferredRegions: prefs.extra.preferredRegions }
   const candidates = await withComparison(userId, loaded, ctx, settings.shortlistSize, now)
   const ranked = buildShortlist(candidates, ctx, settings.shortlistSize)
   const byId = new Map(candidates.map((c) => [c.id, c] as const))

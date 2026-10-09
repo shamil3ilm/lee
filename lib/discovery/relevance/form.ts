@@ -17,6 +17,7 @@ import { anyWithin } from '@/lib/regions/tree'
 import { ROLE_FAMILY_IDS } from './roles'
 import { SENIORITY_LABELS, SENIORITY_LEVELS } from './seniority'
 import { isWorkMode } from './work-mode'
+import { parsePreferredValues } from '@/lib/regions/preferred'
 
 /**
  * Search-preferences form → profile patch. Validates every field against
@@ -115,6 +116,9 @@ export function discoveryPrefsFromForm(fd: FormData): DiscoveryPrefs {
     ],
     // Checkboxes: an unchecked box is absent, so it reads as "don't share".
     share: Object.fromEntries(SHARE_FACTS.map((f) => [f, fd.get(`share_${f}`) === 'on'])),
+    // Starred regions ("kw:top", "ae:preferred"): a ranking boost only.
+    preferredRegions: parsePreferredValues(all(fd, 'preferredRegion')),
+    companyStages: all(fd, 'companyStage').filter((s) => s === 'startup' || s === 'scaleup' || s === 'enterprise'),
   })
 }
 

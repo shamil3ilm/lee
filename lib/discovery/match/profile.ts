@@ -86,6 +86,7 @@ export function matchProfileFrom(profile: ProfileSource | null, now: Date = new 
       payFloors: prefs.extra.payFloors,
       relocationIfSponsored: prefs.extra.relocationIfSponsored,
       relocationCountries: prefs.extra.relocationCountries,
+      preferredRegions: prefs.extra.preferredRegions,
     },
     prefsActive: prefs.active,
   }

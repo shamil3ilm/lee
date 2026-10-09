@@ -3,6 +3,7 @@ import { cappedFit, scoreText } from '@/lib/discovery/match/blend'
 import type { FeedbackAdjust } from './feedback'
 import { matchedVia, regionMatch } from '@/lib/regions/selection'
 import { shortName } from '@/lib/regions/tree'
+import { preferredHit, preferredPoints, type PreferredRegion } from '@/lib/regions/preferred'
 
 /**
  * The daily shortlist's composite rank. Pure and explainable: the score is
@@ -15,6 +16,8 @@ import { shortName } from '@/lib/regions/tree'
  *   region fit  +8 when the posting lies within a targeted region (a parent
  *               includes its cities: Kerala → Kochi); +4 when broader
  *               than the targets ("India" for a Kerala-only search)
+ *   preferred   +6 top priority / +4 preferred when the posting lies in a
+ *               starred region (lib/regions/preferred); a boost, never a filter
  *   reputation  (avg of the CONFIRMED company criteria − 50) / 5, −10…+10
  *   pay         −10 below the user's range; +3 when pay is stated and fits
  *   soft rules  −5 per other penalty chip (max −15), +3 per boost (max +6)
@@ -80,6 +83,8 @@ export interface RankContext {
    * "remote"…). A parent includes its descendants (lib/regions/selection).
    */
   targetRegions: readonly string[]
+  /** Starred regions (Settings › Search); optional for callers that have none. */
+  preferredRegions?: readonly PreferredRegion[]
 }
 
 export interface RankedCandidate {
@@ -132,6 +137,8 @@ function fitReasons(c: RankCandidate, ctx: RankContext): RankReason[] {
   if (family) out.push({ kind: 'fit', label: `Role: ${roleFamilyLabel(family)}`, points: RANK_WEIGHTS.roleFit })
   const region = regionReason(c, ctx)
   if (region) out.push(region)
+  const hit = preferredHit(c.regionIds && c.regionIds.length > 0 ? c.regionIds : c.regions, ctx.preferredRegions ?? [])
+  if (hit) out.push({ kind: 'fit', label: hit.label, points: preferredPoints(hit, 'rank') })
   return out
 }
 
