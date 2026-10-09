@@ -1,7 +1,9 @@
 name: CI
 on:
   push:
-    branches: [main]
+    # ci/** = staging branches: work is pushed there first and the same commit
+    # moves to main only after every job passes (required checks on main).
+    branches: [main, 'ci/**']
   pull_request:
 jobs:
   # The jobs run in parallel; each is required. Unit/integration tests run in
