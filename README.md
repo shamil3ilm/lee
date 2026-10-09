@@ -27,6 +27,8 @@ Local dev and tests default to an in-memory pglite database via `DATABASE_URL=pg
 pnpm lint
 pnpm test         # unit + integration
 pnpm test:e2e     # playwright
+> Tests run in parallel worker processes (vitest projects `unit` and `db`; see vitest.config.ts). On a machine short on memory, cap workers with `VITEST_MAX_WORKERS=2 pnpm test`.
+
 ```
 
 Before the first `pnpm test:e2e`, install the browser once:

@@ -4,7 +4,9 @@ on:
     branches: [main]
   pull_request:
 jobs:
-  ci:
+  # The jobs run in parallel; each is required. Unit/integration tests run in
+  # parallel worker processes (vitest.config.ts projects: unit + db).
+  checks:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: pglite:memory://
@@ -26,20 +28,57 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
-      # DB migrations are applied automatically by the integration test setup
-      # against an in-memory pglite instance; no separate `pnpm db:migrate` step.
-      - run: pnpm test
-      # v10.1 — deterministic eval regression check against the fixture
-      # provider snapshots. Prints a friendly "no snapshots yet" message and
-      # exits 0 if no snapshots have been seeded — CI stays green until a
-      # human runs `pnpm eval --update` and commits the resulting JSON files.
+      # v10.1: deterministic eval regression check (prints "no snapshots yet"
+      # and exits 0 until snapshots are committed).
       - run: pnpm eval
+
+  test:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: pglite:memory://
+      AUTH_SECRET: '00000000000000000000000000000000'
+      AUTH_GOOGLE_ID: dummy
+      AUTH_GOOGLE_SECRET: dummy
+      NEXTAUTH_URL: http://localhost:3000
+      AUTH_URL: http://localhost:3000
+      AUTH_TRUST_HOST: 'true'
+      ALLOWED_EMAIL: test@example.com
+      AI_PROVIDER: gemini
+      GEMINI_API_KEY: dummy
+      CRON_SECRET: '00000000000000000000000000000000'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      # DB migrations are applied by tests/integration/setup.ts against an
+      # in-memory PGlite per worker; no separate `pnpm db:migrate` step.
+      - run: pnpm test
+
+  e2e:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: pglite:memory://
+      AUTH_SECRET: '00000000000000000000000000000000'
+      AUTH_GOOGLE_ID: dummy
+      AUTH_GOOGLE_SECRET: dummy
+      NEXTAUTH_URL: http://localhost:3000
+      AUTH_URL: http://localhost:3000
+      AUTH_TRUST_HOST: 'true'
+      ALLOWED_EMAIL: test@example.com
+      AI_PROVIDER: gemini
+      GEMINI_API_KEY: dummy
+      CRON_SECRET: '00000000000000000000000000000000'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
       - run: pnpm playwright install --with-deps chromium
-      # v17 §9.1 — E2E journeys run against `next dev` with a freshly seeded
-      # PGlite file DB and the local-only test sign-in. Playwright's
-      # webServer sets E2E_TEST_LOGIN=1 and the dummy env (tests/e2e/env.ts)
-      # for the dev server ONLY; it is never set for the build below, where
-      # next.config.ts would refuse to build with it.
+      # v17 §9.1: E2E journeys run against `next dev` with a freshly seeded
+      # PGlite file DB and the local-only test sign-in (tests/e2e/env.ts).
       - run: pnpm test:e2e
       - uses: actions/upload-artifact@v4
         if: failure()
@@ -49,11 +88,32 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
+
+  build:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: pglite:memory://
+      AUTH_SECRET: '00000000000000000000000000000000'
+      AUTH_GOOGLE_ID: dummy
+      AUTH_GOOGLE_SECRET: dummy
+      NEXTAUTH_URL: http://localhost:3000
+      AUTH_URL: http://localhost:3000
+      AUTH_TRUST_HOST: 'true'
+      ALLOWED_EMAIL: test@example.com
+      AI_PROVIDER: gemini
+      GEMINI_API_KEY: dummy
+      CRON_SECRET: '00000000000000000000000000000000'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
       - run: pnpm build
       # Prove the production build contains no test sign-in code.
       - run: node scripts/assert-no-test-login.mjs
-      # v13 13.1: runners stay out of initial bundles, Playground route JS
-      # within the 5.5 budget, reference solutions never in client output.
+      # v13 13.1: runners stay out of initial bundles; reference solutions
+      # never in client output.
       - run: pnpm check:bundle
 
   # Real-Postgres smoke (scripts/pg-smoke.ts). The main job runs on PGlite,
