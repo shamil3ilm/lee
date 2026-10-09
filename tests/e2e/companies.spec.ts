@@ -50,6 +50,8 @@ test('Watch jobs adds a source for the company’s job board', async ({ page }) 
   await page.goto('/discoveries?tab=companies')
   await card(page, DINAR).getByTestId('watch-jobs').click()
   await toast(page, /Watching its job board|Already watching/)
+  // Watching moves the company to Saved.
+  await page.goto('/discoveries?tab=companies&status=saved')
   await expect(card(page, DINAR)).toContainText('Watching its jobs')
   await page.goto('/settings/sources')
   await expect(page.getByText('Dinar Pay Example (Lever)').first()).toBeVisible()
@@ -59,11 +61,13 @@ test('Watch careers page adds a weekly check-yourself link', async ({ page }) =>
   await page.goto('/discoveries?tab=companies')
   await card(page, FALCON).getByTestId('watch-careers').click()
   await toast(page, /Check these yourself/)
+  await page.goto('/discoveries?tab=companies&status=saved')
   await expect(card(page, FALCON)).toContainText('Watching its careers page')
 })
 
 test('Reach out drafts a fact-locked note with a published careers address and tracks it', async ({ page }) => {
-  await page.goto('/discoveries?tab=companies')
+  // Dinar Pay is under Saved once its jobs are watched (the test above).
+  await page.goto('/discoveries?tab=companies&status=saved')
   await card(page, DINAR).getByTestId('reach-out').click()
   const dialog = page.getByRole('dialog', { name: `Reach out to ${DINAR}` })
   await expect(dialog.getByTestId('reach-out-body')).not.toHaveValue('')

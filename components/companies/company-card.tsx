@@ -117,7 +117,7 @@ export function CompanyCard({ c }: { c: CompanyCardData }) {
             </ul>
           ) : null}
           <p className="flex flex-wrap gap-x-3 pt-1 text-xs text-muted-foreground">
-            <span>Found via {c.sourceTags.map(sourceTagLabel).join(', ')}</span>
+            {c.sourceTags.length > 0 ? <span>Found via {c.sourceTags.map(sourceTagLabel).join(', ')}</span> : null}
             {c.careersUrl ? (
               <a href={c.careersUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 underline underline-offset-4">
                 {c.boardLabel ? `${c.boardLabel} board` : 'Careers page'}
