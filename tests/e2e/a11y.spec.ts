@@ -18,6 +18,9 @@ const ROUTES = [
   '/discoveries',
   '/discoveries?view=board',
   '/discoveries?status=filtered',
+  // Region filter: a hierarchical selection with chips, and "Group by region".
+  '/discoveries?status=dismissed&region=kerala,dubai&by=region',
+  '/shortlist?region=kerala',
   '/compare',
   '/applications',
   '/applications?view=board',
@@ -135,7 +138,34 @@ for (const theme of ['light', 'dark'] as const) {
   })
 }
 
+/** The region picker open: search, quick picks, the tree with a mixed parent, chips. */
+async function openRegionPicker(page: Page, url: string, testId: string): Promise<void> {
+  await page.goto(url)
+  await page.getByTestId(testId).click()
+  await expect(page.getByTestId('region-tree').first()).toBeVisible()
+}
+
+for (const theme of ['light', 'dark'] as const) {
+  test.describe(`axe ${theme}: region picker`, () => {
+    test.use({ viewport: { width: 1280, height: 900 }, colorScheme: theme })
+    test(`the open Region filter and Settings picker have no serious or critical violations (${theme})`, async ({ page }) => {
+      await openRegionPicker(page, '/discoveries?region=kochi', 'region-filter')
+      const filter = await scanHere(page)
+      expect(report('region filter', filter.filter((v) => BLOCKING.has(v.impact ?? '')))).toEqual([])
+      await openRegionPicker(page, '/settings/search', 'target-regions-picker')
+      const settings = await scanHere(page)
+      expect(report('settings region picker', settings.filter((v) => BLOCKING.has(v.impact ?? '')))).toEqual([])
+    })
+  })
+}
+
 test.describe('targets at phone width', () => {
+  test('the region picker sheet has 24px targets', async ({ page }) => {
+    await openRegionPicker(page, '/discoveries?region=kochi', 'region-filter')
+    const violations = await scanHere(page, ['target-size'])
+    expect(report('region picker sheet', violations)).toEqual([])
+  })
+
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
   for (const url of PHONE_ROUTES) {
     test(`${url} has 24px targets`, async ({ page }) => {

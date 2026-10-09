@@ -312,8 +312,14 @@ async function main(): Promise<void> {
     lastError: 'HTTP 503 from upstream',
     errorCount: 2,
   })
+  const { evaluateRelevance } = await import('@/lib/discovery/relevance/gate')
+  const { EMPTY_PREFS } = await import('@/lib/discovery/relevance/prefs')
   for (const [i, d] of data.DISCOVERIES.entries()) {
+    // Region tags as ingest writes them (the relevance gate's region ids).
+    const tags = evaluateRelevance({ title: d.job.title, location: d.job.location ?? null, remoteType: d.job.remoteType ?? null }, EMPTY_PREFS)
     await db.insert(s.discoveries).values({
+      regions: tags.regions,
+      regionIds: tags.regionIds,
       userId,
       sourceId: i % 2 === 0 ? hn!.id : gh!.id,
       sourceJobId: `seed-${i}`,
