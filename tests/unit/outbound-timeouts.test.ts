@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { AdzunaAdapter } from '@/lib/discovery/adapters/adzuna'
 import { db } from '@/lib/db/client'
 import { accounts } from '@/lib/db/schema'
 import { GroqProvider } from '@/lib/ai/groq'
@@ -158,14 +159,9 @@ describe('outbound timeouts', () => {
   })
 
   it.each(Object.keys(adapterConfigs))('discovery adapter %s: every request has a timeout', async (kind) => {
-    const adapter = getAdapter(kind)!
-    const savedKey = process.env.ADZUNA_KEY
-    if (kind === 'adzuna') process.env.ADZUNA_KEY = 'app-id:app-key'
+    // Adzuna's key is per user (env only for the owner): inject one.
+    const adapter = kind === 'adzuna' ? new AdzunaAdapter({ resolveKey: async () => 'app-id:app-key' }) : getAdapter(kind)!
     const result = await adapter.fetch(adapterConfigs[kind]).catch((e: unknown) => e)
-    if (kind === 'adzuna') {
-      if (savedKey === undefined) delete process.env.ADZUNA_KEY
-      else process.env.ADZUNA_KEY = savedKey
-    }
     // jsonld swallows per-URL failures; everything else throws an Error.
     if (kind === 'jsonld') expect(result).toEqual([])
     else expect((result as Error).message).toMatch(/timed out/)

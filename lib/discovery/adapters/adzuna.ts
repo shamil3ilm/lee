@@ -85,16 +85,16 @@ export function normalizeAdzunaJob(job: AdzunaJob, country: string): DiscoveryIt
 }
 
 export interface AdzunaDeps {
-  /** Resolves the user's "APP_ID:APP_KEY" (saved key, else env). */
+  /** Resolves the user's "APP_ID:APP_KEY" (saved key, else env for the owner only). */
   resolveKey: (userId: string | undefined) => Promise<string | null>
 }
 
 async function defaultResolveKey(userId: string | undefined): Promise<string | null> {
-  if (userId) {
-    const { resolveServiceSecret } = await import('@/lib/settings/secrets')
-    return (await resolveServiceSecret(userId, 'adzuna')).key
-  }
-  return process.env.ADZUNA_KEY ?? null
+  // No user, no key: ADZUNA_KEY is the owner's and is reached only through
+  // resolveServiceSecret's owner-only fallback (every poll passes a userId).
+  if (!userId) return null
+  const { resolveServiceSecret } = await import('@/lib/settings/secrets')
+  return (await resolveServiceSecret(userId, 'adzuna')).key
 }
 
 export class AdzunaAdapter implements DiscoveryAdapter {

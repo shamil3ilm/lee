@@ -273,7 +273,7 @@ describe('POST /api/decisions/playground', () => {
   })
 
   it('returns per-row usage for the logged Groq call, none for the heuristic', async () => {
-    const u = await makeUser(`pg-usage-${Math.random()}@x.com`)
+    const u = await makeUser(process.env.ALLOWED_EMAIL ?? 'test@example.com')  // the owner: env keys are owner-only
     authMock.mockResolvedValue({ user: { id: u.id } })
     const orig = process.env.GROQ_API_KEY
     process.env.GROQ_API_KEY = 'test-key'

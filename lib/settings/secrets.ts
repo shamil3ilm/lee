@@ -5,6 +5,7 @@ import { DEFAULT_LAYA_ENDPOINT } from '@/lib/decisions/laya-http'
 import { fetchWithTimeout } from '@/lib/net/timeout'
 import { assertSafeUrl } from '@/lib/ingest/ssrf'
 import { safeFetch } from '@/lib/net/safe-fetch'
+import { isOwner, ownerEnvFallback } from '@/lib/auth/owner'
 import { checkNeonKey, NeonApiError, neonErrorMessage } from '@/lib/usage/neon-api'
 import { parseAdzunaKey } from '@/lib/discovery/adapters/adzuna'
 import {
@@ -26,14 +27,14 @@ export interface ResolvedSecret {
   source: SecretSource
 }
 
-/** Saved key (decrypted) → env var → none. */
+/** Saved key (decrypted) → env var (the owner only; never another user) → none. */
 export async function resolveServiceSecret(
   userId: string,
   id: ServiceSecretId,
 ): Promise<ResolvedSecret> {
   const stored = await keysQ.getDecrypted(userId, id)
   if (stored) return { key: stored, source: 'db' }
-  const envVal = process.env[getServiceSecretInfo(id).envKey]
+  const envVal = await ownerEnvFallback(userId, process.env[getServiceSecretInfo(id).envKey])
   if (envVal) return { key: envVal, source: 'env' }
   return { key: null, source: 'none' }
 }
@@ -46,11 +47,12 @@ export async function resolveAiKey(userId: string, provider: 'gemini' | 'groq'):
 
 /** Masked status for the settings page (one query; no decryption). */
 export async function listServiceSecretStatuses(userId: string): Promise<ServiceSecretStatus[]> {
-  const masked = await keysQ.listMasked(userId)
+  const [masked, owner] = await Promise.all([keysQ.listMasked(userId), isOwner(userId)])
   const byId = new Map(masked.map((m) => [m.provider, m]))
   return SERVICE_SECRETS.map((info) => {
     const m = byId.get(info.id)
-    const source: SecretSource = m ? 'db' : process.env[info.envKey] ? 'env' : 'none'
+    // Env keys are the owner's: never tell anyone else they exist.
+    const source: SecretSource = m ? 'db' : owner && process.env[info.envKey] ? 'env' : 'none'
     return { info, source, last4: m?.last4 ?? null }
   })
 }

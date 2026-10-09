@@ -173,19 +173,36 @@ export async function getDecisionProviderForUser(
 ): Promise<DecisionProvider> {
   if (!userId) return getDecisionProvider()
 
-  const [profile, groqKey, laya] = await Promise.all([
+  const [profile, { groqKey, layaKey }] = await Promise.all([
     profileQ.get(userId).catch(() => null),
-    // Saved Settings › AI keys win; env keys are the fallback. A failed
-    // lookup degrades to env rather than breaking the decision call.
-    resolveAiKey(userId, 'groq').catch(() => env.GROQ_API_KEY ?? null),
-    resolveServiceSecret(userId, 'laya').catch(() => ({ key: env.LAYA_API_KEY ?? null })),
+    resolveDecisionKeys(userId),
   ])
   const rawKind = profile?.decisionProvider
   const kind: DecisionProviderKind = isDecisionProviderKind(rawKind)
     ? rawKind
     : (env.DECISION_PROVIDER ?? 'groq')
   const layaEndpoint = profile?.layaEndpoint ?? env.LAYA_ENDPOINT
-  return buildDecisionProvider(kind, layaEndpoint, { groqKey, layaKey: laya.key })
+  return buildDecisionProvider(kind, layaEndpoint, { groqKey, layaKey })
+}
+
+/**
+ * The user's Groq and Laya keys: saved Settings › AI keys, else the env keys
+ * for the owner only (lib/auth/owner.ts ownerEnvFallback, inside the
+ * resolvers). A failed lookup degrades to "no key" (heuristic / friendly
+ * error), never to the owner's env key.
+ */
+export async function resolveDecisionKeys(
+  userId: string,
+  deps: {
+    resolveAi?: (userId: string, provider: 'groq') => Promise<string | null>
+    resolveSecret?: (userId: string, id: 'laya') => Promise<{ key: string | null }>
+  } = {},
+): Promise<{ groqKey: string | null; layaKey: string | null }> {
+  const [groqKey, laya] = await Promise.all([
+    (deps.resolveAi ?? resolveAiKey)(userId, 'groq').catch(() => null),
+    (deps.resolveSecret ?? resolveServiceSecret)(userId, 'laya').catch(() => ({ key: null })),
+  ])
+  return { groqKey, layaKey: laya.key }
 }
 
 /**

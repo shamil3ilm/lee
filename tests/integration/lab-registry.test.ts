@@ -28,7 +28,7 @@ afterEach(() => {
 
 describe('resolveKey', () => {
   it('prefers the DB key, then env, then none', async () => {
-    const u = await makeUser()
+    const u = await makeUser(process.env.ALLOWED_EMAIL ?? 'test@example.com')  // the owner: env keys are owner-only
     expect(await resolveKey(u.id, 'groq')).toEqual({ key: null, source: 'none' })
     process.env.GROQ_API_KEY = 'gsk_env_key_000000000000'
     expect(await resolveKey(u.id, 'groq')).toEqual({ key: 'gsk_env_key_000000000000', source: 'env' })
