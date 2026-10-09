@@ -113,3 +113,10 @@ via `appsQ.getById(userId, id)` / `documentsQ.getById` / `companiesQ.getById`
 - Hazard, not reachable from input: `labRuns.insertResults/updateResult`
   take no user id; only `lib/lab/arena.ts` calls them, with a run it just
   created for the caller.
+
+## Third parties: `lib/net/outbound-hosts.ts`
+
+The one list of outside services lee contacts, with what each receives. The
+privacy page renders it, and `tests/unit/outbound-hosts.test.ts` fails when
+network code contacts a host that is not listed (or the page stops naming
+one). Adding an outbound call means adding its host there.

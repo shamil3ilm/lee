@@ -2,12 +2,13 @@ import type { Metadata } from 'next'
 import { env } from '@/lib/env'
 import { APP_NAME } from '@/lib/brand'
 import { formatDateTime } from '@/lib/ui/date'
+import { OUTBOUND_PARTIES, type OutboundParty } from '@/lib/net/outbound-hosts'
 
 export const metadata: Metadata = { title: 'Privacy policy' }
 
 // Update this date whenever the policy text changes.
 // US style, like every other date in the app ("Sep 26, 2026").
-const LAST_UPDATED = formatDateTime('2026-09-26T12:00:00Z', 'date-year', 'UTC')
+const LAST_UPDATED = formatDateTime('2026-10-09T12:00:00Z', 'date-year', 'UTC')
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -15,6 +16,48 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h2 className="text-lg font-semibold">{title}</h2>
       <div className="space-y-2 text-sm leading-relaxed text-muted-foreground">{children}</div>
     </section>
+  )
+}
+
+const GROUP_LABELS: Record<OutboundParty['group'], string> = {
+  platform: 'Hosting and infrastructure',
+  google: 'Google',
+  ai: 'AI providers',
+  documents: 'Documents and publishing',
+  jobs: 'Job sources',
+  research: 'Research and company information',
+  lookups: 'Lookups',
+}
+
+/** Rendered from lib/net/outbound-hosts.ts: the one list of third parties. */
+function ThirdParties() {
+  const groups = Object.keys(GROUP_LABELS) as Array<OutboundParty['group']>
+  return (
+    <>
+      {groups.map((g) => {
+        const parties = OUTBOUND_PARTIES.filter((p) => p.group === g)
+        if (parties.length === 0) return null
+        return (
+          <div key={g} className="space-y-1">
+            <h3 className="font-medium text-foreground">{GROUP_LABELS[g]}</h3>
+            <ul className="list-disc space-y-1 pl-5">
+              {parties.map((p) => (
+                <li key={p.id}>
+                  <strong>{p.name}</strong>
+                  {p.hosts.length > 0 ? (
+                    <>
+                      {' '}
+                      (<span className="break-words">{p.hosts.join(', ')}</span>)
+                    </>
+                  ) : null}
+                  : {p.sends}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      })}
+    </>
   )
 }
 
@@ -81,7 +124,8 @@ export default function PrivacyPage() {
         <p>
           When you use AI features (for example tailoring a CV, drafting a cover letter or scoring a CV against
           a job), the relevant text, such as your CV, profile and the job description, is sent to the AI
-          provider you choose in settings (for example Groq or Google Gemini) to produce the result. This can
+          provider you choose in settings (Groq or Google Gemini; in the Model Playground also OpenRouter,
+          Cerebras or the Hugging Face router) to produce the result. Voice notes are transcribed by Groq. This can
           include a document stored in your Drive, but only when you ask for an AI feature on it.{' '}
           <strong>Gmail and Calendar data are not sent to AI providers.</strong> Usage logs record token counts
           and timings only, never your prompts.
@@ -104,11 +148,20 @@ export default function PrivacyPage() {
         </p>
       </Section>
 
+      <Section title="Third parties lee sends data to">
+        <p>
+          This is every outside service {APP_NAME}&rsquo;s code contacts, and what each one receives. Each handles
+          what it receives under its own terms. Services you never turn on (for example an optional key you
+          don&rsquo;t add) receive nothing.
+        </p>
+        <ThirdParties />
+      </Section>
+
       <Section title="Where data is stored">
         <p>
           Application data is stored in a hosted PostgreSQL database (Neon), and the app is hosted on Vercel.
           Files are stored in your own Google Drive once connected, otherwise in the database. Provider API
-          keys you add are encrypted at rest. Page-view and performance statistics use Vercel Web Analytics and
+          keys you add and your Google sign-in tokens are encrypted at rest. Page-view and performance statistics use Vercel Web Analytics and
           Speed Insights, which do not use cookies.
         </p>
       </Section>
