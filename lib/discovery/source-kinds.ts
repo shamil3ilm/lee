@@ -43,6 +43,14 @@ export const SOURCE_KINDS: readonly SourceKindMeta[] = [
     catalogOnly: true,
   },
   {
+    id: 'linkedin_post',
+    label: 'LinkedIn hiring posts',
+    description: 'Hiring posts from your own LinkedIn notification emails (Gmail) and posts you paste or send to lee',
+    needs: 'none',
+    // Set up from Settings › LinkedIn › Hiring posts.
+    catalogOnly: true,
+  },
+  {
     id: 'himalayas',
     label: 'Himalayas',
     description: 'Remote jobs open to your countries (GCC, India) and worldwide',

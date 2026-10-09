@@ -75,9 +75,11 @@ export function AiModeDialog({ promptSet, triggerVariant = 'outline' }: { prompt
   const toRow = (p: AiModePromptSet['today'][number]): PromptRow => ({ id: p.id, label: p.label, text: p.prompt, employers: p.employers })
   const [rows, setRows] = useState<PromptRow[]>(promptSet.today.map(toRow))
   const [more, setMore] = useState<PromptRow[]>(promptSet.more.map(toRow))
+  const [posts, setPosts] = useState<PromptRow[]>((promptSet.posts ?? []).map((p) => ({ id: p.id, label: p.label, text: p.prompt })))
   const update = (id: string, text: string): void => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, text } : r)))
     setMore((prev) => prev.map((r) => (r.id === id ? { ...r, text } : r)))
+    setPosts((prev) => prev.map((r) => (r.id === id ? { ...r, text } : r)))
   }
   const { cycleDays, employerBatches } = promptSet
 
@@ -111,6 +113,22 @@ export function AiModeDialog({ promptSet, triggerVariant = 'outline' }: { prompt
               ))}
             </ul>
           </details>
+        ) : null}
+        {posts.length > 0 ? (
+          <section aria-labelledby="ai-mode-posts-heading" className="space-y-2" data-testid="ai-mode-posts">
+            <h3 id="ai-mode-posts-heading" className="text-sm font-semibold">
+              LinkedIn hiring posts
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Finds recent public “we’re hiring” posts with their links. Open a post yourself, copy its text and add it
+              with “Add from text or link”: lee keeps LinkedIn links as links and never opens them.
+            </p>
+            <ul className="space-y-3" aria-label="Hiring-post prompts">
+              {posts.map((r) => (
+                <PromptEditor key={r.id} row={r} onChange={(text) => update(r.id, text)} />
+              ))}
+            </ul>
+          </section>
         ) : null}
         <div className="space-y-1 text-xs text-muted-foreground">
           <p>

@@ -14,6 +14,8 @@ export interface SourcePollStats {
   quarantined: number
   /** Items the source had already delivered (deduped). */
   skipped: number
+  /** Emails an email-reading source could not parse (set only when > 0). */
+  parseFailures?: number
 }
 
 export function emptyPollStats(): SourcePollStats {
@@ -38,14 +40,16 @@ export function readSourceLastResult(raw: unknown): SourceLastResult | null {
     scored: num('scored'),
     quarantined: num('quarantined'),
     skipped: num('skipped'),
+    ...(num('parseFailures') > 0 ? { parseFailures: num('parseFailures') } : {}),
     at: typeof r.at === 'string' ? r.at : '',
   }
 }
 
-/** "12 found · 3 new · 1 quarantined" */
+/** "12 found · 3 new · 1 quarantined · 2 unreadable" */
 export function describePollStats(s: SourcePollStats): string {
   const parts = [`${s.fetched} found`, `${s.new} new`]
   if (s.quarantined > 0) parts.push(`${s.quarantined} quarantined`)
+  if (s.parseFailures) parts.push(`${s.parseFailures} unreadable`)
   return parts.join(' · ')
 }
 

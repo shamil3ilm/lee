@@ -3,11 +3,15 @@ import type { ScamInput } from './types'
 
 /** Build the rules input from a job discovery's normalized payload. */
 export function inputFromNormalizedJob(n: Partial<NormalizedJob>, sourceName?: string | null): ScamInput {
+  // A LinkedIn hiring post is title-only; its post text is what to check
+  // ("visa + job, pay the processing fee, WhatsApp only").
+  const post = n.post
   return {
     title: n.title ?? null,
     company: n.companyName ?? null,
-    description: n.descriptionMd ?? null,
+    description: n.descriptionMd || post?.snippet || null,
     applyUrl: n.applyUrl ?? null,
+    ...(post?.contact.emails[0] ? { applyEmail: post.contact.emails[0] } : {}),
     companyDomain: n.companyDomain ?? n.companyWebsite ?? null,
     salary: n.salary ?? null,
     location: n.location ?? null,

@@ -22,6 +22,7 @@ import type { CallMeta } from './log'
 import type { CompareNarrativeInput, CompareNarrativeResult } from './prompts/compare-narrative'
 import type { ReputationSummaryInput, ReputationSummaryResult } from './prompts/reputation-summary'
 import type { SpeculativeOutreachInput, SpeculativeOutreachResult } from './prompts/speculative-outreach'
+import type { PostReplyInput, PostReplyResult } from './prompts/post-reply'
 import type { RadarBriefInput, RadarBriefResult } from './prompts/radar-brief'
 import type {
   LinkedInPostInput,
@@ -217,6 +218,9 @@ export interface AIProvider {
   // note; lib/company-discovery/outreach.ts keeps it only if it passes the
   // fact lock, else the deterministic template is used.
   draftSpeculativeOutreach?(input: SpeculativeOutreachInput, meta?: CallMeta): Promise<SpeculativeOutreachResult>
+  // LinkedIn hiring post "Reply" — optional AI rewrite; lib/linkedin-posts/draft.ts
+  // keeps it only if it passes the fact lock, else the template is used.
+  draftPostReply?(input: PostReplyInput, meta?: CallMeta): Promise<PostReplyResult>
   // Compare with my current job — on-demand narrative over facts lee
   // computed; the caller drops uncited claims and invented figures, and the
   // user confirms before saving.

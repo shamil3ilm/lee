@@ -17,6 +17,7 @@ import { RemotiveAdapter } from './remotive'
 import { AdzunaAdapter } from './adzuna'
 import { EmailAlertAdapter } from './email-alert'
 import { GoogleAlertsAdapter } from './google-alerts'
+import { LinkedInPostAdapter } from './linkedin-post'
 import { WorkdayAdapter } from './workday'
 import { WatchAdapter } from './watch'
 import { WorkingNomadsAdapter } from './workingnomads'
@@ -45,6 +46,8 @@ const registry: Record<string, DiscoveryAdapter> = {
   adzuna: new AdzunaAdapter(),
   email_alert: new EmailAlertAdapter(),
   google_alerts: new GoogleAlertsAdapter(),
+  // Hiring posts from the user's own LinkedIn notification emails (Gmail).
+  linkedin_post: new LinkedInPostAdapter(),
   workday: new WorkdayAdapter(),
   watch: new WatchAdapter(),
   // Openings the user added from pasted text or links: nothing to poll.

@@ -34,6 +34,7 @@ const LABELS: Readonly<Record<string, string>> = {
   linkedin: 'LinkedIn',
   referral: 'Referral',
   discovery: 'Discovery',
+  linkedin_hiring_post: 'LinkedIn post',
   // Providers
   gemini: 'Gemini',
   groq: 'Groq',

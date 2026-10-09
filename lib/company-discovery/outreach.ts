@@ -142,7 +142,15 @@ const RISKY = /\b(?:\d+\s*(?:years?|yrs?)|referred by|you (?:are|were) hiring|yo
  * contain, and claims a speculative note must not invent. Empty = passes.
  */
 export function factLock(body: string, f: SpeculativeFacts): string[] {
-  const corpus = factCorpus(f)
+  return factLockAgainst(body, factCorpus(f), { maxLength: LIMITS[f.channel], risky: RISKY })
+}
+
+/**
+ * The fact lock against any corpus (also used by the LinkedIn hiring-post
+ * reply): numbers, email addresses, links and skill terms in `body` that the
+ * corpus lacks, any `risky` claim the corpus does not make, and the length.
+ */
+export function factLockAgainst(body: string, corpus: string, opts: { maxLength: number; risky: RegExp }): string[] {
   const nCorpus = normalizeForMatch(corpus)
   const issues: string[] = []
   for (const m of body.match(NUMBER) ?? []) if (!corpus.includes(m)) issues.push(`number "${m}"`)
@@ -151,9 +159,9 @@ export function factLock(body: string, f: SpeculativeFacts): string[] {
   const nBody = normalizeForMatch(body)
   const known = new Set(findTerms(nCorpus, ALL_SKILLS))
   for (const t of findTerms(nBody, ALL_SKILLS)) if (!known.has(t)) issues.push(`skill "${t}"`)
-  const risky = RISKY.exec(body)
+  const risky = new RegExp(opts.risky.source, opts.risky.flags.replace('g', '')).exec(body)
   if (risky && !nCorpus.includes(normalizeForMatch(risky[0]))) issues.push(`claim "${risky[0]}"`)
-  if (body.length > LIMITS[f.channel]) issues.push(`too long (${body.length} characters)`)
+  if (body.length > opts.maxLength) issues.push(`too long (${body.length} characters)`)
   return [...new Set(issues)]
 }
 

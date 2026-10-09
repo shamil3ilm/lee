@@ -309,6 +309,13 @@
       "when": 1791546842272,
       "tag": "0043_company_discovery_local",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1791552807953,
+      "tag": "0044_linkedin_hiring_posts",
+      "breakpoints": true
     }
   ]
 }

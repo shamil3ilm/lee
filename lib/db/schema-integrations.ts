@@ -177,3 +177,68 @@ export const linkedinPosts = pgTable(
     userPostedIx: index('linkedin_posts_user_posted_idx').on(t.userId, t.postedAt),
   }),
 )
+
+// ---------------------------------------------------------------------------
+// LinkedIn hiring posts (lib/linkedin-posts). Posts themselves are
+// discoveries of the `linkedin_post` source; these tables hold counters,
+// short-lived captures and the bookmarklet key version only.
+// ---------------------------------------------------------------------------
+
+/**
+ * LinkedIn notification emails the `linkedin_post` source read: counts and
+ * parser health for Settings › LinkedIn (never the body). Pruned after 120
+ * days like the job-alert counters.
+ */
+export const linkedinPostMessages = pgTable(
+  'linkedin_post_messages',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    messageId: text('message_id').notNull(),
+    /** 'single' | 'digest' | 'shared' | 'other'. */
+    kind: text('kind').notNull(),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull(),
+    postsFound: integer('posts_found').notNull().default(0),
+    hiringFound: integer('hiring_found').notNull().default(0),
+    /** A post notification the parser could not read (format changed?). */
+    parseFailed: boolean('parse_failed').notNull().default(false),
+    processedAt: timestamp('processed_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.messageId] }),
+    userReceivedIx: index('linkedin_post_messages_user_received_idx').on(t.userId, t.receivedAt),
+  }),
+)
+
+/**
+ * "Send to lee": the text the user selected on a page and its URL, posted by
+ * the bookmarklet, held until the user reviews it on Discovery › Capture
+ * (≤ 4,000 characters, expires after 30 minutes, deleted on import or
+ * discard). Never put in a URL.
+ */
+export const postCaptures = pgTable(
+  'post_captures',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    text: text('text').notNull().default(''),
+    url: text('url'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  },
+  (t) => ({
+    userCreatedIx: index('post_captures_user_created_idx').on(t.userId, t.createdAt),
+  }),
+)
+
+/** The bookmarklet key's version per user: bumping it revokes every older bookmarklet. */
+export const captureKeys = pgTable('capture_keys', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  version: integer('version').notNull().default(1),
+  rotatedAt: timestamp('rotated_at', { withTimezone: true }).notNull().defaultNow(),
+})

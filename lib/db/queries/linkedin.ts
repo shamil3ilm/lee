@@ -118,6 +118,17 @@ export async function companyCounts(userId: string, limit = 2_000): Promise<Arra
   return rows.map((r) => ({ key: r.key, company: r.company, n: Number(r.n) }))
 }
 
+/** Connections with exactly this name (case-insensitive): "the poster is one of your connections". */
+export async function byName(userId: string, name: string, limit = 3): Promise<LinkedInConnectionRow[]> {
+  const n = name.trim().toLowerCase()
+  if (!n) return []
+  return db
+    .select()
+    .from(linkedinConnections)
+    .where(and(eq(linkedinConnections.userId, userId), sql`lower(${linkedinConnections.name}) = ${n}`))
+    .limit(limit)
+}
+
 export async function deleteAllConnections(userId: string): Promise<number> {
   const rows = await db.delete(linkedinConnections).where(eq(linkedinConnections.userId, userId)).returning()
   return rows.length

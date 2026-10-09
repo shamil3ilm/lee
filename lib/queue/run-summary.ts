@@ -21,6 +21,8 @@ export type DiscoverySourceSummary = {
   skipped: number
   errors: number
   budgetExhausted?: boolean
+  /** Emails the source could not read (tolerant email parsers count, never throw). */
+  parseFailures?: number
 }
 
 export type GmailSyncSummary =
@@ -154,6 +156,7 @@ export function describeSummary(summary: JobSummary | null | undefined): string 
       const parts = [`${summary.fetched} found`, `${summary.new} new`]
       if (summary.scored > 0) parts.push(`${summary.scored} scored`)
       if (summary.quarantined > 0) parts.push(`${summary.quarantined} quarantined`)
+      if (summary.parseFailures) parts.push(`${summary.parseFailures} unreadable`)
       if (summary.budgetExhausted) parts.push('out of time')
       return `${summary.source}: ${parts.join(' · ')}`
     }

@@ -1,3 +1,5 @@
+import type { LinkedInPostMeta } from '@/lib/linkedin-posts/types'
+
 // Discovery adapter contract. Every adapter fetches from ONE source kind and
 // returns normalized items ready to persist. Adapter authors keep network I/O
 // self-contained here — the service layer only iterates results, upserts, and
@@ -36,6 +38,11 @@ export interface NormalizedJob {
    * `via:email_alert`. Adapters only tag; they don't filter.
    */
   tags?: string[]
+  /**
+   * A LinkedIn hiring post (source kind `linkedin_post`): poster, a capped
+   * snippet and the contact the post shows. The job itself stays title-only.
+   */
+  post?: LinkedInPostMeta
   raw: unknown
 }
 
@@ -60,6 +67,11 @@ export interface NormalizedCompany {
  * search preferences or the user's Gmail read it from here. */
 export interface AdapterContext {
   userId: string
+  /**
+   * Counts an adapter reports for the run summary, e.g. notification emails
+   * it could not read (tolerant parsers count failures instead of throwing).
+   */
+  report?: (counts: { parseFailures?: number }) => void
 }
 
 export interface DiscoveryAdapter {

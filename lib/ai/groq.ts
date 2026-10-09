@@ -76,6 +76,13 @@ import {
   type SpeculativeOutreachResult,
 } from './prompts/speculative-outreach'
 import {
+  buildPostReplyPrompt,
+  POST_REPLY_PROMPT_VERSION,
+  postReplyResultSchema,
+  type PostReplyInput,
+  type PostReplyResult,
+} from './prompts/post-reply'
+import {
   buildReputationSummaryPrompt,
   REPUTATION_SUMMARY_PROMPT_VERSION,
   reputationSummaryResultSchema,
@@ -462,6 +469,15 @@ export class GroqProvider implements AIProvider {
       promptVersion: SPECULATIVE_OUTREACH_PROMPT_VERSION,
     })
     return speculativeOutreachResultSchema.parse(JSON.parse(raw))
+  }
+
+  async draftPostReply(input: PostReplyInput, meta: CallMeta = {}): Promise<PostReplyResult> {
+    const raw = await this.generate(buildPostReplyPrompt(input), {
+      ...meta,
+      kind: 'linkedin_post_reply',
+      promptVersion: POST_REPLY_PROMPT_VERSION,
+    })
+    return postReplyResultSchema.parse(JSON.parse(raw))
   }
 
   async summarizeReputation(

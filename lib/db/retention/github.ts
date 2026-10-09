@@ -50,5 +50,14 @@ export async function pruneIntegrationScratch(now: Date = new Date(), opts: Batc
     `)
     return affected(res)
   }, opts)
-  return states + throttles
+  // "Send to lee" captures live 30 minutes; the capture page also drops them on read.
+  const captures = await inBatches(async (limit) => {
+    const res = await client.execute(sql`
+      delete from post_captures where id in (
+        select id from post_captures where expires_at < ${now.toISOString()}::timestamptz limit ${limit}
+      )
+    `)
+    return affected(res)
+  }, opts)
+  return states + throttles + captures
 }

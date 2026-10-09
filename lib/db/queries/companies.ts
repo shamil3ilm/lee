@@ -1,4 +1,4 @@
-import { and, count, eq } from 'drizzle-orm'
+import { and, count, eq, sql } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import { applications, companies, contacts, jobs } from '@/lib/db/schema'
 
@@ -57,6 +57,17 @@ export async function createWithoutDomain(userId: string, name: string, client: 
   const [row] = await client.insert(companies).values({ userId, name }).returning()
   if (!row) throw new Error('failed to insert company')
   return row
+}
+
+/**
+ * The user's company with this name (case-insensitive), else a new one with
+ * no domain: a LinkedIn hiring post names an employer but no website.
+ */
+export async function findOrCreateByName(userId: string, name: string, client: DbClient = db): Promise<Company> {
+  const existing = await client.query.companies.findFirst({
+    where: and(eq(companies.userId, userId), sql`lower(${companies.name}) = ${name.trim().toLowerCase()}`),
+  })
+  return existing ?? createWithoutDomain(userId, name.trim(), client)
 }
 
 export async function listWatched(userId: string, client: DbClient = db): Promise<Company[]> {

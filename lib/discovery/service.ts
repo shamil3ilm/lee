@@ -33,6 +33,7 @@ import {
   reassessStaleDiscoveries,
   safely,
 } from '@/lib/scam/service'
+import { LINKEDIN_POST_APP_SOURCE } from '@/lib/linkedin-posts/types'
 
 export interface DiscoveryCycleResult {
   sourcesPolled: number
@@ -259,9 +260,14 @@ async function pollSource(args: {
   const adapter = getAdapter(source.kind)
   if (!adapter) throw new Error("lee can't read this kind of source yet.")
   const started = Date.now()
-  const items = await adapter.fetch(source.config, { userId: args.userId })
-  const scoring: ScoringBudget = { remaining: MAX_SCORED_PER_SOURCE, deadline, exhausted: false }
   const stats = emptyPollStats()
+  const items = await adapter.fetch(source.config, {
+    userId: args.userId,
+    report: ({ parseFailures }) => {
+      if (parseFailures) stats.parseFailures = (stats.parseFailures ?? 0) + parseFailures
+    },
+  })
+  const scoring: ScoringBudget = { remaining: MAX_SCORED_PER_SOURCE, deadline, exhausted: false }
   const ingest = { ...args, scoring, stats }
   const newJobs = await ingestJobItems(
     ingest,
@@ -356,16 +362,16 @@ export async function promoteJobDiscovery(args: {
   const normalized = disc.normalized as unknown as NormalizedJob
   if (normalized.kind !== 'job') throw new Error('discovery is not a job')
 
-  const domain = normalized.companyDomain ?? extractDomain(normalized.applyUrl)
-  if (!domain) throw new Error('cannot derive company domain from discovery')
+  // A LinkedIn hiring post links to linkedin.com: its employer is the domain
+  // of the address in the post, or the name alone (never "linkedin.com").
+  const isPost = normalized.subSource === 'linkedin_post'
+  const domain = normalized.companyDomain ?? (isPost ? undefined : extractDomain(normalized.applyUrl))
+  if (!domain && !isPost) throw new Error('cannot derive company domain from discovery')
 
   const application = await db.transaction(async (tx) => {
-    const company = await companiesQ.findOrCreateByDomain(
-      userId,
-      domain,
-      normalized.companyName,
-      tx,
-    )
+    const company = domain
+      ? await companiesQ.findOrCreateByDomain(userId, domain, normalized.companyName, tx)
+      : await companiesQ.findOrCreateByName(userId, normalized.companyName, tx)
     const job = await jobsQ.upsertBySourceUrl(
       userId,
       company.id,
@@ -385,7 +391,7 @@ export async function promoteJobDiscovery(args: {
       },
       tx,
     )
-    const app = await appsQ.create(userId, { jobId: job.id, source: 'discovery' }, tx)
+    const app = await appsQ.create(userId, { jobId: job.id, source: isPost ? LINKEDIN_POST_APP_SOURCE : 'discovery' }, tx)
     await actQ.log(userId, app.id, 'status_change', { from: null, to: 'saved' }, tx)
     await discQ.setStatus(
       userId,

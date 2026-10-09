@@ -5,11 +5,11 @@ import { isArabicLocation } from './arabic-places'
 import type { AlertSiteId } from './sites'
 
 /** The slice of domhandler's node shape the parser reads (cheerio doesn't export it). */
-interface AnyNode {
+export interface AnyNode {
   type: string
   parent: AnyNode | null
 }
-interface Element extends AnyNode {
+export interface Element extends AnyNode {
   tagName: string
   children: AnyNode[]
 }
@@ -152,7 +152,7 @@ const BLOCK_TAGS = new Set([
 ])
 
 /** Text of a node split into visual lines (block elements and <br> break lines). */
-function textLines(node: AnyNode): string[] {
+export function textLines(node: AnyNode): string[] {
   const out: string[] = []
   let current = ''
   const flush = (): void => {
@@ -217,7 +217,7 @@ function jobKeysWithin($: cheerio.CheerioAPI, el: Element, keyOf: Map<Element, s
  * The largest ancestor of `anchor` that still contains links to this job
  * only: the job's card. Stops at <body>.
  */
-function cardFor($: cheerio.CheerioAPI, anchor: Element, key: string, keyOf: Map<Element, string>): Element {
+export function cardFor($: cheerio.CheerioAPI, anchor: Element, key: string, keyOf: Map<Element, string>): Element {
   let card: Element = anchor
   let node = anchor.parent
   while (node && node.type === 'tag') {

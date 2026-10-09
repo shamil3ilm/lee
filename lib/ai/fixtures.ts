@@ -19,6 +19,7 @@ import { replacementVerb, weakOpenerOf } from '@/lib/cv-score/dimensions/impact'
 import type { CallMeta } from './log'
 import type { ReputationSummaryInput, ReputationSummaryResult } from './prompts/reputation-summary'
 import type { SpeculativeOutreachInput, SpeculativeOutreachResult } from './prompts/speculative-outreach'
+import type { PostReplyInput, PostReplyResult } from './prompts/post-reply'
 import type { RadarBriefInput, RadarBriefResult } from './prompts/radar-brief'
 import type {
   LinkedInPostInput,
@@ -95,6 +96,7 @@ export class FixtureAIProvider implements AIProvider {
       rewriteCvBullets?: (input: BulletRewriteInput) => BulletRewriteResult
       summarizeReputation?: (input: ReputationSummaryInput) => ReputationSummaryResult
       draftSpeculativeOutreach?: (input: SpeculativeOutreachInput) => SpeculativeOutreachResult
+      draftPostReply?: (input: PostReplyInput) => PostReplyResult
       narrateComparison?: (input: CompareNarrativeInput) => CompareNarrativeResult
       suggestRoles?: (input: SuggestRolesInput) => SuggestRolesResult
       proposeResumeVariant?: (input: ResumeVariantInput) => ResumeVariantResult
@@ -323,6 +325,15 @@ export class FixtureAIProvider implements AIProvider {
     await this.emitLoggedCallId('company_reputation_summary', meta)
     if (this.fixtures.summarizeReputation) return this.fixtures.summarizeReputation(input)
     return pseudoReputationSummary(input)
+  }
+  async draftPostReply(input: PostReplyInput, meta?: CallMeta): Promise<PostReplyResult> {
+    await this.emitLoggedCallId('linkedin_post_reply', meta)
+    if (this.fixtures.draftPostReply) return this.fixtures.draftPostReply(input)
+    // Deterministic: a short note from the facts only (passes the fact lock).
+    const hi = input.post.posterName ? `Hi ${input.post.posterName.split(' ')[0]},` : 'Hello,'
+    const role = input.post.role ? `the ${input.post.role} role` : 'the role'
+    const body = [hi, '', `Thank you for posting ${role}. I am ${input.candidate.name}, ${input.candidate.headline}.`, 'May I send you my CV?', '', `Thank you,\n${input.candidate.name}`].join('\n')
+    return { subject: input.channel === 'email' ? `Application: ${input.post.role ?? 'your opening'}` : null, body }
   }
   async draftSpeculativeOutreach(input: SpeculativeOutreachInput, meta?: CallMeta): Promise<SpeculativeOutreachResult> {
     await this.emitLoggedCallId('speculative_outreach', meta)
