@@ -4,8 +4,9 @@ import { waitForHydration } from './ready'
 import { syntheticExportZip } from '../fixtures/linkedin-export'
 
 // Per-item import review, Undo last import and the Reset details dialog.
-// Public profile facts come from the portfolio (profileEditableInLee() is
-// false), so Apply produces portfolio suggestions and saves no public facts.
+// The e2e user has no portfolio synced yet, so canEditPublicFacts() is true
+// and Apply saves the ticked items to the master profile (the portfolio-
+// suggestions path is covered by tests/integration/profile-import-flows).
 // The journey undoes its own import; the reset dialog is cancelled, so later
 // specs keep the seeded data. Synthetic names only.
 
@@ -44,23 +45,17 @@ test('untick two skills and one project, apply: they are absent', async ({ page 
   await expect(chips.getByRole('button', { name: 'Mine — I can explain it: Zig' })).toHaveAttribute('aria-pressed', 'true')
 
   await review.getByTestId('import-apply').click()
-  const suggestions = page.getByTestId('portfolio-suggestions')
-  await expect(suggestions).toBeVisible()
-  const skills = suggestions.getByTestId('portfolio-snippet-skills')
-  await expect(skills).toContainText('Elixir')
-  await expect(skills).toContainText('Zig')
-  await expect(skills).not.toContainText('Haskell')
-  await expect(skills).not.toContainText('OCaml')
-  const projects = suggestions.getByTestId('portfolio-snippet-projects')
-  await expect(projects).toContainText('Synthetic Alpha Project')
-  await expect(projects).not.toContainText('Synthetic Beta Project')
-  await suggestions.getByRole('button', { name: 'Done' }).click()
+  await expectToast(page, 'Saved 3 items.')
 
-  // Nothing public was written: none of them is in the master profile.
+  // Only the ticked items reached the master profile; the unticked ones are absent.
   await page.goto('/settings/resume')
-  for (const name of ['Haskell', 'OCaml', 'Synthetic Beta Project', 'Elixir']) {
-    await expect(page.getByText(name, { exact: true })).toHaveCount(0)
-  }
+  await waitForHydration(page)
+  await expect(page.getByLabel('Elixir kind')).toBeVisible()
+  await expect(page.getByLabel('Zig kind')).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Synthetic Alpha Project' })).toBeVisible()
+  await expect(page.getByLabel('Haskell kind')).toHaveCount(0)
+  await expect(page.getByLabel('OCaml kind')).toHaveCount(0)
+  await expect(page.getByRole('region', { name: 'Synthetic Beta Project' })).toHaveCount(0)
 })
 
 test('undo last import from Settings › Profile', async ({ page }) => {
@@ -70,22 +65,26 @@ test('undo last import from Settings › Profile', async ({ page }) => {
   await expect(undo).toContainText('LinkedIn export')
   await undo.getByRole('button', { name: 'Undo last import' }).click()
   await expectToast(page, 'Import undone')
+  await page.goto('/settings/resume')
+  await waitForHydration(page)
+  await expect(page.getByLabel('Elixir kind')).toHaveCount(0)
+  await expect(page.getByRole('region', { name: 'Synthetic Alpha Project' })).toHaveCount(0)
 })
 
 test('the reset dialog lists what goes, offers a backup and needs RESET for a full reset', async ({ page }) => {
   await page.goto('/settings/profile#reset-details')
   await waitForHydration(page)
   const panel = page.getByTestId('reset-panel')
-  // Public sections come from the portfolio while editing in lee is off.
-  await expect(panel.getByRole('checkbox', { name: /^Experience/ })).toBeDisabled()
-  await expect(panel.getByText('Comes from your portfolio').first()).toBeVisible()
-  const overlay = panel.getByRole('checkbox', { name: /lee’s overlay/ })
-  test.skip(await overlay.isDisabled(), 'the seeded profile has no overlay to reset')
-  await overlay.check()
+  // No portfolio synced yet: public sections can be reset in lee.
+  await expect(panel.getByRole('checkbox', { name: /^Experience/ })).toBeEnabled()
+  // Interview-ready flags reset only with their own box, under the overlay.
+  await expect(panel.getByRole('checkbox', { name: /Also reset interview-ready flags/ })).toBeDisabled()
+  // A full reset: every master-profile section.
+  await panel.getByRole('checkbox', { name: 'All sections' }).check()
   await panel.getByTestId('reset-review').click()
 
   const dialog = page.getByRole('dialog', { name: 'Reset details' })
-  await expect(dialog.getByRole('region', { name: 'What will be removed' })).toContainText('lee’s overlay')
+  await expect(dialog.getByRole('region', { name: 'What will be removed' })).toContainText('Master profile: Experience')
   await expect(dialog.getByRole('list', { name: 'Never touched' })).toContainText('Applications, documents already sent, tailored CVs and discoveries are never touched.')
   const confirm = dialog.getByRole('button', { name: 'Reset selected' })
   await expect(confirm).toBeDisabled()
@@ -100,7 +99,7 @@ test('the reset dialog lists what goes, offers a backup and needs RESET for a fu
   expect(file.suggestedFilename()).toMatch(/^lee-backup-\d{4}-\d{2}-\d{2}\.json$/)
   const backup = JSON.parse(readFileSync((await file.path())!, 'utf8')) as { format: string; data: Record<string, unknown> }
   expect(backup.format).toBe('lee-reset-backup/1')
-  expect(Object.keys(backup.data)).toEqual(['overlay'])
+  expect(Object.keys(backup.data)).toEqual(['masterProfile'])
 
   await dialog.getByRole('button', { name: 'Cancel' }).click()
   await expect(dialog).toBeHidden()

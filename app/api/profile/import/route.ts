@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { parseCvImport } from '@/lib/profile/importer'
-import { profileEditableInLee } from '@/lib/profile/edit-mode'
+import { canEditPublicFacts } from '@/lib/portfolio/lock'
 import { getAIProviderForUser } from '@/lib/ai'
 import { withAiUsage } from '@/lib/ai/usage'
 import { logger } from '@/lib/logger'
@@ -68,7 +68,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     const ai = await getAIProviderForUser(userId)
     const { result, usage } = await withAiUsage({ userId }, () => parseCvImport({ userId, cvText, profileMd, ai }))
 
-    return NextResponse.json({ success: true, usage, ...result, editable: profileEditableInLee() })
+    return NextResponse.json({ success: true, usage, ...result, editable: await canEditPublicFacts(userId) })
   } catch (err) {
     logger.error('importProfile route failed', {
       err: err instanceof Error ? err.message : String(err),

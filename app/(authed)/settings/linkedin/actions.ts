@@ -17,9 +17,9 @@ import { suggestionSnippets, type ImportApplyResult } from '@/lib/import/result'
 import { cleanSelection, pickedItems } from '@/lib/import/selection'
 import { commitImport, portfolioProfileUrl } from '@/lib/import/service'
 import type { ImportItem, ReviewSelection } from '@/lib/import/types'
-import { profileEditableInLee } from '@/lib/profile/edit-mode'
+import { canEditPublicFacts } from '@/lib/portfolio/lock'
 import { logger } from '@/lib/logger'
-import { getResumeProfile, ResumeValidationError, saveResumeProfile } from '@/lib/resume/service'
+import { getResumeProfile, ResumeValidationError } from '@/lib/resume/service'
 import { getAIProviderForUser } from '@/lib/ai'
 import type { AIProvider } from '@/lib/ai/types'
 import * as capturesQ from '@/lib/db/queries/postCaptures'
@@ -71,7 +71,7 @@ export async function applyLinkedInImportAction(data: unknown, selection: unknow
     const items = buildImportItems(profile, exportData)
     const sel = cleanSelection(items, selection)
     if (!sel) return { ok: false, error: 'The export could not be read.' }
-    const editable = profileEditableInLee()
+    const editable = await canEditPublicFacts(userId)
     const importedAt = new Date()
     const changes: ImportChanges = {}
     let resume = null

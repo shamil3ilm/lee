@@ -1,6 +1,10 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { eq } from 'drizzle-orm'
+import { db } from '@/lib/db/client'
+import { portfolioPublish } from '@/lib/db/schema'
+import * as publishQ from '@/lib/db/queries/portfolioPublish'
 import { FixtureAIProvider } from '@/lib/ai/fixtures'
 import * as batchesQ from '@/lib/db/queries/importBatches'
 import * as linkedinQ from '@/lib/db/queries/linkedin'
@@ -14,11 +18,9 @@ import { EXPORT_CSVS } from '@/tests/fixtures/linkedin-export'
 import { syntheticProfile } from '@/tests/fixtures/resume/profile'
 
 const sessionMock = vi.hoisted(() => vi.fn())
-const editable = vi.hoisted(() => vi.fn(() => false))
 const recompute = vi.hoisted(() => vi.fn(async () => ({ relevance: true, match: true })))
 vi.mock('@/lib/auth/require-session', () => ({ requireUserId: sessionMock }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn(), revalidateTag: vi.fn() }))
-vi.mock('@/lib/profile/edit-mode', () => ({ profileEditableInLee: editable }))
 vi.mock('@/lib/import/recompute', () => ({ recomputeAfterProfileChange: recompute }))
 /** Synthetic résumé page; no real person. */
 const PAGE = readFileSync(join(__dirname, '../fixtures/profile/resume-page.html'), 'utf8')
@@ -45,12 +47,19 @@ const { applyLinkedInImportAction, importConnectionsChunkAction } = await import
 const { applyCvImportAction } = await import('@/app/(authed)/settings/profile/cv-import-actions')
 const { undoLastImport, undoBatch } = await import('@/lib/import/undo')
 
-async function user(): Promise<string> {
+async function user(locked = true): Promise<string> {
   const u = await makeUser()
   sessionMock.mockResolvedValue(u.id)
   await profileQ.upsert(u.id, { headline: 'Developer', skills: ['PHP'] })
   await saveResumeProfile(u.id, syntheticProfile())
+  if (locked) await setLocked(u.id, true)
   return u.id
+}
+
+/** Public facts come from the portfolio once lee has pulled it (lib/portfolio/lock.ts). */
+async function setLocked(userId: string, locked: boolean): Promise<void> {
+  if (locked) await publishQ.recordPull(userId, { pulledSha: 'sha-synthetic', pulledAt: new Date(), source: 'github', diff: [], orphans: [] })
+  else await db.update(portfolioPublish).set({ pulledSha: null }).where(eq(portfolioPublish.userId, userId))
 }
 
 async function preview() {
@@ -68,14 +77,12 @@ function untick(items: Awaited<ReturnType<typeof preview>>['items'], picked: str
 }
 
 beforeEach(() => {
-  editable.mockReturnValue(false)
   recompute.mockClear()
 })
 
 describe('import from a public page', () => {
   it('editable: saves only the ticked items, not ready by default, with provenance', async () => {
-    editable.mockReturnValue(true)
-    const userId = await user()
+    const userId = await user(false)
     const p = await preview()
     expect(p.editable).toBe(true)
     const initial = p.items.filter((i) => i.status === 'new').map((i) => i.key)
@@ -162,8 +169,7 @@ describe('LinkedIn export import', () => {
   })
 
   it('editable: adds ticked items with provenance; undo removes exactly them and restores updates', async () => {
-    editable.mockReturnValue(true)
-    const userId = await user()
+    const userId = await user(false)
     const before = (await getResumeProfile(userId)).profile
     // Make the certification an update.
     await saveResumeProfile(userId, { ...before, certificates: before.certificates.map((c) => ({ ...c, issuer: 'Someone else' })) })
@@ -209,7 +215,7 @@ describe('CV import', () => {
     expect(row.yearsExperience).toBeNull()
     expect(row.stackWeights).toEqual({})
 
-    editable.mockReturnValue(true)
+    await setLocked(userId, false)
     const saved = await applyCvImportAction(proposal, { picked: ['basics:headline', 'skills:1'], mine: ['skills:1'] })
     expect(saved).toMatchObject({ ok: true, mode: 'saved' })
     row = (await profileQ.get(userId))!

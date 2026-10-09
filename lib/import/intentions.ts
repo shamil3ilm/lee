@@ -4,7 +4,7 @@ import type { Depth, ResumeProfile } from '@/lib/resume/types'
 /**
  * Client-safe, pure. Readiness the user chose in an import review, kept as
  * an INTENTION keyed by name while public facts come from the portfolio
- * (lib/profile/edit-mode.ts): when the item later arrives through the
+ * (canEditPublicFacts, lib/portfolio/lock.ts): when the item later arrives through the
  * portfolio sync, `applyReadinessIntentions` gives it the chosen flags.
  *
  * Only defensible claims: an imported item is "Not ready / learning"

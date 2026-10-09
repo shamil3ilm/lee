@@ -3,7 +3,7 @@ import * as batchesQ from '@/lib/db/queries/importBatches'
 import * as linkedinQ from '@/lib/db/queries/linkedin'
 import * as profileQ from '@/lib/db/queries/profile'
 import { logger } from '@/lib/logger'
-import { profileEditableInLee } from '@/lib/profile/edit-mode'
+import { canEditPublicFacts } from '@/lib/portfolio/lock'
 import { readProfileLinks } from '@/lib/profile/links'
 import { readLinkedProfile } from '@/lib/profile/url-import'
 import { saveProfile } from '@/lib/profile/service'
@@ -87,7 +87,7 @@ export async function undoBatch(userId: string, batchId: string, now: Date = new
   let restored = 0
 
   const stored = await readStoredProfile(userId)
-  if (stored && batch.mode === 'saved' && profileEditableInLee()) {
+  if (stored && batch.mode === 'saved' && (await canEditPublicFacts(userId))) {
     removed += Object.values(batchItemCounts(stored, { source: batch.source, importedAt: at })).reduce((a, b) => a + b, 0)
     const back = restoreUpdatedItems(removeBatchItems(stored, { source: batch.source, importedAt: at }), c.resumeUpdated ?? [])
     restored += back.restored

@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
-import { applications, cvTailorings, discoveries, documents, resumeVariants, resumeVariantVersions } from '@/lib/db/schema'
+import { applications, cvTailorings, discoveries, documents, portfolioPublish, resumeVariants, resumeVariantVersions } from '@/lib/db/schema'
+import * as publishQ from '@/lib/db/queries/portfolioPublish'
 import * as batchesQ from '@/lib/db/queries/importBatches'
 import * as compareQ from '@/lib/db/queries/jobComparison'
 import * as documentsQ from '@/lib/db/queries/documents'
@@ -15,11 +16,9 @@ import { makeApplication, makeCompany, makeDiscovery, makeJob, makeSource, makeU
 import { syntheticProfile } from '@/tests/fixtures/resume/profile'
 
 const sessionMock = vi.hoisted(() => vi.fn())
-const editable = vi.hoisted(() => vi.fn(() => false))
 const recompute = vi.hoisted(() => vi.fn(async () => ({ relevance: true, match: true })))
 vi.mock('@/lib/auth/require-session', () => ({ requireUserId: sessionMock }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn(), revalidateTag: vi.fn() }))
-vi.mock('@/lib/profile/edit-mode', () => ({ profileEditableInLee: editable }))
 vi.mock('@/lib/import/recompute', () => ({ recomputeAfterProfileChange: recompute }))
 
 const { applyResetAction, backupResetAction, previewResetAction } = await import('@/app/(authed)/settings/profile/reset-actions')
@@ -61,7 +60,14 @@ async function seed(): Promise<Seeded> {
   await db.insert(cvTailorings).values({ userId, applicationId: app.id, documentId: doc.id, jdHash: 'h', baseVariantId: tailor.id, baseVersion: 1 })
   const source = await makeSource(userId)
   await makeDiscovery(userId, source.id)
+  await setLocked(userId, true)
   return { userId, usedVariant: used.id, tailorVariant: tailor.id, unusedVariant: unused.id, appId: app.id }
+}
+
+/** Public facts come from the portfolio once lee has pulled it (lib/portfolio/lock.ts). */
+async function setLocked(userId: string, locked: boolean): Promise<void> {
+  if (locked) await publishQ.recordPull(userId, { pulledSha: 'sha-synthetic', pulledAt: new Date(), source: 'github', diff: [], orphans: [] })
+  else await db.update(portfolioPublish).set({ pulledSha: null }).where(eq(portfolioPublish.userId, userId))
 }
 
 async function untouched(userId: string) {
@@ -71,7 +77,6 @@ async function untouched(userId: string) {
 }
 
 beforeEach(() => {
-  editable.mockReturnValue(false)
   recompute.mockClear()
   vi.restoreAllMocks()
 })
@@ -117,18 +122,32 @@ describe('reset details', () => {
   })
 
   it('needs RESET typed for a full reset (checked on the server)', async () => {
-    const s = await seed()
+    await seed()
     const sel = { ...none, targets: ['overlay'] }
     expect(await applyResetAction(sel, 'reset')).toEqual({ ok: false, error: 'Type RESET to confirm a full reset.' })
+    expect(await applyResetAction({ ...none, targets: ['readiness'] }, '')).toEqual({ ok: false, error: 'Type RESET to confirm a full reset.' })
     expect(await applyResetAction(none, 'RESET')).toEqual({ ok: false, error: 'Choose what to reset.' })
-    const ready = (await getResumeProfile(s.userId)).profile.skills.flatMap((g) => g.skills).filter((x) => x.interviewReady)
-    expect(ready.length).toBeGreaterThan(0)
-    expect(await applyResetAction(sel, 'RESET')).toMatchObject({ ok: true })
-    const { profile } = await getResumeProfile(s.userId)
-    expect(profile.skills.flatMap((g) => g.skills).every((x) => !x.interviewReady && x.depth === 'learning')).toBe(true)
+  })
+
+  it('the overlay clears only what lee adds on top of the portfolio; readiness only when ticked', async () => {
+    const s = await seed()
+    const batch = await batchesQ.create(s.userId, { source: 'url', mode: 'suggested', importedAt: new Date(), counts: {}, intentions: [{ section: 'skills', name: 'Kafka', mine: true }], changes: {} })
+    await publishQ.setOrphans(s.userId, [{ id: 'gone', kind: 'skill', label: 'Old', parent: null, overlay: { depth: 'own' }, removedAt: '2026-10-01T00:00:00.000Z' }])
+    const readyBefore = (await getResumeProfile(s.userId)).profile.skills.flatMap((g) => g.skills).filter((x) => x.interviewReady).length
+    expect(readyBefore).toBeGreaterThan(0)
+
+    expect(await applyResetAction({ ...none, targets: ['overlay'] }, 'RESET')).toMatchObject({ ok: true, counts: { intentions: 1, orphans: 1 } })
+    let { profile } = await getResumeProfile(s.userId)
+    expect(profile.skills.flatMap((g) => g.skills).filter((x) => x.interviewReady)).toHaveLength(readyBefore)
     expect(profile.work.flatMap((w) => w.highlights).every((h) => h.alternates.length === 0)).toBe(true)
     expect(profile.work.map((w) => w.name)).toEqual(syntheticProfile().work.map((w) => w.name))
     expect((await profileQ.get(s.userId))!.links).toEqual([{ id: 'gh', label: 'Code', url: 'https://github.com/example', kind: 'github' }])
+    expect((await batchesQ.getById(s.userId, batch.id))!.intentions).toEqual([])
+    expect((await publishQ.get(s.userId))!.orphans).toEqual([])
+
+    expect(await applyResetAction({ ...none, targets: ['overlay', 'readiness'] }, 'RESET')).toMatchObject({ ok: true })
+    profile = (await getResumeProfile(s.userId)).profile
+    expect(profile.skills.flatMap((g) => g.skills).every((x) => !x.interviewReady && x.depth === 'learning')).toBe(true)
   })
 
   it('public profile sections reset only while profile editing in lee is on', async () => {
@@ -138,7 +157,7 @@ describe('reset details', () => {
     expect(await applyResetAction(sel, '')).toMatchObject({ ok: true })
     expect((await getResumeProfile(s.userId)).profile.work.length).toBeGreaterThan(0)
 
-    editable.mockReturnValue(true)
+    await setLocked(s.userId, false)
     const preview = await previewResetAction(sel)
     if (!preview.ok) throw new Error(preview.error)
     expect(preview.preview.groups.map((g) => g.label)).toEqual(['Master profile: Experience', 'Master profile: Skills'])

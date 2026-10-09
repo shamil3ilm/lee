@@ -19,13 +19,17 @@ export const PROFILE_SECTION_LABELS: Readonly<Record<ProfileSection, string>> = 
   languages: 'Languages',
 }
 
-export const RESET_TARGETS = ['overlay', 'links', 'searchPrefs', 'currentJob', 'study', 'variants', 'connections', 'learnedTitles'] as const
+export const RESET_TARGETS = ['overlay', 'readiness', 'links', 'searchPrefs', 'currentJob', 'study', 'variants', 'connections', 'learnedTitles'] as const
 export type ResetTarget = (typeof RESET_TARGETS)[number]
 
 export const RESET_TARGET_LABELS: Readonly<Record<ResetTarget, { label: string; help: string }>> = {
   overlay: {
     label: 'lee’s overlay',
-    help: 'Readiness flags (back to “Not ready / learning”), saved wordings, link kinds, and readiness choices or repo links whose item is gone.',
+    help: 'What lee adds on top of your portfolio: readiness choices waiting for an item, saved wordings, link kinds, and overlay or repo links whose item is gone. Interview-ready flags stay.',
+  },
+  readiness: {
+    label: 'Also reset interview-ready flags',
+    help: 'Every skill, project and bullet back to “Not ready / learning” until you confirm it again.',
   },
   links: { label: 'Profile links', help: 'Settings › Profile › Links.' },
   searchPrefs: { label: 'Search preferences', help: 'Back to the defaults; filtering turns off until you save them again.' },
@@ -47,11 +51,11 @@ export const CONFIRM_WORD = 'RESET'
 
 /**
  * A full reset needs RESET typed: the whole master profile, the whole
- * overlay, or every resettable thing at once.
+ * overlay, the interview-ready flags, or every resettable thing at once.
  */
 export function needsTypedConfirm(sel: ResetSelection): boolean {
   if (sel.profile.length === PROFILE_SECTIONS.length) return true
-  if (sel.targets.includes('overlay')) return true
+  if (sel.targets.includes('overlay') || sel.targets.includes('readiness')) return true
   return sel.targets.length === RESET_TARGETS.length
 }
 

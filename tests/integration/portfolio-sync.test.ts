@@ -3,7 +3,9 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { queueJobs } from '@/lib/db/schema'
 import * as keysQ from '@/lib/db/queries/labProviderKeys'
+import * as batchesQ from '@/lib/db/queries/importBatches'
 import * as publishQ from '@/lib/db/queries/portfolioPublish'
+import { readIntentions } from '@/lib/import/intentions'
 import { logger } from '@/lib/logger'
 import { canEditPublicFacts } from '@/lib/portfolio/lock'
 import { serializeProfileJson, toJsonResume, type JsonDoc } from '@/lib/portfolio/map'
@@ -196,6 +198,35 @@ describe('public facts are read-only once synced (PROFILE_EDIT_IN_LEE off)', () 
       certificates: [...profile.certificates, { id: 'c-private', name: 'Internal course', issuer: '', date: '', url: '', visibility: { _item: 'private' as const } }],
     }
     await expect(saveResumeProfile(userId, overlay)).resolves.toBeTruthy()
+    expect(gh.puts).toHaveLength(0)
+  })
+})
+
+describe('readiness intentions from an import', () => {
+  it('a pull that brings the item applies the readiness chosen at import: own and interview-ready', async () => {
+    const userId = await setup(file(syntheticProfile()))
+    await pullPortfolio(userId, { trigger: 'open', now: NOW })
+    // An import while the portfolio is the source: the skill is a suggestion, "Mine" an intention.
+    await batchesQ.create(userId, {
+      source: 'linkedin',
+      mode: 'suggested',
+      importedAt: NOW,
+      counts: { suggested: 2 },
+      intentions: [
+        { section: 'skills', name: 'Rust', mine: true },
+        { section: 'projects', name: 'Not In Portfolio Yet', mine: true },
+      ],
+      changes: {},
+    })
+    // The user pastes the suggestion into profile.json; the next pull brings it.
+    gh.editByHand(file(syntheticProfile(), (d) => d.skills.push({ name: 'Systems', keywords: ['Rust'] })))
+    const r = await pullPortfolio(userId, { trigger: 'manual', now: new Date(NOW.getTime() + 11 * MIN), ignoreThrottle: true })
+    expect(r).toMatchObject({ status: 'pulled', changed: true })
+    const rust = (await getResumeProfile(userId)).profile.skills.flatMap((g) => g.skills).find((x) => x.name === 'Rust')
+    expect(rust).toMatchObject({ depth: 'own', interviewReady: true, domainReady: true })
+    // The applied intention is dropped; the one still waiting stays.
+    const [batch] = await batchesQ.listActive(userId)
+    expect(readIntentions(batch!.intentions)).toEqual([{ section: 'projects', name: 'Not In Portfolio Yet', mine: true }])
     expect(gh.puts).toHaveLength(0)
   })
 })

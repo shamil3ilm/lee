@@ -17,7 +17,7 @@ import { pageSkillGroup, type UrlImportContext, type UrlProposal } from './url-i
  *   modes: "Mine" lines feed role suggestions, the rest wait under
  *   `learning`.
  * - Public facts (headline, summary, skills, projects, links) are written
- *   only when `editable` (lib/profile/edit-mode.ts). Otherwise they become
+ *   only when `editable` (canEditPublicFacts, lib/portfolio/lock.ts). Otherwise they become
  *   portfolio suggestions and the readiness chosen for skills and projects
  *   is returned as intentions.
  */

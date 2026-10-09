@@ -12,7 +12,7 @@ import { MAX_LINKS, profileLinkSchema } from '@/lib/profile/links'
 import { detectTerms, extractPageSections, readLinkedProfile } from '@/lib/profile/url-import'
 import { buildUrlImportItems, pageSkillGroup, proposalFrom, urlProposalSchema, type UrlImportContext, type UrlProposal } from '@/lib/profile/url-import-review'
 import { applyUrlSelection } from '@/lib/profile/url-import-apply'
-import { profileEditableInLee } from '@/lib/profile/edit-mode'
+import { canEditPublicFacts } from '@/lib/portfolio/lock'
 import { readProfileLinks } from '@/lib/profile/links'
 import { cleanSelection } from '@/lib/import/selection'
 import { commitImport, portfolioProfileUrl } from '@/lib/import/service'
@@ -89,7 +89,7 @@ export async function previewUrlImportAction(rawUrl: string): Promise<PreviewRes
     }
     const proposal = proposalFrom(rawUrl.trim(), sections, parsed, detectTerms(sections.text))
     const items = buildUrlImportItems(proposal, await importContext(userId))
-    return { success: true, proposal, items, aiUsed: parsed !== null, editable: profileEditableInLee() }
+    return { success: true, proposal, items, aiUsed: parsed !== null, editable: await canEditPublicFacts(userId) }
   } catch (err) {
     logger.error('previewUrlImport failed', { err: err instanceof Error ? err.message : String(err) })
     return { error: 'Could not import that page.' }
@@ -111,7 +111,7 @@ export async function applyUrlImportAction(proposal: unknown, selection: unknown
     const items = buildUrlImportItems(p.data, ctx)
     const sel = cleanSelection(items, selection)
     if (!sel || sel.picked.length === 0) return { ok: false, error: 'Tick at least one item.' }
-    const editable = profileEditableInLee()
+    const editable = await canEditPublicFacts(userId)
     const importedAt = new Date()
     const r = applyUrlSelection(ctx, p.data, items, sel, { source: 'url', importedAt: importedAt.toISOString() }, editable)
     const batch = await commitImport(userId, { source: 'url', editable, importedAt, ...r })

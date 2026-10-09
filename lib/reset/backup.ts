@@ -32,10 +32,11 @@ export async function buildBackup(userId: string, s: ResetState, sel: ResetSelec
     data.overlay = {
       resume: s.resume,
       linkKinds: s.links.map((l) => ({ id: l.id, url: l.url, kind: l.kind })),
-      orphanIntentions: s.orphanIntentions,
+      intentions: s.intentions,
       orphanRepoLinks: s.orphanRepoLinks,
     }
   }
+  if (t.has('readiness') && s.resume) data.readiness = s.resume
   if (t.has('links')) data.links = s.links
   if (t.has('searchPrefs')) data.searchPrefs = searchPrefsOf(s.row)
   if (t.has('currentJob')) data.currentJob = { currentJob: s.currentJob, narratives: s.narratives }

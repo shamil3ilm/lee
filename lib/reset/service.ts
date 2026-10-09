@@ -8,12 +8,13 @@ import { readIntentions } from '@/lib/import/intentions'
 import { recomputeAfterProfileChange } from '@/lib/import/recompute'
 import { undoBatch } from '@/lib/import/undo'
 import { logger } from '@/lib/logger'
+import { clearOrphans } from '@/lib/portfolio/pull'
 import { inferLinkKind } from '@/lib/profile/links'
 import { saveProfile } from '@/lib/profile/service'
 import { saveResumeProfile } from '@/lib/resume/service'
 import type { ResumeProfile } from '@/lib/resume/types'
 import { variantPlan } from './plan'
-import { clearSections, clearStudyNotes, overlayCounts, resetLinkKinds, resetOverlay, sectionCount } from './profile'
+import { clearSections, clearStudyNotes, overlayCounts, removeWordings, resetLinkKinds, resetReadiness, sectionCount } from './profile'
 import { SEARCH_PREF_DEFAULTS } from './search-defaults'
 import { loadResetState, type ResetState } from './state'
 import { CONFIRM_WORD, isEmptySelection, needsTypedConfirm, type ResetSelection } from './types'
@@ -49,24 +50,26 @@ function nextResume(s: ResetState, sel: ResetSelection, counts: Record<string, n
     next = clearSections(next, sel.profile)
   }
   if (sel.targets.includes('overlay')) {
-    const c = overlayCounts(next, [])
-    counts.readiness = c.readiness
-    counts.wordings = c.wordings
-    next = resetOverlay(next)
+    counts.wordings = overlayCounts(next, []).wordings
+    next = removeWordings(next)
+  }
+  if (sel.targets.includes('readiness')) {
+    counts.readiness = overlayCounts(next, []).readiness
+    next = resetReadiness(next)
   }
   if (sel.targets.includes('study')) next = clearStudyNotes(next)
   return next === s.resume ? null : next
 }
 
-async function resetOrphans(userId: string, s: ResetState, counts: Record<string, number>): Promise<void> {
-  const orphan = new Set(s.orphanIntentions.map((i) => `${i.section}:${i.name}`))
+/** Intentions, overlay of items the portfolio removed and repo links to gone projects. */
+async function resetOverlayExtras(userId: string, s: ResetState, counts: Record<string, number>): Promise<void> {
   for (const b of s.batches) {
-    const list = readIntentions(b.intentions)
-    const left = list.filter((i) => !orphan.has(`${i.section}:${i.name}`))
-    if (left.length !== list.length) await batchesQ.update(userId, b.id, { intentions: left })
+    if (readIntentions(b.intentions).length > 0) await batchesQ.update(userId, b.id, { intentions: [] })
   }
   for (const repo of s.orphanRepoLinks) await repoQ.setLink(userId, repo, null)
-  counts.orphans = s.orphanIntentions.length + s.orphanRepoLinks.length
+  if (s.portfolioOrphans > 0) await clearOrphans(userId)
+  counts.intentions = s.intentions.length
+  counts.orphans = s.portfolioOrphans + s.orphanRepoLinks.length
 }
 
 function flatPatch(s: ResetState, sel: ResetSelection, counts: Record<string, number>): Partial<NewUserProfile> {
@@ -94,7 +97,7 @@ export async function applyReset(userId: string, sel: ResetSelection, now: Date 
   const s = await loadResetState(userId)
   const resume = nextResume(s, sel, counts)
   if (resume) await saveResumeProfile(userId, resume)
-  if (sel.targets.includes('overlay')) await resetOrphans(userId, s, counts)
+  if (sel.targets.includes('overlay')) await resetOverlayExtras(userId, s, counts)
   const patch = flatPatch(s, sel, counts)
   if (Object.keys(patch).length > 0) await saveProfile(userId, patch)
   const t = new Set(sel.targets)

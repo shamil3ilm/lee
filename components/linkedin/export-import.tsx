@@ -18,7 +18,7 @@ const CHUNK = 2000
 
 interface ExportImportProps {
   profile: ResumeProfile
-  /** Profile editing in lee is on (lib/profile/edit-mode.ts). */
+  /** lee may add public facts for this user (canEditPublicFacts, lib/portfolio/lock.ts). */
   editable: boolean
 }
 

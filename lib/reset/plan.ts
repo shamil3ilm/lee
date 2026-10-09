@@ -40,13 +40,17 @@ function targetLabels(s: ResetState, t: ResetTarget): string[] {
     case 'overlay': {
       const c = s.resume ? overlayCounts(s.resume, s.links) : { readiness: 0, wordings: 0, linkKinds: 0 }
       const lines = [
-        c.readiness ? `${c.readiness} readiness flag(s) back to “Not ready / learning”` : '',
         c.wordings ? `${c.wordings} saved wording(s)` : '',
         c.linkKinds ? `${c.linkKinds} link kind(s) back to the default` : '',
-        ...s.orphanIntentions.map((i) => `Readiness choice for “${i.name}” (item not in your profile)`),
+        s.portfolioOrphans ? `${s.portfolioOrphans} overlay entr(ies) of items your portfolio removed` : '',
+        ...s.intentions.map((i) => `Readiness choice for “${i.name}”${s.orphanIntentions.includes(i) ? ' (item not in your profile)' : ''}`),
         ...s.orphanRepoLinks.map((r) => `Repo link ${r} (project is gone)`),
       ]
       return lines.filter(Boolean)
+    }
+    case 'readiness': {
+      const n = s.resume ? overlayCounts(s.resume, s.links).readiness : 0
+      return n ? [`${n} readiness flag(s) back to “Not ready / learning”`] : []
     }
     case 'links':
       return s.links.map((l) => `${l.label} (${l.url})`)
@@ -70,11 +74,9 @@ function targetLabels(s: ResetState, t: ResetTarget): string[] {
 
 function targetCount(s: ResetState, t: ResetTarget): number {
   if (t === 'connections') return s.connections
-  if (t === 'overlay' && s.resume) {
-    const c = overlayCounts(s.resume, s.links)
-    return c.readiness + c.wordings + c.linkKinds + s.orphanIntentions.length + s.orphanRepoLinks.length
-  }
-  if (t === 'overlay') return s.orphanIntentions.length + s.orphanRepoLinks.length
+  const c = s.resume ? overlayCounts(s.resume, s.links) : { readiness: 0, wordings: 0, linkKinds: 0 }
+  if (t === 'overlay') return c.wordings + c.linkKinds + s.intentions.length + s.portfolioOrphans + s.orphanRepoLinks.length
+  if (t === 'readiness') return c.readiness
   return targetLabels(s, t).length
 }
 

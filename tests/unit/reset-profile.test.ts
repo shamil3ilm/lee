@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { inferLinkKind } from '@/lib/profile/links'
-import { clearSections, clearStudyNotes, overlayCounts, resetLinkKinds, resetOverlay, sectionCount, studyNoteLabels } from '@/lib/reset/profile'
+import { clearSections, clearStudyNotes, overlayCounts, removeWordings, resetLinkKinds, resetReadiness, sectionCount, studyNoteLabels } from '@/lib/reset/profile'
 import { CONFIRM_WORD, isEmptySelection, needsTypedConfirm, PROFILE_SECTIONS, RESET_TARGETS } from '@/lib/reset/types'
 import { syntheticProfile } from '@/tests/fixtures/resume/profile'
 
@@ -25,12 +25,14 @@ describe('reset: master profile sections', () => {
 })
 
 describe('reset: overlay and study notes', () => {
-  it('readiness back to not ready / learning and wordings removed; facts unchanged', () => {
+  it('the overlay removes wordings only; readiness resets only on its own; facts unchanged', () => {
     const p = syntheticProfile()
     expect(overlayCounts(p, []).readiness).toBeGreaterThan(0)
-    const next = resetOverlay(p)
+    const noWordings = removeWordings(p)
+    expect(overlayCounts(noWordings, []).wordings).toBe(0)
+    expect(overlayCounts(noWordings, []).readiness).toBe(overlayCounts(p, []).readiness)
+    const next = resetReadiness(noWordings)
     expect(overlayCounts(next, []).readiness).toBe(0)
-    expect(overlayCounts(next, []).wordings).toBe(0)
     expect(next.work.map((w) => w.highlights.map((h) => h.text))).toEqual(p.work.map((w) => w.highlights.map((h) => h.text)))
     expect(next.skills.flatMap((g) => g.skills).every((s) => s.depth === 'learning' && !s.interviewReady && !s.domainReady)).toBe(true)
   })
@@ -64,6 +66,7 @@ describe('reset: confirm gating', () => {
     expect(needsTypedConfirm({ ...none, targets: ['links', 'learnedTitles'] })).toBe(false)
     expect(needsTypedConfirm({ ...none, profile: [...PROFILE_SECTIONS] })).toBe(true)
     expect(needsTypedConfirm({ ...none, targets: ['overlay'] })).toBe(true)
+    expect(needsTypedConfirm({ ...none, targets: ['readiness'] })).toBe(true)
     expect(needsTypedConfirm({ ...none, targets: [...RESET_TARGETS] })).toBe(true)
   })
 })

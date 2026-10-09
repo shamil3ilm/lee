@@ -61,9 +61,11 @@ export async function activeIntentions(userId: string): Promise<ReadinessIntenti
 /**
  * Give items that arrived (e.g. through the portfolio sync) the readiness
  * the user chose when importing them, then drop the applied intentions.
- * The sync calls this after it writes the pulled profile.
+ * The portfolio pull (lib/portfolio/pull.ts) calls this after a pull that
+ * changed the profile, with `recompute: false` (it enqueues the
+ * re-evaluation itself). A readiness-only save: never a public fact.
  */
-export async function applyPendingIntentions(userId: string): Promise<number> {
+export async function applyPendingIntentions(userId: string, opts: { recompute?: boolean } = {}): Promise<number> {
   const intentions = await activeIntentions(userId)
   if (intentions.length === 0) return 0
   const { profile } = await getResumeProfile(userId)
@@ -76,6 +78,6 @@ export async function applyPendingIntentions(userId: string): Promise<number> {
     const left = list.filter((i) => !done.has(`${i.section}:${i.name}`))
     if (left.length !== list.length) await batchesQ.update(userId, row.id, { intentions: left })
   }
-  await recomputeAfterProfileChange(userId)
+  if (opts.recompute !== false) await recomputeAfterProfileChange(userId)
   return applied.length
 }

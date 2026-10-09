@@ -6,7 +6,7 @@ import { cleanSelection } from '@/lib/import/selection'
 import { commitImport, portfolioProfileUrl } from '@/lib/import/service'
 import { logger } from '@/lib/logger'
 import { applyCvSelection, buildCvImportItems, CV_SKILL_GROUP, cvProposalSchema } from '@/lib/profile/cv-import'
-import { profileEditableInLee } from '@/lib/profile/edit-mode'
+import { canEditPublicFacts } from '@/lib/portfolio/lock'
 import { cvImportContext } from '@/lib/profile/importer'
 import { ResumeValidationError } from '@/lib/resume/service'
 
@@ -25,7 +25,7 @@ export async function applyCvImportAction(proposal: unknown, selection: unknown)
     const items = buildCvImportItems(p.data, ctx)
     const sel = cleanSelection(items, selection)
     if (!sel || sel.picked.length === 0) return { ok: false, error: 'Tick at least one item.' }
-    const editable = profileEditableInLee()
+    const editable = await canEditPublicFacts(userId)
     const importedAt = new Date()
     const r = applyCvSelection(ctx, p.data, items, sel, { source: 'cv', importedAt: importedAt.toISOString() }, editable)
     const batch = await commitImport(userId, { source: 'cv', editable, importedAt, ...r })

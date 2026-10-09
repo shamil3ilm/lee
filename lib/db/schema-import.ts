@@ -8,7 +8,7 @@ import { users } from './schema'
 //   source       'url' | 'linkedin' | 'cv' | 'github'
 //   mode         'saved'     — public facts were written to the master
 //                              profile (only while profile editing in lee
-//                              is on, lib/profile/edit-mode.ts)
+//                              is allowed, canEditPublicFacts in lib/portfolio/lock.ts)
 //                'suggested' — public facts became suggestions for the
 //                              portfolio; only lee's own data was saved
 //   imported_at  the batch timestamp; master-profile items the batch added

@@ -1,5 +1,6 @@
 import * as publishQ from '@/lib/db/queries/portfolioPublish'
 import { refreshMatchesAfterSave } from '@/lib/discovery/match/enqueue'
+import { applyPendingIntentions } from '@/lib/import/service'
 import { logger } from '@/lib/logger'
 import { getResumeProfile, ResumeValidationError, saveResumeProfile } from '@/lib/resume/service'
 import { applyPortfolio } from './apply'
@@ -92,6 +93,16 @@ export async function pullPortfolio(userId: string, opts: PullOptions): Promise<
     diff: trimDiff(applied.diff),
     orphans: mergeOrphans(parseOrphans(state?.orphans), orphans),
   })
+  // Items that just arrived get the readiness the user chose when importing
+  // them (lib/import/intentions.ts), before anything re-reads the profile.
+  let intentions = 0
+  if (changed) {
+    try {
+      intentions = await applyPendingIntentions(userId, { recompute: false })
+    } catch (err) {
+      logger.warn('portfolio_pull_intentions_failed', { err: err instanceof Error ? err.name : 'unknown' })
+    }
+  }
   // Match scores, best CV per posting and role suggestions read the profile.
   if (changed) await refreshMatchesAfterSave(userId)
   logger.info('portfolio_pull', {
@@ -100,6 +111,7 @@ export async function pullPortfolio(userId: string, opts: PullOptions): Promise<
     sections: applied.diff.length,
     orphaned: orphans.length,
     changed,
+    intentions,
   })
   return { status: 'pulled', sections: applied.diff.length, orphaned: orphans.length, changed }
 }

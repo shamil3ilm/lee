@@ -76,7 +76,7 @@ export interface ImportItem {
   hasReadiness: boolean
   /**
    * A public profile fact. While profile editing in lee is off
-   * (lib/profile/edit-mode.ts) public items become portfolio suggestions;
+   * (canEditPublicFacts, lib/portfolio/lock.ts) public items become portfolio suggestions;
    * lee-only items (evidence, matching details) are saved either way.
    */
   isPublic: boolean

@@ -88,14 +88,24 @@ export function overlayCounts(p: ResumeProfile, links: readonly ProfileLink[]): 
   }
 }
 
-/** Readiness back to "Not ready / learning" and saved wordings removed. */
-export function resetOverlay(p: ResumeProfile): ResumeProfile {
-  const hl = (h: Highlight): Highlight => ({ ...h, ...RESET_FLAGS, alternates: [] })
+/** Saved wordings (alternates) removed; readiness untouched. */
+export function removeWordings(p: ResumeProfile): ResumeProfile {
+  const hl = (h: Highlight): Highlight => ({ ...h, alternates: [] })
+  return {
+    ...p,
+    work: p.work.map((w) => ({ ...w, highlights: w.highlights.map(hl) })),
+    projects: p.projects.map((x) => ({ ...x, highlights: x.highlights.map(hl) })),
+  }
+}
+
+/** Every skill, project and highlight back to "Not ready / learning" (only when the user ticks it). */
+export function resetReadiness(p: ResumeProfile): ResumeProfile {
+  const hl = (h: Highlight): Highlight => ({ ...h, ...RESET_FLAGS })
   return {
     ...p,
     work: p.work.map((w) => ({ ...w, highlights: w.highlights.map(hl) })),
     projects: p.projects.map((x) => ({ ...x, ...RESET_FLAGS, highlights: x.highlights.map(hl) })),
-    skills: p.skills.map((g) => ({ ...g, skills: g.skills.map((s) => ({ ...s, ...RESET_FLAGS })) })),
+    skills: p.skills.map((g) => ({ ...g, skills: g.skills.map((sk) => ({ ...sk, ...RESET_FLAGS })) })),
   }
 }
 
