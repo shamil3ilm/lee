@@ -8,6 +8,7 @@ import { Board, type BoardColumnDef, type BoardQuickAction } from '@/components/
 import { Badge } from '@/components/ui/badge'
 import { workModeLabel } from '@/lib/ui/labels'
 import { MatchBadge } from '@/components/discovery/match-badge'
+import type { CompanyGrowthView } from '@/components/discovery/match-why'
 import type { MatchDetail } from '@/lib/discovery/match/types'
 import type { BestCv } from '@/lib/cv-fit/types'
 import { BestCvLine } from '@/components/cv-fit/best-cv-line'
@@ -31,6 +32,8 @@ export interface DiscoveryBoardItem {
   bestCv?: BestCv | null
   applyUrl: string | null
   savedApplicationId: string | null
+  /** The employer's growth (Discovery › Companies), shown in "Why this score". */
+  growth?: CompanyGrowthView | null
 }
 
 export const DISCOVERY_BOARD_COLUMNS: readonly BoardColumnDef<DiscoveryBoardColumn>[] = [
@@ -72,6 +75,7 @@ function renderCard(d: DiscoveryBoardItem): React.ReactNode {
           match={d.fitScore}
           ai={d.matchScore}
           detail={d.fitDetail}
+          growth={d.growth ?? null}
           interactive={!d.savedApplicationId}
           className="shrink-0"
           extra={d.bestCv ? <BestCvLine className="border-t pt-2" bestCv={d.bestCv} target={{ kind: 'discovery', id: d.id }} /> : undefined}

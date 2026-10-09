@@ -330,6 +330,13 @@
       "when": 1791559815669,
       "tag": "0046_import_provenance",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1791561551790,
+      "tag": "0047_company_growth",
+      "breakpoints": true
     }
   ]
 }

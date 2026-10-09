@@ -7,49 +7,49 @@ import { searchPrefsFromProfile, targetFamilies, type SearchPrefs } from '@/lib/
 import { getGitHubUserToken } from '@/lib/integrations/github/token'
 import { logger } from '@/lib/logger'
 import { withAncestors } from '@/lib/regions/tree'
+import { collectCandidates, type CompanySourceId, type SourceRun } from './collect'
+import { parseCursors } from './cursors'
 import { companyFit, type CompanyFit, type FitContext } from './fit'
-import { companyErrorText, type CompanyHttpDeps } from './http'
+import { foldDuplicates, remapToKnown } from './fold'
+import type { CompanyHttpDeps } from './http'
 import { dedupeKey, domainOf, normalizeCandidates } from './normalize'
-import { fetchWikidataCompanies } from './sources/wikidata'
-import { searchOrgs } from './sources/github'
-import { fetchYcCompanies } from './sources/yc'
-import { fetchQstp, fetchTechnopark, TECHNOPARK_PAGES_PER_RUN } from './sources/directories'
-import { githubLocations, targetPlaces, type TargetPlace } from './targets'
-import { weeklySlice, wikidataGroups } from './plan'
+import type { CompanyCandidate, CompanyStage } from './types'
+import { connectionsAt, type CompanyCount } from './warm'
 
 export { weeklySlice, wikidataGroups } from './plan'
-import type { CompanyCandidate, CompanyStage } from './types'
-import { connectionsAt, linkedinCandidates, type CompanyCount } from './warm'
+export { githubTermsForRun, GITHUB_TERMS_PER_RUN, type CompanySourceId, type SourceRun } from './collect'
 
 /**
- * SERVER-ONLY. The weekly company discovery for one user: Wikidata, GitHub
- * orgs, YC and the user's LinkedIn connections, for the target regions (and
- * the starred ones first). Normalised, deduped by domain / name + country,
- * capped per source per run and per user, and stored as rows of the user's
- * hidden "Local companies" source. Every row gets a deterministic fit; rows
- * with a website are queued for enrichment (careers page, job board).
+ * SERVER-ONLY. The weekly company discovery for one user (./collect.ts
+ * gathers the candidates: job postings, connections, complete park and
+ * member lists, GitHub orgs by city, Wikidata, YC and the seed floor).
+ * Normalised, deduped by domain / name + country, capped per source per run
+ * and per user, and stored as rows of the user's hidden "Local companies"
+ * source. Every row gets a deterministic fit; rows with a website (or a
+ * park profile page) are queued for enrichment.
  */
 
 export const LOCAL_COMPANIES_KIND = 'local_companies'
 export const LOCAL_COMPANIES_SOURCE_NAME = 'Local companies'
 
-/** New rows per source per run, and the most rows one user keeps (Neon Free: 0.5 GB). */
-export const NEW_PER_SOURCE: Readonly<Record<string, number>> = { wikidata: 60, github: 40, yc: 40, linkedin: 30, paste: 40, directory: 40 }
-export const MAX_COMPANIES_PER_USER = 800
-/** GitHub location searches per run (6.5 s apart without a token); they rotate weekly. */
-export const GITHUB_TERMS_PER_RUN = 6
-export const WIKIDATA_GROUPS_PER_RUN = 8
-
-export type CompanySourceId = 'wikidata' | 'github' | 'yc' | 'linkedin' | 'directories'
-
-/** Technopark's listing has 25 pages of 20; a few rotate in each week. */
-const TECHNOPARK_PAGES = Array.from({ length: 25 }, (_, i) => i + 1)
-
-export interface SourceRun {
-  source: CompanySourceId
-  fetched: number
-  error?: string
+/**
+ * New rows per source per run, and the most rows one user keeps. A complete
+ * park list is hundreds of companies (Technopark 497, Infopark 401), so the
+ * directory cap fits all of them in one run; the per-user cap (about 2 KB a
+ * row, about 6 MB at the cap) keeps Neon Free (0.5 GB) safe.
+ */
+export const NEW_PER_SOURCE: Readonly<Record<string, number>> = {
+  directory: 1200,
+  github: 150,
+  wikidata: 150,
+  jobs: 300,
+  seed: 200,
+  linkedin: 60,
+  yc: 40,
+  paste: 40,
+  search: 5,
 }
+export const MAX_COMPANIES_PER_USER = 3000
 
 export interface CompanyRunSummary {
   kind: 'company-discovery'
@@ -84,17 +84,6 @@ export async function loadFitContext(userId: string): Promise<{ ctx: FitContext;
   return { ctx: fitContextFrom(prefs), prefs }
 }
 
-/**
- * This run's GitHub location searches: the starred countries every week
- * (at most 3), the rest rotating weekly to fill GITHUB_TERMS_PER_RUN.
- */
-export function githubTermsForRun(places: readonly TargetPlace[], starred: readonly string[], now: Date): Array<{ term: string; regionId: string }> {
-  const terms = githubLocations(places)
-  const fixed = terms.filter((t) => starred.includes(t.regionId) && places.find((p) => p.id === t.regionId)?.country).slice(0, 3)
-  const rest = terms.filter((t) => !fixed.includes(t))
-  return [...fixed, ...weeklySlice(rest, Math.max(0, GITHUB_TERMS_PER_RUN - fixed.length), now)]
-}
-
 export interface RunDeps extends CompanyHttpDeps {
   now?: Date
   /** Skip a source (tests, or when its terms change). */
@@ -113,66 +102,6 @@ async function githubToken(userId: string): Promise<string | null> {
   return process.env.GITHUB_TOKEN ?? null
 }
 
-async function collect(userId: string, prefs: SearchPrefs, deps: RunDeps): Promise<{ candidates: CompanyCandidate[]; runs: SourceRun[]; counts: CompanyCount[] }> {
-  const now = deps.now ?? new Date()
-  const starred = prefs.extra.preferredRegions.map((r) => r.id)
-  const places = targetPlaces(prefs.regionIds, starred)
-  const runs: SourceRun[] = []
-  const candidates: CompanyCandidate[] = []
-  const skip = new Set(deps.skip ?? [])
-  const timeLeft = (): boolean => deps.deadline === undefined || Date.now() < deps.deadline
-  const run = async (source: CompanySourceId, fn: () => Promise<CompanyCandidate[]>): Promise<void> => {
-    if (skip.has(source)) return
-    if (!timeLeft()) {
-      runs.push({ source, fetched: 0, error: 'out of time' })
-      return
-    }
-    try {
-      const got = await fn()
-      candidates.push(...got)
-      runs.push({ source, fetched: got.length })
-    } catch (e) {
-      const err = companyErrorText(e)
-      runs.push({ source, fetched: 0, error: err })
-      logger.warn('company_discovery_source_failed', { userId, source, err })
-    }
-  }
-  await run('wikidata', async () => {
-    const out: CompanyCandidate[] = []
-    for (const group of wikidataGroups(places).slice(0, WIKIDATA_GROUPS_PER_RUN)) {
-      if (!timeLeft()) break
-      out.push(...(await fetchWikidataCompanies(group, deps)))
-    }
-    return out
-  })
-  const token = deps.githubToken !== undefined ? deps.githubToken : await githubToken(userId)
-  await run('github', async () => {
-    const out: CompanyCandidate[] = []
-    for (const loc of githubTermsForRun(places, starred, now)) {
-      if (!timeLeft()) break
-      out.push(...(await searchOrgs(loc.term, loc.regionId, { ...deps, githubToken: token })))
-    }
-    return out
-  })
-  await run('yc', () => fetchYcCompanies(deps))
-  const placeIds = new Set(places.map((p) => p.id))
-  await run('directories', async () => {
-    const out: CompanyCandidate[] = []
-    if (placeIds.has('kerala') || placeIds.has('thiruvananthapuram')) {
-      out.push(...(await fetchTechnopark(weeklySlice(TECHNOPARK_PAGES, TECHNOPARK_PAGES_PER_RUN, now), deps)))
-    }
-    if (placeIds.has('qa') || placeIds.has('doha')) out.push(...(await fetchQstp(deps)))
-    return out
-  })
-  const counts = await linkedinQ.companyCounts(userId).catch(() => [] as CompanyCount[])
-  if (!skip.has('linkedin')) {
-    const li = linkedinCandidates(counts)
-    candidates.push(...li)
-    runs.push({ source: 'linkedin', fetched: li.length })
-  }
-  return { candidates, runs, counts }
-}
-
 /** Row fields for a candidate (region ids with ancestors, warm count, compact normalized copy). */
 export function toInsert(c: CompanyCandidate, counts: readonly CompanyCount[]): companiesQ.CompanyInsert {
   const connections = connectionsAt(c.name, counts)
@@ -188,6 +117,7 @@ export function toInsert(c: CompanyCandidate, counts: readonly CompanyCount[]): 
     stage: c.stage ?? null,
     sourceTags: c.sourceTags,
     evidence,
+    ...(c.board ? { board: c.board } : {}),
     normalized: {
       kind: 'company',
       name: c.name,
@@ -200,7 +130,15 @@ export function toInsert(c: CompanyCandidate, counts: readonly CompanyCount[]): 
   }
 }
 
-export function fitOf(row: Pick<companiesQ.CompanyInsert, 'name' | 'regionIds' | 'industry' | 'stage' | 'evidence'> & { atsKind?: string | null; careersUrl?: string | null }, ctx: FitContext): CompanyFit {
+export function fitOf(
+  row: Pick<companiesQ.CompanyInsert, 'name' | 'regionIds' | 'industry' | 'stage' | 'evidence'> & {
+    atsKind?: string | null
+    careersUrl?: string | null
+    growthScore?: number | null
+    growthConfidence?: string | null
+  },
+  ctx: FitContext,
+): CompanyFit {
   return companyFit(
     {
       name: row.name,
@@ -210,9 +148,25 @@ export function fitOf(row: Pick<companiesQ.CompanyInsert, 'name' | 'regionIds' |
       atsKind: row.atsKind ?? null,
       careersUrl: row.careersUrl ?? null,
       evidence: row.evidence,
+      growth: { score: row.growthScore ?? null, confidence: row.growthConfidence ?? null },
     },
     ctx,
   )
+}
+
+/** One insert per key (two listings remapped onto the same stored company merge their tags and places). */
+function uniqueByKey(rows: readonly companiesQ.CompanyInsert[]): companiesQ.CompanyInsert[] {
+  const out = new Map<string, companiesQ.CompanyInsert>()
+  for (const r of rows) {
+    const prev = out.get(r.sourceCompanyId)
+    out.set(
+      r.sourceCompanyId,
+      prev
+        ? { ...prev, sourceTags: [...new Set([...prev.sourceTags, ...r.sourceTags])], regionIds: [...new Set([...prev.regionIds, ...r.regionIds])], evidence: { ...r.evidence, ...prev.evidence } }
+        : r,
+    )
+  }
+  return [...out.values()]
 }
 
 /**
@@ -231,7 +185,12 @@ export async function storeCandidates(
   const counts = opts.counts ?? (await linkedinQ.companyCounts(userId).catch(() => []))
   const merged = [...normalizeCandidates(list).values()].map((c) => toInsert(c, counts))
   const elsewhere = await companiesQ.domainsElsewhere(userId, source.id, merged.flatMap((m) => (m.domain ? [m.domain] : [])))
-  const rows = merged.filter((m) => !m.domain || !elsewhere.has(m.domain))
+  const rows = uniqueByKey(
+    remapToKnown(
+      merged.filter((m) => !m.domain || !elsewhere.has(m.domain)),
+      await companiesQ.foldIndex(source.id),
+    ),
+  )
   const known = await companiesQ.existingKeys(source.id, rows.map((r) => r.sourceCompanyId))
   const room = Math.max(0, MAX_COMPANIES_PER_USER - (await companiesQ.countForSource(source.id)))
   const fresh = rows
@@ -249,6 +208,7 @@ export async function storeCandidates(
   }
   const toWrite = rows.filter((r) => known.has(r.sourceCompanyId) || kept.has(r.sourceCompanyId))
   const res = await companiesQ.upsertCompanies(userId, source.id, toWrite)
+  await foldDuplicates(userId, source.id)
   await refreshFits(userId, ctx)
   return { new: res.inserted.length, updated: res.updated, capped: fresh.length - kept.size, ids: res.inserted }
 }
@@ -260,7 +220,7 @@ export async function refreshFits(userId: string, ctx?: FitContext): Promise<num
   for (const row of await companiesQ.inPlay(userId)) {
     const name = String((row.normalized as { name?: unknown } | null)?.name ?? '')
     const fit = fitOf(
-      { name, regionIds: row.regionIds, industry: row.industry, stage: row.stage, evidence: (row.evidence ?? {}) as never, atsKind: row.atsKind, careersUrl: row.careersUrl },
+      { name, regionIds: row.regionIds, industry: row.industry, stage: row.stage, evidence: (row.evidence ?? {}) as never, atsKind: row.atsKind, careersUrl: row.careersUrl, growthScore: row.growthScore, growthConfidence: row.growthConfidence },
       c,
     )
     if (row.fitScore === fit.score && JSON.stringify(row.fitDetail) === JSON.stringify(fit.chips)) continue
@@ -274,7 +234,10 @@ export async function refreshFits(userId: string, ctx?: FitContext): Promise<num
 export async function runCompanyDiscovery(userId: string, deps: RunDeps = {}): Promise<CompanyRunSummary> {
   const started = Date.now()
   const { prefs, ctx } = await loadFitContext(userId)
-  const { candidates, runs, counts } = await collect(userId, prefs, deps)
+  const source = await ensureLocalCompaniesSource(userId)
+  const token = deps.githubToken !== undefined ? deps.githubToken : await githubToken(userId)
+  const { candidates, runs, counts, cursors } = await collectCandidates(userId, prefs, parseCursors(source.config), { ...deps, githubToken: token })
+  await sourcesQ.update(userId, source.id, { config: { ...((source.config ?? {}) as Record<string, unknown>), cursors } })
   const stored = await storeCandidates(userId, candidates, { counts, ctx })
   const summary: CompanyRunSummary = {
     kind: 'company-discovery',

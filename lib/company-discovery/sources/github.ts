@@ -12,7 +12,7 @@ import type { CompanyCandidate } from '../types'
  */
 
 export const GITHUB_API = 'https://api.github.com'
-export const ORGS_PER_LOCATION = 20
+export const ORGS_PER_LOCATION = 50
 const LOGIN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/
 
 function headers(deps: CompanyHttpDeps): Record<string, string> {
@@ -22,11 +22,38 @@ function headers(deps: CompanyHttpDeps): Record<string, string> {
   }
 }
 
+/** GitHub search returns at most the first 1,000 results of a query. */
+export const SEARCH_RESULT_CAP = 1000
+
 /** The search URL for one location term (quoted; at most 40 characters of letters and spaces). */
-export function orgSearchUrl(term: string, perPage = ORGS_PER_LOCATION): string {
+export function orgSearchUrl(term: string, perPage = ORGS_PER_LOCATION, page = 1): string {
   const clean = term.replace(/[^\p{L} .-]/gu, '').trim().slice(0, 40)
   const q = `type:org location:"${clean}"`
-  return `${GITHUB_API}/search/users?q=${encodeURIComponent(q)}&sort=repositories&order=desc&per_page=${Math.min(50, perPage)}`
+  const p = Math.max(1, Math.min(100, Math.floor(page)))
+  return `${GITHUB_API}/search/users?q=${encodeURIComponent(q)}&sort=repositories&order=desc&per_page=${Math.min(100, perPage)}${p > 1 ? `&page=${p}` : ''}`
+}
+
+/** Pages a search has (total_count, capped at the 1,000 GitHub serves), at least 1. */
+export function searchLastPage(body: unknown, perPage: number): number {
+  const total = (body as { total_count?: unknown } | null)?.total_count
+  const n = typeof total === 'number' && Number.isFinite(total) ? Math.min(total, SEARCH_RESULT_CAP) : 0
+  return Math.max(1, Math.ceil(n / Math.max(1, perPage)))
+}
+
+/**
+ * One page of the org search for a city. Weekly runs walk the pages (a
+ * cursor per term), so every org in the city comes round, not only the
+ * first page of the most active ones.
+ */
+export async function searchOrgsPage(
+  term: string,
+  regionId: string,
+  page: number,
+  deps: CompanyHttpDeps = {},
+  perPage = ORGS_PER_LOCATION,
+): Promise<{ companies: CompanyCandidate[]; lastPage: number }> {
+  const body = await companyJson('github-org-search', orgSearchUrl(term, perPage, page), deps, { accept: 'application/vnd.github+json', headers: headers(deps) })
+  return { companies: parseOrgSearch(body, regionId), lastPage: searchLastPage(body, perPage) }
 }
 
 interface SearchItem {

@@ -47,6 +47,9 @@ function routes(): FakeRoute[] {
     { match: (u) => u.host === 'yc-oss.github.io', body: YC_ALL },
     { match: (u) => u.host === 'technopark.in', body: TECHNOPARK_PAGE },
     { match: (u) => u.host === 'qstp.qa', body: QSTP_DIRECTORY },
+    // The other park, accelerator and member lists answer with empty pages here (tests/integration/company-recall.test.ts reads them).
+    { match: (u) => ['infopark.in', 'cyberparks.in', 'www.ulcyberpark.com', 'nasscom.in', 'startupbahrain.com'].includes(u.host), body: '<html><body></body></html>' },
+    { match: (u) => u.host === 'flat6labs.com', body: '<urlset></urlset>', type: 'application/xml' },
     // Company sites.
     { match: (u) => u.host === 'www.dinarpay.example' && u.pathname === '/robots.txt', body: ROBOTS_ALLOW_ALL, type: 'text/plain' },
     { match: (u) => u.host === 'www.dinarpay.example' && u.pathname === '/', body: HOME_WITH_BOARD },
@@ -110,7 +113,7 @@ describe('weekly company discovery', () => {
     const net = network()
     const s = await runCompanyDiscovery(u.id, { fetchImpl: net, limiter: NO_WAIT, githubToken: null, now: NOW })
     expect(s.failed).toBe(0)
-    expect(s.sources.map((x) => x.source).sort()).toEqual(['directories', 'github', 'linkedin', 'wikidata', 'yc'])
+    expect(s.sources.map((x) => x.source).sort()).toEqual(['directories', 'github', 'jobs', 'linkedin', 'seed', 'wikidata', 'yc'])
     const all = await rows(u.id)
     const names = all.map(nameOf).sort()
     // Dinar Pay came from Wikidata AND GitHub AND the user's connections: one row.
@@ -152,7 +155,8 @@ describe('weekly company discovery', () => {
     const r = await storeCandidates(u.id, many)
     expect(r.new).toBe(NEW_PER_SOURCE.paste)
     expect(r.capped).toBe(15)
-    expect(MAX_COMPANIES_PER_USER).toBeLessThanOrEqual(1000)
+    // Room for complete park lists (hundreds each), still small for Neon Free (about 2 KB a row).
+    expect(MAX_COMPANIES_PER_USER).toBeLessThanOrEqual(3000)
   })
 })
 
@@ -161,7 +165,7 @@ describe('enrichment, watching and the speculative workflow', () => {
     const u = await setup()
     await runCompanyDiscovery(u.id, { fetchImpl: network(), limiter: NO_WAIT, githubToken: null, now: NOW })
     const net = network()
-    const s = await enrichPending(u.id, { fetchImpl: net, limiter: NO_WAIT, limit: 50, countOpenRoles: async () => 3 })
+    const s = await enrichPending(u.id, { fetchImpl: net, limiter: NO_WAIT, limit: 200, countOpenRoles: async () => 3 })
     expect(s.checked).toBeGreaterThan(0)
     const all = await rows(u.id)
     const dinar = all.find((r) => nameOf(r) === 'Dinar Pay')!
@@ -211,7 +215,7 @@ describe('enrichment, watching and the speculative workflow', () => {
       skills: { primary: ['Laravel', 'MySQL'] },
     })
     await runCompanyDiscovery(u.id, { fetchImpl: network(), limiter: NO_WAIT, githubToken: null, now: NOW })
-    await enrichPending(u.id, { fetchImpl: network(), limiter: NO_WAIT, limit: 50, countOpenRoles: async () => null })
+    await enrichPending(u.id, { fetchImpl: network(), limiter: NO_WAIT, limit: 200, countOpenRoles: async () => null })
     const dinar = (await rows(u.id)).find((r) => nameOf(r) === 'Dinar Pay')!
     const plan = await draftReachOut(u.id, dinar.id, { ai: null })
     expect(plan.people.map((p) => p.name).sort()).toEqual(['Alex Sample', 'Rae Sample'])

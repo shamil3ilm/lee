@@ -105,10 +105,11 @@ export default async function DiscoveriesPage({
         })
       : []
   const checked = lastCheckedLine(sources)
+  const growthInFit = searchPrefsFromProfile(profile).extra.growthInFit
   const shortlist = p.tab === 'jobs' ? <ShortlistHeaderLink userId={userId} /> : null
 
   if (p.tab === 'jobs' && view === 'board') {
-    const board = await loadBoard(userId, p)
+    const board = await loadBoard(userId, p, growthInFit)
     return (
       <div className="space-y-4">
         <PageHeader
@@ -158,7 +159,7 @@ export default async function DiscoveriesPage({
   }
 
   const sourceNameById = new Map(sources.map((s) => [s.id, s.name] as const))
-  const jobs = await loadJobs(userId, p)
+  const jobs = await loadJobs(userId, p, growthInFit)
   const total = jobs.total
 
   return (
@@ -198,7 +199,7 @@ export default async function DiscoveriesPage({
       {jobs.regionGroups ? <RegionGroups groups={jobs.regionGroups} searchParams={sp} selected={p.region} /> : null}
       <DiscoveryInbox
         kind="jobs"
-        items={toJobRows(jobs, sourceNameById)}
+        items={toJobRows(jobs, sourceNameById, growthInFit)}
         quarantineView={p.status === 'quarantined'}
         filteredView={p.status === 'filtered'}
         pager={<DiscoveryPager searchParams={sp} page={p.page} size={p.size} total={total} position="top" />}
@@ -210,7 +211,7 @@ export default async function DiscoveriesPage({
   )
 }
 
-function toJobRows(jobs: JobsData, sourceNameById: Map<string, string>): DiscoveryRowJob[] {
+function toJobRows(jobs: JobsData, sourceNameById: Map<string, string>, growthInFit: boolean): DiscoveryRowJob[] {
   return jobs.rows.map((d) => {
     const sourceName = sourceNameById.get(d.sourceId) ?? 'unknown'
     const risk = jobs.risks.get(d.id)
@@ -222,6 +223,7 @@ function toJobRows(jobs: JobsData, sourceNameById: Map<string, string>): Discove
       fitScore: d.fitScore,
       fitDetail: toMatchDetail(d.fitDetail),
       bestCv: toBestCv(d.bestCv),
+      growth: d.companyGrowth !== null ? { score: d.companyGrowth, confidence: d.companyGrowthConfidence, inFit: growthInFit } : null,
       jdFetchable: jdTarget(d.applyUrl) !== null,
       createdAt: d.createdAt.toISOString(),
       sourceName,

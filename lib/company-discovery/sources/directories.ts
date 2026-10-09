@@ -4,58 +4,21 @@ import { industriesFromText } from '../industry'
 import type { CompanyCandidate } from '../types'
 
 /**
- * Startup, free-zone and IT-park company directories (audited 2026-10-09;
- * docs/job-sources.md has each one's robots.txt and terms). Two are read
- * automatically because robots.txt allows the endpoint the site's own page
- * calls and no terms forbid it:
+ * QSTP directory (Doha; audited 2026-10-09, docs/job-sources.md): robots.txt
+ * allows the endpoint its own page calls and no terms forbid it.
  *
- *   technopark  GET technopark.in/api/paginated-companies?page=N (JSON,
- *               20 per page; names only — no website in the listing)
- *   qstp        GET qstp.qa/wp-json/wp/v2/directory?per_page=100 (the WordPress
- *               REST API of Qatar Science & Technology Park's directory)
+ *   qstp  GET qstp.qa/wp-json/wp/v2/directory?per_page=100 (the WordPress
+ *         REST API of Qatar Science & Technology Park's directory)
  *
- * Everything else is a browse link (./browse.ts): its terms forbid
- * automated reading, it sits behind a bot wall, or it has no list.
+ * The Kerala parks live in ./technopark.ts and ./kerala-parks.ts; the list
+ * of directories read automatically in ./registry.ts. Everything else is a
+ * browse link (./browse.ts): its terms forbid automated reading, it sits
+ * behind a bot wall, or it has no list.
  */
 
-export const TECHNOPARK_COMPANIES = 'https://technopark.in/api/paginated-companies'
+export { parseTechnoparkCompanies, fetchTechnoparkPage, TECHNOPARK_COMPANIES } from './technopark'
+
 export const QSTP_DIRECTORY = 'https://qstp.qa/wp-json/wp/v2/directory'
-/** Technopark pages read per run (20 companies each); they rotate weekly. */
-export const TECHNOPARK_PAGES_PER_RUN = 3
-
-interface TechnoparkCompany {
-  id?: unknown
-  company?: unknown
-  active?: unknown
-}
-
-export function parseTechnoparkCompanies(body: unknown): { companies: CompanyCandidate[]; lastPage: number } {
-  const b = (body ?? {}) as { data?: unknown; last_page?: unknown }
-  const rows = (Array.isArray(b.data) ? b.data : []) as TechnoparkCompany[]
-  const companies = rows.flatMap((r): CompanyCandidate[] => {
-    const name = typeof r.company === 'string' ? r.company.replace(/\s+/g, ' ').trim() : ''
-    if (!name || r.active === 0) return []
-    return [
-      {
-        name,
-        regionIds: ['thiruvananthapuram'],
-        industries: ['it_services'],
-        sourceTags: ['directory:technopark'],
-        evidence: { listedAt: 'https://technopark.in/company-list' },
-      },
-    ]
-  })
-  return { companies, lastPage: typeof b.last_page === 'number' ? b.last_page : 1 }
-}
-
-export async function fetchTechnopark(pages: readonly number[], deps: CompanyHttpDeps = {}): Promise<CompanyCandidate[]> {
-  const out: CompanyCandidate[] = []
-  for (const page of pages) {
-    const url = `${TECHNOPARK_COMPANIES}?page=${Math.max(1, Math.floor(page))}&search=&location=&building=&alphabet=`
-    out.push(...parseTechnoparkCompanies(await companyJson('technopark-companies', url, deps)).companies)
-  }
-  return out
-}
 
 interface WpDirectoryEntry {
   title?: { rendered?: unknown }

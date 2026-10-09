@@ -31,6 +31,8 @@ export const E2E_ENV: Readonly<Record<string, string>> = {
   E2E_AI_FIXTURES: '1',
   // Synthetic LinkedIn notification emails for the linkedin_post source (lib/linkedin-posts/e2e-inbox.ts).
   E2E_GMAIL_FIXTURES: '1',
+  // Company search (Discovery › Companies) answers offline (lib/company-discovery/search-fixtures.ts).
+  E2E_LOOKUP_FIXTURES: '1',
   DATABASE_URL: `pglite:./${E2E_DB_DIR}`,
   AUTH_SECRET: '00000000000000000000000000000000',
   AUTH_GOOGLE_ID: 'dummy',

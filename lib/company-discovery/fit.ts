@@ -3,6 +3,7 @@ import { matchedVia, regionMatch } from '@/lib/regions/selection'
 import { preferredHit, preferredPoints, type PreferredRegion } from '@/lib/regions/preferred'
 import { shortName } from '@/lib/regions/tree'
 import { INDUSTRY_FAMILIES, INDUSTRY_LABELS, isIndustry, type Industry } from './industry'
+import { growthFitPoints } from './growth/combine'
 import { STAGE_LABELS, type CompanyEvidence, type CompanyStage } from './types'
 
 /**
@@ -22,9 +23,12 @@ import { STAGE_LABELS, type CompanyEvidence, type CompanyStage } from './types'
  *   hiring      0…15  open roles on its job board 15 · a job board 10 · a
  *                     careers page 6
  *   warm intro  0…10  LinkedIn connections at the company
+ *   growth      0…10  the growth score ÷ 10, pulled toward the neutral 5 by
+ *                     its confidence (high full · medium 0.7 · low 0.4);
+ *                     unknown growth is the neutral 5, never 0
  *   government        public-sector or nationals-first: capped at 10
- * The parts without a star add up to 90, so a top-priority star (+10)
- * still separates two otherwise perfect companies.
+ * The total is capped at 100. No part counts fame: a seed-catalog entry,
+ * a Wikidata item or press coverage adds nothing by itself.
  */
 
 export const COMPANY_FIT_WEIGHTS = {
@@ -42,10 +46,11 @@ export const COMPANY_FIT_WEIGHTS = {
   hiringBoard: 10,
   hiringCareers: 6,
   warmIntro: 10,
+  growthMax: 10,
   governmentCap: 10,
 } as const
 
-export type FitChipKind = 'region' | 'preferred' | 'domain' | 'tech' | 'stage' | 'hiring' | 'warm' | 'government'
+export type FitChipKind = 'region' | 'preferred' | 'domain' | 'tech' | 'stage' | 'hiring' | 'warm' | 'growth' | 'government'
 
 export interface FitChip {
   kind: FitChipKind
@@ -68,6 +73,8 @@ export interface FitCompany {
   atsKind: string | null
   careersUrl: string | null
   evidence: CompanyEvidence
+  /** The stored growth score (lib/company-discovery/growth); absent = unknown. */
+  growth?: { score: number | null; confidence: string | null } | null
 }
 
 export interface FitContext {
@@ -175,6 +182,14 @@ function warmChip(c: FitCompany): FitChip | null {
   return n > 0 ? { kind: 'warm', label: `Warm intro: ${n} connection${n === 1 ? '' : 's'}`, points: COMPANY_FIT_WEIGHTS.warmIntro } : null
 }
 
+function growthChip(c: FitCompany): FitChip {
+  const g = c.growth
+  const conf = g?.confidence === 'high' || g?.confidence === 'medium' || g?.confidence === 'low' ? g.confidence : null
+  const points = growthFitPoints(g?.score ?? null, conf)
+  if (g?.score === null || g?.score === undefined || !conf) return { kind: 'growth', label: 'Growth: not enough data (neutral)', points }
+  return { kind: 'growth', label: `Growth ${g.score} · ${conf} confidence`, points }
+}
+
 /** Public sector or nationals-first (a flag from the source, or an unmistakable name). */
 export function isGovernment(c: Pick<FitCompany, 'name' | 'evidence'>): boolean {
   return c.evidence.government === true || GOVERNMENT_NAME.test(c.name)
@@ -188,6 +203,7 @@ export function companyFit(c: FitCompany, ctx: FitContext): CompanyFit {
     stageChip(c, ctx),
     hiringChip(c),
     warmChip(c),
+    growthChip(c),
   ].filter((x): x is FitChip => x !== null)
   const total = chips.reduce((s, ch) => s + ch.points, 0)
   if (isGovernment(c)) {

@@ -7,8 +7,10 @@ import { careersPageHash, findCareers, type CareersResult } from './careers'
 import { companyErrorText, type CompanyHttpDeps } from './http'
 import { domainOf, websiteOf } from './normalize'
 import { fetchOrgDetails } from './sources/github'
+import { fetchParkProfileWebsite } from './sources/technopark'
 import { industriesFromText, mergeIndustries } from './industry'
 import { refreshFits } from './service'
+import { foldDuplicates } from './fold'
 import type { CompanyEvidence } from './types'
 
 /**
@@ -72,6 +74,16 @@ async function enrichOne(userId: string, row: companiesQ.CompanyRow, deps: Enric
       evidence.careersNote = `GitHub: ${companyErrorText(e)}`
     }
   }
+  if (!website && evidence.profileUrl) {
+    // A park profile page names the company's website (Technopark: "Company Website").
+    try {
+      const site = await fetchParkProfileWebsite(evidence.profileUrl, deps)
+      if (site && domainOf(site)) website = websiteOf(site)
+      delete evidence.profileUrl
+    } catch (e) {
+      evidence.careersNote = `Park profile: ${companyErrorText(e)}`
+    }
+  }
   if (!website) {
     return { careers: null, patch: { evidence: evidence as never, industry, normalized: normalized as never, enrichStatus: 'done', enrichedAt: new Date() } }
   }
@@ -122,7 +134,12 @@ export async function enrichPending(userId: string, deps: EnrichDeps = {}): Prom
       logger.warn('company_enrich_failed', { userId, err: companyErrorText(e) })
     }
   }
-  if (s.checked > 0) await refreshFits(userId)
+  if (s.checked > 0) {
+    // A park profile can give a name-only row the website of a row lee already has.
+    const source = rows[0] ? rows[0].sourceId : null
+    if (source) await foldDuplicates(userId, source)
+    await refreshFits(userId)
+  }
   s.remaining = await companiesQ.countPending(userId)
   logger.info('company_enrich_done', { userId, checked: s.checked, careers: s.careers, boards: s.boards, blocked: s.blocked })
   return s

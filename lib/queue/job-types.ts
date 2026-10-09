@@ -21,6 +21,7 @@ export const JOB_TYPES = {
   companyDiscovery: 'company-discovery:user',
   companyEnrich: 'company-enrich:user',
   portfolioPull: 'portfolio-pull:user',
+  companyGrowth: 'company-growth:user',
 } as const
 
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES]
@@ -62,6 +63,8 @@ export const JOB_PRIORITY: Readonly<Record<JobType, number>> = {
   // Daily portfolio → profile sync: one GitHub read; early, so the day's
   // match and shortlist jobs see the latest public facts.
   [JOB_TYPES.portfolioPull]: 8,
+  // Weekly growth signals (role counts, GitHub activity, headcount, news): after enrichment.
+  [JOB_TYPES.companyGrowth]: 76,
 }
 
 /** Short human labels for Settings › Background jobs (no internals). */
@@ -83,6 +86,7 @@ export const JOB_LABELS: Readonly<Record<string, string>> = {
   [JOB_TYPES.companyDiscovery]: 'Company discovery (weekly)',
   [JOB_TYPES.companyEnrich]: 'Company careers check',
   [JOB_TYPES.portfolioPull]: 'Portfolio sync',
+  [JOB_TYPES.companyGrowth]: 'Company growth signals (weekly)',
 }
 
 export function jobLabel(type: string): string {
@@ -131,7 +135,13 @@ export const jobKeys = {
   /** Enrichment batches: numbered within the week, so a week has at most COMPANY_ENRICH_BATCHES. */
   companyEnrich: (userId: string, isoWeek: string, n: number) => `company-enrich:${userId}:${isoWeek}:${n}`,
   portfolioPull: (userId: string, day: string) => `portfolio-pull:${userId}:${day}`,
+  /** Growth refresh: once per ISO week per user. */
+  companyGrowth: (userId: string, isoWeek: string) => `company-growth:${userId}:${isoWeek}`,
 } as const
 
-/** Enrichment jobs per user per ISO week (each checks a few companies). */
-export const COMPANY_ENRICH_BATCHES = 10
+/**
+ * Enrichment jobs per user per ISO week (each checks a few companies). Full
+ * park lists add hundreds of rows, so a week allows 40 batches (about 240
+ * companies); the rest continue the week after.
+ */
+export const COMPANY_ENRICH_BATCHES = 40

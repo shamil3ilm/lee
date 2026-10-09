@@ -41,8 +41,10 @@ describe('company fit (explainable chips)', () => {
       'Startup (your preference)',
       'Hiring: 3 open roles',
       'Warm intro: 2 connections',
+      'Growth: not enough data (neutral)',
     ])
-    expect(f.score).toBe(W.regionIn + PREFERRED_BOOST.company.top + W.domainSpecialist + W.techTop + W.stageMatch + W.hiringOpen + W.warmIntro)
+    // Unknown growth is the neutral 5 points; the total is capped at 100.
+    expect(f.score).toBe(Math.min(100, W.regionIn + PREFERRED_BOOST.company.top + W.domainSpecialist + W.techTop + W.stageMatch + W.hiringOpen + W.warmIntro + 5))
   })
 
   it('preferred level is worth less than top priority; unstarred GCC countries get no boost', () => {

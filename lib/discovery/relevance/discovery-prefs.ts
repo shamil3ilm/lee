@@ -158,6 +158,12 @@ export const discoveryPrefsSchema = z.object({
   preferredRegions: z.array(preferredRegionSchema).max(MAX_PREFERRED).catch([]).default([]),
   /** Company stages the user prefers in company discovery; empty = no preference. */
   companyStages: z.array(z.enum(['startup', 'scaleup', 'enterprise'])).max(3).catch([]).default([]),
+  /**
+   * "Factor company growth into Fit": the employer's growth score nudges a
+   * job's Fit by −5…+5 (medium or high confidence only). Off by default:
+   * growth is shown in "Why this score" either way.
+   */
+  growthInFit: z.boolean().catch(false).default(false),
 })
 export type DiscoveryPrefs = z.infer<typeof discoveryPrefsSchema>
 
@@ -173,6 +179,7 @@ export const EMPTY_DISCOVERY_PREFS: DiscoveryPrefs = {
   share: DEFAULT_SHARE,
   preferredRegions: [],
   companyStages: [],
+  growthInFit: false,
 }
 
 /** Parse the stored jsonb leniently: unknown or broken parts fall back to defaults. */

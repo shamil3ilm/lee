@@ -8,6 +8,7 @@ import { BrowseDirectories } from './browse-directories'
 import { CompanyCard } from './company-card'
 import { CompanyFilters } from './company-filters'
 import { PasteCompaniesDialog } from './paste-companies-dialog'
+import { CompanySearch } from './company-search'
 
 /**
  * Discovery › Companies: local companies and startups that may not post on
@@ -36,10 +37,11 @@ export async function CompaniesTab({
     <div className="space-y-4" data-testid="companies-tab">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
-          Local companies and startups from Wikidata, GitHub, Y Combinator, park directories and your LinkedIn connections, refreshed weekly. Star preferred regions in Settings › Search to rank them higher.
+          Local companies and startups from the IT-park and member lists, employers in your jobs, GitHub, Wikidata, Y Combinator and your LinkedIn connections, refreshed weekly, with a growth score. Star preferred regions in Settings › Search to rank them higher.
         </p>
         <PasteCompaniesDialog prompts={prompts} />
       </div>
+      <CompanySearch />
       <CompanyFilters
         status={params.status}
         region={params.region}
@@ -48,6 +50,9 @@ export async function CompaniesTab({
         hiring={params.hiring}
         warm={params.warm}
         source={params.source}
+        sort={params.sort}
+        minGrowth={params.minGrowth}
+        gems={params.gems}
         industries={facets.industries}
         sources={facets.sources}
         total={total}

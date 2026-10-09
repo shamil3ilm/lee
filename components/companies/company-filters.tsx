@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { INDUSTRY_LABELS, isIndustry } from '@/lib/company-discovery/industry'
 import { STAGE_LABELS, STAGES } from '@/lib/company-discovery/types'
 import { plural } from '@/lib/ui/labels'
+import { MIN_GROWTH_STEPS } from '@/lib/company-discovery/growth/types'
 import { sourceTagLabel } from './types'
 
 interface CompanyFiltersProps {
@@ -17,6 +18,9 @@ interface CompanyFiltersProps {
   hiring: boolean
   warm: boolean
   source: string
+  sort: string
+  minGrowth: number
+  gems: boolean
   industries: readonly string[]
   sources: readonly string[]
   total: number
@@ -65,6 +69,31 @@ export function CompanyFilters(p: CompanyFiltersProps) {
         data-testid="company-hiring"
       />
       <Checkbox id="company-warm" checked={p.warm} onChange={(e) => setParams({ warm: e.target.checked ? '1' : null })} label="Warm intro" />
+      <NativeSelect aria-label="Sort companies" value={p.sort} onChange={(e) => setParams({ sort: e.target.value === 'fit' ? null : e.target.value })} className="h-8 w-auto" data-testid="company-sort">
+        <option value="fit">Best fit first</option>
+        <option value="growth">Fastest growth first</option>
+      </NativeSelect>
+      <NativeSelect
+        aria-label="Minimum growth"
+        value={String(p.minGrowth)}
+        onChange={(e) => setParams({ minGrowth: e.target.value === '0' ? null : e.target.value })}
+        className="h-8 w-auto"
+        data-testid="company-min-growth"
+      >
+        <option value="0">Any growth</option>
+        {MIN_GROWTH_STEPS.map((n) => (
+          <option key={n} value={n}>
+            Growth {n}+
+          </option>
+        ))}
+      </NativeSelect>
+      <Checkbox
+        id="company-gems"
+        checked={p.gems}
+        onChange={(e) => setParams({ gems: e.target.checked ? '1' : null })}
+        label="Under the radar"
+        data-testid="company-gems"
+      />
       <span className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground" role="status" aria-live="polite">
         {pending ? <Loader2 className="size-3 animate-spin" aria-hidden="true" /> : null}
         {plural(p.total, 'company', 'companies')}

@@ -5,7 +5,7 @@
  * the user's hidden "Local companies" source.
  */
 
-export const COMPANY_SOURCES = ['wikidata', 'github', 'yc', 'linkedin', 'paste', 'directory'] as const
+export const COMPANY_SOURCES = ['wikidata', 'github', 'yc', 'linkedin', 'paste', 'directory', 'jobs', 'seed', 'search'] as const
 export type CompanySourceTag = (typeof COMPANY_SOURCES)[number]
 
 export const SIZE_BANDS = ['1-10', '11-50', '51-200', '201-1000', '1000+'] as const
@@ -42,6 +42,25 @@ export interface CompanyEvidence {
   connections?: number
   /** The page that listed it (directory or YC profile). */
   listedAt?: string
+  /** A park profile page that names its website (read once during enrichment). */
+  profileUrl?: string
+  /** The name a directory listed it under, when that differs (a legal entity). */
+  listedAs?: string
+  /** Job postings lee saw from this employer (count, last date). */
+  jobsSeen?: number
+  jobsSeenAt?: string
+  /** New postings first seen in the last 30 days and in the 60 before (hiring velocity fallback). */
+  jobsRecent30?: number
+  jobsPrior60?: number
+  /** Growth inputs, refreshed weekly (lib/company-discovery/growth). */
+  github?: { at: string; c90: number; cp90: number; nr90: number; nrp90: number; stars: number }
+  /** Dated employee counts (Wikidata P1128 + P585), oldest first, ≤ 6. */
+  headcount?: Array<{ y: number; n: number }>
+  headcountAt?: string
+  /** Classified news events of the last 12 months (≤ 6) and when they were checked. */
+  news?: { at: string; ev: Array<{ c: string; d: string; u: string; t: string }> }
+  /** Hacker News mentions in the last 6 months (r) and the 6 before (p). */
+  hn?: { at: string; r: number; p: number }
   /** Why the careers check stopped (robots, no page). */
   careersNote?: string
   /** Public-sector / nationals-first employer (government ministry, state oil company…). */
@@ -58,6 +77,8 @@ export interface CompanyCandidate {
   stage?: CompanyStage
   sourceTags: string[]
   evidence: CompanyEvidence
+  /** The company's own job board when a source already polls it (employers seen in jobs). */
+  board?: { kind: string; slug: string; url: string; sourceId?: string }
 }
 
 /** "Not relevant" reasons offered on a company card. */

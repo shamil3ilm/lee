@@ -19,6 +19,10 @@ import { parsePastedCompanies, MAX_PASTE_CHARS } from '@/lib/company-discovery/s
 import { storeCandidates } from '@/lib/company-discovery/service'
 import { enqueueCompanyDiscoveryNow, enqueueEnrichment } from '@/lib/company-discovery/schedule'
 import { DISMISS_REASONS } from '@/lib/company-discovery/types'
+import { candidateFromChoice, MAX_QUERY, resolveCompanyName, type ResolveOption } from '@/lib/company-discovery/search'
+import { fixtureOptions, lookupFixturesEnabled } from '@/lib/company-discovery/search-fixtures'
+import { isIndustry } from '@/lib/company-discovery/industry'
+import { isRegionId } from '@/lib/regions/tree'
 
 /**
  * Discovery › Companies actions. Each validates its input, is user-scoped,
@@ -152,5 +156,47 @@ export async function findCompaniesNow(): Promise<CompanyActionResult> {
     }
   } catch (e) {
     return failure(e, 'findCompaniesNow')
+  }
+}
+
+export type FindCompanyResult = { options: ResolveOption[] } | { error: string }
+
+/** "Find a company": lee suggests matches (Wikidata, the seed list, website guesses); nothing is stored yet. */
+export async function findCompanyByName(query: string): Promise<FindCompanyResult> {
+  try {
+    await requireUserId()
+    const q = z.string().trim().min(2).max(MAX_QUERY).parse(query)
+    const options = lookupFixturesEnabled(process.env) ? fixtureOptions(q) : await resolveCompanyName(q)
+    return { options }
+  } catch (e) {
+    if (e instanceof z.ZodError) return { error: 'Type a company name (2–80 characters).' }
+    const f = failure(e, 'findCompanyByName')
+    return 'error' in f ? f : { error: 'Something went wrong. Try again.' }
+  }
+}
+
+const choiceSchema = z.object({
+  name: z.string().trim().min(2).max(200),
+  website: z.string().trim().max(300).nullable(),
+  regionIds: z.array(z.string().max(60)).max(10),
+  industries: z.array(z.string().max(40)).max(10),
+  wikidataId: z.string().regex(/^Q\d{1,12}$/).optional(),
+  founded: z.number().int().min(1800).max(2100).optional(),
+  employees: z.number().int().positive().max(10_000_000).optional(),
+})
+
+/** The user confirmed one option: store it (or update the row lee already has) and queue its careers check. */
+export async function addCompanyFromSearch(choice: unknown): Promise<CompanyActionResult> {
+  try {
+    const userId = await requireUserId()
+    const c = choiceSchema.parse(choice)
+    const candidate = candidateFromChoice({ ...c, regionIds: c.regionIds.filter(isRegionId), industries: c.industries.filter(isIndustry) })
+    const r = await storeCandidates(userId, [candidate])
+    if (r.new > 0) await enqueueEnrichment(userId)
+    refresh()
+    return { success: true, message: r.new > 0 ? `Added ${candidate.name}; its careers page is checked next.` : `${candidate.name} is already in your list (updated).` }
+  } catch (e) {
+    if (e instanceof z.ZodError) return { error: 'That choice could not be read. Search again.' }
+    return failure(e, 'addCompanyFromSearch')
   }
 }

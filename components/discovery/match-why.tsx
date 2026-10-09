@@ -1,4 +1,5 @@
-import { BAND_LABELS, cappedFit, FIT_FORMULA, scoreBand } from '@/lib/discovery/match/blend'
+import { BAND_LABELS, cappedFit, FIT_FORMULA, scoreBand, withNudge } from '@/lib/discovery/match/blend'
+import { growthFitNudge } from '@/lib/company-discovery/growth/combine'
 import type { MatchComponent, MatchDetail, RequirementCheck } from '@/lib/discovery/match/types'
 import { cn } from '@/lib/utils'
 
@@ -17,6 +18,33 @@ export interface MatchWhyProps {
   benefits?: number | null
   /** More reasons from the surface (shortlist rank parts, ranking notes). */
   extra?: React.ReactNode
+  /** The employer's growth score (Discovery › Companies); `inFit` = the user factors it into Fit. */
+  growth?: CompanyGrowthView | null
+}
+
+export interface CompanyGrowthView {
+  score: number | null
+  confidence: string | null
+  inFit: boolean
+}
+
+/** The Fit nudge the growth adds, 0 unless the user turned "Factor company growth into Fit" on. */
+export function growthNudgeOf(g: CompanyGrowthView | null | undefined): number {
+  return g?.inFit ? growthFitNudge(g.score, g.confidence) : 0
+}
+
+function GrowthLine({ g }: { g: CompanyGrowthView }) {
+  if (g.score === null) return null
+  const nudge = growthNudgeOf(g)
+  return (
+    <p className="flex items-center justify-between gap-3 rounded-md bg-muted px-2.5 py-1.5 text-xs" data-testid="company-growth-line">
+      <span>
+        <span className="font-medium">Company growth: {g.score}</span>
+        <span className="ml-1.5 text-muted-foreground">{g.confidence} confidence</span>
+      </span>
+      <span className="shrink-0 text-muted-foreground">{g.inFit ? (nudge === 0 ? 'in Fit: ±0' : `in Fit: ${nudge > 0 ? '+' : ''}${nudge}`) : 'not in Fit'}</span>
+    </p>
+  )
 }
 
 function signed(n: number): string {
@@ -98,8 +126,8 @@ function Breakdown({ match, ai, benefits, filtered }: Pick<MatchWhyProps, 'match
   )
 }
 
-export function MatchWhy({ match, ai, detail, filtered, benefits, extra }: MatchWhyProps) {
-  const fit = cappedFit(match, ai, detail)
+export function MatchWhy({ match, ai, detail, filtered, benefits, extra, growth }: MatchWhyProps) {
+  const fit = withNudge(cappedFit(match, ai, detail), growthNudgeOf(growth))
   return (
     <div data-testid="match-why" className="space-y-2.5">
       <div>
@@ -118,6 +146,7 @@ export function MatchWhy({ match, ai, detail, filtered, benefits, extra }: Match
         ) : null}
       </div>
       <Breakdown match={match} ai={ai} benefits={benefits} filtered={filtered} />
+      {growth ? <GrowthLine g={growth} /> : null}
       {detail && detail.components.length > 0 ? (
         <div>
           <p className="text-xs font-medium">Match, part by part</p>

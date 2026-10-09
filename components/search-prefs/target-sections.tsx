@@ -72,6 +72,18 @@ export function TargetSections({ values }: SectionProps) {
           <ChoiceChip key={st} name="companyStage" value={st} label={STAGE_LABELS[st]} defaultChecked={values.companyStages.includes(st)} />
         ))}
       </PrefsFieldset>
+      <PrefsFieldset
+        legend="Company growth"
+        description="Every job shows its employer's growth score in “Why this score”. Fit ignores it unless you tick this."
+      >
+        <Checkbox
+          id="sp-growthInFit"
+          name="growthInFit"
+          defaultChecked={values.growthInFit}
+          label="Factor company growth into Fit (up to ±5, only when the growth score has medium or high confidence)"
+          data-testid="growth-in-fit"
+        />
+      </PrefsFieldset>
       <CountryPicker
         name="otherCountries"
         label="Other countries"

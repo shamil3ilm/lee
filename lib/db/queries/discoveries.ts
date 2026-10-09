@@ -193,6 +193,8 @@ export interface ListOpts {
    */
   region?: readonly string[]
   sort?: 'combined' | 'match' | 'benefits' | 'posted'
+  /** Settings › Search "Factor company growth into Fit": the growth nudge joins the ranking. */
+  growthInFit?: boolean
   limit?: number
   /** Rows to skip — pairs with `limit` for inbox pagination. */
   offset?: number
@@ -223,6 +225,9 @@ export interface DiscoveryListItem {
   fitDetail: unknown
   /** Best CV for this posting (lib/cv-fit, BestCv). */
   bestCv: unknown
+  /** The employer's growth score and confidence (lib/company-discovery/growth/postings.ts). */
+  companyGrowth: number | null
+  companyGrowthConfidence: string | null
   scoredByCallId: string | null
   savedApplicationId: string | null
   createdAt: Date
@@ -253,6 +258,8 @@ const LIST_COLUMNS = {
   fitScore: discoveries.fitScore,
   fitDetail: discoveries.fitDetail,
   bestCv: discoveries.bestCv,
+  companyGrowth: discoveries.companyGrowth,
+  companyGrowthConfidence: discoveries.companyGrowthConfidence,
   // v18 — id only; the usage badge loads the call lazily when expanded.
   scoredByCallId: discoveries.scoredByCallId,
   savedApplicationId: discoveries.savedApplicationId,
@@ -291,13 +298,24 @@ export function blendedSql(): SQL<number | null> {
     ) end)`
 }
 
-function listOrder(sort: ListOpts['sort']): SQL[] {
+/**
+ * The employer-growth Fit nudge (−5…+5; lib/company-discovery/growth/combine.ts
+ * `growthFitNudge`, same formula): only when the user turned on "Factor
+ * company growth into Fit", only at medium or high confidence.
+ */
+export function growthNudgeSql(): SQL<number> {
+  return sql<number>`(case when ${discoveries.companyGrowthConfidence} in ('high', 'medium') and ${discoveries.companyGrowth} is not null
+    then greatest(-5, least(5, round((${discoveries.companyGrowth} - 50) / 10.0))) else 0 end)`
+}
+
+function listOrder(sort: ListOpts['sort'], growthInFit = false): SQL[] {
   const tiebreak = [desc(discoveries.createdAt), desc(discoveries.id)]
+  const nudge = growthInFit ? growthNudgeSql() : sql`0`
   switch (sort) {
     case 'match':
       // Best match first: Match blended with AI; soft-rule nudges
       // (rank_adjust) sink "lower priority" rows; unscored rows last.
-      return [sql`(${blendedSql()} + ${discoveries.rankAdjust}) desc nulls last`, ...tiebreak]
+      return [sql`(${blendedSql()} + ${discoveries.rankAdjust} + ${nudge}) desc nulls last`, ...tiebreak]
     case 'benefits':
       return [desc(discoveries.benefitsScore), ...tiebreak]
     case 'posted':
@@ -307,7 +325,7 @@ function listOrder(sort: ListOpts['sort']): SQL[] {
       // Combined: 0.6 * blended match + 0.4 * benefits (nulls as 0) + rank_adjust.
       return [
         desc(
-          sql`(coalesce(${blendedSql()}, 0) * 0.6 + coalesce(${discoveries.benefitsScore}, 0) * 0.4 + ${discoveries.rankAdjust})`,
+          sql`(coalesce(${blendedSql()}, 0) * 0.6 + coalesce(${discoveries.benefitsScore}, 0) * 0.4 + ${discoveries.rankAdjust} + ${nudge})`,
         ),
         ...tiebreak,
       ]
@@ -356,7 +374,7 @@ export async function list(
     .select(LIST_COLUMNS)
     .from(discoveries)
     .where(listWhere(userId, opts))
-    .orderBy(...listOrder(opts.sort))
+    .orderBy(...listOrder(opts.sort, opts.growthInFit))
     .$dynamic()
   const limited = opts.limit !== undefined ? base.limit(opts.limit) : base
   const rows = await (opts.offset ? limited.offset(opts.offset) : limited)

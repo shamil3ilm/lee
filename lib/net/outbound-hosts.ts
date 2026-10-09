@@ -134,7 +134,7 @@ export const OUTBOUND_PARTIES: readonly OutboundParty[] = [
     name: 'GitHub',
     hosts: ['api.github.com', 'raw.githubusercontent.com'],
     sends:
-      'Your GitHub username (to list your public repos); reads your portfolio’s profile.json from your own repository (lee syncs your public profile from it) and writes the variant pages you publish there; AI Radar repository searches and READMEs; organisation searches by city for company discovery.',
+      'Your GitHub username (to list your public repos); reads your portfolio’s profile.json from your own repository (lee syncs your public profile from it) and writes the variant pages you publish there; AI Radar repository searches and READMEs; organisation searches by city for company discovery, and the public repos and weekly commit counts of company organisations (company growth).',
     group: 'documents',
   },
   {
@@ -187,7 +187,7 @@ export const OUTBOUND_PARTIES: readonly OutboundParty[] = [
     id: 'hacker-news',
     name: 'Hacker News (Algolia search, Firebase API)',
     hosts: ['hn.algolia.com', 'hacker-news.firebaseio.com'],
-    sends: 'Search terms: the monthly “Who is hiring” thread, company names (reputation) and AI Radar topics.',
+    sends: 'Search terms: the monthly “Who is hiring” thread, company names (reputation and the company growth score) and AI Radar topics.',
     group: 'jobs',
   },
   {
@@ -200,10 +200,10 @@ export const OUTBOUND_PARTIES: readonly OutboundParty[] = [
   },
   {
     id: 'company-directories',
-    name: 'Company discovery sources (Wikidata Query Service, yc-oss, QSTP directory)',
-    hosts: ['query.wikidata.org', 'yc-oss.github.io', 'qstp.qa'],
+    name: 'Company discovery sources (Wikidata Query Service, yc-oss, IT-park, accelerator and member lists)',
+    hosts: ['query.wikidata.org', 'yc-oss.github.io', 'qstp.qa', 'flat6labs.com', 'startupbahrain.com', 'nasscom.in'],
     sends:
-      'Weekly: your target regions as place ids (Wikidata), and plain requests for public company lists. GitHub org searches send city names (see GitHub). No personal data.',
+      'Weekly: your target regions as place ids (Wikidata), company ids for dated employee counts, and plain requests for public company lists (Technopark, Infopark, Cyberparks, QSTP, Flat6Labs, StartUp Bahrain, NASSCOM). GitHub org searches send city names (see GitHub). No personal data.',
     group: 'jobs',
   },
   {
@@ -218,7 +218,7 @@ export const OUTBOUND_PARTIES: readonly OutboundParty[] = [
     name: 'Company websites (careers-page check)',
     hosts: [],
     sends:
-      'The robots.txt, home page and careers page of companies in Discovery › Companies, only where robots.txt allows lee; nothing about you.',
+      'The robots.txt, home page and careers page of companies in Discovery › Companies, only where robots.txt allows lee, and the home page of a website guess for a name you search; nothing about you.',
     group: 'jobs',
   },
   // Research and lookups
@@ -233,14 +233,14 @@ export const OUTBOUND_PARTIES: readonly OutboundParty[] = [
     id: 'gdelt',
     name: 'GDELT',
     hosts: ['api.gdeltproject.org'],
-    sends: 'Company names (news for the reputation panel) and AI Radar topics.',
+    sends: 'Company names (news for the reputation panel and the company growth score) and AI Radar topics.',
     group: 'research',
   },
   {
     id: 'wikidata',
     name: 'Wikidata',
     hosts: ['www.wikidata.org'],
-    sends: 'Company names (basic company facts for the reputation panel).',
+    sends: 'Company names (basic company facts for the reputation panel, and the names you type in Discovery › Companies › Find a company).',
     group: 'research',
   },
   {

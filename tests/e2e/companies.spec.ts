@@ -46,6 +46,35 @@ test('browse directories lists the free zones, Kuwait and Kerala parks as links'
   await expect(panel.getByRole('link', { name: /Infopark companies/ })).toBeVisible()
 })
 
+test('growth chip, its "Why" popover, sort by growth, minimum growth and "Under the radar"', async ({ page }) => {
+  await page.goto('/discoveries?tab=companies')
+  const chip = card(page, BACKWATER).getByTestId('growth-chip')
+  await expect(chip).toContainText(/Growth \d+ · (high|medium|low) confidence/)
+  await chip.click()
+  const why = page.getByTestId('growth-why')
+  await expect(why).toBeVisible()
+  await expect(why.getByRole('list', { name: 'Growth signals' })).toContainText('Hiring velocity')
+  await expect(why.getByRole('list', { name: 'Growth signals' })).toContainText('Engineering activity')
+  await expect(why.getByRole('list', { name: 'Unknown growth signals' })).toContainText('Funding and expansion news')
+  await page.keyboard.press('Escape')
+  await expect(card(page, FALCON).getByTestId('growth-chip')).toContainText('Growth unknown')
+
+  await page.getByTestId('company-sort').selectOption('growth')
+  await expect(page).toHaveURL(/sort=growth/)
+  await expect(page.getByTestId('company-card').first()).toContainText(BACKWATER)
+  // Unknown growth sorts last.
+  await expect(page.getByTestId('company-card').last()).toContainText(FALCON)
+
+  await page.getByTestId('company-min-growth').selectOption('70')
+  await expect(page).toHaveURL(/minGrowth=70/)
+  await expect(card(page, BACKWATER)).toBeVisible()
+  await expect(card(page, FALCON)).toHaveCount(0)
+
+  await page.goto('/discoveries?tab=companies&gems=1')
+  await expect(card(page, BACKWATER).getByTestId('under-the-radar')).toContainText('Under the radar')
+  await expect(card(page, DINAR)).toHaveCount(0)
+})
+
 test('Watch jobs adds a source for the company’s job board', async ({ page }) => {
   await page.goto('/discoveries?tab=companies')
   await card(page, DINAR).getByTestId('watch-jobs').click()
@@ -77,6 +106,19 @@ test('Reach out drafts a fact-locked note with a published careers address and t
   await dialog.getByTestId('reach-out-track').click()
   await toast(page, 'Tracked as a speculative application')
   await expect(card(page, DINAR)).toContainText('Speculative application tracked')
+})
+
+test('Find a company by name: lee suggests, you confirm, it is added', async ({ page }) => {
+  await page.goto('/discoveries?tab=companies')
+  const box = page.getByTestId('company-search')
+  await box.getByTestId('company-search-input').fill('Lagoon Labs Example, Kochi')
+  await box.getByTestId('company-search-submit').click()
+  await expect(box.getByTestId('company-search-option').first()).toContainText('Lagoon Labs Example')
+  await expect(box.getByTestId('company-search-website')).toHaveValue('https://lagoonlabsexample.example')
+  await box.getByTestId('company-search-add').click()
+  await toast(page, /Added Lagoon Labs Example|already in your list/)
+  await expect(card(page, 'Lagoon Labs Example')).toBeVisible()
+  await expect(card(page, 'Lagoon Labs Example')).toContainText('Added by you (search)')
 })
 
 test('Settings › Search: star Kuwait as top priority (not saved)', async ({ page }) => {

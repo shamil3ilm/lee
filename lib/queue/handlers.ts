@@ -24,7 +24,8 @@ import { NEW_SOURCES } from '@/lib/radar/new/types'
 import { RADAR_SOURCES } from '@/lib/radar/types'
 import { runCompanyDiscovery } from '@/lib/company-discovery/service'
 import { checkWatchedCareers, enrichPending } from '@/lib/company-discovery/enrich'
-import { enqueueEnrichment } from '@/lib/company-discovery/schedule'
+import { enqueueEnrichment, enqueueGrowth } from '@/lib/company-discovery/schedule'
+import { refreshGrowth } from '@/lib/company-discovery/growth/refresh'
 import { pullPortfolio } from '@/lib/portfolio/pull'
 import { JOB_TYPES } from './job-types'
 import { createRegistry, defineHandler, type HandlerRegistry } from './registry'
@@ -423,6 +424,7 @@ const companyDiscovery = defineHandler({
     const r = await runCompanyDiscovery(userId(job), { deadline: end })
     const careers = await checkWatchedCareers(userId(job)).catch(() => ({ checked: 0, changed: 0 }))
     await enqueueEnrichment(userId(job))
+    await enqueueGrowth(userId(job))
     return {
       metrics: { companies_found: r.fetched, companies_new: r.new, company_sources_failed: r.failed, careers_changed: careers.changed },
       warnings: r.sources.filter((s) => s.error).map((s) => `company source ${s.source}: ${s.error}`),
@@ -473,6 +475,32 @@ const portfolioPull = defineHandler({
   },
 })
 
+/**
+ * Weekly growth signals (lib/company-discovery/growth): open-role counts,
+ * GitHub activity, headcount, news, then the growth score, fit and
+ * "under the radar" flag. Non-essential: skipped under the usage throttle.
+ */
+const companyGrowth = defineHandler({
+  type: JOB_TYPES.companyGrowth,
+  scope: 'user',
+  payload: USER_PAYLOAD,
+  timeoutMs: 150_000,
+  minBudgetMs: 40_000,
+  async run({ job, deadline }): Promise<JobResult> {
+    if (await isThrottled('pause_nonessential')) {
+      return {
+        metrics: { company_growth_paused_by_usage: 1 },
+        summary: { kind: 'company-growth', companies: 0, scored: 0, roleCounts: 0, github: 0, news: 0, gems: 0, postings: 0, paused: true },
+      }
+    }
+    const s = await refreshGrowth(userId(job), { deadline: Math.min(deadline - 25_000, Date.now() + 110_000) })
+    return {
+      metrics: { companies_growth_scored: s.scored, company_role_counts: s.roleCounts, company_growth_failed: s.failed },
+      summary: { kind: 'company-growth', companies: s.companies, scored: s.scored, roleCounts: s.roleCounts, github: s.github, news: s.news, gems: s.gems, postings: s.postings },
+    }
+  },
+})
+
 export const appHandlers = [
   reminders,
   followups,
@@ -491,6 +519,7 @@ export const appHandlers = [
   companyDiscovery,
   companyEnrich,
   portfolioPull,
+  companyGrowth,
 ] as const
 
 export const appRegistry: HandlerRegistry = createRegistry(appHandlers)

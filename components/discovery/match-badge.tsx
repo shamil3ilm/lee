@@ -3,9 +3,9 @@ import { Info } from 'lucide-react'
 import { badgeVariants, type BadgeProps } from '@/components/ui/badge'
 import { focusRing } from '@/components/ui/focus-ring'
 import { ResponsivePopover } from '@/components/responsive-popover'
-import { cappedFit, fitText, scoreBand, type ScoreBand } from '@/lib/discovery/match/blend'
+import { cappedFit, fitText, scoreBand, withNudge, type ScoreBand } from '@/lib/discovery/match/blend'
 import { cn } from '@/lib/utils'
-import { MatchWhy, type MatchWhyProps } from './match-why'
+import { growthNudgeOf, MatchWhy, type MatchWhyProps } from './match-why'
 
 export { MatchWhy } from './match-why'
 
@@ -36,11 +36,12 @@ function stop(e: { stopPropagation: () => void }): void {
 
 export function MatchBadge({ interactive = true, className, ...why }: MatchBadgeProps) {
   const { match, ai, detail } = why
-  const fit = cappedFit(match, ai, detail)
+  const nudge = growthNudgeOf(why.growth)
+  const fit = withNudge(cappedFit(match, ai, detail), nudge)
   const titleOnly = detail?.confidence === 'title_only' && ai === null
   const variant = fit === null || titleOnly ? 'neutral' : BAND_VARIANT[scoreBand(fit)]
   const band = fit === null ? undefined : titleOnly ? 'low' : scoreBand(fit)
-  const text = fitText(match, ai, { titleOnly, ceiling: detail?.ceiling?.score })
+  const text = fitText(match, ai, { titleOnly, ceiling: detail?.ceiling?.score, nudge })
   // A <span> (not the <div> Badge) so it may sit inside the trigger button.
   const badge = (
     <span

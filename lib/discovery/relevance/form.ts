@@ -119,6 +119,7 @@ export function discoveryPrefsFromForm(fd: FormData): DiscoveryPrefs {
     // Starred regions ("kw:top", "ae:preferred"): a ranking boost only.
     preferredRegions: parsePreferredValues(all(fd, 'preferredRegion')),
     companyStages: all(fd, 'companyStage').filter((s) => s === 'startup' || s === 'scaleup' || s === 'enterprise'),
+    growthInFit: fd.get('growthInFit') === 'on',
   })
 }
 

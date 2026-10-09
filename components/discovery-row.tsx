@@ -35,6 +35,7 @@ import { CallUsageBadge } from '@/components/ai/usage-badge'
 import type { RiskView } from '@/lib/scam/view'
 import type { MatchDetail } from '@/lib/discovery/match/types'
 import { MatchBadge } from '@/components/discovery/match-badge'
+import type { CompanyGrowthView } from '@/components/discovery/match-why'
 import { BestCvLine } from '@/components/cv-fit/best-cv-line'
 import type { BestCv } from '@/lib/cv-fit/types'
 import { JdPaste } from '@/components/discovery/jd-paste'
@@ -75,6 +76,8 @@ export interface DiscoveryRowJob {
   fitDetail?: MatchDetail | null
   /** Best CV for this posting (lib/cv-fit); shown in "Why this score". */
   bestCv?: BestCv | null
+  /** The employer's growth (Discovery › Companies), shown in "Why this score". */
+  growth?: CompanyGrowthView | null
   /** The posting sits on an ATS with a public job API (Fetch the full JD). */
   jdFetchable?: boolean
   createdAt: string
@@ -267,6 +270,7 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
                 detail={item.fitDetail ?? null}
                 filtered={isFiltered}
                 benefits={item.benefitsScore}
+                growth={item.growth ?? null}
                 extra={
                   <>
                     {item.bestCv ? (

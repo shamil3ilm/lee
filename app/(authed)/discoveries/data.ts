@@ -136,7 +136,7 @@ async function loadRegionGroups(userId: string, opts: discoveriesQ.ListOpts): Pr
   return regionGroups(counts)
 }
 
-export async function loadJobs(userId: string, p: DiscoveryParams): Promise<JobsData> {
+export async function loadJobs(userId: string, p: DiscoveryParams, growthInFit = false): Promise<JobsData> {
   const quarantineView = p.status === 'quarantined'
   const opts: discoveriesQ.ListOpts = {
     ...sharedFilters(p),
@@ -145,7 +145,7 @@ export async function loadJobs(userId: string, p: DiscoveryParams): Promise<Jobs
     quarantine: quarantineView ? 'only' : 'exclude',
   }
   const [listed, total, quarantinedCount, filteredCount, groups] = await Promise.all([
-    discoveriesQ.list(userId, { ...opts, sort: p.sort, limit: p.size, offset: (p.page - 1) * p.size }),
+    discoveriesQ.list(userId, { ...opts, sort: p.sort, growthInFit, limit: p.size, offset: (p.page - 1) * p.size }),
     discoveriesQ.countList(userId, opts),
     discoveriesQ.countQuarantined(userId),
     discoveriesQ.countList(userId, { ...sharedFilters(p), status: 'filtered', quarantine: 'exclude' }),
@@ -170,6 +170,7 @@ const BOARD_COLUMN_LIMIT = 25
 export async function loadBoard(
   userId: string,
   p: DiscoveryParams,
+  growthInFit = false,
 ): Promise<{
   items: Record<DiscoveryBoardColumn, DiscoveryBoardItem[]>
   totals: Record<DiscoveryBoardColumn, number>
@@ -185,6 +186,7 @@ export async function loadBoard(
           quarantine: 'exclude',
           // Triage columns by fit; outcome columns by recency.
           sort: status === 'new' || status === 'shortlisted' ? 'combined' : 'posted',
+          growthInFit,
           limit: BOARD_COLUMN_LIMIT,
         }),
       ),
@@ -209,6 +211,7 @@ export async function loadBoard(
           bestCv: toBestCv(d.bestCv),
           applyUrl: d.applyUrl,
           savedApplicationId: d.savedApplicationId,
+          growth: d.companyGrowth !== null ? { score: d.companyGrowth, confidence: d.companyGrowthConfidence, inFit: growthInFit } : null,
         }),
       ),
     ]),

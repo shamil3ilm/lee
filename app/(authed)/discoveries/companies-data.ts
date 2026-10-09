@@ -6,7 +6,8 @@ import type { FitChip } from '@/lib/company-discovery/fit'
 import { STAGE_LABELS, type CompanyEvidence, type CompanyStage } from '@/lib/company-discovery/types'
 import { placeName } from '@/lib/regions/display'
 import { parseRegionParam } from '@/lib/regions/selection'
-import type { CompanyCardData } from '@/components/companies/types'
+import type { CompanyCardData, CompanyGrowthCard } from '@/components/companies/types'
+import { GROWTH_LABELS, MIN_GROWTH_STEPS, type GrowthSignal } from '@/lib/company-discovery/growth/types'
 
 /** Discovery › Companies query string, validated. */
 export interface CompanyParams {
@@ -17,11 +18,17 @@ export interface CompanyParams {
   hiring: boolean
   warm: boolean
   source: string
+  /** 'fit' (default) | 'growth'. */
+  sort: 'fit' | 'growth'
+  /** Minimum growth score; 0 = any. */
+  minGrowth: number
+  /** "Under the radar" only. */
+  gems: boolean
   page: number
   size: number
 }
 
-const SOURCE_TAG = /^(wikidata|github|yc|linkedin|paste|directory:[a-z0-9-]{1,40})$/
+const SOURCE_TAG = /^(wikidata|github|yc|linkedin|paste|jobs|seed|search|directory:[a-z0-9-]{1,40})$/
 
 export function parseCompanyParams(sp: Record<string, string | undefined>, size: number): CompanyParams {
   const status = sp.status === 'saved' || sp.status === 'dismissed' ? sp.status : 'new'
@@ -34,6 +41,9 @@ export function parseCompanyParams(sp: Record<string, string | undefined>, size:
     hiring: sp.hiring === '1',
     warm: sp.warm === '1',
     source: sp.source && SOURCE_TAG.test(sp.source) ? sp.source : '',
+    sort: sp.sort === 'growth' ? 'growth' : 'fit',
+    minGrowth: (MIN_GROWTH_STEPS as readonly number[]).includes(Number(sp.minGrowth)) ? Number(sp.minGrowth) : 0,
+    gems: sp.gems === '1',
     page,
     size,
   }
@@ -72,7 +82,22 @@ function toCard(row: companiesQ.CompanyRow): CompanyCardData {
     dismissReason: row.dismissReason,
     tracked: !!row.applicationId,
     githubLogin: ev.githubLogin ?? null,
+    growth: toGrowthView(row),
+    hiddenGem: row.hiddenGem,
+    radarReasons: radarReasons(row.growthDetail),
   }
+}
+
+function toGrowthView(row: companiesQ.CompanyRow): CompanyGrowthCard {
+  const detail = (row.growthDetail ?? {}) as { signals?: unknown }
+  const signals = Array.isArray(detail.signals) ? (detail.signals as GrowthSignal[]).filter((s) => s && typeof s.kind === 'string' && s.kind in GROWTH_LABELS) : []
+  const conf = row.growthConfidence === 'high' || row.growthConfidence === 'medium' || row.growthConfidence === 'low' ? row.growthConfidence : null
+  return { score: row.growthScore, confidence: conf, signals }
+}
+
+function radarReasons(detail: unknown): string[] {
+  const r = (detail as { radar?: unknown } | null)?.radar
+  return Array.isArray(r) ? r.filter((x): x is string => typeof x === 'string').slice(0, 5) : []
 }
 
 export async function loadCompanyCards(userId: string, p: CompanyParams): Promise<{ cards: CompanyCardData[]; total: number; facets: { sources: string[]; industries: string[] } }> {
@@ -85,9 +110,11 @@ export async function loadCompanyCards(userId: string, p: CompanyParams): Promis
     hiring: p.hiring,
     warm: p.warm,
     sourceTag: p.source || undefined,
+    minGrowth: p.minGrowth || undefined,
+    gems: p.gems,
   }
   const [rows, total, facets] = await Promise.all([
-    companiesQ.listCompanies(userId, { ...opts, limit: p.size, offset: (p.page - 1) * p.size }),
+    companiesQ.listCompanies(userId, { ...opts, sort: p.sort, limit: p.size, offset: (p.page - 1) * p.size }),
     companiesQ.countCompanies(userId, opts),
     companiesQ.facets(userId),
   ])

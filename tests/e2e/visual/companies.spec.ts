@@ -32,6 +32,12 @@ for (const theme of ['light', 'dark'] as const) {
         await noOverflow(page)
         await page.screenshot({ path: path.join(OUT, `${vp.name}-${theme}-companies.png`), fullPage: true })
 
+        await page.getByTestId('growth-chip').first().click()
+        await expect(page.getByTestId('growth-why')).toBeVisible()
+        await noOverflow(page)
+        await page.screenshot({ path: path.join(OUT, `${vp.name}-${theme}-companies-growth.png`) })
+        await page.keyboard.press('Escape')
+
         await page.getByTestId('company-card').nth(1).getByTestId('reach-out').click()
         await expect(page.getByTestId('reach-out-body')).not.toHaveValue('')
         const box = await page.getByRole('dialog').first().boundingBox()

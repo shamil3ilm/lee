@@ -52,3 +52,18 @@ export async function enqueueEnrichment(userId: string, now: Date = new Date()):
   }
   return false
 }
+
+/** Queue this week's growth refresh (once per ISO week; false when it is already queued). */
+export async function enqueueGrowth(userId: string, now: Date = new Date()): Promise<boolean> {
+  const { created } = await enqueueMany([
+    {
+      type: JOB_TYPES.companyGrowth,
+      userId,
+      runAfter: now,
+      idempotencyKey: jobKeys.companyGrowth(userId, isoWeek(now)),
+      priority: JOB_PRIORITY[JOB_TYPES.companyGrowth],
+      maxAttempts: 2,
+    },
+  ])
+  return created > 0
+}

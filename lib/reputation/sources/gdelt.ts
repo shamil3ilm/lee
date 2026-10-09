@@ -14,7 +14,7 @@ import type { CompanyRef, SourceDeps, SourceResult } from './types'
 export const GDELT_API = 'https://api.gdeltproject.org/api/v2/doc/doc'
 const MAX_NEWS = 20
 const TOPICS =
-  '(layoff OR layoffs OR lawsuit OR sued OR fraud OR salaries OR wages OR visa OR funding OR raises OR acquires)'
+  '(layoff OR layoffs OR lawsuit OR sued OR fraud OR salaries OR wages OR visa OR funding OR raises OR acquires OR expands OR expansion OR "new office" OR "shuts down")'
 
 interface Article {
   url?: string

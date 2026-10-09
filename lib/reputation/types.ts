@@ -23,6 +23,9 @@ export const NEWS_CATEGORIES = [
   'wage_theft',
   'visa_contract',
   'funding',
+  'acquisition',
+  'expansion',
+  'closure',
   'other',
 ] as const
 export type NewsCategory = (typeof NEWS_CATEGORIES)[number]

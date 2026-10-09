@@ -371,8 +371,14 @@ async function main(): Promise<void> {
   const { searchPrefsFromProfile } = await import('@/lib/discovery/relevance/prefs')
   const [local] = await db.insert(s.sources).values({ userId, name: 'Local companies', kind: 'local_companies', config: {}, enabled: false }).returning()
   const fitCtx = fitContextFrom(searchPrefsFromProfile(await db.query.userProfile.findFirst({ where: eq(s.userProfile.userId, userId) })))
+  const { companyGrowth } = await import('@/lib/company-discovery/growth/score')
+  const { underTheRadar } = await import('@/lib/company-discovery/growth/visibility')
   for (const [i, c] of data.LOCAL_COMPANIES.entries()) {
-    const fit = companyFit({ name: c.name, regionIds: c.regionIds, industry: c.industry, stage: c.stage, atsKind: c.atsKind, careersUrl: c.careersUrl, evidence: JSON.parse(JSON.stringify(c.evidence)) as CompanyEvidence }, fitCtx)
+    const evidence = JSON.parse(JSON.stringify(c.evidence)) as CompanyEvidence
+    const roleSnapshots = c.snapshots.map(([d, n]) => ({ d: ago(d).toISOString().slice(0, 10), n }))
+    const g = companyGrowth({ regionIds: c.regionIds, industry: c.industry, sizeBand: c.sizeBand, atsKind: c.atsKind, sourceTags: c.sourceTags, evidence, roleSnapshots }, new Date(NOW))
+    const fit = companyFit({ name: c.name, regionIds: c.regionIds, industry: c.industry, stage: c.stage, atsKind: c.atsKind, careersUrl: c.careersUrl, evidence, growth: { score: g.score, confidence: g.confidence } }, fitCtx)
+    const radar = underTheRadar({ fitScore: fit.score, growthScore: g.score, sourceTags: c.sourceTags, evidence })
     await db.insert(s.companyDiscoveries).values({
       userId,
       sourceId: local!.id,
@@ -393,6 +399,11 @@ async function main(): Promise<void> {
       evidence: c.evidence,
       fitScore: fit.score,
       fitDetail: fit.chips,
+      growthScore: g.score,
+      growthConfidence: g.score === null ? null : g.confidence,
+      growthDetail: { signals: g.signals, radar: radar.reasons },
+      roleSnapshots,
+      hiddenGem: radar.gem,
       enrichStatus: 'done',
       createdAt: ago(i + 1),
     })

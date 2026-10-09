@@ -544,6 +544,11 @@ export const discoveries = pgTable(
     // key; retention clears both on filtered / dismissed rows.
     bestCv: jsonb('best_cv'),
     bestCvKey: text('best_cv_key'),
+    // The employer's growth score and confidence, copied from its company
+    // discovery (lib/company-discovery/growth/jobs.ts) for the "Why this
+    // score" popover and, when the user opts in, a small Fit nudge.
+    companyGrowth: smallint('company_growth'),
+    companyGrowthConfidence: text('company_growth_confidence'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -662,10 +667,22 @@ export const companyDiscoveries = pgTable(
     dismissReason: text('dismiss_reason'),
     /** The speculative application made from "Reach out". */
     applicationId: uuid('application_id').references(() => applications.id, { onDelete: 'set null' }),
+    // Growth score (lib/company-discovery/growth): 0–100, null = not enough
+    // known signals; confidence 'high' | 'medium' | 'low'; the signals with
+    // source, date and confidence (≤ 2 KB) for the "Why" popover.
+    growthScore: smallint('growth_score'),
+    growthConfidence: text('growth_confidence'),
+    growthDetail: jsonb('growth_detail'),
+    growthCheckedAt: timestamp('growth_checked_at', { withTimezone: true }),
+    /** Weekly open-role counts [{ d: 'yyyy-mm-dd', n }], oldest first; capped to 26 weeks (retention by construction). */
+    roleSnapshots: jsonb('role_snapshots').notNull().default([]),
+    /** "Under the radar": good fit with growth or hiring signals but little public visibility. */
+    hiddenGem: boolean('hidden_gem').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
+    userGrowthIx: index('company_discoveries_user_status_growth_idx').on(t.userId, t.status, t.growthScore),
     userDomainIx: index('company_discoveries_user_domain_idx')
       .on(t.userId, t.domain)
       .where(sql`${t.domain} is not null`),

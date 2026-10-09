@@ -84,6 +84,7 @@ describe('search preferences form', () => {
       share: { visa: true, notice: true, relocation: false, timezone: false, nationality: false },
       preferredRegions: [],
       companyStages: [],
+      growthInFit: false,
     })
   })
 

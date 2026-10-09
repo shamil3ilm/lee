@@ -56,7 +56,11 @@ describe('classifyHeadline', () => {
     ['Acme to cut 1,200 jobs', 'layoffs'],
     ['Acme faces class action over privacy', 'lawsuit'],
     ['Acme raises $40M Series B', 'funding'],
-    ['Acme opens Riyadh office', 'other'],
+    ['Acme opens Riyadh office', 'expansion'],
+    ['Acme acquires Beta Labs', 'acquisition'],
+    ['Acme shuts down its delivery business', 'closure'],
+    ['Acme secures funding from regional investors', 'funding'],
+    ['Acme wins design award', 'other'],
   ])('%s → %s', (title, category) => {
     expect(classifyHeadline(title)).toBe(category)
   })

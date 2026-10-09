@@ -29,13 +29,20 @@ export async function expireStaleDiscoveries(now: Date = new Date(), opts: Opts 
   const client = clientOf(opts)
   const before = cutoff(now, opts.days ?? STALE_DISCOVERY_DAYS)
   let total = 0
-  for (const table of [sql`discoveries`, sql`company_discoveries`]) {
+  // Local companies (lib/company-discovery) are a directory, not an inbox:
+  // an unreviewed company never expires, so a firm the user has not looked
+  // at yet is not lost for good (a dismissed key never comes back).
+  const notLocalCompanies = sql` and source_id not in (select id from sources where kind = 'local_companies')`
+  for (const [table, extra] of [
+    [sql`discoveries`, sql``],
+    [sql`company_discoveries`, notLocalCompanies],
+  ] as const) {
     total += await inBatches(async (limit) => {
       const res = await client.execute(sql`
         update ${table} set status = 'dismissed', updated_at = ${now}
         where id in (
           select id from ${table}
-          where status in ('new', 'filtered') and created_at < ${before}${userScope(sql`user_id`, opts.userId)}
+          where status in ('new', 'filtered') and created_at < ${before}${extra}${userScope(sql`user_id`, opts.userId)}
           limit ${limit}
         )
       `)

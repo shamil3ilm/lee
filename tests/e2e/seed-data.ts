@@ -407,6 +407,8 @@ export const LOCAL_COMPANIES = [
     careersUrl: 'https://jobs.lever.co/dinarpay-example',
     evidence: { openRoles: 2, contactEmails: ['careers@dinarpay.example'], languages: ['PHP', 'TypeScript'], description: 'Payments platform for Gulf merchants.' },
     fitScore: 88,
+    /** Weekly open-role counts as [days ago, count] (growth: about flat). */
+    snapshots: [[90, 2], [31, 2], [2, 2]],
   },
   {
     key: 'd:falconerp.example',
@@ -423,6 +425,7 @@ export const LOCAL_COMPANIES = [
     careersUrl: 'https://falconerp.example/careers',
     evidence: { description: 'E-invoicing and ERP for SMEs.' },
     fitScore: 71,
+    snapshots: [],
   },
   {
     key: 'd:backwater.example',
@@ -437,8 +440,10 @@ export const LOCAL_COMPANIES = [
     atsKind: null,
     atsSlug: null,
     careersUrl: null,
-    evidence: {},
+    /** A small company growing fast (new postings, active GitHub) with no Wikidata entry or press: "under the radar". */
+    evidence: { jobsRecent30: 5, jobsPrior60: 2, githubLogin: 'backwater-example', github: { at: '2026-10-01', c90: 140, cp90: 50, nr90: 2, nrp90: 0, stars: 3 } },
     fitScore: 52,
+    snapshots: [],
   },
 ] as const
 

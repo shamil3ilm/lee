@@ -53,6 +53,11 @@ import { refreshFits, runCompanyDiscovery } from '@/lib/company-discovery/servic
 import { enrichPending } from '@/lib/company-discovery/enrich'
 import * as localCompaniesQ from '@/lib/db/queries/localCompanies'
 import * as linkedinQ from '@/lib/db/queries/linkedin'
+import * as employersQ from '@/lib/db/queries/companyEmployers'
+import * as growthQ from '@/lib/db/queries/companyGrowth'
+import { refreshGrowth } from '@/lib/company-discovery/growth/refresh'
+import { copyGrowthToPostings } from '@/lib/company-discovery/growth/postings'
+import { foldDuplicates } from '@/lib/company-discovery/fold'
 import {
   GITHUB_ORGS_KUWAIT,
   HOME_WITH_BOARD,
@@ -212,6 +217,42 @@ async function main(): Promise<void> {
       },
     ],
     ['companies.refreshFits', () => refreshFits(id)],
+    // Recall and growth (lib/company-discovery/{collect,fold,growth}): the
+    // employer reads, the duplicate fold, the growth refresh and its sort /
+    // filters, the postings copy and the Fit nudge in the job ranking.
+    [
+      'companies.employers',
+      async () => {
+        await employersQ.recentPostingEmployers(id, new Date(now.getTime() - 120 * 86_400_000))
+        await employersQ.trackedEmployers(id)
+      },
+    ],
+    [
+      'companies.fold',
+      async () => {
+        const src = (await localCompaniesQ.inPlay(id))[0]?.sourceId
+        if (src) await foldDuplicates(id, src)
+      },
+    ],
+    [
+      'companies.growth',
+      async () => {
+        const fetchImpl = fakeFetch([
+          { match: (u) => u.host === 'api.github.com' && u.pathname.endsWith('/repos'), body: [] },
+          { match: (u) => u.host === 'query.wikidata.org', body: { results: { bindings: [] } } },
+          { match: (u) => u.host === 'api.gdeltproject.org', body: '' },
+          { match: (u) => u.host === 'hn.algolia.com', body: { hits: [] } },
+        ])
+        await refreshGrowth(id, { fetchImpl, limiter: NO_WAIT, now, countOpenRoles: async () => 4 })
+        await localCompaniesQ.listCompanies(id, { status: 'new', sort: 'growth', minGrowth: 40, gems: false, limit: 25 })
+        await localCompaniesQ.countCompanies(id, { status: 'new', minGrowth: 40, gems: true })
+        await growthQ.recentLaunches(new Date(now.getTime() - 90 * 86_400_000))
+        await growthQ.reputationNewsByDomain(id, ['dinarpay.example'])
+        await copyGrowthToPostings(id, now)
+        await discQ.list(id, { status: 'new', sort: 'match', growthInFit: true, limit: 5 })
+        await discQ.list(id, { status: 'new', sort: 'combined', growthInFit: true, limit: 5 })
+      },
+    ],
     [
       'companies.enrich',
       async () => {

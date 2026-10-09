@@ -2,7 +2,7 @@
 import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Bell, Briefcase, Building2, ChevronDown, ExternalLink, MapPin, Star, ThumbsDown, Users, X } from 'lucide-react'
+import { Bell, Briefcase, Building2, ChevronDown, ExternalLink, MapPin, Sparkles, Star, ThumbsDown, Users, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -23,6 +23,7 @@ import {
 } from '@/app/(authed)/discoveries/company-actions'
 import { DISMISS_REASON_LABELS, DISMISS_REASONS } from '@/lib/company-discovery/types'
 import { cn } from '@/lib/utils'
+import { GrowthChip } from './growth-chip'
 import { ReachOutDialog } from './reach-out-dialog'
 import { sourceTagLabel, type CompanyCardData } from './types'
 
@@ -105,9 +106,21 @@ export function CompanyCard({ c }: { c: CompanyCardData }) {
             ) : null}
           </div>
           {c.description ? <p className="line-clamp-2 text-sm text-muted-foreground">{c.description}</p> : null}
+          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+            <GrowthChip g={c.growth} />
+            {c.hiddenGem ? (
+              <span className="inline-flex flex-wrap items-center gap-1 text-xs text-muted-foreground" data-testid="under-the-radar">
+                <Badge variant="success" className="gap-1 font-normal">
+                  <Sparkles className="size-3" aria-hidden="true" />
+                  Under the radar
+                </Badge>
+                {c.radarReasons.length > 0 ? <span>{c.radarReasons.join(' · ')}</span> : null}
+              </span>
+            ) : null}
+          </div>
           {c.chips.length > 0 ? (
             <ul className="flex flex-wrap gap-1 pt-1" aria-label="Why this rank">
-              {c.chips.map((ch) => (
+              {c.chips.filter((ch) => ch.kind !== 'growth').map((ch) => (
                 <li key={`${ch.kind}-${ch.label}`}>
                   <Badge variant={chipTone(ch.kind, ch.warn)} className="font-normal" title={ch.points > 0 ? `+${ch.points}` : undefined}>
                     {ch.label}

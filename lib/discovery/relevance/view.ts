@@ -79,6 +79,7 @@ export interface SearchPrefsFormValues {
   preferredRegions: Array<{ id: string; level: 'top' | 'preferred' }>
   /** Company stages preferred in company discovery. */
   companyStages: string[]
+  growthInFit: boolean
   saved: boolean
   /** Titles lee learned, newest first. */
   learnedTitles: Array<{ key: string; related: boolean; family: string | null; at: string }>
@@ -114,6 +115,7 @@ export function searchPrefsFormValues(profile: UserProfile | null): SearchPrefsF
     share: p.extra.share,
     preferredRegions: p.extra.preferredRegions,
     companyStages: p.extra.companyStages,
+    growthInFit: p.extra.growthInFit,
     saved: p.active,
     learnedTitles: Object.entries(parseLearnedTitles(profile?.learnedTitles))
       .map(([key, v]) => ({ key, ...v }))

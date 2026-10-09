@@ -1,4 +1,4 @@
-import { and, arrayOverlaps, count, desc, eq, inArray, isNotNull, or, sql, type SQL } from 'drizzle-orm'
+import { and, arrayOverlaps, count, desc, eq, gte, inArray, isNotNull, or, sql, type SQL } from 'drizzle-orm'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import { db, type DbClient } from '@/lib/db/client'
 import { companyDiscoveries } from '@/lib/db/schema'
@@ -28,6 +28,8 @@ export interface CompanyInsert {
   sourceTags: string[]
   evidence: Record<string, unknown>
   normalized: Record<string, unknown>
+  /** The company's own board, when a polled source already reads it (employers seen in jobs). */
+  board?: { kind: string; slug: string; url: string; sourceId?: string }
 }
 
 const CHUNK = 100
@@ -65,7 +67,12 @@ export async function upsertCompanies(
           stage: r.stage,
           sourceTags: r.sourceTags,
           evidence: r.evidence as never,
-          enrichStatus: r.website || r.evidence.githubLogin ? 'pending' : null,
+          enrichStatus: r.website || r.evidence.githubLogin || r.evidence.profileUrl ? 'pending' : null,
+          atsKind: r.board?.kind ?? null,
+          atsSlug: r.board?.slug ?? null,
+          careersUrl: r.board?.url ?? null,
+          watch: r.board?.sourceId ? 'jobs' : null,
+          watchSourceId: r.board?.sourceId ?? null,
         })),
       )
       .onConflictDoUpdate({
@@ -80,6 +87,11 @@ export async function upsertCompanies(
           stage: sql`coalesce(${companyDiscoveries.stage}, excluded.stage)`,
           evidence: sql`excluded.evidence || ${companyDiscoveries.evidence}`,
           enrichStatus: sql`case when ${companyDiscoveries.enrichStatus} is null and coalesce(${companyDiscoveries.website}, excluded.website) is not null then 'pending' else ${companyDiscoveries.enrichStatus} end`,
+          atsKind: sql`coalesce(${companyDiscoveries.atsKind}, excluded.ats_kind)`,
+          atsSlug: sql`case when ${companyDiscoveries.atsKind} is null then excluded.ats_slug else ${companyDiscoveries.atsSlug} end`,
+          careersUrl: sql`coalesce(${companyDiscoveries.careersUrl}, excluded.careers_url)`,
+          watch: sql`coalesce(${companyDiscoveries.watch}, excluded.watch)`,
+          watchSourceId: sql`coalesce(${companyDiscoveries.watchSourceId}, excluded.watch_source_id)`,
           updatedAt: sql`now()`,
         },
       })
@@ -132,6 +144,12 @@ export interface CompanyListOpts {
   hiring?: boolean
   warm?: boolean
   sourceTag?: string
+  /** Growth score at least this (unknown growth is left out). */
+  minGrowth?: number
+  /** "Under the radar" only. */
+  gems?: boolean
+  /** Best fit first (default) or best growth first (unknown growth last). */
+  sort?: 'fit' | 'growth'
   limit?: number
   offset?: number
 }
@@ -144,6 +162,8 @@ function listWhere(userId: string, o: CompanyListOpts): SQL {
   if (o.hiring) conds.push(or(isNotNull(companyDiscoveries.atsKind), isNotNull(companyDiscoveries.careersUrl))!)
   if (o.warm) conds.push(sql`coalesce((${companyDiscoveries.evidence}->>'connections')::int, 0) > 0`)
   if (o.sourceTag) conds.push(arrayOverlaps(companyDiscoveries.sourceTags, [o.sourceTag]))
+  if (typeof o.minGrowth === 'number' && o.minGrowth > 0) conds.push(gte(companyDiscoveries.growthScore, o.minGrowth))
+  if (o.gems) conds.push(eq(companyDiscoveries.hiddenGem, true))
   return and(...conds)!
 }
 
@@ -152,12 +172,18 @@ export async function listCompanies(userId: string, o: CompanyListOpts, client: 
     .select()
     .from(companyDiscoveries)
     .where(listWhere(userId, o))
-    .orderBy(sql`${companyDiscoveries.fitScore} desc nulls last`, desc(companyDiscoveries.createdAt), desc(companyDiscoveries.id))
+    .orderBy(
+      ...(o.sort === 'growth'
+        ? [sql`${companyDiscoveries.growthScore} desc nulls last`, sql`${companyDiscoveries.fitScore} desc nulls last`]
+        : [sql`${companyDiscoveries.fitScore} desc nulls last`]),
+      desc(companyDiscoveries.createdAt),
+      desc(companyDiscoveries.id),
+    )
     .limit(o.limit ?? 25)
     .offset(o.offset ?? 0)
 }
 
-export async function countCompanies(userId: string, o: Omit<CompanyListOpts, 'limit' | 'offset'>, client: DbClient = db): Promise<number> {
+export async function countCompanies(userId: string, o: Omit<CompanyListOpts, 'limit' | 'offset' | 'sort'>, client: DbClient = db): Promise<number> {
   const [r] = await client.select({ c: count() }).from(companyDiscoveries).where(listWhere(userId, o))
   return Number(r?.c ?? 0)
 }
@@ -220,6 +246,15 @@ export type CompanyPatch = Partial<
     | 'applicationId'
     | 'industry'
     | 'normalized'
+    | 'sourceTags'
+    | 'regionIds'
+    | 'growthScore'
+    | 'growthConfidence'
+    | 'growthDetail'
+    | 'growthCheckedAt'
+    | 'roleSnapshots'
+    | 'hiddenGem'
+    | 'sizeBand'
   >
 >
 
@@ -248,4 +283,47 @@ export async function facets(userId: string, client: DbClient = db): Promise<{ s
     | { sources?: string[] | null; industries?: string[] | null }
     | undefined
   return { sources: first?.sources ?? [], industries: first?.industries ?? [] }
+}
+
+export interface FoldRow {
+  id: string
+  sourceCompanyId: string
+  name: string
+  domain: string | null
+  regionIds: string[]
+  sourceTags: string[]
+  status: string
+  watch: string | null
+  applicationId: string | null
+  evidence: Record<string, unknown>
+}
+
+/** Compact index of a source's rows for the duplicate fold (lib/company-discovery/fold.ts). */
+export async function foldIndex(sourceId: string, client: DbClient = db): Promise<FoldRow[]> {
+  const rows = await client
+    .select({
+      id: companyDiscoveries.id,
+      sourceCompanyId: companyDiscoveries.sourceCompanyId,
+      name: sql<string>`coalesce(${companyDiscoveries.normalized}->>'name', '')`,
+      domain: companyDiscoveries.domain,
+      regionIds: companyDiscoveries.regionIds,
+      sourceTags: companyDiscoveries.sourceTags,
+      status: companyDiscoveries.status,
+      watch: companyDiscoveries.watch,
+      applicationId: companyDiscoveries.applicationId,
+      evidence: companyDiscoveries.evidence,
+    })
+    .from(companyDiscoveries)
+    .where(eq(companyDiscoveries.sourceId, sourceId))
+  return rows.map((r) => ({ ...r, evidence: (r.evidence ?? {}) as Record<string, unknown> }))
+}
+
+/** Delete rows the fold merged into another (user-scoped). */
+export async function deleteCompanies(userId: string, ids: readonly string[], client: DbClient = db): Promise<number> {
+  if (ids.length === 0) return 0
+  const res = await writer(client)
+    .delete(companyDiscoveries)
+    .where(and(eq(companyDiscoveries.userId, userId), inArray(companyDiscoveries.id, [...ids])))
+    .returning({ id: companyDiscoveries.id })
+  return res.length
 }

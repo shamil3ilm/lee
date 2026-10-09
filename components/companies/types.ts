@@ -1,4 +1,12 @@
 import type { FitChip } from '@/lib/company-discovery/fit'
+import type { Confidence, GrowthSignal } from '@/lib/company-discovery/growth/types'
+
+/** The growth chip and its "Why" popover. */
+export interface CompanyGrowthCard {
+  score: number | null
+  confidence: Confidence | null
+  signals: GrowthSignal[]
+}
 
 /** One company card in Discovery › Companies (serialisable; built on the server). */
 export interface CompanyCardData {
@@ -31,6 +39,10 @@ export interface CompanyCardData {
   dismissReason: string | null
   tracked: boolean
   githubLogin: string | null
+  growth: CompanyGrowthCard
+  /** "Under the radar": good fit, growing or hiring, little public visibility. */
+  hiddenGem: boolean
+  radarReasons: string[]
 }
 
 export const SOURCE_TAG_LABELS: Readonly<Record<string, string>> = {
@@ -39,8 +51,17 @@ export const SOURCE_TAG_LABELS: Readonly<Record<string, string>> = {
   yc: 'Y Combinator',
   linkedin: 'Your connections',
   paste: 'Added by you',
+  jobs: 'Seen hiring in your jobs',
+  seed: 'Well-known employers list',
+  search: 'Added by you (search)',
   'directory:technopark': 'Technopark',
+  'directory:infopark': 'Infopark',
+  'directory:cyberpark': 'Kerala Cyberpark',
+  'directory:ul-cyberpark': 'UL Cyberpark',
   'directory:qstp': 'QSTP',
+  'directory:flat6labs': 'Flat6Labs',
+  'directory:startup-bahrain': 'StartUp Bahrain',
+  'directory:nasscom': 'NASSCOM',
 }
 
 export function sourceTagLabel(tag: string): string {

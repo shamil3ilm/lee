@@ -51,6 +51,7 @@ export type CompanyDiscoverySummary = {
   careersChanged?: number
 }
 export type CompanyEnrichSummary = { kind: 'company-enrich'; checked: number; careers: number; boards: number; blocked: number; remaining: number }
+export type CompanyGrowthSummary = { kind: 'company-growth'; companies: number; scored: number; roleCounts: number; github: number; news: number; gems: number; postings: number; paused?: boolean }
 
 export type { RadarRunSummary } from '@/lib/radar/summary'
 export type { WhatsNewRunSummary } from '@/lib/radar/new/summary'
@@ -60,6 +61,7 @@ export type JobSummary =
   | RadarRunSummary
   | WhatsNewRunSummary
   | ShortlistSummary
+  | CompanyGrowthSummary
   | CompanyDiscoverySummary
   | CompanyEnrichSummary
   | GmailSyncSummary
@@ -196,6 +198,9 @@ export function describeSummary(summary: JobSummary | null | undefined): string 
     }
     case 'company-enrich':
       return `${summary.checked} checked · ${summary.careers} careers pages · ${summary.boards} job boards · ${summary.blocked} skipped by robots.txt`
+    case 'company-growth':
+      if (summary.paused) return 'Paused by the usage throttle'
+      return `${summary.scored} of ${summary.companies} companies scored · ${summary.roleCounts} role counts · ${summary.github} GitHub orgs · ${plural(summary.gems, 'hidden gem')}`
     default:
       return ''
   }

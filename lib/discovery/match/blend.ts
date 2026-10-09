@@ -33,6 +33,11 @@ export function cappedFit(match: number | null, ai: number | null, detail: { cei
   return Math.min(fit, detail.ceiling.score)
 }
 
+/** Fit with the optional employer-growth nudge (−5…+5, Settings › Search), kept within 0–100. */
+export function withNudge(fit: number | null, nudge: number): number | null {
+  return fit === null ? null : Math.max(0, Math.min(100, fit + nudge))
+}
+
 export type ScoreBand = 'strong' | 'good' | 'fair' | 'weak'
 
 export const BAND_LABELS: Readonly<Record<ScoreBand, string>> = {
@@ -57,8 +62,8 @@ export function scoreBand(score: number): ScoreBand {
  * The one number on every card: "Fit 76" (the blend), "Fit ~45" when it
  * rests on the job title alone (no AI score to refine it), or "Not scored".
  */
-export function fitText(match: number | null, ai: number | null, opts: { titleOnly?: boolean; ceiling?: number } = {}): string {
-  const fit = cappedFit(match, ai, opts.ceiling === undefined ? null : { ceiling: { score: opts.ceiling } })
+export function fitText(match: number | null, ai: number | null, opts: { titleOnly?: boolean; ceiling?: number; nudge?: number } = {}): string {
+  const fit = withNudge(cappedFit(match, ai, opts.ceiling === undefined ? null : { ceiling: { score: opts.ceiling } }), opts.nudge ?? 0)
   if (fit === null) return 'Not scored'
   return opts.titleOnly && ai === null ? `Fit ~${fit}` : `Fit ${fit}`
 }

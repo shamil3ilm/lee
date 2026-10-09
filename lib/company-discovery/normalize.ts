@@ -72,13 +72,40 @@ export function stageOf(input: { sizeBand?: SizeBand; founded?: number; yc?: boo
 export function dedupeKey(c: Pick<CompanyCandidate, 'name' | 'website' | 'regionIds'>): string {
   const d = domainOf(c.website)
   if (d) return `d:${d}`
-  const country = c.regionIds.map((id) => countryOf(id)).find((x): x is string => !!x) ?? 'xx'
-  return `n:${nameKey(c.name)}:${country}`
+  return `n:${nameKey(c.name)}:${countryKey(c.regionIds)}`
 }
 
-/** Name reduced for matching: legal suffixes dropped, spaces removed ("Dinar Pay K.S.C." = "dinarpay"). */
+/** The ISO-2 country of the first region id that has one, else "xx". */
+export function countryKey(regionIds: readonly string[]): string {
+  return regionIds.map((id) => countryOf(id)).find((x): x is string => !!x) ?? 'xx'
+}
+
+/** Indian "(P) Ltd" / "Pvt. Ltd." forms the shared company key keeps as a word. */
+const INDIAN_PRIVATE = /\(\s*p\s*\)|\bpvt\b\.?|\bprivate\b/gi
+
+/** Name reduced for matching: legal suffixes dropped, spaces removed ("Dinar Pay K.S.C." = "dinarpay", "QBurst Technologies (P) Ltd" = "qbursttechnologies"). */
 export function nameKey(name: string): string {
-  return companyKey(name).replace(/ /g, '').slice(0, 120)
+  return companyKey(name.replace(INDIAN_PRIVATE, ' ')).replace(/ /g, '').slice(0, 120)
+}
+
+/** Generic trailing words park and chamber lists add to a brand ("Fingent Global Solutions"). */
+const GENERIC_TAIL = new Set([
+  'technologies', 'technology', 'tech', 'solutions', 'solution', 'systems', 'software', 'services', 'service', 'labs', 'lab',
+  'india', 'global', 'consulting', 'consultancy', 'infotech', 'infosystems', 'innovations', 'ventures', 'group', 'holding', 'holdings',
+  'engineering', 'international', 'digital', 'it', 'and', 'business', 'enterprises', 'networks',
+])
+
+/**
+ * The brand a name reduces to once generic tail words go too ("QBurst
+ * Technologies (P) Ltd" = "QBURST" = "qburst"). Used only to join a
+ * name-only listing to a company already known by its website, in the same
+ * country, or to a seed alias — never to merge two companies that both
+ * have a website. Keeps at least one word.
+ */
+export function brandKey(name: string): string {
+  const words = companyKey(name.replace(INDIAN_PRIVATE, ' ')).split(' ').filter(Boolean)
+  while (words.length > 1 && GENERIC_TAIL.has(words[words.length - 1]!)) words.pop()
+  return words.join('').slice(0, 120)
 }
 
 function uniq<T>(xs: readonly T[]): T[] {
@@ -112,6 +139,7 @@ export function mergeCandidate(a: CompanyCandidate, b: CompanyCandidate): Compan
     stage: a.stage ?? b.stage,
     sourceTags: uniq([...a.sourceTags, ...b.sourceTags]),
     evidence: mergeEvidence(a.evidence, b.evidence),
+    ...(a.board ?? b.board ? { board: a.board ?? b.board } : {}),
   }
 }
 
@@ -135,10 +163,13 @@ export function normalizeCandidates(list: readonly CompanyCandidate[]): Map<stri
   // same country — or, when it has no place at all (a LinkedIn company), the
   // only domain candidate with that name.
   const byName = new Map<string, string>()
+  const byBrand = new Map<string, string[]>()
   const byBareName = new Map<string, string[]>()
   for (const [key, c] of out) {
     if (!key.startsWith('d:')) continue
     byName.set(dedupeKey({ ...c, website: undefined }), key)
+    const brand = `${brandKey(c.name)}:${countryKey(c.regionIds)}`
+    byBrand.set(brand, [...(byBrand.get(brand) ?? []), key])
     const bare = nameKey(c.name)
     byBareName.set(bare, [...(byBareName.get(bare) ?? []), key])
   }
@@ -146,7 +177,8 @@ export function normalizeCandidates(list: readonly CompanyCandidate[]): Map<stri
     if (!key.startsWith('n:')) continue
     const placeless = key.endsWith(':xx')
     const bare = byBareName.get(nameKey(c.name)) ?? []
-    const target = byName.get(key) ?? (placeless && bare.length === 1 ? bare[0] : undefined)
+    const brand = byBrand.get(`${brandKey(c.name)}:${countryKey(c.regionIds)}`) ?? []
+    const target = byName.get(key) ?? (brand.length === 1 ? brand[0] : undefined) ?? (placeless && bare.length === 1 ? bare[0] : undefined)
     if (target) {
       out.set(target, mergeCandidate(out.get(target)!, c))
       out.delete(key)
