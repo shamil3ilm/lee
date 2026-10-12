@@ -11,6 +11,7 @@ import {
   detectVisaOffered,
 } from '../relevance/signals'
 import { findTerms, normalizeForMatch } from '../relevance/text'
+import { stripBoilerplate } from './boilerplate'
 import { EINVOICING_TERMS, PAYMENTS_TERMS } from './profile'
 import type { MatchComponent, MatchJob, MatchProfile } from './types'
 
@@ -127,11 +128,12 @@ export const OFF_TARGET_DOMAIN_POINTS = 2
 export function domainComponent(
   job: MatchJob,
   p: Pick<MatchProfile, 'domains'>,
-  opts: { offTargetRole?: string | null } = {},
+  opts: { offTargetRole?: string | null; notTech?: boolean } = {},
 ): MatchComponent {
   const max = SIGNAL_LIMITS.domain.max
+  // The job, not the employer: "About us" and benefits never count.
   const text = normalizeForMatch(
-    [job.title, (job.techStack ?? []).join(' '), (job.descriptionMd ?? '').slice(0, WINDOW)].join(' \n '),
+    [job.title, (job.techStack ?? []).join(' '), stripBoilerplate((job.descriptionMd ?? '').slice(0, WINDOW))].join(' \n '),
   )
   const asks: Array<{ id: string; label: string }> = []
   if (findTerms(text, PAYMENTS_TERMS).length > 0) asks.push({ id: 'payments', label: 'payments' })
@@ -143,7 +145,7 @@ export function domainComponent(
   }
   const names = mine.map((a) => a.label).join(' + ')
   if (opts.offTargetRole) {
-    return { key: 'domain', label: `Domain: ${names} company, but the role is ${opts.offTargetRole}`, points: OFF_TARGET_DOMAIN_POINTS, max }
+    return { key: 'domain', label: `Domain: ${names} company, but the role is ${opts.offTargetRole}`, points: opts.notTech ? 0 : OFF_TARGET_DOMAIN_POINTS, max }
   }
   return { key: 'domain', label: `Domain: ${names}`, points: Math.min(max, mine.length * 5), max }
 }

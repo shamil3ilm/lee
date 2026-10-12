@@ -7,6 +7,7 @@ import {
   SENIORITY_LEVELS,
   type SeniorityLevel,
 } from '../relevance/seniority'
+import { stripBoilerplate } from './boilerplate'
 import { strengthIn, strengthsFrom } from './strengths'
 import type { MatchComponent, MatchJob, MatchProfile } from './types'
 
@@ -62,7 +63,7 @@ export function seniorityComponent(
   const strength = strengthIn(
     `${job.title}
 ${(job.techStack ?? []).join(' ')}
-${job.descriptionMd ?? ''}`,
+${stripBoilerplate(job.descriptionMd)}`,
     strengthsFrom(p.skills, p.domains),
   )
   if (!strength) return base

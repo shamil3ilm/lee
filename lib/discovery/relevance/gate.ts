@@ -13,6 +13,7 @@ import { detectSeniority, detectYearsRequired, type SeniorityLevel } from './sen
 import { isArchitectTitle, seniorityOutcome } from './seniority-rule'
 import { applySoftRules, rankAdjust } from './soft-rules'
 import { findTerms, normalizeForMatch } from './text'
+import { stripBoilerplate } from '../match/boilerplate'
 import { strengthIn } from '../match/strengths'
 
 /**
@@ -250,7 +251,7 @@ export function evaluateRelevance(job: GateInput, prefs: SearchPrefs): GateResul
     title: seniority,
     years: yearsRequired,
     architect: isArchitectTitle(normalizeForMatch(job.title)),
-    strength: strengthIn(`${job.title}\n${(job.techStack ?? []).join(' ')}\n${description}`, prefs.strengths),
+    strength: strengthIn(`${job.title}\n${(job.techStack ?? []).join(' ')}\n${stripBoilerplate(description)}`, prefs.strengths),
   })
   if (senior.hard) reasons.push(senior.hard)
   const loc = locationOutcome(prefs, {
