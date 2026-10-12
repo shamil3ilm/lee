@@ -4,7 +4,27 @@ import { HN_ITEM_TIMEOUT_MS } from '@/lib/net/timeout'
 import { mapWithConcurrency } from '@/lib/util/concurrency'
 
 interface AlgoliaSearchResponse {
-  hits?: { objectID?: string; title?: string }[]
+  hits?: { objectID?: string; title?: string; created_at_i?: number }[]
+}
+
+/** The monthly thread posted by the `whoishiring` account (not "Who wants to be hired?" or "Freelancer?"). */
+const HIRING_THREAD = /^Ask HN: Who is hiring\?/i
+
+/** Older than this, the newest thread found is stale (an API hiccup): import nothing rather than old postings. */
+const MAX_THREAD_AGE_S = 62 * 86_400
+
+/**
+ * The newest "Ask HN: Who is hiring?" thread, by date. A relevance search
+ * (the old `search?query=…&hitsPerPage=1`) returned the March 2020 "Who is
+ * hiring right now?" thread, so every posting imported was years old.
+ */
+export function latestHiringThread(hits: AlgoliaSearchResponse['hits'], nowS: number): string | null {
+  const thread = (hits ?? [])
+    .filter((h) => h.objectID && HIRING_THREAD.test(h.title ?? ''))
+    .sort((a, b) => (b.created_at_i ?? 0) - (a.created_at_i ?? 0))[0]
+  if (!thread) return null
+  if (typeof thread.created_at_i === 'number' && nowS - thread.created_at_i > MAX_THREAD_AGE_S) return null
+  return thread.objectID ?? null
 }
 
 interface HnItem {
@@ -62,12 +82,12 @@ export class HnWhoIsHiringAdapter implements DiscoveryAdapter {
   }
 
   private async findLatestThreadId(): Promise<string | null> {
-    const url =
-      'https://hn.algolia.com/api/v1/search?tags=story&query=Ask+HN+Who+is+hiring&hitsPerPage=1&numericFilters=points>50'
+    // The whoishiring account posts three threads a month; newest first.
+    const url = 'https://hn.algolia.com/api/v1/search_by_date?tags=story,author_whoishiring&hitsPerPage=10'
     const res = await discoveryFetch('hn-algolia', url)
     if (!res.ok) throw new Error(`hn-algolia ${res.status}`)
     const body = (await res.json()) as AlgoliaSearchResponse
-    return body.hits?.[0]?.objectID ?? null
+    return latestHiringThread(body.hits, Math.floor(Date.now() / 1000))
   }
 
   private async fetchThreadKids(id: string): Promise<number[]> {

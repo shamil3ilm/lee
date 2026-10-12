@@ -60,6 +60,52 @@ describe('HnWhoIsHiringAdapter', () => {
     expect(first.applyUrl).toMatch(/news\.ycombinator\.com/)
   })
 
+  it('reads the newest monthly thread by date, not the most relevant (once a March 2020 thread)', async () => {
+    const now = Date.parse('2026-10-12T00:00:00Z') / 1000
+    const urls: string[] = []
+    globalThis.fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      urls.push(url)
+      if (url.includes('hn.algolia.com')) {
+        return new Response(
+          JSON.stringify({
+            hits: [
+              { objectID: '51', title: 'Ask HN: Who wants to be hired? (October 2026)', created_at_i: now - 86_400 * 10 },
+              { objectID: '52', title: 'Ask HN: Freelancer? Seeking freelancer? (October 2026)', created_at_i: now - 86_400 * 10 },
+              { objectID: '50', title: 'Ask HN: Who is hiring? (October 2026)', created_at_i: now - 86_400 * 10 },
+            ],
+          }),
+          { status: 200 },
+        )
+      }
+      if (url.endsWith('/item/50.json')) return new Response(JSON.stringify({ kids: [] }), { status: 200 })
+      return new Response('{}', { status: 404 })
+    }) as typeof globalThis.fetch
+    vi.spyOn(Date, 'now').mockReturnValue(now * 1000)
+    await new HnWhoIsHiringAdapter().fetch({})
+    expect(urls[0]).toMatch(/search_by_date\?/)
+    expect(urls[0]).toMatch(/author_whoishiring/)
+    expect(urls).toContain('https://hacker-news.firebaseio.com/v0/item/50.json')
+    vi.restoreAllMocks()
+  })
+
+  it('skips a thread older than two months instead of importing stale postings', async () => {
+    const now = Date.parse('2026-10-12T00:00:00Z') / 1000
+    const urls: string[] = []
+    globalThis.fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      urls.push(url)
+      if (url.includes('hn.algolia.com')) {
+        return new Response(JSON.stringify({ hits: [{ objectID: '22665398', title: 'Ask HN: Who is hiring? (March 2020)', created_at_i: Date.parse('2020-03-02T00:00:00Z') / 1000 }] }), { status: 200 })
+      }
+      return new Response('{}', { status: 404 })
+    }) as typeof globalThis.fetch
+    vi.spyOn(Date, 'now').mockReturnValue(now * 1000)
+    expect(await new HnWhoIsHiringAdapter().fetch({})).toEqual([])
+    expect(urls).toHaveLength(1)
+    vi.restoreAllMocks()
+  })
+
   it('registry returns adapter', () => {
     expect(getAdapter('hn_whoishiring')).toBeInstanceOf(HnWhoIsHiringAdapter)
   })
