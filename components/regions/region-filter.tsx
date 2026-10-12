@@ -47,6 +47,9 @@ export function RegionFilter({ value, apply, className }: RegionFilterProps) {
       quickPicks={QUICK_PICKS}
       label="Region"
       emptyLabel="All regions"
+      // The trigger already names the selection; Clear is inside the picker.
+      // A "Kuwait ×" chip beside a "Kuwait" button showed the filter twice.
+      chips={false}
       className={className}
       testId="region-filter"
     />

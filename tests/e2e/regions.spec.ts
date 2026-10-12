@@ -43,8 +43,11 @@ test('pick Kerala → only Kerala jobs, with the most specific place label', asy
   await expect(card(page, TVM).getByTestId('place-label')).toHaveText('Thiruvananthapuram, Kerala · Technopark')
   // The chain is on hover.
   await expect(card(page, KOCHI).getByTestId('place-label')).toHaveAttribute('title', /Kochi › Kerala › India/)
-  // The selection shows as a removable chip; removing it clears the filter.
-  await page.getByRole('button', { name: 'Remove Kerala' }).click()
+  // The selection shows once, on the trigger (no second "Kerala ×" chip); Clear is in the picker.
+  await expect(page.getByRole('button', { name: 'Remove Kerala' })).toHaveCount(0)
+  await expect(page.getByTestId('region-filter')).toContainText('Kerala')
+  const dialog = await openPicker(page)
+  await dialog.getByRole('button', { name: 'Clear' }).click()
   await expect(page).not.toHaveURL(/region=/)
   await expectOnly(page, ALL)
 })
