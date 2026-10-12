@@ -10,6 +10,10 @@ import { renderVariant } from '@/lib/variants/render'
 import type { Region } from '@/lib/variants/types'
 import { parseResumeProfile } from '@/lib/resume/types'
 import { syntheticProfile } from '@/tests/fixtures/resume/profile'
+import { BEST_CV_RULES, bestCvKey } from '@/lib/cv-fit/key'
+import { BEST_CV_VERSION } from '@/lib/cv-fit/version'
+import { MATCH_SCORE_VERSION } from '@/lib/discovery/match/version'
+import { SCORER_VERSION } from '@/lib/cv-score/version'
 
 const GCC_JD: MatchJob = {
   title: 'Backend Engineer, Payments',
@@ -183,5 +187,13 @@ describe('pickBest', () => {
     expect(toBestCv(null)).toBeNull()
     expect(toBestCv({ best: { variantId: 'a' } })).toBeNull()
     expect(toBestCv({ best: { ...r.best, region: 'mars' } })).toBeNull()
+  })
+})
+
+describe('bestCvKey', () => {
+  it('includes the upstream Match and CV Score rules versions (review P1-7)', () => {
+    expect(BEST_CV_RULES).toBe(`${BEST_CV_VERSION}.${MATCH_SCORE_VERSION}.${SCORER_VERSION}`)
+    const key = bestCvKey(parseResumeProfile(syntheticProfile()), [])
+    expect(key.startsWith(`${BEST_CV_RULES}:`)).toBe(true)
   })
 })

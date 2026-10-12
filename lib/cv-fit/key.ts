@@ -2,6 +2,8 @@ import { canonicalJson } from '@/lib/portfolio/canonical'
 import type { ResumeProfile } from '@/lib/resume/types'
 import type { MatchJob } from '@/lib/discovery/match/types'
 import { BEST_CV_VERSION } from './version'
+import { MATCH_SCORE_VERSION } from '@/lib/discovery/match/version'
+import { SCORER_VERSION } from '@/lib/cv-score/version'
 
 /**
  * Keys for the stored best CV. A row is current while its key equals:
@@ -9,8 +11,13 @@ import { BEST_CV_VERSION } from './version'
  *                 discovery clears the row's key (lib/db/queries/discoveryMatch)
  *   applications  bestCvKey(…) + ':' + jdHash(job)        — the job is
  *                 editable, so its JD is part of the key
- * Any profile save, variant save, rename, archive or rules bump moves the key.
+ * Any profile save, variant save, rename, archive or rules bump moves the key
+ * — including the upstream rules it borrows: the Match Score's line checks
+ * (MATCH_SCORE_VERSION) and the CV Score's quality checks (SCORER_VERSION).
  */
+
+/** Every rules version the stored best CV depends on. */
+export const BEST_CV_RULES = `${BEST_CV_VERSION}.${MATCH_SCORE_VERSION}.${SCORER_VERSION}`
 
 export interface KeyedVariant {
   id: string
@@ -33,7 +40,7 @@ export function bestCvKey(profile: ResumeProfile, variants: readonly KeyedVarian
   const vs = [...variants]
     .sort((a, b) => a.id.localeCompare(b.id))
     .map((v) => [v.id, v.version, v.name, v.region])
-  return `${BEST_CV_VERSION}:${fnv1a(canonicalJson(profile))}:${fnv1a(JSON.stringify(vs))}`
+  return `${BEST_CV_RULES}:${fnv1a(canonicalJson(profile))}:${fnv1a(JSON.stringify(vs))}`
 }
 
 /** The JD as the scorer reads it (title, place, description, stack). */

@@ -146,5 +146,7 @@ window). It is off by default. To enable it:
 
 ## Data safety
 
-- Neon free tier includes 7-day point-in-time recovery.
+- Neon Free keeps only a short restore window (hours, not days; check the current
+  Neon plan page) and lee has no automated backup yet. Take a manual dump before
+  any risky migration and on a regular schedule.
 - Manual backup: `pg_dump "$DATABASE_URL" -Fc -f backup-$(date +%F).dump`.
