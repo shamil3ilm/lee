@@ -71,7 +71,7 @@ async function exists(query: Promise<unknown[]>): Promise<boolean> {
 
 export interface SetupChecklistOptions {
   /**
-   * Gmail features can work for this account (lib/auth/gmail-access.ts).
+   * Gmail features can work for this account (owner-only in the beta; lib/google/scopes.ts gmailAccess).
    * Invitees can't use Gmail, so the alert-email and Connect Google steps
    * are left out instead of pointing at a dead end.
    */

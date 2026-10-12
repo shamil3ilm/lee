@@ -16,7 +16,7 @@ export interface MatchWhyProps {
   detail: MatchDetail | null
   /** Filtered by the relevance gate: AI never scores it, the Match Score still shows. */
   filtered?: boolean
-  /** Benefits score (not part of Fit; the Combined sort uses it). */
+  /** Benefits score (lib/benefits; not part of Fit). Null when the posting states nothing. */
   benefits?: number | null
   /** More reasons from the surface (shortlist rank parts, ranking notes). */
   extra?: React.ReactNode
@@ -119,8 +119,8 @@ function Breakdown({ match, ai, benefits, filtered }: Pick<MatchWhyProps, 'match
       <ul className="divide-y divide-border" aria-label="Fit breakdown">
         <BreakdownRow label="Match" value={match} hint={match !== null ? 'your ready profile evidence' : 'computed shortly'} />
         <BreakdownRow label="AI" value={ai} hint={aiHint} />
-        {/* Only when a benefits score exists: unscored rows store 0, never shown as "Benefits 0". */}
-        {benefits !== undefined && benefits !== null && benefits > 0 ? (
+        {/* Only when a benefits score exists (lib/benefits: NULL when the posting states nothing). */}
+        {benefits !== undefined && benefits !== null ? (
           <BreakdownRow label="Benefits" value={benefits} hint="from the job description; not in Fit" />
         ) : null}
       </ul>
