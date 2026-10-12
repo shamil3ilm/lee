@@ -24,6 +24,8 @@ export const RATE_LIMITS = {
   addFromUrl: { limit: 30, windowSec: 3_600, label: 'adding jobs from a link' },
   /** Source create / update (each queues a poll). */
   sourceWrite: { limit: 20, windowSec: 86_400, label: 'adding or changing sources' },
+  /** Settings › Sources bulk actions: turn on / off, check now, watch reminders (one use per click). */
+  sourceBulk: { limit: 30, windowSec: 3_600, label: 'changing many sources at once' },
   /** "Run now" on background jobs. */
   runNow: { limit: 12, windowSec: 3_600, label: 'running jobs now' },
   /** AI document generation: tailored CV, cover letter, follow-up, outreach, prep pack. */

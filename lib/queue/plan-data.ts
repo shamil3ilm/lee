@@ -32,15 +32,19 @@ function toRows<T>(result: unknown): T[] {
   return Array.isArray(rows) ? (rows as T[]) : []
 }
 
-/** Average observed poll time per source (done polls, last COST_HISTORY_DAYS). */
-async function observedCosts(sourceIds: readonly string[], now: Date): Promise<Map<string, number>> {
+/**
+ * Average observed poll time per source (done polls, last COST_HISTORY_DAYS).
+ * `userId` narrows the scan to one account's jobs (Settings › Sources).
+ */
+export async function observedCosts(sourceIds: readonly string[], now: Date, userId?: string): Promise<Map<string, number>> {
   if (sourceIds.length === 0) return new Map()
   const since = new Date(now.getTime() - COST_HISTORY_DAYS * 86_400_000).toISOString()
+  const mine = userId ? sql`and user_id = ${userId}::uuid` : sql``
   const result = await db.execute(sql`
     select payload->>'sourceId' as source_id, avg(duration_ms)::float as avg_ms
     from queue_jobs
     where type = ${JOB_TYPES.discoverySource} and status = 'done' and duration_ms is not null
-      and finished_at > ${since}::timestamptz
+      and finished_at > ${since}::timestamptz ${mine}
     group by 1
   `)
   const wanted = new Set(sourceIds)
@@ -52,7 +56,7 @@ async function observedCosts(sourceIds: readonly string[], now: Date): Promise<M
 }
 
 /** Postings per source in each user's starred regions (region_ids store ancestors). */
-async function starredYields(starred: ReadonlyMap<string, readonly string[]>, now: Date): Promise<Map<string, number>> {
+export async function starredYields(starred: ReadonlyMap<string, readonly string[]>, now: Date): Promise<Map<string, number>> {
   const pairs = [...starred].flatMap(([userId, ids]) => ids.map((id) => [userId, id] as const))
   if (pairs.length === 0) return new Map()
   const since = new Date(now.getTime() - STARRED_YIELD_DAYS * 86_400_000).toISOString()

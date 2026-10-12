@@ -29,6 +29,7 @@ import { getSourceKind } from '@/lib/discovery/source-kinds'
 import { joinMeta } from '@/lib/ui/meta'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Switch } from '@/components/ui/switch'
+import { Checkbox } from '@/components/ui/checkbox'
 
 const SourceEditDialog = dynamic(
   () => import('@/components/source-edit-dialog').then((m) => m.SourceEditDialog),
@@ -48,9 +49,18 @@ export interface SourceRowItem {
   errorCount: number
   /** Last successful poll, e.g. "12 found · 3 new · 1 quarantined". */
   lastResult: string | null
+  /** Why lee can't poll it for this user (no Gmail, no Adzuna key …), or null. */
+  blocker?: string | null
 }
 
-export function SourceRow({ source }: { source: SourceRowItem }) {
+interface SourceRowProps {
+  source: SourceRowItem
+  /** Bulk selection (Settings › Sources): the row gets a checkbox when set. */
+  selected?: boolean
+  onSelectedChange?: (selected: boolean) => void
+}
+
+export function SourceRow({ source, selected = false, onSelectedChange }: SourceRowProps) {
   const [isPending, startTransition] = useTransition()
   const [enabled, setEnabled] = useState(source.enabled)
 
@@ -84,6 +94,14 @@ export function SourceRow({ source }: { source: SourceRowItem }) {
   return (
     <Card>
       <CardContent className="flex items-center gap-3 p-3">
+        {onSelectedChange ? (
+          <Checkbox
+            checked={selected}
+            onChange={(e) => onSelectedChange(e.target.checked)}
+            aria-label={`Select ${source.name}`}
+            data-testid="source-select"
+          />
+        ) : null}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="slate">{getSourceKind(source.kind)?.label ?? humanizeLabel(source.kind)}</Badge>
@@ -129,6 +147,11 @@ export function SourceRow({ source }: { source: SourceRowItem }) {
               </Link>
             ) : null}
           </div>
+          {source.blocker ? (
+            <p className="mt-1 text-xs text-muted-foreground" data-testid="source-blocker">
+              {source.blocker}
+            </p>
+          ) : null}
           {source.errorCount > 0 && source.lastError ? (
             <p className="mt-1 line-clamp-1 break-all text-xs text-danger" data-testid="source-last-error">
               Last error: {source.lastError}

@@ -13,7 +13,7 @@ import {
   DEFAULT_JOB_COST_MS,
   TIER_PRIORITY_OFFSET,
   TIER_WEIGHT,
-  dailyWorkPoolMs,
+  activeShareMs,
   pickWeeklyUsers,
   weeklyChainCostMs,
   weeklyReserveMs,
@@ -167,7 +167,7 @@ export async function scheduleUserToday(
   if (!me) return { day, enqueued: 0 }
   const radar = (await radarSourcesByUser(userId)).get(userId) ?? []
   const weights = accounts.reduce((s, a) => s + TIER_WEIGHT[a.tier], 0)
-  const share = (dailyWorkPoolMs() * TIER_WEIGHT.active) / Math.max(TIER_WEIGHT.active, weights)
+  const share = activeShareMs(weights)
   const { ids } = pickSources(me.sources, share, now)
   const { created } = await enqueueMany(planUserJobs(userId, ids, day, now, radar, { gmail: me.gmail, tier: 'active' }))
   return { day, enqueued: created }

@@ -140,6 +140,20 @@ export function dailyWorkPoolMs(): number {
   return dailyPlanPoolMs() - weeklyReserveMs()
 }
 
+/**
+ * An active user's share of the daily work pool when every planned user's
+ * tier weights add up to `totalWeight` (the plan "Run now" and a returning
+ * visitor get: lib/queue/scheduler.ts scheduleUserToday).
+ */
+export function activeShareMs(totalWeight: number, poolMs: number = dailyWorkPoolMs()): number {
+  return (poolMs * TIER_WEIGHT.active) / Math.max(TIER_WEIGHT.active, totalWeight)
+}
+
+/** Of that share, the lane time left for source polls after the user's fixed daily jobs. */
+export function userPollBudgetMs(totalWeight: number, fixedMs: number, poolMs: number = dailyWorkPoolMs()): number {
+  return Math.max(0, Math.floor(activeShareMs(totalWeight, poolMs) - fixedMs))
+}
+
 export function activityTier(lastSeenAt: Date | null, createdAt: Date, now: Date): ActivityTier {
   const seen = lastSeenAt ?? createdAt
   const age = now.getTime() - seen.getTime()

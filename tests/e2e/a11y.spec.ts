@@ -208,6 +208,25 @@ for (const theme of ['light', 'dark'] as const) {
   })
 }
 
+/** Settings › Sources with every source selected: the chips, row checkboxes and the bulk action bar. */
+async function openSourcesBulkBar(page: Page): Promise<void> {
+  await page.goto('/settings/sources#your-sources')
+  await waitForHydration(page)
+  await page.getByTestId('sources-pick-all').click()
+  await expect(page.getByTestId('sources-bulk-bar')).toBeVisible()
+}
+
+for (const theme of ['light', 'dark'] as const) {
+  test.describe(`axe ${theme}: sources bulk selection`, () => {
+    test.use({ viewport: { width: 1280, height: 900 }, colorScheme: theme })
+    test(`the bulk action bar has no serious or critical violations (${theme})`, async ({ page }) => {
+      await openSourcesBulkBar(page)
+      const bulk = await scanHere(page)
+      expect(report('sources bulk bar', bulk.filter((v) => BLOCKING.has(v.impact ?? '')))).toEqual([])
+    })
+  })
+}
+
 test.describe('targets at phone width', () => {
   test('the region picker sheet has 24px targets', async ({ page }) => {
     await openRegionPicker(page, '/discoveries?region=kochi', 'region-filter')
@@ -216,6 +235,11 @@ test.describe('targets at phone width', () => {
   })
 
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
+  test('the sources bulk bar has 24px targets', async ({ page }) => {
+    await openSourcesBulkBar(page)
+    const violations = await scanHere(page, ['target-size'])
+    expect(report('sources bulk bar', violations)).toEqual([])
+  })
   test('the open import review has 24px targets', async ({ page }) => {
     await openImportReview(page)
     const violations = await scanHere(page, ['target-size'])

@@ -312,6 +312,17 @@ async function main(): Promise<void> {
     lastError: 'HTTP 503 from upstream',
     errorCount: 2,
   })
+  // Switched off, never polled: Settings › Sources bulk "Turn on" (sources-bulk.spec.ts).
+  // The .example hosts never resolve, so a poll fails fast and offline.
+  await db.insert(s.sources).values(
+    ['Alpha', 'Beta'].map((n) => ({
+      userId,
+      name: `Bulk ${n} careers`,
+      kind: 'jsonld',
+      config: { url: `https://${n.toLowerCase()}.e2e-bulk.example/careers` },
+      enabled: false,
+    })),
+  )
   const { evaluateRelevance } = await import('@/lib/discovery/relevance/gate')
   const { EMPTY_PREFS } = await import('@/lib/discovery/relevance/prefs')
   for (const [i, d] of data.DISCOVERIES.entries()) {

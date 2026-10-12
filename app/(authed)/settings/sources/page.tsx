@@ -5,7 +5,11 @@ import * as emailAlertsQ from '@/lib/db/queries/emailAlerts'
 import { getSourceKind, sourceKindNeeds } from '@/lib/discovery/source-kinds'
 import { PageHeader } from '@/components/page-header'
 import { AddSourceDialog } from '@/components/add-source-dialog'
-import { SourceRow, type SourceRowItem } from '@/components/source-row'
+import type { SourceRowItem } from '@/components/source-row'
+import { SourceBulkList, type BulkSourceRow } from '@/components/sources/source-bulk-list'
+import { loadBulkPageData } from '@/lib/sources/page-data'
+import { sourceGroupOf } from '@/lib/sources/selection'
+import { sourceCost } from '@/lib/queue/capacity'
 import { EmptyState } from '@/components/empty-state'
 import { EmailAlertsPanel, emailAlertsSummary } from '@/components/email-alerts-panel'
 import { WatchListPanel, type WatchItem } from '@/components/watch-list-panel'
@@ -85,10 +89,13 @@ export default async function SourcesSettingsPage({
   const googleAlerts = googleAlertsPanelData(profile, sources)
 
   const polled = sources.filter((s) => s.kind !== 'watch')
-  const lastSeen = await lastSeenBySource(
-    userId,
-    polled.map((s) => s.id),
-  )
+  const [lastSeen, bulk] = await Promise.all([
+    lastSeenBySource(
+      userId,
+      polled.map((s) => s.id),
+    ),
+    loadBulkPageData(userId, polled, profile),
+  ])
   const employerRows = employerWatchRows(sources, lastSeen)
   // Employer links live in the employer watch list, not in "Check yourself".
   const employerSourceIds = new Set(employerRows.map((r) => r.sourceId).filter(Boolean))
@@ -96,22 +103,36 @@ export default async function SourcesSettingsPage({
     .filter((s) => s.kind === 'watch' && !employerSourceIds.has(s.id))
     .map((s) => {
       const c = (s.config ?? {}) as SourceConfig
-      return { id: s.id, name: s.name, url: String(c.url ?? ''), reason: typeof c.reason === 'string' ? c.reason : null }
+      return {
+        id: s.id,
+        name: s.name,
+        url: String(c.url ?? ''),
+        reason: typeof c.reason === 'string' ? c.reason : null,
+        // Weekly reminders default on (lib/defaults/watch-status.ts).
+        watching: c.watching !== false,
+      }
     })
     .filter((w) => /^https?:\/\//i.test(w.url))
 
-  const rows: SourceRowItem[] = polled.map((s) => ({
-    id: s.id,
-    name: s.name,
-    kind: s.kind,
-    enabled: s.enabled,
-    configSummary: configSummary(s.kind, (s.config ?? {}) as SourceConfig),
-    configValue: configValue((s.config ?? {}) as SourceConfig),
-    lastPolledAt: s.lastPolledAt ? s.lastPolledAt.toISOString() : null,
-    lastError: s.lastError,
-    errorCount: s.errorCount,
-    lastResult: lastResultLine(s.lastResult),
-  }))
+  const rows: BulkSourceRow[] = polled.map((s) => {
+    const facts = bulk.facts.get(s.id)
+    return {
+      id: s.id,
+      name: s.name,
+      kind: s.kind,
+      enabled: s.enabled,
+      configSummary: configSummary(s.kind, (s.config ?? {}) as SourceConfig),
+      configValue: configValue((s.config ?? {}) as SourceConfig),
+      lastPolledAt: s.lastPolledAt ? s.lastPolledAt.toISOString() : null,
+      lastError: s.lastError,
+      errorCount: s.errorCount,
+      lastResult: lastResultLine(s.lastResult),
+      group: facts?.group ?? sourceGroupOf(s.kind),
+      starred: facts?.starred ?? false,
+      blocker: facts?.blocker ?? null,
+      costMs: facts?.costMs ?? sourceCost(null),
+    }
+  })
 
   const alertSource = sources.find((s) => s.kind === 'email_alert')
   const alertSourceView = alertSource ? { enabled: alertSource.enabled, lastError: alertSource.lastError } : null
@@ -174,13 +195,7 @@ export default async function SourcesSettingsPage({
             <PopularStarters />
           </div>
         ) : (
-          <div className="space-y-2">
-            {rows.map((r) => (
-              // Keyed on `enabled` too so an edit that flips it remounts the
-              // row's optimistic toggle state from fresh props.
-              <SourceRow key={`${r.id}-${r.enabled}`} source={r} />
-            ))}
-          </div>
+          <SourceBulkList rows={rows} pollBudgetMs={bulk.pollBudgetMs} />
         )}
       </CollapsibleSection>
 

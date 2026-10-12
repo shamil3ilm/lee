@@ -117,6 +117,9 @@ export const jobKeys = {
   digest: (userId: string, day: string) => `digest:${userId}:${day}`,
   discoverySource: (userId: string, sourceId: string, day: string) =>
     `discovery-source:${userId}:${sourceId}:${day}`,
+  /** Settings › Sources › Check now: at most once per UTC hour (`2026-10-12T10`) per source. */
+  discoverySourceManual: (userId: string, sourceId: string, hour: string) =>
+    `discovery-source:${userId}:${sourceId}:now:${hour}`,
   discoveryEmail: (userId: string, day: string) => `discovery-email:${userId}:${day}`,
   /** One per preferences save (`stamp` = save time), so every change re-runs. */
   discoveryRelevance: (userId: string, stamp: string) => `discovery-relevance:${userId}:${stamp}`,
