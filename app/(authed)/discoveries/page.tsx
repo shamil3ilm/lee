@@ -13,7 +13,7 @@ import { getProfile } from '@/lib/profile/service'
 import type { UserProfile } from '@/lib/db/queries/profile'
 import { PageHeader } from '@/components/page-header'
 import { CoverageLine } from '@/components/coverage/coverage-line'
-import { starredCoverage } from '@/lib/coverage/service'
+import { filterCoverage } from '@/lib/coverage/service'
 import { toRowViews } from '@/lib/coverage/view'
 import { DiscoveryInbox } from '@/components/discovery-inbox'
 import { DiscoveryFilters } from '@/components/discovery-filters'
@@ -41,7 +41,11 @@ import { LazyDiscoveriesBoard } from '@/components/board/lazy'
 import { parseBoardView, viewHref, type BoardView } from '@/lib/board/view'
 import { lastCheck } from '@/lib/discovery/poll-stats'
 import { relativeFromNow } from '@/lib/ui/date'
-import { catchUp, loadBoard, loadJobs, parseDiscoveryParams, type JobsData } from './data'
+import { catchUp, loadBoard, loadElsewhere, loadJobs, parseDiscoveryParams, type DiscoveryParams, type JobsData } from './data'
+import { EmptyDiscovery } from '@/components/discovery/empty-discovery'
+import type { ElsewhereCounts } from '@/lib/ui/empty-why'
+import { selectionSummary } from '@/lib/regions/picker'
+import { serializeRegionParam } from '@/lib/regions/selection'
 import { loadScreens } from '@/lib/screening/load'
 import { screenIds, withBoardScreens, withScreens } from '@/lib/screening/attach'
 import { PasteImportDialog } from '@/components/discovery/paste-import-dialog'
@@ -150,14 +154,22 @@ export default async function DiscoveriesPage({
           />
         </Toolbar>
         <NoticeArea notices={notices} />
-        <LazyDiscoveriesBoard items={withBoardScreens(board.items, boardScreens)} totals={board.totals} />
+        {board.totals.new + board.totals.shortlisted + board.totals.saved === 0 ? (
+          // Every triage column empty: one empty state, not three "Drop a card here" columns.
+          <EmptyDiscovery {...emptyProps(p, sp, board.elsewhere)} />
+        ) : (
+          <LazyDiscoveriesBoard items={withBoardScreens(board.items, boardScreens)} totals={board.totals} />
+        )}
       </div>
     )
   }
 
   const sourceNameById = new Map(sources.map((s) => [s.id, s.name] as const))
-  const [jobs, coverage] = await Promise.all([loadJobs(userId, p, growthInFit), starredCoverage(userId)])
+  const [jobs, coverage] = await Promise.all([loadJobs(userId, p, growthInFit), filterCoverage(userId, p.region)])
   const total = jobs.total
+  // An empty New list says where that region's postings went instead.
+  const emptyNew = p.status === 'new' && total === 0 && !p.showFiltered
+  const elsewhere = emptyNew ? await loadElsewhere(userId, p) : null
   // Screening path (lib/screening): chip + "Why this score" block, computed on read.
   const screens = await loadScreens(userId, profile, screenIds(jobs.rows))
 
@@ -195,17 +207,21 @@ export default async function DiscoveriesPage({
         <CoverageLine rows={toRowViews(coverage)} />
       </div>
       {jobs.regionGroups ? <RegionGroups groups={jobs.regionGroups} searchParams={sp} selected={p.region} /> : null}
-      <DiscoveryInbox
-        kind="jobs"
-        items={withScreens(toJobRows(jobs, sourceNameById, growthInFit), screens)}
-        quarantineView={p.status === 'quarantined'}
-        filteredView={p.status === 'filtered'}
-        pager={<DiscoveryPager searchParams={sp} page={p.page} size={p.size} total={total} position="top" />}
-      />
+      {elsewhere ? (
+        <EmptyDiscovery {...emptyProps(p, sp, elsewhere)} />
+      ) : (
+        <DiscoveryInbox
+          kind="jobs"
+          items={withScreens(toJobRows(jobs, sourceNameById, growthInFit), screens)}
+          quarantineView={p.status === 'quarantined'}
+          filteredView={p.status === 'filtered'}
+          pager={<DiscoveryPager searchParams={sp} page={p.page} size={p.size} total={total} position="top" />}
+        />
+      )}
       {total > p.size ? (
         <DiscoveryPager searchParams={sp} page={p.page} size={p.size} total={total} position="bottom" />
       ) : null}
-      {p.status === 'new' && jobs.needsLookCount > 0 ? <NeedsALookLink count={jobs.needsLookCount} sp={sp} /> : null}
+      {!elsewhere && p.status === 'new' && jobs.needsLookCount > 0 ? <NeedsALookLink count={jobs.needsLookCount} sp={sp} /> : null}
     </div>
   )
 }
@@ -229,6 +245,18 @@ function NeedsALookLink({ count, sp }: { count: number; sp: Record<string, strin
       {' '}· non-tech titles with no tech evidence in the job description, kept out of New.
     </p>
   )
+}
+
+/** Props for the one empty state: the region named, its other statuses, and a clear-filter link. */
+function emptyProps(p: DiscoveryParams, sp: Record<string, string | undefined>, elsewhere: ElsewhereCounts) {
+  const rest = new URLSearchParams()
+  for (const [k, v] of Object.entries(sp)) if (v && k !== 'region' && k !== 'page') rest.set(k, v)
+  return {
+    regionLabel: p.region.length > 0 ? selectionSummary(p.region, '') : null,
+    region: serializeRegionParam([...p.region]),
+    elsewhere,
+    clearHref: p.region.length > 0 ? `/discoveries?${rest.toString()}` : null,
+  }
 }
 
 /** Discovery › Companies: local companies worth approaching, even without a posting. */

@@ -40,6 +40,28 @@ test('board: empty columns rail with their count, "In pipeline" names the saved 
   await expect(board.locator('[data-board-card]').getByTestId('reason-chip').first()).toBeVisible()
 })
 
+test('a region with nothing to triage: one empty state that says why, region shown once, coverage about it', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  // The seed's Saudi posting (Riyadh) is dismissed: nothing to triage there.
+  await page.goto('/discoveries?region=sa&view=board')
+  await expect(page.locator('[data-board="discoveries"]')).toHaveCount(0)
+  const empty = page.getByTestId('empty-discovery')
+  await expect(empty.getByRole('heading', { name: 'No jobs to triage in Saudi Arabia yet' })).toBeVisible()
+  await expect(empty.getByTestId('empty-discovery-why')).toContainText(/\d+ dismissed/)
+  await expect(empty.getByRole('link', { name: /dismissed/ })).toHaveAttribute('href', /status=dismissed.*region=sa/)
+  await expect(empty.getByTestId('run-sources-now')).toBeVisible()
+  await expect(empty.getByRole('link', { name: 'Coverage for Saudi Arabia' })).toBeVisible()
+  await expect(empty.getByRole('link', { name: 'Clear the region filter' })).not.toHaveAttribute('href', /region=/)
+  // The filter shows the selection once: no second "Saudi Arabia ×" chip.
+  await expect(page.getByTestId('region-filter')).toContainText('Saudi Arabia')
+  await expect(page.getByRole('button', { name: /^Remove / })).toHaveCount(0)
+
+  // The list says the same, and the coverage line is about the filtered region.
+  await page.goto('/discoveries?region=sa&view=list')
+  await expect(page.getByTestId('empty-discovery')).toBeVisible()
+  await expect(page.getByTestId('coverage-line')).toContainText('Saudi Arabia')
+})
+
 test('Settings › Labs shows or hides the side projects in the sidebar', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.goto('/settings/labs')

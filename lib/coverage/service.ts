@@ -8,7 +8,7 @@ import { normalizePreferred, type PreferredLevel } from '@/lib/regions/preferred
 import { regionCoverage, type CoverageSourceRow, type RegionCoverage } from './compute'
 import { playbooksForUser } from './for-user'
 import { suggestedBoardCounts } from '@/lib/company-discovery/boards'
-import { lineRegionIds, linePlaybook } from './line'
+import { lineRegionIds, linePlaybook, rollUp } from './line'
 import type { RegionPlaybook } from './playbook-types'
 
 /**
@@ -97,4 +97,17 @@ export async function starredCoverage(userId: string, now: Date = new Date()): P
   const ctx = await loadContext(userId)
   const regions = lineRegionIds(ctx.prefs.extra.preferredRegions ?? []).map((r) => ({ playbook: linePlaybook(r.id), starred: r.level }))
   return measure(userId, ctx, regions, now)
+}
+
+/**
+ * The line while a region filter is on: coverage for the filtered regions
+ * (rolled up like the starred ones), so "Kuwait" shows Kuwait's sources and
+ * jobs, not the starred list. Starred levels are kept where they match.
+ */
+export async function filterCoverage(userId: string, regionIds: readonly string[], now: Date = new Date()): Promise<UserCoverage[]> {
+  if (regionIds.length === 0) return starredCoverage(userId, now)
+  const ctx = await loadContext(userId)
+  const stars = new Map(lineRegionIds(ctx.prefs.extra.preferredRegions ?? [], 8).map((r) => [r.id, r.level] as const))
+  const ids = [...new Set(regionIds.map(rollUp))].slice(0, 3)
+  return measure(userId, ctx, ids.map((id) => ({ playbook: linePlaybook(id), starred: stars.get(id) ?? null })), now)
 }

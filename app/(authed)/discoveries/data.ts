@@ -21,6 +21,7 @@ import { parseRegionParam } from '@/lib/regions/selection'
 import { regionGroups, type RegionGroup } from '@/lib/regions/display'
 import { LINKEDIN_POST_KIND } from '@/lib/linkedin-posts/types'
 import { isNeedsLook } from '@/lib/ui/needs-look'
+import type { ElsewhereCounts } from '@/lib/ui/empty-why'
 
 /** Parsed, validated Discovery query string. */
 export interface DiscoveryParams {
@@ -183,6 +184,8 @@ export async function loadBoard(
 ): Promise<{
   items: Record<DiscoveryBoardColumn, DiscoveryBoardItem[]>
   totals: Record<DiscoveryBoardColumn, number>
+  /** Where the filtered view's other postings are, for the empty state. */
+  elsewhere: ElsewhereCounts
 }> {
   const columns: DiscoveryBoardColumn[] = ['new', 'shortlisted', 'saved', 'dismissed']
   const filters = sharedFilters(p)
@@ -230,6 +233,23 @@ export async function loadBoard(
       ),
     ]),
   ) as Record<DiscoveryBoardColumn, DiscoveryBoardItem[]>
-  const { new: n, shortlisted, saved, dismissed } = totals
-  return { items, totals: { new: Math.max(0, n - needsLook), shortlisted, saved, dismissed } }
+  const { new: n, shortlisted, saved, dismissed, filtered } = totals
+  return {
+    items,
+    totals: { new: Math.max(0, n - needsLook), shortlisted, saved, dismissed },
+    elsewhere: { filtered, needsLook, shortlisted, saved, dismissed },
+  }
+}
+
+/**
+ * The other statuses under the same filters (region, source, score), for an
+ * empty New list: "3 filtered · 1 needs a look in Kuwait".
+ */
+export async function loadElsewhere(userId: string, p: DiscoveryParams): Promise<ElsewhereCounts> {
+  const filters = sharedFilters(p)
+  const [byStatus, needsLook] = await Promise.all([
+    discoveriesQ.countByStatus(userId, undefined, filters),
+    discoveriesQ.countList(userId, { ...filters, status: 'new', needsLook: 'only', quarantine: 'exclude' }),
+  ])
+  return { filtered: byStatus.filtered, needsLook, shortlisted: byStatus.shortlisted, saved: byStatus.saved, dismissed: byStatus.dismissed }
 }

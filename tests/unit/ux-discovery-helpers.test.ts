@@ -3,6 +3,20 @@ import { reasonChip, screeningRepeats } from '@/lib/ui/reason-chip'
 import { discoveryCountParts } from '@/lib/ui/discovery-counts'
 import { isNeedsLook } from '@/lib/ui/needs-look'
 import { labsDefault, labsOn } from '@/lib/settings/labs-rule'
+import { elsewhereParts } from '@/lib/ui/empty-why'
+
+describe('why a Discovery view is empty', () => {
+  it('names the other statuses for the region, most telling first, each linked with the region kept', () => {
+    const parts = elsewhereParts({ filtered: 3, needsLook: 1, shortlisted: 0, saved: 0, dismissed: 2 }, 'kw')
+    expect(parts.map((p) => p.text)).toEqual(['3 filtered', '1 needs a look', '2 dismissed'])
+    expect(parts[0]!.href).toBe('/discoveries?tab=jobs&status=filtered&view=list&region=kw')
+    expect(parts[1]!.href).toBe('/discoveries?tab=jobs&status=review&view=list&region=kw')
+  })
+
+  it('is empty when nothing arrived at all (nothing found, nothing filtered)', () => {
+    expect(elsewhereParts({ filtered: 0, needsLook: 0, shortlisted: 0, saved: 0, dismissed: 0 }, '')).toEqual([])
+  })
+})
 
 describe('reason chip (board cards and list rows)', () => {
   it('prefers the filter reason, then Needs a look, then the Fit ceiling, then the first penalty, then an info', () => {
