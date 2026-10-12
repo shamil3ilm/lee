@@ -42,6 +42,8 @@ import { JdPaste } from '@/components/discovery/jd-paste'
 import { Checkbox } from '@/components/ui/checkbox'
 import { PostedBy, PostReplyDialog, PostSourceChip, PostTrackButton } from '@/components/discovery/post-actions'
 import type { PostRowView } from '@/lib/linkedin-posts/types'
+import { ScreeningChip } from '@/components/screening/screening-chip'
+import type { ScreeningPath } from '@/lib/screening/types'
 
 /**
  * Only the fields a job row renders — the page never ships the full
@@ -98,6 +100,8 @@ export interface DiscoveryRowJob {
   notes?: { penalties?: string[]; boosts?: string[]; infos?: string[] } | null
   /** A LinkedIn hiring post: the poster and how to respond. */
   post?: PostRowView | null
+  /** Screening path (lib/screening, compact), computed on read. */
+  screen?: ScreeningPath | null
 }
 
 export interface DiscoveryRowCompany {
@@ -275,6 +279,7 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
                 filtered={isFiltered}
                 benefits={item.benefitsScore}
                 growth={item.growth ?? null}
+                screen={item.screen ?? null}
                 extra={
                   <>
                     {item.bestCv ? (
@@ -286,6 +291,8 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
                   </>
                 }
               />
+              {/* Screening path chip mount (components/screening): first stage that isn't a pass. */}
+              <ScreeningChip path={item.screen} />
               {/* Scam Shield speaks up only when it has something to say. */}
               {item.risk && item.risk.level !== 'safe' ? <RiskBadge risk={item.risk} /> : null}
               {item.post ? <PostSourceChip /> : <Badge variant="neutral">{item.sourceName}</Badge>}

@@ -37,6 +37,8 @@ import { parseBoardView, viewHref, type BoardView } from '@/lib/board/view'
 import { lastCheck } from '@/lib/discovery/poll-stats'
 import { relativeFromNow } from '@/lib/ui/date'
 import { catchUp, loadBoard, loadJobs, parseDiscoveryParams, type JobsData } from './data'
+import { loadScreens } from '@/lib/screening/load'
+import { screenIds, withBoardScreens, withScreens } from '@/lib/screening/attach'
 import { AiModeDialog } from '@/components/discovery/ai-mode-dialog'
 import { PasteImportDialog } from '@/components/discovery/paste-import-dialog'
 import { loadAiModePrompts, type AiModePromptSet } from '@/lib/discovery/ai-mode/load'
@@ -120,6 +122,8 @@ export default async function DiscoveriesPage({
 
   if (p.tab === 'jobs' && view === 'board') {
     const board = await loadBoard(userId, p, growthInFit)
+    // Screening path (lib/screening): chips on in-play cards, computed on read.
+    const boardScreens = await loadScreens(userId, profile, screenIds(Object.values(board.items).flat()))
     return (
       <div className="space-y-4">
         <PageHeader
@@ -150,7 +154,7 @@ export default async function DiscoveriesPage({
           scoredOnly={p.scoredOnly}
           hiringPosts={p.hiringPosts}
         />
-        <LazyDiscoveriesBoard items={board.items} totals={board.totals} />
+        <LazyDiscoveriesBoard items={withBoardScreens(board.items, boardScreens)} totals={board.totals} />
       </div>
     )
   }
@@ -179,6 +183,8 @@ export default async function DiscoveriesPage({
   const sourceNameById = new Map(sources.map((s) => [s.id, s.name] as const))
   const jobs = await loadJobs(userId, p, growthInFit)
   const total = jobs.total
+  // Screening path (lib/screening): chip + "Why this score" block, computed on read.
+  const screens = await loadScreens(userId, profile, screenIds(jobs.rows))
 
   return (
     <div className="space-y-4">
@@ -219,7 +225,7 @@ export default async function DiscoveriesPage({
       {jobs.regionGroups ? <RegionGroups groups={jobs.regionGroups} searchParams={sp} selected={p.region} /> : null}
       <DiscoveryInbox
         kind="jobs"
-        items={toJobRows(jobs, sourceNameById, growthInFit)}
+        items={withScreens(toJobRows(jobs, sourceNameById, growthInFit), screens)}
         quarantineView={p.status === 'quarantined'}
         filteredView={p.status === 'filtered'}
         pager={<DiscoveryPager searchParams={sp} page={p.page} size={p.size} total={total} position="top" />}

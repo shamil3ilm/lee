@@ -2,6 +2,8 @@ import { BAND_LABELS, ceilingText, FIT_FORMULA, scoreBand, shownFit } from '@/li
 import { growthFitNudge } from '@/lib/company-discovery/growth/combine'
 import type { MatchComponent, MatchDetail, RequirementCheck } from '@/lib/discovery/match/types'
 import { cn } from '@/lib/utils'
+import { ScreeningPathBlock } from '@/components/screening/screening-path'
+import type { ScreeningPath } from '@/lib/screening/types'
 
 /**
  * "Why this score": the content behind every Fit badge. Fit is the one
@@ -20,6 +22,8 @@ export interface MatchWhyProps {
   extra?: React.ReactNode
   /** The employer's growth score (Discovery › Companies); `inFit` = the user factors it into Fit. */
   growth?: CompanyGrowthView | null
+  /** Screening path (lib/screening), computed on read; explain-only. */
+  screen?: ScreeningPath | null
 }
 
 export interface CompanyGrowthView {
@@ -127,7 +131,7 @@ function Breakdown({ match, ai, benefits, filtered }: Pick<MatchWhyProps, 'match
   )
 }
 
-export function MatchWhy({ match, ai, detail, filtered, benefits, extra, growth }: MatchWhyProps) {
+export function MatchWhy({ match, ai, detail, filtered, benefits, extra, growth, screen }: MatchWhyProps) {
   const fit = shownFit(match, ai, detail, growthNudgeOf(growth))
   // The title-only cap is explained by the low-confidence note; any other cap gets its own line.
   const lowConfidenceCap = detail?.confidence === 'title_only' && (!detail.ceiling || detail.ceiling.reason.startsWith('Low confidence'))
@@ -151,6 +155,8 @@ export function MatchWhy({ match, ai, detail, filtered, benefits, extra, growth 
         ) : null}
       </div>
       <Breakdown match={match} ai={ai} benefits={benefits} filtered={filtered} />
+      {/* Screening path mount (components/screening) — above the component list. */}
+      <ScreeningPathBlock path={screen} />
       {growth ? <GrowthLine g={growth} /> : null}
       {detail && detail.components.length > 0 ? (
         <div>

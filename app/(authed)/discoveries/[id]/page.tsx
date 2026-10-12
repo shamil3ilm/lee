@@ -21,6 +21,9 @@ import { ensureBestCv } from '@/lib/cv-fit/service'
 import { toBestCv, type BestCv } from '@/lib/cv-fit/types'
 import { BestCvLine } from '@/components/cv-fit/best-cv-line'
 import { ReferralHint } from '@/components/linkedin/referral-hint'
+import { getProfile } from '@/lib/profile/service'
+import { loadScreens } from '@/lib/screening/load'
+import { ScreeningPathBlock } from '@/components/screening/screening-path'
 
 /** The comparison card runs ~3k px on phones: jump past it to the description. */
 const SECTIONS: readonly SectionLink[] = [
@@ -54,6 +57,8 @@ export default async function DiscoveryDetail({ params }: { params: Promise<{ id
       })
     : new Map<string, BestCv | null>()
   const bestCv = fresh.has(row.id) ? (fresh.get(row.id) ?? null) : toBestCv(row.bestCv)
+  // Screening path (lib/screening): full path with the referral lookup, computed on read.
+  const screen = inPlay ? ((await loadScreens(userId, await getProfile(userId), [row.id], { full: true, referral: true })).get(row.id) ?? null) : null
   const title = repairMojibake(job.title ?? 'Untitled')
   const company = job.companyName ? repairMojibake(job.companyName) : null
 
@@ -81,6 +86,7 @@ export default async function DiscoveryDetail({ params }: { params: Promise<{ id
             detail={toMatchDetail(row.fitDetail)}
             benefits={row.benefitsScore ?? null}
             filtered={row.status === 'filtered'}
+            screen={screen}
           />
           {job.applyUrl ? (
             <a
@@ -101,6 +107,14 @@ export default async function DiscoveryDetail({ params }: { params: Promise<{ id
           ) : null}
         </CardContent>
       </Card>
+      {/* Screening path mount (components/screening). */}
+      {screen ? (
+        <Card>
+          <CardContent className="py-3">
+            <ScreeningPathBlock path={screen} className="border-0 px-0 py-0" />
+          </CardContent>
+        </Card>
+      ) : null}
       <ReferralHint userId={userId} company={company} role={title} myName={null} />
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
         <div id="comparison" className={`${SECTION_ANCHOR} min-w-0 xl:col-span-3`}>

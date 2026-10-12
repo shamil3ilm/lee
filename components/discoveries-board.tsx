@@ -12,6 +12,8 @@ import type { CompanyGrowthView } from '@/components/discovery/match-why'
 import type { MatchDetail } from '@/lib/discovery/match/types'
 import type { BestCv } from '@/lib/cv-fit/types'
 import { BestCvLine } from '@/components/cv-fit/best-cv-line'
+import { ScreeningChip } from '@/components/screening/screening-chip'
+import type { ScreeningPath } from '@/lib/screening/types'
 
 export type DiscoveryBoardColumn = 'new' | 'shortlisted' | 'saved' | 'dismissed'
 
@@ -34,6 +36,8 @@ export interface DiscoveryBoardItem {
   savedApplicationId: string | null
   /** The employer's growth (Discovery › Companies), shown in "Why this score". */
   growth?: CompanyGrowthView | null
+  /** Screening path (lib/screening, compact), computed on read. */
+  screen?: ScreeningPath | null
 }
 
 export const DISCOVERY_BOARD_COLUMNS: readonly BoardColumnDef<DiscoveryBoardColumn>[] = [
@@ -76,11 +80,14 @@ function renderCard(d: DiscoveryBoardItem): React.ReactNode {
           ai={d.matchScore}
           detail={d.fitDetail}
           growth={d.growth ?? null}
+          screen={d.screen ?? null}
           interactive={!d.savedApplicationId}
           className="shrink-0"
           extra={d.bestCv ? <BestCvLine className="border-t pt-2" bestCv={d.bestCv} target={{ kind: 'discovery', id: d.id }} /> : undefined}
         />
       </div>
+      {/* Screening path chip mount (components/screening): first stage that isn't a pass. */}
+      {d.screen ? <ScreeningChip path={d.screen} className="mt-1.5" /> : null}
       {d.location || workModeLabel(d.remoteType) ? (
         <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
           {d.location ? (
