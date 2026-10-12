@@ -3,6 +3,8 @@ import { detectNationalsOnly } from '@/lib/discovery/relevance/signals'
 import { assessPay, parsePostedPay } from '@/lib/discovery/relevance/pay'
 import { WATCH_EMPLOYERS } from '@/lib/defaults/watch-employers'
 import { DEFAULT_SOURCES, DEFAULTS_VERSION } from '@/lib/defaults/catalog'
+import { getAdapter } from '@/lib/discovery/adapters'
+import { SEED_COMPANIES } from '@/lib/company-discovery/seed'
 
 describe('Kuwait: nationals-only phrases', () => {
   it.each([
@@ -54,7 +56,7 @@ describe('Kuwait: employer watch list', () => {
     expect(kw).toEqual(
       expect.arrayContaining(['koc', 'knpc', 'zain', 'nbk', 'kfh', 'boubyan', 'agility', 'alshaya', 'talabat', 'ooredoo-kuwait', 'stc-kuwait', 'tap-payments', 'alghanim', 'kuwait-airways']),
     )
-    expect(DEFAULTS_VERSION).toBe(6)
+    expect(DEFAULTS_VERSION).toBeGreaterThanOrEqual(6)
     const v6 = DEFAULT_SOURCES.filter((s) => s.since === 6)
     expect(v6.map((s) => s.key)).toEqual(expect.arrayContaining(['oracle_orc:gulfbank', 'oracle_orc:kfh', 'rss:boubyan', 'rss:tap-payments', 'workable:agility', 'watch:alghanim']))
     for (const s of v6.filter((x) => x.regions?.includes('kw') && x.kind !== 'watch')) {
@@ -67,5 +69,40 @@ describe('Kuwait: employer watch list', () => {
     }
     // talabat was already a v2 watch link: not duplicated.
     expect(DEFAULT_SOURCES.filter((s) => s.key === 'watch:talabat')).toHaveLength(1)
+  })
+})
+
+describe('Kuwait and UAE education and healthcare employers (defaults v7)', () => {
+  it('ships the verified boards (Kuwait on, UAE off) and the job-news presets, each with an adapter', () => {
+    expect(DEFAULTS_VERSION).toBe(7)
+    // Watch links (check yourself) for employers with no readable board come from the watch list.
+    expect(DEFAULT_SOURCES.filter((s) => s.since === 7 && s.kind === 'watch').map((s) => s.key)).toEqual(
+      expect.arrayContaining(['watch:auk', 'watch:australian-university', 'watch:dar-al-shifa']),
+    )
+    const v7 = DEFAULT_SOURCES.filter((s) => s.since === 7 && s.kind !== 'watch')
+    expect(v7.map((s) => [s.key, s.enabled])).toEqual([
+      ['bamboohr:aiu', true],
+      ['bamboohr:absedu', true],
+      ['rss:taiba-hospital', true],
+      ['oracle_orc:nmc', false],
+      ['oracle_orc:aster', false],
+      ['oracle_orc:zayed-university', false],
+      ['oracle_orc:cud', false],
+      ['wp_job_news:pravasinewsdaily', true],
+      ['wp_job_news:pravasivarthakal', false],
+    ])
+    for (const s of v7) {
+      expect(getAdapter(s.kind), s.key).not.toBeNull()
+      expect(s.checkedOn).toBe('2026-10-12')
+    }
+    expect(WATCH_EMPLOYERS.find((e) => e.key === 'aiu-kuwait')).toMatchObject({ sourceKey: 'bamboohr:aiu', methods: ['adapter'] })
+  })
+
+  it('seeds AIU and the other campuses and hospitals with checkedOn and a note', () => {
+    const names = SEED_COMPANIES.filter((s) => s.checkedOn === '2026-10-12').map((s) => s.name)
+    expect(names).toEqual(
+      expect.arrayContaining(['American International University', 'American University of Kuwait', 'Gulf University for Science and Technology', 'Australian University', 'Taiba Hospital', 'Dar Al Shifa Hospital', 'Al Seef Hospital', 'NMC Healthcare', 'Zayed University']),
+    )
+    expect(SEED_COMPANIES.find((s) => s.name === 'American International University')).toMatchObject({ website: 'https://www.aiu.edu.kw', regionIds: ['jahra'] })
   })
 })

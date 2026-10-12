@@ -93,6 +93,7 @@ there.
 | Workable | `GET www.workable.com/api/accounts/{slug}` (widget; v3 fallback) | `workable` |
 | Recruitee | `GET {slug}.recruitee.com/api/offers/` | `recruitee` |
 | Pinpoint | `GET {slug}.pinpointhq.com/postings.json` | `pinpoint` |
+| BambooHR | `GET {slug}.bamboohr.com/careers/list`, then `/careers/{id}/detail` per new opening (`Accept: application/json`; robots.txt disallows only `/jobs/embed.php` and `/jobs/embed2.php`) | `bamboohr` |
 | Workday | `POST {tenant}.wd{N}.myworkdayjobs.com/wday/cxs/{tenant}/{site}/jobs` (country facet; robots allow the site paths) | `workday` |
 | Oracle Recruiting Cloud | `GET {host}/hcmRestApi/resources/latest/recruitingCEJobRequisitions` (no robots.txt on the hosts) | `oracle_orc` |
 | SAP SuccessFactors | `GET {host}/sitemal.xml` (robots disallow `/services/` RSS, not this feed) | `successfactors` |
@@ -539,10 +540,10 @@ is in the next table.
 <!-- coverage-matrix:start -->
 | Region | Status | Employer boards (on / off) | Broad & park sources | Alert links | Watched by hand | Browse boards | Company directories (auto) | Map / register areas | Seed companies | Browse directories | Fixture postings kept |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Kuwait | green | 6 / 0 | himalayas | 5 | 12 | 4 | Flat6Labs | 6 | 32 | 5 | 35 / 35 |
-| UAE | green | 9 / 15 | himalayas, jobicy | 5 | 14 | 3 | Flat6Labs | 6 | 19 | 10 | 21 / 21 |
+| Kuwait | green | 10 / 1 | himalayas | 5 | 17 | 4 | Flat6Labs | 6 | 45 | 5 | 35 / 35 |
+| UAE | green | 10 / 20 | himalayas, jobicy | 5 | 14 | 3 | Flat6Labs | 6 | 23 | 10 | 21 / 21 |
 | Saudi Arabia | green | 6 / 9 | himalayas | 5 | 5 | 1 | Flat6Labs | 7 | 17 | 4 | 16 / 16 |
-| Qatar | amber | 1 / 0 | himalayas | 5 | 4 | 1 | QSTP, Flat6Labs | 2 | 5 | 3 | 8 / 8 |
+| Qatar | amber | 2 / 0 | himalayas | 5 | 4 | 1 | QSTP, Flat6Labs | 2 | 5 | 3 | 8 / 8 |
 | Bahrain | amber | 2 / 0 | himalayas | 5 | 1 | 1 | StartUp Bahrain, Flat6Labs | 2 | 0 | 3 | 8 / 8 |
 | Oman | amber | 1 / 0 | himalayas | 5 | 2 | 1 | Flat6Labs | 2 | 0 | 2 | 10 / 10 |
 | Kochi | amber | 2 / 0 | himalayas, adzuna, infopark, ksum | 3 | 0 | 0 | Technopark, Infopark, Kerala Cyberpark, UL Cyberpark, NASSCOM members | 3 | 14 | 6 | 9 / 9 |

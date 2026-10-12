@@ -8,6 +8,7 @@ import type { SeedCompany } from './types'
 
 const S = 'seed' as const
 const D = '2026-10-09'
+const D12 = '2026-10-12'
 
 export const UAE_SEED: readonly SeedCompany[] = [
   { name: 'Careem', website: 'https://www.careem.com', regionIds: ['dubai'], industries: ['software', 'payments'], source: S, checkedOn: D },
@@ -28,6 +29,11 @@ export const UAE_SEED: readonly SeedCompany[] = [
   { name: 'Alaan', website: 'https://www.alaan.com', regionIds: ['dubai'], industries: ['fintech', 'payments'], source: S, checkedOn: D },
   { name: 'Network International', website: 'https://www.network.ae', regionIds: ['dubai'], industries: ['payments'], source: S, checkedOn: D },
   { name: 'G42', website: 'https://www.g42.ai', regionIds: ['abu-dhabi'], industries: ['data', 'it_services'], source: S, checkedOn: D },
+  // Universities and hospital groups with verified boards (2026-10-12, lib/defaults/catalog-v7.ts).
+  { name: 'NMC Healthcare', website: 'https://nmc.ae', regionIds: ['abu-dhabi', 'dubai'], industries: [], aliases: ['NMC'], note: 'Oracle Recruiting board (146 jobs).', source: S, checkedOn: D12 },
+  { name: 'Aster DM Healthcare', website: 'https://www.asterdmhealthcare.com', regionIds: ['dubai'], industries: [], aliases: ['Aster'], note: 'Oracle Recruiting board (640 jobs, 223 in the UAE).', source: S, checkedOn: D12 },
+  { name: 'Zayed University', website: 'https://www.zu.ac.ae', regionIds: ['dubai', 'abu-dhabi'], industries: [], aliases: ['ZU'], note: 'Oracle Recruiting board (14 jobs).', source: S, checkedOn: D12 },
+  { name: 'Canadian University Dubai', website: 'https://www.cud.ac.ae', regionIds: ['dubai'], industries: [], aliases: ['CUD'], note: 'Oracle Recruiting board (6 faculty jobs).', source: S, checkedOn: D12 },
 ]
 
 export const KUWAIT_SEED: readonly SeedCompany[] = [
@@ -62,8 +68,24 @@ export const KUWAIT_SEED: readonly SeedCompany[] = [
   { name: 'Jazeera Airways', website: 'https://www.jazeeraairways.com', regionIds: ['farwaniya'], industries: [], note: 'The site refuses automated clients (403); checked by name and domain only.', source: S, checkedOn: D },
   { name: 'Ooredoo Kuwait', website: 'https://www.ooredoo.com.kw', regionIds: ['kw'], industries: ['telecom'], aliases: ['Wataniya Telecom', 'National Mobile Telecommunications Company'], source: S, checkedOn: D },
   { name: 'stc Kuwait', website: 'https://www.stc.com.kw', regionIds: ['kw'], industries: ['telecom'], aliases: ['Kuwait Telecommunications Company', 'VIVA'], note: 'The site refuses automated clients (403); checked by name and domain only.', source: S, checkedOn: D },
-  { name: 'Dar Al Shifa Hospital', website: 'https://www.daralshifa.com', regionIds: ['hawalli'], industries: [], source: S, checkedOn: D },
-  { name: 'Al Seef Hospital', website: 'https://www.alseefhospital.com', regionIds: ['salmiya'], industries: [], note: 'The home page answers but carries no descriptive title.', source: S, checkedOn: D },
+  { name: 'Dar Al Shifa Hospital', website: 'https://www.daralshifa.com', regionIds: ['hawalli'], industries: [], note: 'Careers on SAP SuccessFactors (career2.successfactors.eu); no job feed found.', source: S, checkedOn: D12 },
+  { name: 'Al Seef Hospital', website: 'https://www.alseef-hospital.com', regionIds: ['salmiya'], industries: [], note: 'alseefhospital.com (no hyphen) is a parked domain; the hospital is alseef-hospital.com (careers: a CV form, no board).', source: S, checkedOn: D12 },
+  // Education and healthcare employers with IT, web and data staff, checked
+  // live on 2026-10-12 (boards in lib/defaults/catalog-v7.ts; what each
+  // careers site runs is in the note when lee can't read it).
+  { name: 'American International University', website: 'https://www.aiu.edu.kw', regionIds: ['jahra'], industries: [], aliases: ['AIU', 'AIU Kuwait'], note: 'BambooHR board aiu (41 jobs); campus in Saad Al Abdullah, Jahra.', source: S, checkedOn: D12 },
+  { name: 'American University of Kuwait', website: 'https://www.auk.edu.kw', regionIds: ['salmiya'], industries: [], aliases: ['AUK'], note: 'Careers on a Bayt white-label site; robots.txt disallows its job pages.', source: S, checkedOn: D12 },
+  { name: 'Gulf University for Science and Technology', website: 'https://www.gust.edu.kw', regionIds: ['hawalli'], industries: [], aliases: ['GUST'], note: 'The site refuses automated clients (Cloudflare, 403 on robots.txt); checked by name and domain only.', source: S, checkedOn: D12 },
+  { name: 'Australian University', website: 'https://www.au.edu.kw', regionIds: ['hawalli'], industries: [], aliases: ['Australian College of Kuwait', 'ACK'], note: 'Formerly the Australian College of Kuwait (West Mishref); careers on a MenaITech portal.', source: S, checkedOn: D12 },
+  { name: 'American University of the Middle East', website: 'https://www.aum.edu.kw', regionIds: ['ahmadi'], industries: [], aliases: ['AUM'], note: 'robots.txt disallows all robots (User-agent: * Disallow: /); not read.', source: S, checkedOn: D12 },
+  { name: 'Box Hill College Kuwait', website: 'https://bhck.edu.kw', regionIds: ['ahmadi'], industries: [], aliases: ['BHCK'], note: 'HR page only, no listings.', source: S, checkedOn: D12 },
+  { name: 'Kuwait College of Science and Technology', website: 'https://www.kcst.edu.kw', regionIds: ['kw'], industries: [], aliases: ['KCST'], note: 'Custom employment page.', source: S, checkedOn: D12 },
+  { name: 'Arab Open University Kuwait', website: 'https://www.aou.edu.kw', regionIds: ['farwaniya'], industries: [], aliases: ['AOU Kuwait'], note: 'Careers as news posts (Ardiya).', source: S, checkedOn: D12 },
+  { name: 'American School of Kuwait', website: 'https://www.ask.edu.kw', regionIds: ['hawalli'], industries: [], aliases: ['ASK'], note: 'robots.txt disallows all robots; not read.', source: S, checkedOn: D12 },
+  { name: 'American Baccalaureate School', website: 'https://www.abs.edu.kw', regionIds: ['farwaniya'], industries: [], aliases: ['ABS Kuwait'], note: 'BambooHR board absedu (3 jobs, Khaitan).', source: S, checkedOn: D12 },
+  { name: 'New Mowasat Hospital', website: 'https://www.newmowasat.com', regionIds: ['salmiya'], industries: [], note: 'Custom job listing.', source: S, checkedOn: D12 },
+  { name: 'Royale Hayat Hospital', website: 'https://www.royalehayat.com', regionIds: ['hawalli'], industries: [], note: 'Job application form inside a single-page app; no board.', source: S, checkedOn: D12 },
+  { name: 'Taiba Hospital', website: 'https://www.taibahospital.com', regionIds: ['mubarak-al-kabeer'], industries: [], note: 'Teamtailor on careers.taibahospital.com (19 jobs, Sabah Al Salem).', source: S, checkedOn: D12 },
   { name: 'EQUATE Petrochemical', website: 'https://www.equate.com', regionIds: ['ahmadi'], industries: [], aliases: ['EQUATE'], source: S, checkedOn: D },
 ]
 

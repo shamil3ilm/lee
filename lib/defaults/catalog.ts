@@ -1,5 +1,6 @@
 import { DEFAULT_SOURCES_V3 } from './catalog-v3'
 import { DEFAULT_SOURCES_V6 } from './catalog-v6'
+import { DEFAULT_SOURCES_V7 } from './catalog-v7'
 
 /**
  * Starter data every account gets, applied once per DEFAULTS_VERSION (see
@@ -50,7 +51,8 @@ export interface DefaultSource {
 /** Bump when adding defaults; users below it get only the newer ones. */
 // 5 — Kuwait employers on the watch list (2026-10-09).
 // 6 — Kuwait and UAE employer boards from the coverage audit (2026-10-09).
-export const DEFAULTS_VERSION = 6
+// 7 — Kuwait / UAE education and healthcare boards, job-news roundups (2026-10-12).
+export const DEFAULTS_VERSION = 7
 
 export interface DefaultWatchTerm {
   term: string
@@ -417,6 +419,7 @@ export const DEFAULT_SOURCES: readonly DefaultSource[] = [
   // ── v3 (2026-10-08): GCC employer watch list (lib/defaults/catalog-v3.ts) ──
   ...DEFAULT_SOURCES_V3,
   ...DEFAULT_SOURCES_V6,
+  ...DEFAULT_SOURCES_V7,
 ]
 
 /**
