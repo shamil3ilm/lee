@@ -69,6 +69,21 @@ describe('benefits at ingest', () => {
   })
 })
 
+describe('benefits on every adapter kind', () => {
+  it.each(['bamboohr', 'wp_job_news', 'greenhouse'])('%s rows get benefits at ingest', async (kind) => {
+    const u = await makeUser()
+    await makeSource(u.id, { name: kind, kind, config: { company: 'aiu' } })
+    const fake: DiscoveryAdapter = { kind, fetch: async () => [item(1, JD)] }
+    vi.spyOn(adapters, 'getAdapter').mockImplementation((k: string) => (k === kind ? fake : null))
+    aiHolder.current = new FixtureAIProvider({}) as unknown as AIProvider
+    await scheduleDailyJobs(new Date())
+    await drain({ budgetMs: 60_000, concurrency: 1 })
+    const [row] = await db.select().from(discoveries).where(eq(discoveries.userId, u.id))
+    expect(row?.benefitsScore).toBeGreaterThan(0)
+    expect(row?.benefitsKey).toMatch(/^b1:/)
+  })
+})
+
 describe('benefits backfill', () => {
   it('re-extracts rows stored under another key, only once', async () => {
     const u = await makeUser()

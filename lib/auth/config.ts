@@ -14,6 +14,7 @@ import { ensureDefaults } from '@/lib/defaults/ensure'
 import { runAfterResponse } from '@/lib/server/after-response'
 import { encryptAccountTokenPatch, withEncryptedAccountTokens } from './account-tokens'
 import { acceptInvite, signInDecision } from '@/lib/tenancy/invites'
+import { mergeScopes } from '@/lib/google/scope-names'
 import { isSessionActive, loadUserAccess } from '@/lib/tenancy/access'
 
 // v17 §9.1 — local-only E2E test sign-in. The literal NODE_ENV check is
@@ -126,7 +127,19 @@ export const authConfig = {
       if (account.refresh_token !== undefined) patch.refresh_token = account.refresh_token
       if (account.expires_at !== undefined) patch.expires_at = account.expires_at
       if (account.token_type !== undefined) patch.token_type = account.token_type
-      if (account.scope !== undefined) patch.scope = account.scope
+      if (account.scope !== undefined) {
+        // Sign-in now asks only for the base scopes. With include_granted_scopes
+        // the new token still covers earlier grants (the owner's Gmail and
+        // Calendar), so never let a narrower sign-in shrink the stored scope.
+        // A revoked grant surfaces as GoogleGrantRevokedError on use instead.
+        const [stored] = await db
+          .select({ scope: accounts.scope })
+          .from(accounts)
+          .where(and(eq(accounts.userId, user.id), eq(accounts.provider, 'google')))
+          .limit(1)
+          .catch(() => [])
+        patch.scope = mergeScopes(stored?.scope, account.scope)
+      }
       if (account.id_token !== undefined) patch.id_token = account.id_token
       if (typeof account.session_state === 'string') {
         patch.session_state = account.session_state

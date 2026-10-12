@@ -13,13 +13,16 @@ import {
   DEFAULT_JOB_COST_MS,
   TIER_PRIORITY_OFFSET,
   TIER_WEIGHT,
-  dailyPlanPoolMs,
+  dailyWorkPoolMs,
+  pickWeeklyUsers,
+  weeklyChainCostMs,
+  weeklyReserveMs,
   pickSources,
   planCapacity,
   type ActivityTier,
   type PlanUser,
 } from './capacity'
-import { loadPlanAccounts, type PlanAccount } from './plan-data'
+import { loadPlanAccounts, loadWeeklyFacts, type PlanAccount } from './plan-data'
 
 export interface ScheduleResult {
   day: string
@@ -34,6 +37,8 @@ export interface ScheduleResult {
   /** Source polls planned today / pollable sources of the planned accounts. */
   polls: number
   pollableSources: number
+  /** Users whose weekly company chain (discovery → boards → growth) is planned today. */
+  weeklyCompanyRuns: number
 }
 
 export interface PlanOptions {
@@ -159,7 +164,7 @@ export async function scheduleUserToday(
   if (!me) return { day, enqueued: 0 }
   const radar = (await radarSourcesByUser(userId)).get(userId) ?? []
   const weights = accounts.reduce((s, a) => s + TIER_WEIGHT[a.tier], 0)
-  const share = (dailyPlanPoolMs() * TIER_WEIGHT.active) / Math.max(TIER_WEIGHT.active, weights)
+  const share = (dailyWorkPoolMs() * TIER_WEIGHT.active) / Math.max(TIER_WEIGHT.active, weights)
   const { ids } = pickSources(me.sources, share, now)
   const { created } = await enqueueMany(planUserJobs(userId, ids, day, now, radar, { gmail: me.gmail, tier: 'active' }))
   return { day, enqueued: created }
@@ -207,16 +212,25 @@ export async function scheduleDailyJobs(now: Date = new Date()): Promise<Schedul
   }
   if (added > 0) accounts = await loadPlanAccounts(now)
   const live = accounts.filter((a) => a.tier !== 'dormant')
-  const [radar, withPrefs, portfolioUsers] = await Promise.all([
+  const [radar, withPrefs, portfolioUsers, weekly] = await Promise.all([
     radarSourcesByUser(),
     // Company discovery needs target regions: users who saved Settings › Search.
     db.select({ id: userProfile.userId }).from(userProfile).where(isNotNull(userProfile.searchPrefsSavedAt)),
     // Portfolio → profile sync (lib/portfolio/pull.ts): users with a repository or an earlier pull.
     listPullUsers(),
+    loadWeeklyFacts(now),
   ])
   const liveIds = new Set(live.map((a) => a.userId))
   const pulls = new Set(portfolioUsers.filter((id) => liveIds.has(id)))
   const plans = planCapacity(toPlanUsers(live, radar, pulls), undefined, now)
+  const tierOf = new Map(live.map((a) => [a.userId, a.tier]))
+  const weeklyUsers = pickWeeklyUsers(
+    withPrefs
+      .filter((u) => tierOf.has(u.id))
+      .map((u) => ({ userId: u.id, tier: tierOf.get(u.id)!, daysSinceRun: weekly.daysSinceRun.get(u.id) ?? null })),
+    weeklyReserveMs(),
+    weeklyChainCostMs(weekly.observedMs),
+  )
 
   const specs: EnqueueSpec[] = [
     {
@@ -238,7 +252,10 @@ export async function scheduleDailyJobs(now: Date = new Date()): Promise<Schedul
     ),
     // Company discovery (lib/company-discovery): planned daily, keyed per ISO
     // week, so it runs once a week per user.
-    ...withPrefs.filter((u) => liveIds.has(u.id)).map((u) => weeklyCompanySpec(u.id, now)),
+    // Company discovery (lib/company-discovery) and the board auto-detect and
+    // growth jobs it chains: weekly at most (ISO-week key), and only for the
+    // most overdue users the day's weekly reserve covers (lib/queue/capacity.ts).
+    ...weeklyUsers.map((id) => weeklyCompanySpec(id, now)),
     ...[...pulls].map((id) => portfolioPullSpec(id, day, now)),
   ]
   const { created } = await enqueueMany(specs)
@@ -249,6 +266,7 @@ export async function scheduleDailyJobs(now: Date = new Date()): Promise<Schedul
     planned: specs.length,
     enqueued: created,
     polls: [...plans.values()].reduce((s, p) => s + p.sourceIds.length, 0),
+    weeklyCompanyRuns: weeklyUsers.length,
     pollableSources: live.reduce((s, a) => s + a.sources.length, 0),
   }
 }

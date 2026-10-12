@@ -8,6 +8,11 @@ import {
   activityTier,
   dailyLaneMs,
   dailyPlanPoolMs,
+  dailyWorkPoolMs,
+  pickWeeklyUsers,
+  weeklyChainCostMs,
+  weeklyReserveMs,
+  DEFAULT_JOB_COST_MS,
   drainSliceMs,
   pickSources,
   planCapacity,
@@ -130,6 +135,17 @@ function buildJobs(users: readonly SimUser[], plan: (u: SimUser) => string[], fa
   return jobs
 }
 
+/** The weekly company chain for `userIds`: discovery, then boards and growth (chained after it). */
+function buildWeeklyJobs(userIds: readonly string[], seed = 23): SimJob[] {
+  const r = rng(seed)
+  const jitter = (ms: number) => ms * (0.6 + r() * 0.8)
+  return userIds.flatMap((userId) => [
+    { id: `${userId}-cd`, userId, type: JOB_TYPES.companyDiscovery, priority: JOB_PRIORITY[JOB_TYPES.companyDiscovery], runAfter: 0, durationMs: jitter(DEFAULT_JOB_COST_MS[JOB_TYPES.companyDiscovery]!), minBudgetMs: 60_000, waitFor: null, status: 'queued' as const },
+    { id: `${userId}-cb`, userId, type: JOB_TYPES.companyBoards, priority: JOB_PRIORITY[JOB_TYPES.companyBoards], runAfter: 0, durationMs: jitter(DEFAULT_JOB_COST_MS[JOB_TYPES.companyBoards]!), minBudgetMs: 40_000, waitFor: JOB_TYPES.companyDiscovery, status: 'queued' as const },
+    { id: `${userId}-cg`, userId, type: JOB_TYPES.companyGrowth, priority: JOB_PRIORITY[JOB_TYPES.companyGrowth], runAfter: 0, durationMs: jitter(DEFAULT_JOB_COST_MS[JOB_TYPES.companyGrowth]!), minBudgetMs: 40_000, waitFor: JOB_TYPES.companyDiscovery, status: 'queued' as const },
+  ])
+}
+
 /** One drain over `jobs` (mutates their status), mirroring lib/queue/drain.ts. */
 function simulateDrain(jobs: SimJob[], fair: boolean): { usedLaneMs: number } {
   const running = new Set<string>()
@@ -207,6 +223,9 @@ describe('capacity primitives', () => {
   it('the Hobby day is 4 drains × 240 s × 3 lanes', () => {
     expect(dailyLaneMs()).toBe(2_880_000)
     expect(dailyPlanPoolMs()).toBe(2_160_000)
+    expect(weeklyReserveMs()).toBe(432_000)
+    expect(dailyWorkPoolMs()).toBe(1_728_000)
+    expect(weeklyChainCostMs()).toBe(340_000)
   })
 
   it('classifies activity by last visit', () => {
@@ -287,7 +306,7 @@ describe('capacity model: 100 users × 16 sources on the Hobby cron budget', () 
     }
     const totalPlanned = [...plan.values()].reduce((s, p) => s + p.plannedMs, 0)
     const fixed = users.filter((u) => u.tier !== 'dormant').reduce((s, u) => s + u.fixedCostMs, 0)
-    expect(totalPlanned + fixed).toBeLessThanOrEqual(dailyPlanPoolMs() * 1.05)
+    expect(totalPlanned + fixed).toBeLessThanOrEqual(dailyWorkPoolMs() * 1.05)
   })
 
   it('starred-region sources are polled more often over two weeks', () => {
@@ -309,13 +328,25 @@ describe('capacity model: 100 users × 16 sources on the Hobby cron budget', () 
     expect(u.sources.every((s) => (count.get(s.id) ?? 0) > 0)).toBe(true)
   })
 
-  it('every non-dormant user gets their whole planned discovery (and shortlist) within the day', () => {
-    const jobs = buildJobs(users, (u) => plan.get(u.userId)!.sourceIds, true)
+  // Every live user has search prefs and no company run on record: the most overdue win.
+  const weeklyUsers = pickWeeklyUsers(
+    users.map((u) => ({ userId: u.userId, tier: u.tier, daysSinceRun: null })),
+    weeklyReserveMs(),
+    weeklyChainCostMs(),
+  )
+
+  it('every non-dormant user gets their whole planned discovery (and shortlist) within the day, with the weekly company chains', () => {
+    const daily = buildJobs(users, (u) => plan.get(u.userId)!.sourceIds, true)
+    const weekly = buildWeeklyJobs(weeklyUsers)
+    const jobs = [...daily, ...weekly]
     const { usedLaneMs } = simulateDay(jobs, true)
+    expect(weeklyUsers.length).toBeGreaterThanOrEqual(1)
+    // The planned weekly chains (company discovery → boards + growth) finish too.
+    expect(weekly.filter((j) => j.status !== 'done').map((j) => j.id)).toEqual([])
     const live = users.filter((u) => u.tier !== 'dormant')
     const missed: string[] = []
     for (const u of live) {
-      const mine = jobs.filter((j) => j.userId === u.userId)
+      const mine = daily.filter((j) => j.userId === u.userId)
       if (mine.some((j) => j.status !== 'done')) missed.push(u.userId)
     }
     expect(missed).toEqual([])
@@ -331,6 +362,11 @@ describe('capacity model: 100 users × 16 sources on the Hobby cron budget', () 
         `\nCAPACITY ${JSON.stringify({
           laneSecondsPerDay: dailyLaneMs() / 1000,
           planPoolSeconds: dailyPlanPoolMs() / 1000,
+          dailyWorkSeconds: dailyWorkPoolMs() / 1000,
+          weeklyReserveSeconds: weeklyReserveMs() / 1000,
+          weeklyChainSeconds: weeklyChainCostMs() / 1000,
+          weeklyChainsPerDay: weeklyUsers.length,
+          weeklyChainCycleDays: Math.ceil(live.length / Math.max(1, weeklyUsers.length)),
           naiveDemandSeconds: Math.round(naive / 1000),
           naiveOverBudget: +(naive / dailyLaneMs()).toFixed(1),
           usedSeconds: Math.round(usedLaneMs / 1000),
@@ -353,5 +389,27 @@ describe('capacity model: 100 users × 16 sources on the Hobby cron budget', () 
       sources = sources.map((s) => (p.sourceIds.includes(s.id) ? { ...s, lastPolledAt: at } : s))
     }
     expect(polled.size).toBe(u.sources.length)
+  })
+})
+
+describe('weekly company chain selection', () => {
+  it('only overdue, non-dormant users; active users first; within the reserve', () => {
+    const picked = pickWeeklyUsers(
+      [
+        { userId: 'fresh', tier: 'active', daysSinceRun: 2 },
+        { userId: 'idle-old', tier: 'idle', daysSinceRun: 20 },
+        { userId: 'active-old', tier: 'active', daysSinceRun: 12 },
+        { userId: 'never', tier: 'idle', daysSinceRun: null },
+        { userId: 'sleeping', tier: 'dormant', daysSinceRun: null },
+      ],
+      700_000,
+      340_000,
+    )
+    // urgency: never 30, active-old 24, idle-old 20; two fit.
+    expect(picked).toEqual(['never', 'active-old'])
+  })
+
+  it('a lone owner gets the chain every week', () => {
+    expect(pickWeeklyUsers([{ userId: 'owner', tier: 'active', daysSinceRun: 7 }], weeklyReserveMs(), weeklyChainCostMs())).toEqual(['owner'])
   })
 })

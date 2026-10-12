@@ -5,7 +5,7 @@ import { isAllowedEmail } from '@/lib/auth/allowed-email'
 import { MAX_ERRORS_BEFORE_SKIP } from '@/lib/discovery/service'
 import { gmailAccess, googleScopesByUser, type GmailAccess } from '@/lib/google/scopes'
 import { normalizePreferred } from '@/lib/regions/preferred'
-import { activityTier, sourceCost, type ActivityTier, type PlanSource } from './capacity'
+import { WEEKLY_CHAIN_TYPES, activityTier, sourceCost, type ActivityTier, type PlanSource } from './capacity'
 import { JOB_TYPES } from './job-types'
 
 /**
@@ -120,4 +120,38 @@ export async function loadPlanAccounts(now: Date, onlyUserId?: string): Promise<
     gmail: gmail.get(a.userId) ?? { read: false, send: false },
     sources: byUser.get(a.userId) ?? [],
   }))
+}
+
+export interface WeeklyFacts {
+  /** Days since each user's last finished weekly company discovery (absent = none on record). */
+  daysSinceRun: Map<string, number>
+  /** Average observed duration per weekly-chain job type (last 30 days). */
+  observedMs: Map<string, number>
+}
+
+/** Queue history for the weekly company chain (finished jobs are kept 14 days). */
+export async function loadWeeklyFacts(now: Date): Promise<WeeklyFacts> {
+  const since = new Date(now.getTime() - 30 * 86_400_000).toISOString()
+  const types = sql.join(WEEKLY_CHAIN_TYPES.map((t) => sql`${t}`), sql`, `)
+  const [last, costs] = await Promise.all([
+    db.execute(sql`
+      select user_id, max(finished_at) as at from queue_jobs
+      where type = ${JOB_TYPES.companyDiscovery} and status = 'done' and user_id is not null
+      group by user_id
+    `),
+    db.execute(sql`
+      select type, avg(duration_ms)::float as avg_ms from queue_jobs
+      where type in (${types}) and status = 'done' and duration_ms is not null and finished_at > ${since}::timestamptz
+      group by type
+    `),
+  ])
+  const daysSinceRun = new Map(
+    toRows<{ user_id: string; at: Date | string }>(last).map((r) => [r.user_id, (now.getTime() - new Date(r.at).getTime()) / 86_400_000]),
+  )
+  const observedMs = new Map(
+    toRows<{ type: string; avg_ms: number | string | null }>(costs)
+      .filter((r) => r.avg_ms !== null)
+      .map((r) => [r.type, Number(r.avg_ms)]),
+  )
+  return { daysSinceRun, observedMs }
 }

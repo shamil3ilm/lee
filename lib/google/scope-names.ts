@@ -13,3 +13,10 @@ export const BASE_SCOPES = ['openid', 'email', 'profile', DRIVE_FILE_SCOPE] as c
 
 /** Owner only (Phase 1): Gmail sync / alert ingestion, sending, Calendar. */
 export const OWNER_SCOPES = [...BASE_SCOPES, GMAIL_READ_SCOPE, GMAIL_SEND_SCOPE, CALENDAR_EVENTS_SCOPE] as const
+
+/** Union of two space-separated scope strings, in first-seen order. */
+export function mergeScopes(stored: string | null | undefined, granted: string | null | undefined): string {
+  const out: string[] = []
+  for (const s of `${stored ?? ''} ${granted ?? ''}`.split(/\s+/)) if (s && !out.includes(s)) out.push(s)
+  return out.join(' ')
+}

@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { requireUserId } from '@/lib/auth/require-session'
 import { isOwner } from '@/lib/auth/owner'
 import { connectGoogleWorkspaceAction } from '@/lib/google/connect-actions'
-import { googleScopesByUser, GMAIL_READ_SCOPE, GMAIL_SEND_SCOPE } from '@/lib/google/scopes'
+import { googleScopesByUser, OWNER_SCOPES } from '@/lib/google/scopes'
 import { inviteeSeatsUsed, listInvites } from '@/lib/tenancy/invites'
 import { listMembers } from '@/lib/tenancy/admin-queries'
 import { BETA_INVITEE_CAP } from '@/lib/tenancy/limits'
@@ -30,7 +30,11 @@ export default async function InvitesPage() {
     googleScopesByUser([userId]),
   ])
   const mine = scopes.get(userId)
-  const gmailConnected = Boolean(mine?.has(GMAIL_READ_SCOPE) && mine.has(GMAIL_SEND_SCOPE))
+  // The owner's Gmail + Calendar grant survives the narrower sign-in scopes
+  // (include_granted_scopes; the stored scope never shrinks on sign-in), so
+  // the prompt shows only when a scope is really missing.
+  const missing = OWNER_SCOPES.filter((sc) => !mine?.has(sc))
+  const gmailConnected = missing.length === 0
   const full = used >= BETA_INVITEE_CAP
 
   return (
@@ -102,20 +106,30 @@ export default async function InvitesPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card data-testid="owner-google-grant">
         <CardHeader>
           <CardTitle>Your Gmail &amp; Calendar</CardTitle>
           <CardDescription>
             Sign-in asks everyone for basic scopes only. Gmail sync, job-alert emails, the emailed digest and Calendar are yours
-            alone: connect them once here. {gmailConnected ? 'Connected.' : 'Not connected.'}
+            alone.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={connectGoogleWorkspaceAction}>
-            <Button type="submit" variant="outline">
-              {gmailConnected ? 'Reconnect Gmail & Calendar' : 'Connect Gmail & Calendar'}
-            </Button>
-          </form>
+          {gmailConnected ? (
+            <p className="text-sm" data-testid="google-grant-ok">
+              Connected: Gmail and Calendar keep working. Nothing to do.
+            </p>
+          ) : (
+            <div role="alert" className="space-y-3 rounded-md border border-border bg-muted p-3 text-sm" data-testid="google-grant-missing">
+              <p>
+                {mine ? 'Gmail or Calendar access is missing from your Google grant' : 'No Google account is linked'}, so Gmail
+                sync, job-alert emails, the digest email and Calendar are paused.
+              </p>
+              <form action={connectGoogleWorkspaceAction}>
+                <Button type="submit">Reconnect Gmail &amp; Calendar</Button>
+              </form>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

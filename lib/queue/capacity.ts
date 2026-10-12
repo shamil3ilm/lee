@@ -20,7 +20,10 @@ import { JOB_TYPES } from './job-types'
  *     longest-unpolled, with sources that found postings in the user's
  *     STARRED regions counted STARRED_BONUS_DAYS older (polled more often,
  *     never starving the rest). Every planned user gets at least one poll.
- *  4. The drains claim round-robin across users and time-slice each drain
+ *  4. A fixed share of the pool (WEEKLY_RESERVE_SHARE) runs the weekly
+ *     company chain (company discovery → employer-board auto-detect →
+ *     growth) for the most overdue users; enrichment batches use leftovers.
+ *  5. The drains claim round-robin across users and time-slice each drain
  *     (lib/queue/queue.ts claim, lib/queue/drain.ts), so a user with many
  *     jobs never starves the rest.
  *
@@ -64,7 +67,54 @@ export const DEFAULT_JOB_COST_MS: Readonly<Record<string, number>> = {
   [JOB_TYPES.radarSource]: 4_000,
   [JOB_TYPES.portfolioPull]: 1_500,
   [JOB_TYPES.discoveryBenefits]: 800,
-  [JOB_TYPES.companyDiscovery]: 20_000,
+  // The weekly company chain (lib/company-discovery): discovery, then the
+  // employer-board auto-detect and the growth refresh it enqueues. Costed
+  // near their time budgets until queue history says otherwise.
+  [JOB_TYPES.companyDiscovery]: 120_000,
+  [JOB_TYPES.companyBoards]: 110_000,
+  [JOB_TYPES.companyGrowth]: 110_000,
+  [JOB_TYPES.companyEnrich]: 60_000,
+}
+
+/** Job types of the weekly company chain the plan budgets as one unit. */
+export const WEEKLY_CHAIN_TYPES = [JOB_TYPES.companyDiscovery, JOB_TYPES.companyBoards, JOB_TYPES.companyGrowth] as const
+
+/**
+ * Share of the day's plan pool reserved for weekly company chains. The rest
+ * is daily work (polls and the per-user steps). Enrichment batches are not
+ * planned: they run at the lowest priority in whatever lane time is left.
+ */
+export const WEEKLY_RESERVE_SHARE = 0.2
+
+/** Cost of one user's weekly chain: observed averages per type, else the defaults. */
+export function weeklyChainCostMs(observed: ReadonlyMap<string, number> = new Map()): number {
+  return WEEKLY_CHAIN_TYPES.reduce((s, t) => s + (observed.get(t) ?? DEFAULT_JOB_COST_MS[t]!), 0)
+}
+
+export interface WeeklyCandidate {
+  userId: string
+  tier: ActivityTier
+  /** Days since the user's last weekly company run (null = none on record). */
+  daysSinceRun: number | null
+}
+
+/** No record (never run, or history pruned after 14 days) counts as this old. */
+export const WEEKLY_NEVER_DAYS = 30
+
+/**
+ * Users whose weekly company chain runs today, within `reserveMs`: only
+ * non-dormant users at least 7 days since their last run, most overdue first
+ * (active users' days count ×2), ties by id. At 100 users the chain cycles
+ * every few weeks rather than weekly — the honest cost of ~340 s per run on
+ * a 2,880 lane-second day.
+ */
+export function pickWeeklyUsers(candidates: readonly WeeklyCandidate[], reserveMs: number, chainCostMs: number): string[] {
+  const due = candidates
+    .filter((c) => c.tier !== 'dormant' && (c.daysSinceRun === null || c.daysSinceRun >= 7))
+    .map((c) => ({ ...c, urgency: (c.daysSinceRun ?? WEEKLY_NEVER_DAYS) * (c.tier === 'active' ? 2 : 1) }))
+    .sort((a, b) => b.urgency - a.urgency || a.userId.localeCompare(b.userId))
+  const n = Math.max(0, Math.floor(reserveMs / Math.max(1, chainCostMs)))
+  return due.slice(0, n).map((c) => c.userId)
 }
 
 /** A poll's cost estimate is clamped to this range (one slow source cannot eat a budget). */
@@ -75,9 +125,19 @@ export function dailyLaneMs(drains = DAILY_CRON_DRAINS, budgetMs = DRAIN_BUDGET_
   return drains * budgetMs * lanes
 }
 
-/** The lane time the day's plan may fill. */
+/** The lane time the day's plan may fill (daily work + the weekly reserve). */
 export function dailyPlanPoolMs(): number {
   return Math.floor(dailyLaneMs() * PLANNING_UTILISATION)
+}
+
+/** The part of the pool for weekly company chains. */
+export function weeklyReserveMs(): number {
+  return Math.floor(dailyPlanPoolMs() * WEEKLY_RESERVE_SHARE)
+}
+
+/** The part of the pool for daily work (polls and per-user steps). */
+export function dailyWorkPoolMs(): number {
+  return dailyPlanPoolMs() - weeklyReserveMs()
 }
 
 export function activityTier(lastSeenAt: Date | null, createdAt: Date, now: Date): ActivityTier {
@@ -170,7 +230,7 @@ export function pickSources(sources: readonly PlanSource[], budgetMs: number, no
  * share returns the surplus to the others (water-filling), so a light user
  * never strands capacity a heavy user could use.
  */
-export function planCapacity(users: readonly PlanUser[], poolMs: number = dailyPlanPoolMs(), now: Date = new Date()): Map<string, UserPlan> {
+export function planCapacity(users: readonly PlanUser[], poolMs: number = dailyWorkPoolMs(), now: Date = new Date()): Map<string, UserPlan> {
   const planned = users.filter((u) => TIER_WEIGHT[u.tier] > 0)
   const fixed = planned.reduce((s, u) => s + u.fixedCostMs, 0)
   let remaining = Math.max(0, poolMs - fixed)
