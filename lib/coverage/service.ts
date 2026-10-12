@@ -7,6 +7,7 @@ import { ROLE_PHRASES } from '@/lib/google-alerts/queries'
 import { normalizePreferred, type PreferredLevel } from '@/lib/regions/preferred'
 import { regionCoverage, type RegionCoverage } from './compute'
 import { playbooksForUser } from './for-user'
+import { suggestedBoardCounts } from '@/lib/company-discovery/boards'
 
 /**
  * The coverage rows for one user: every region their preferences touch,
@@ -16,6 +17,8 @@ import { playbooksForUser } from './for-user'
 
 export interface UserCoverage extends RegionCoverage {
   starred: PreferredLevel | null
+  /** Employer boards the weekly auto-detect found in the region that lee does not read yet. */
+  employerBoards: number
 }
 
 /** The role phrase alert presets search for ("Laravel developer", "data analyst"). */
@@ -41,6 +44,10 @@ export async function userCoverage(userId: string, now: Date = new Date()): Prom
     7,
     now,
   )
+  const boards = await suggestedBoardCounts(
+    userId,
+    regions.map((r) => r.playbook.covers[0]!),
+  ).catch(() => new Map<string, { count: number }>())
   const rows = sources.map((s) => ({ id: s.id, kind: s.kind, enabled: s.enabled, config: (s.config ?? {}) as Record<string, unknown> }))
   const alertSitesSeen = new Set(alertStats.filter((a) => a.alerts > 0).map((a) => a.site))
   const query = presetQuery(prefs)
@@ -53,5 +60,6 @@ export async function userCoverage(userId: string, now: Date = new Date()): Prom
       alertSitesSeen,
     }),
     starred,
+    employerBoards: boards.get(playbook.covers[0]!)?.count ?? 0,
   }))
 }

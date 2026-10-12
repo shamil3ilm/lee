@@ -1,5 +1,5 @@
 import * as companiesQ from '@/lib/db/queries/localCompanies'
-import { BOARD_LABELS, type BoardKind } from '@/lib/companies/ats-detect'
+import { BOARD_LABELS, isReadableBoard, type BoardKind } from '@/lib/companies/ats-detect'
 import { INDUSTRY_LABELS, isIndustry } from '@/lib/company-discovery/industry'
 import { deepestRegions } from '@/lib/company-discovery/normalize'
 import type { FitChip } from '@/lib/company-discovery/fit'
@@ -43,7 +43,7 @@ export interface CompanyParams {
   size: number
 }
 
-const SOURCE_TAG = /^(wikidata|github|yc|linkedin|paste|jobs|seed|search|(?:directory|map|register):[a-z0-9-]{1,40})$/
+const SOURCE_TAG = /^(wikidata|github|yc|linkedin|paste|jobs|seed|search|(?:directory|map|register|news):[a-z0-9-]{1,40})$/
 
 /** The segment from `?view=`, or from the older `?status=` links (saved → watching). */
 function viewOf(sp: Record<string, string | undefined>): CompanyView {
@@ -100,7 +100,9 @@ function toCard(row: companiesQ.CompanyRow): CompanyCardData {
     fitScore: row.fitScore,
     chips: Array.isArray(row.fitDetail) ? (row.fitDetail as FitChip[]) : [],
     boardLabel: board && board in BOARD_LABELS ? BOARD_LABELS[board] : null,
-    watchable: !!board && ['greenhouse', 'lever', 'ashby', 'workable', 'recruitee', 'pinpoint', 'workday', 'teamtailor'].includes(board),
+    watchable: isReadableBoard(board),
+    boardFound: ev.boardFound ? { at: ev.boardFound.at, via: ev.boardFound.via, auto: !!ev.boardFound.auto } : null,
+    seenOn: Array.isArray(ev.seenOn) ? ev.seenOn.slice(0, 3) : [],
     careersUrl: row.careersUrl,
     openRoles: typeof ev.openRoles === 'number' ? ev.openRoles : null,
     connections: ev.connections ?? 0,

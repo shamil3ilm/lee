@@ -49,6 +49,8 @@ export const NEW_PER_SOURCE: Readonly<Record<string, number>> = {
   yc: 40,
   paste: 40,
   search: 5,
+  // Employers named in job-news roundups (lib/discovery/adapters/wp-job-news.ts).
+  news: 60,
   // OpenStreetMap and the registers (GLEIF, India MCA): ranked by hiring likelihood before the cap.
   map: 150,
   register: 150,

@@ -28,6 +28,10 @@ export interface CompanyCardData {
   boardLabel: string | null
   /** "Watch jobs" can add a source for the board. */
   watchable: boolean
+  /** The weekly auto-detect (or a job-news post) found the board: when and how; `auto` = reading was switched on for you. */
+  boardFound: { at: string; via: 'site' | 'news'; auto: boolean } | null
+  /** Job-news sites that named this employer. */
+  seenOn: string[]
   careersUrl: string | null
   openRoles: number | null
   connections: number
@@ -61,6 +65,8 @@ export const SOURCE_TAG_LABELS: Readonly<Record<string, string>> = {
   paste: 'Added by you',
   jobs: 'Seen hiring in your jobs',
   seed: 'Well-known employers list',
+  'news:pravasinewsdaily': 'Pravasi News Daily (job news)',
+  'news:pravasivarthakal': 'Pravasi Varthakal (job news)',
   search: 'Added by you (search)',
   'directory:technopark': 'Technopark',
   'directory:infopark': 'Infopark',
@@ -76,7 +82,7 @@ export const SOURCE_TAG_LABELS: Readonly<Record<string, string>> = {
 }
 
 export function sourceTagLabel(tag: string): string {
-  return SOURCE_TAG_LABELS[tag] ?? tag.replace(/^(directory|map|register):/, '')
+  return SOURCE_TAG_LABELS[tag] ?? tag.replace(/^(directory|map|register|news):/, '')
 }
 
 /** "Found via map/register" when only maps or registers listed the company (other sources explain themselves). */

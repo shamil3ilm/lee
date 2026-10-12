@@ -266,6 +266,7 @@ async function pollSource(args: {
     report: ({ parseFailures }) => {
       if (parseFailures) stats.parseFailures = (stats.parseFailures ?? 0) + parseFailures
     },
+    seenItemIds: async (ids) => new Set((await discQ.seenBySourceJobIds(source.id, ids)).keys()),
   })
   const scoring: ScoringBudget = { remaining: MAX_SCORED_PER_SOURCE, deadline, exhausted: false }
   const ingest = { ...args, scoring, stats }

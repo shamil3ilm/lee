@@ -405,7 +405,7 @@ export const LOCAL_COMPANIES = [
     atsKind: 'lever',
     atsSlug: 'dinarpay-example',
     careersUrl: 'https://jobs.lever.co/dinarpay-example',
-    evidence: { openRoles: 2, contactEmails: ['careers@dinarpay.example'], languages: ['PHP', 'TypeScript'], description: 'Payments platform for Gulf merchants.' },
+    evidence: { openRoles: 2, contactEmails: ['careers@dinarpay.example'], languages: ['PHP', 'TypeScript'], description: 'Payments platform for Gulf merchants.', boardFound: { at: '2026-10-05T00:00:00.000Z', via: 'site' } },
     fitScore: 88,
     /** Weekly open-role counts as [days ago, count] (growth: about flat). */
     snapshots: [[90, 2], [31, 2], [2, 2]],

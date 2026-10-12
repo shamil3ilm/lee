@@ -83,6 +83,13 @@ export interface CompanyEvidence {
   branches?: number
   /** The website answered (or not) when enrichment checked it. */
   siteLive?: boolean
+  /**
+   * The employer's job board, found by the weekly board auto-detect (its
+   * own site) or a job-news post linking to it: when, and how.
+   */
+  boardFound?: { at: string; via: 'site' | 'news'; auto?: boolean }
+  /** Job-news sites that named this employer (attribution), ≤ 3. */
+  seenOn?: string[]
 }
 
 export interface CompanyCandidate {

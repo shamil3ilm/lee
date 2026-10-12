@@ -123,6 +123,8 @@ describe('outbound timeouts', () => {
     yc_directory: {},
     recruitee: { company: 'acme' },
     pinpoint: { company: 'acme' },
+    bamboohr: { company: 'acme' },
+    wp_job_news: { url: 'https://news.test', jobCategories: [20] },
     workday: { url: 'https://acme.wd1.myworkdayjobs.com/External' },
     himalayas: {},
     jobicy: {},

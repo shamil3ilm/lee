@@ -275,6 +275,8 @@ function toJobRows(jobs: JobsData, sourceNameById: Map<string, string>, growthIn
         remoteType: d.remoteType,
         techStack: d.techStack,
         applyUrl: d.applyUrl,
+        localHire: d.localHire,
+        titleOnly: d.titleOnly,
       },
       reasoning: (d.matchReasoning as DiscoveryReasoning | null) ?? null,
       scoredByCallId: d.scoredByCallId,

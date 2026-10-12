@@ -262,6 +262,7 @@ export type CompanyPatch = Partial<
     | 'careersHash'
     | 'careersCheckedAt'
     | 'careersChangedAt'
+    | 'boardCheckedAt'
     | 'status'
     | 'dismissReason'
     | 'applicationId'
@@ -337,6 +338,65 @@ export async function foldIndex(sourceId: string, client: DbClient = db): Promis
     .from(companyDiscoveries)
     .where(eq(companyDiscoveries.sourceId, sourceId))
   return rows.map((r) => ({ ...r, evidence: (r.evidence ?? {}) as Record<string, unknown> }))
+}
+
+/**
+ * Companies to check for an employer job board this run: in play, with a
+ * website, in one of the user's regions (`regionIds` match stored ancestors,
+ * so "kw" covers every Kuwait row), not already read through a source, and
+ * not checked since `staleBefore`. Starred-region rows first, then never
+ * checked, then best fit.
+ */
+export async function boardCandidates(
+  userId: string,
+  opts: { regionIds: readonly string[]; starredIds: readonly string[]; staleBefore: Date; limit: number },
+  client: DbClient = db,
+): Promise<CompanyRow[]> {
+  if (opts.regionIds.length === 0 || opts.limit <= 0) return []
+  const starred = opts.starredIds.length > 0 ? arrayOverlaps(companyDiscoveries.regionIds, [...opts.starredIds]) : sql`false`
+  return client
+    .select()
+    .from(companyDiscoveries)
+    .where(
+      and(
+        eq(companyDiscoveries.userId, userId),
+        inArray(companyDiscoveries.status, ['new', 'saved']),
+        isNotNull(companyDiscoveries.website),
+        arrayOverlaps(companyDiscoveries.regionIds, [...opts.regionIds]),
+        sql`(${companyDiscoveries.watch} is distinct from 'jobs')`,
+        sql`(${companyDiscoveries.boardCheckedAt} is null or ${companyDiscoveries.boardCheckedAt} < ${opts.staleBefore.toISOString()}::timestamptz)`,
+      ),
+    )
+    .orderBy(sql`(${starred}) desc`, sql`${companyDiscoveries.boardCheckedAt} asc nulls first`, sql`${companyDiscoveries.fitScore} desc nulls last`)
+    .limit(opts.limit)
+}
+
+/**
+ * Companies in a region whose readable job board lee found but does not
+ * read yet ("12 employer boards found in Kuwait — turn on").
+ */
+export async function suggestedBoards(
+  userId: string,
+  regionId: string,
+  kinds: readonly string[],
+  limit = 100,
+  client: DbClient = db,
+): Promise<CompanyRow[]> {
+  return client
+    .select()
+    .from(companyDiscoveries)
+    .where(
+      and(
+        eq(companyDiscoveries.userId, userId),
+        inArray(companyDiscoveries.status, ['new', 'saved']),
+        arrayOverlaps(companyDiscoveries.regionIds, [regionId]),
+        inArray(companyDiscoveries.atsKind, [...kinds]),
+        isNotNull(companyDiscoveries.atsSlug),
+        sql`(${companyDiscoveries.watch} is distinct from 'jobs')`,
+      ),
+    )
+    .orderBy(sql`${companyDiscoveries.fitScore} desc nulls last`)
+    .limit(limit)
 }
 
 /** Delete rows the fold merged into another (user-scoped). */

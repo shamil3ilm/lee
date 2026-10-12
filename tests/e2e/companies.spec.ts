@@ -36,7 +36,12 @@ test('lists local companies with fit chips and filters them', async ({ page }) =
   await expect(card(page, DINAR).getByTestId('company-location')).toHaveText('Kuwait City › Kuwait › GCC')
   await expect(card(page, DINAR).getByTestId('company-hiring')).toHaveText('2 open roles')
   await expect(card(page, DINAR).getByRole('list', { name: 'Why this rank' })).toHaveCount(0)
-  await expect((await details(page, DINAR)).getByRole('list', { name: 'Why this rank' })).toContainText('Hiring: 2 open roles')
+  const dinar = await details(page, DINAR)
+  await expect(dinar.getByRole('list', { name: 'Why this rank' })).toContainText('Hiring: 2 open roles')
+  // The weekly auto-detect found its board; not read yet, so "Turn on" is offered (not clicked here).
+  await expect(dinar.getByTestId('company-board')).toContainText('Board found: Lever')
+  await expect(dinar.getByTestId('company-board')).toContainText('found on its site')
+  await expect(dinar.getByTestId('company-board-turn-on')).toBeVisible()
 
   await (await filters(page)).getByTestId('company-industry').selectOption('erp')
   await expect(page).toHaveURL(/industry=erp/)

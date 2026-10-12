@@ -22,6 +22,7 @@ export const JOB_TYPES = {
   companyEnrich: 'company-enrich:user',
   portfolioPull: 'portfolio-pull:user',
   companyGrowth: 'company-growth:user',
+  companyBoards: 'company-boards:user',
 } as const
 
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES]
@@ -65,6 +66,8 @@ export const JOB_PRIORITY: Readonly<Record<JobType, number>> = {
   [JOB_TYPES.portfolioPull]: 8,
   // Weekly growth signals (role counts, GitHub activity, headcount, news): after enrichment.
   [JOB_TYPES.companyGrowth]: 76,
+  // Weekly employer-board auto-detect: after enrichment, before growth reads the boards it found.
+  [JOB_TYPES.companyBoards]: 75,
 }
 
 /** Short human labels for Settings › Background jobs (no internals). */
@@ -87,6 +90,7 @@ export const JOB_LABELS: Readonly<Record<string, string>> = {
   [JOB_TYPES.companyEnrich]: 'Company careers check',
   [JOB_TYPES.portfolioPull]: 'Portfolio sync',
   [JOB_TYPES.companyGrowth]: 'Company growth signals (weekly)',
+  [JOB_TYPES.companyBoards]: 'Employer job boards check (weekly)',
 }
 
 export function jobLabel(type: string): string {
@@ -139,6 +143,8 @@ export const jobKeys = {
   portfolioPull: (userId: string, day: string) => `portfolio-pull:${userId}:${day}`,
   /** Growth refresh: once per ISO week per user. */
   companyGrowth: (userId: string, isoWeek: string) => `company-growth:${userId}:${isoWeek}`,
+  /** Employer-board auto-detect: once per ISO week per user. */
+  companyBoards: (userId: string, isoWeek: string) => `company-boards:${userId}:${isoWeek}`,
 } as const
 
 /**

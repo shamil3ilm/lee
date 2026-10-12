@@ -28,6 +28,14 @@ export const SOURCE_KINDS: readonly SourceKindMeta[] = [
   { id: 'workable', label: 'Workable', description: 'Company board on workable.com', needs: 'company', placeholder: 'company-slug' },
   { id: 'recruitee', label: 'Recruitee', description: 'Company board on recruitee.com', needs: 'company', placeholder: 'company-slug' },
   { id: 'pinpoint', label: 'Pinpoint', description: 'Company board on pinpointhq.com', needs: 'company', placeholder: 'company-slug' },
+  { id: 'bamboohr', label: 'BambooHR', description: 'Company careers site on bamboohr.com', needs: 'company', placeholder: 'aiu' },
+  {
+    id: 'wp_job_news',
+    label: 'WordPress job news site',
+    description: 'A Gulf job-news site on WordPress (e.g. Pravasi News Daily): lee finds its job category, reads the employers’ own job links and adds the employers to Companies',
+    needs: 'url',
+    placeholder: 'https://www.pravasinewsdaily.com',
+  },
   {
     id: 'email_alert',
     label: 'Job alerts by email',

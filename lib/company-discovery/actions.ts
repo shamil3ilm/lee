@@ -4,7 +4,7 @@ import * as companyQ from '@/lib/db/queries/companies'
 import * as jobsQ from '@/lib/db/queries/jobs'
 import * as applicationsQ from '@/lib/db/queries/applications'
 import * as activitiesQ from '@/lib/db/queries/activities'
-import { BOARD_LABELS, boardSource, type BoardKind } from '@/lib/companies/ats-detect'
+import { BOARD_LABELS, boardSource, isReadableBoard, sameBoard, type BoardKind } from '@/lib/companies/ats-detect'
 import { enqueueSourcePollNow } from '@/lib/queue/scheduler'
 import type { CompanyEvidence, DismissReason } from './types'
 
@@ -35,11 +35,9 @@ async function load(userId: string, id: string): Promise<companiesQ.CompanyRow> 
 export async function watchJobs(userId: string, id: string): Promise<{ sourceId: string; created: boolean }> {
   const row = await load(userId, id)
   const kind = row.atsKind as BoardKind | null
-  const src = kind && row.atsSlug ? boardSource({ kind, slug: row.atsSlug, url: row.careersUrl ?? '', watchable: true }) : null
-  if (!src || !(kind && kind in BOARD_LABELS)) throw new CompanyActionError('No supported job board was found for this company.')
-  const same = (await sourcesQ.list(userId)).find(
-    (s) => s.kind === src.kind && JSON.stringify(Object.entries(src.config)) === JSON.stringify(Object.entries(s.config as object).filter(([k]) => k in src.config)),
-  )
+  const src = isReadableBoard(kind) && row.atsSlug ? boardSource({ kind, slug: row.atsSlug, url: row.careersUrl ?? '', watchable: true }, nameOf(row)) : null
+  if (!src || !kind) throw new CompanyActionError('No supported job board was found for this company.')
+  const same = (await sourcesQ.list(userId)).find((s) => sameBoard(src, s.kind, (s.config ?? {}) as Record<string, unknown>))
   const source =
     same ??
     (await sourcesQ.create(userId, {
@@ -136,7 +134,7 @@ export async function trackSpeculative(
 export async function watchCompany(userId: string, id: string): Promise<{ kind: 'jobs' | 'careers' }> {
   const row = await load(userId, id)
   const kind = row.atsKind as BoardKind | null
-  if (kind && kind in BOARD_LABELS && row.atsSlug && boardSource({ kind, slug: row.atsSlug, url: row.careersUrl ?? '', watchable: true })) {
+  if (isReadableBoard(kind) && row.atsSlug && boardSource({ kind, slug: row.atsSlug, url: row.careersUrl ?? '', watchable: true }, nameOf(row))) {
     await watchJobs(userId, id)
     return { kind: 'jobs' }
   }

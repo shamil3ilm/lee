@@ -29,6 +29,7 @@ const VARIABLE_HOST_MODULES = [
   'lib/discovery/adapters/jsonld.ts', // user-entered careers page URLs
   'lib/discovery/adapters/workday.ts', // user-entered Workday URL
   'lib/discovery/adapters/enterprise.ts', // user-entered ORC / SuccessFactors / Phenom hosts
+  'lib/discovery/adapters/wp-job-news.ts', // user-entered WordPress job-news site
   'lib/ingest/fetch.ts', // URL import, profile import, Google Alerts feed
   'lib/radar/brief/fetch-source.ts', // links found inside third-party feeds
   'lib/scam/net.ts', // rdap.org redirects to per-TLD registries
@@ -61,6 +62,7 @@ const FIXED_HOST: Record<string, string> = {
   'lib/discovery/adapters/lever.ts': 'api.lever.co',
   'lib/discovery/adapters/pinpoint.ts': '<one-label slug>.pinpointhq.com',
   'lib/discovery/adapters/recruitee.ts': '<one-label slug>.recruitee.com',
+  'lib/discovery/adapters/bamboohr.ts': '<one-label slug>.bamboohr.com',
   'lib/discovery/adapters/remoteok.ts': 'remoteok.com',
   'lib/discovery/adapters/remotive.ts': 'remotive.com',
   'lib/discovery/adapters/weworkremotely.ts': 'weworkremotely.com',

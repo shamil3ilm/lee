@@ -43,6 +43,17 @@ export interface NormalizedJob {
    * snippet and the contact the post shows. The job itself stays title-only.
    */
   post?: LinkedInPostMeta
+  /** The employer's department / team, as the board names it. */
+  department?: string
+  /** The board's own employment status label, verbatim ("Admin Staff (Local)", "Full Time"). */
+  employmentStatus?: string
+  /**
+   * The board marks the opening as a LOCAL hire ("Admin Staff (Local)"):
+   * the employer likely expects existing residency in the country (no visa
+   * sponsorship). A soft signal for the visa / relevance scorers and a
+   * "Local hire" chip, never a filter.
+   */
+  localHire?: boolean
   raw: unknown
 }
 
@@ -72,6 +83,12 @@ export interface AdapterContext {
    * it could not read (tolerant parsers count failures instead of throwing).
    */
   report?: (counts: { parseFailures?: number }) => void
+  /**
+   * The ids (of those given) this source already stored. Adapters that read
+   * a per-job detail endpoint skip it for these: the ingest keeps a seen row
+   * as it is, so re-reading an unchanged posting would be wasted requests.
+   */
+  seenItemIds?: (ids: readonly string[]) => Promise<ReadonlySet<string>>
 }
 
 export interface DiscoveryAdapter {

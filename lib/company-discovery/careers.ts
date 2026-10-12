@@ -15,17 +15,22 @@ import { domainOf } from './normalize'
  *      Workable, Recruitee, Pinpoint, Workday, Teamtailor…) or to a careers
  *      page, and role addresses (careers@, jobs@ …) on the company's domain;
  *   3. the linked careers page, else the common paths (/careers, /jobs,
- *      /join-us, /work-with-us) until one answers.
+ *      /about/careers, /join-us, /work-with-us) until one answers.
+ *
+ * Boards are recognised in links, iframes and script tags (BambooHR's and
+ * Greenhouse's embeds) and in URLs written into inline scripts.
  *
  * At most MAX_PAGES pages per company, 1.5 MB each, through safeFetch. No
  * people data: only role addresses published on the company's own site.
  */
 
-export const CAREERS_PATHS = ['/careers', '/jobs', '/join-us', '/work-with-us'] as const
-export const MAX_PAGES = 4
+export const CAREERS_PATHS = ['/careers', '/jobs', '/about/careers', '/join-us', '/work-with-us'] as const
+export const MAX_PAGES = 5
 const PAGE_MAX_BYTES = 1_500_000
 const CAREERS_WORDS = /\b(careers?|jobs?|join (?:us|our team)|work with us|we(?:'|’)?re hiring|vacanc(?:y|ies)|openings?|hiring)\b|وظائف/i
 const ROLE_LOCAL = /^(careers?|jobs?|hr|recruit(?:ment|ing|er)?|talent|hiring|join|work|people|apply|cv|resumes?)$/i
+const INLINE_BOARD_URL =
+  /https?:\/\/[a-z0-9.-]+\.(?:bamboohr\.com|greenhouse\.io|lever\.co|ashbyhq\.com|workable\.com|recruitee\.com|teamtailor\.com|myworkdayjobs\.com|oraclecloud\d*\.com|zohorecruit\.(?:com|in|eu)|personio\.(?:de|com))(?:\/[^\s"'<>\)]*)?/gi
 const EMAIL_RE = /[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,190}\.[A-Za-z]{2,}/g
 
 export type CareersStatus = 'found' | 'none' | 'blocked'
@@ -55,6 +60,12 @@ export function textHash(text: string): string {
   return createHash('sha256').update(text).digest('hex').slice(0, 16)
 }
 
+/** Rank a careers link: openings pages first, student career centres out (negative). */
+function careersLinkScore(text: string): number {
+  if (/career[\s_-]*(?:center|centre|services|fair|advis)|student|alumni|internship[\s_-]*program/i.test(text)) return -1
+  return /\b(?:jobs?|vacanc(?:y|ies)|openings?|positions?|opportunit(?:y|ies))\b|وظائف/i.test(text) ? 2 : 0
+}
+
 export interface PageLinks {
   boards: BoardRef[]
   careers: string[]
@@ -65,7 +76,7 @@ export interface PageLinks {
 export function extractLinks(html: string, pageUrl: string, companyDomain: string): PageLinks {
   const $ = cheerio.load(html)
   const boards: BoardRef[] = []
-  const careers: string[] = []
+  const careers: Array<{ url: string; score: number }> = []
   const emails = new Set<string>()
   const addEmail = (raw: string): void => {
     const e = raw.trim().toLowerCase().replace(/^mailto:/, '').split('?')[0] ?? ''
@@ -74,6 +85,19 @@ export function extractLinks(html: string, pageUrl: string, companyDomain: strin
     if (host !== companyDomain && !host.endsWith(`.${companyDomain}`)) return
     emails.add(`${local}@${host}`)
   }
+  const addBoard = (b: BoardRef | null): boolean => {
+    if (!b) return false
+    if (!boards.some((x) => x.kind === b.kind && x.slug === b.slug)) boards.push(b)
+    return true
+  }
+  // Embedded boards: <iframe src="https://acme.bamboohr.com/careers">, <script src="…/js/embed.js">.
+  $('iframe[src], script[src]').each((_, el) => {
+    try {
+      addBoard(boardFromUrl(new URL(($(el).attr('src') ?? '').trim(), pageUrl).toString()))
+    } catch {
+      // not a URL
+    }
+  })
   $('a[href]').each((_, el) => {
     const href = ($(el).attr('href') ?? '').trim()
     if (/^mailto:/i.test(href)) return addEmail(href)
@@ -84,18 +108,18 @@ export function extractLinks(html: string, pageUrl: string, companyDomain: strin
       return
     }
     if (abs.protocol !== 'https:' && abs.protocol !== 'http:') return
-    const b = boardFromUrl(abs.toString())
-    if (b) {
-      if (!boards.some((x) => x.kind === b.kind && x.slug === b.slug)) boards.push(b)
-      return
-    }
+    if (addBoard(boardFromUrl(abs.toString()))) return
     const host = abs.hostname.toLowerCase().replace(/^www\./, '')
     const sameSite = host === companyDomain || host.endsWith(`.${companyDomain}`)
     const text = `${$(el).text()} ${abs.pathname}`
-    if (sameSite && CAREERS_WORDS.test(text) && !careers.includes(abs.toString())) careers.push(abs.toString())
+    if (sameSite && CAREERS_WORDS.test(text) && !careers.some((c) => c.url === abs.toString())) careers.push({ url: abs.toString(), score: careersLinkScore(text) })
   })
+  // Board URLs written into inline scripts (widgets configured in JS).
+  for (const m of html.slice(0, PAGE_MAX_BYTES).matchAll(INLINE_BOARD_URL)) addBoard(boardFromUrl(m[0]))
   for (const m of $('body').text().matchAll(EMAIL_RE)) addEmail(m[0])
-  return { boards, careers: careers.slice(0, 5), emails: [...emails].slice(0, 3) }
+  // Openings first ("Current vacancies", /careers/jobs); student career centres and fairs are not hiring pages.
+  const ranked = careers.filter((c) => c.score >= 0).sort((a, b) => b.score - a.score).map((c) => c.url)
+  return { boards, careers: ranked.slice(0, 5), emails: [...emails].slice(0, 3) }
 }
 
 interface Ctx {
@@ -178,7 +202,15 @@ export async function findCareers(website: string, deps: CompanyHttpDeps = {}): 
   }
   const tried = new Set<string>()
   let blockedAll = !home.ok && 'blocked' in home && home.blocked
-  for (const url of [...candidates, ...CAREERS_PATHS.map((p) => `${origin}${p}`)]) {
+  // A careers page without a board may link the page that embeds it
+  // ("About › Careers" → "/careers/jobs" with the BambooHR widget): its own
+  // careers links are tried next, within the page cap; the first careers
+  // page stays the answer when no board turns up.
+  const queue = [...candidates, ...CAREERS_PATHS.map((p) => `${origin}${p}`)]
+  const linked = new Set(candidates)
+  let fallback: CareersResult | null = null
+  while (queue.length > 0) {
+    const url = queue.shift()!
     if (ctx.fetched >= MAX_PAGES) break
     if (tried.has(url)) continue
     tried.add(url)
@@ -188,20 +220,17 @@ export async function findCareers(website: string, deps: CompanyHttpDeps = {}): 
       continue
     }
     blockedAll = false
-    const fromLink = candidates.includes(url)
-    if (!fromLink && !looksLikeCareers(page.html)) continue
+    if (!linked.has(url) && !looksLikeCareers(page.html)) continue
     const links = extractLinks(page.html, page.url, domain)
     links.emails.forEach((e) => emails.add(e))
     const b = links.boards.find((x) => x.watchable) ?? links.boards[0] ?? null
-    return {
-      status: 'found',
-      careersUrl: b?.url ?? page.url,
-      board: b,
-      emails: [...emails].slice(0, 3),
-      textHash: b ? null : textHash(pageText(page.html)),
-      fetched: ctx.fetched,
-    }
+    if (b) return { status: 'found', careersUrl: b.url, board: b, emails: [...emails].slice(0, 3), textHash: null, fetched: ctx.fetched }
+    fallback ??= { status: 'found', careersUrl: page.url, board: null, emails: [], textHash: textHash(pageText(page.html)), fetched: 0 }
+    const deeper = links.careers.filter((u) => !tried.has(u) && u !== page.url)
+    deeper.forEach((u) => linked.add(u))
+    queue.unshift(...deeper)
   }
+  if (fallback) return { ...fallback, emails: [...emails].slice(0, 3), fetched: ctx.fetched }
   const res = empty(blockedAll ? 'blocked' : 'none', ctx.fetched, blockedAll ? 'disallowed by robots.txt' : undefined)
   return { ...res, emails: [...emails].slice(0, 3) }
 }

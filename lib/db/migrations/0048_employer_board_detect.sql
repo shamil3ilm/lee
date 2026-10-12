@@ -1,0 +1,1 @@
+ALTER TABLE "company_discoveries" ADD COLUMN "board_checked_at" timestamp with time zone;

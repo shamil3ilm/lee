@@ -68,6 +68,21 @@ export async function enqueueGrowth(userId: string, now: Date = new Date()): Pro
   return created > 0
 }
 
+/** Queue this week's employer-board auto-detect (once per ISO week; false when it is already queued). */
+export async function enqueueBoards(userId: string, now: Date = new Date()): Promise<boolean> {
+  const { created } = await enqueueMany([
+    {
+      type: JOB_TYPES.companyBoards,
+      userId,
+      runAfter: now,
+      idempotencyKey: jobKeys.companyBoards(userId, isoWeek(now)),
+      priority: JOB_PRIORITY[JOB_TYPES.companyBoards],
+      maxAttempts: 2,
+    },
+  ])
+  return created > 0
+}
+
 /** "Run discovery now" after a reset: one run per reset, not held to the once-a-day limit of "Find now". */
 export async function enqueueCompanyDiscoveryAfterReset(userId: string, now: Date = new Date()): Promise<boolean> {
   const { created } = await enqueueMany([

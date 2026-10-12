@@ -663,6 +663,11 @@ export const companyDiscoveries = pgTable(
     careersHash: text('careers_hash'),
     careersCheckedAt: timestamp('careers_checked_at', { withTimezone: true }),
     careersChangedAt: timestamp('careers_changed_at', { withTimezone: true }),
+    /**
+     * Weekly employer-board auto-detect (lib/company-discovery/boards.ts):
+     * when the company's site was last checked for a job board. Null = never.
+     */
+    boardCheckedAt: timestamp('board_checked_at', { withTimezone: true }),
     /** "Not relevant" reason: industry | size | region | government | other. */
     dismissReason: text('dismiss_reason'),
     /** The speculative application made from "Reach out". */

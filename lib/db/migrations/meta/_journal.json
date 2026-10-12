@@ -337,6 +337,13 @@
       "when": 1791561551790,
       "tag": "0047_company_growth",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1791788301621,
+      "tag": "0048_employer_board_detect",
+      "breakpoints": true
     }
   ]
 }

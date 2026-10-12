@@ -24,7 +24,8 @@ import { NEW_SOURCES } from '@/lib/radar/new/types'
 import { RADAR_SOURCES } from '@/lib/radar/types'
 import { runCompanyDiscovery } from '@/lib/company-discovery/service'
 import { checkWatchedCareers, enrichPending } from '@/lib/company-discovery/enrich'
-import { enqueueEnrichment, enqueueGrowth } from '@/lib/company-discovery/schedule'
+import { enqueueBoards, enqueueEnrichment, enqueueGrowth } from '@/lib/company-discovery/schedule'
+import { detectBoards } from '@/lib/company-discovery/boards'
 import { refreshGrowth } from '@/lib/company-discovery/growth/refresh'
 import { pullPortfolio } from '@/lib/portfolio/pull'
 import { JOB_TYPES } from './job-types'
@@ -424,6 +425,7 @@ const companyDiscovery = defineHandler({
     const r = await runCompanyDiscovery(userId(job), { deadline: end })
     const careers = await checkWatchedCareers(userId(job)).catch(() => ({ checked: 0, changed: 0 }))
     await enqueueEnrichment(userId(job))
+    await enqueueBoards(userId(job))
     await enqueueGrowth(userId(job))
     return {
       metrics: { companies_found: r.fetched, companies_new: r.new, company_sources_failed: r.failed, careers_changed: careers.changed },
@@ -501,6 +503,34 @@ const companyGrowth = defineHandler({
   },
 })
 
+/**
+ * Weekly employer-board auto-detect (lib/company-discovery/boards.ts): a
+ * bounded batch of companies in the user's regions gets its own site
+ * checked for a job board (robots.txt first). Readable boards are turned on
+ * for starred regions and watched companies, suggested elsewhere.
+ * Non-essential: skipped under the usage throttle.
+ */
+const companyBoards = defineHandler({
+  type: JOB_TYPES.companyBoards,
+  scope: 'user',
+  payload: USER_PAYLOAD,
+  timeoutMs: 150_000,
+  minBudgetMs: 40_000,
+  async run({ job, deadline }): Promise<JobResult> {
+    if (await isThrottled('pause_nonessential')) {
+      return {
+        metrics: { company_boards_paused_by_usage: 1 },
+        summary: { kind: 'company-boards', checked: 0, found: 0, autoEnabled: 0, suggested: 0, blocked: 0 },
+      }
+    }
+    const s = await detectBoards(userId(job), { deadline: Math.min(deadline - 20_000, Date.now() + 120_000) })
+    return {
+      metrics: { company_boards_checked: s.checked, company_boards_found: s.found, company_boards_enabled: s.autoEnabled, company_boards_failed: s.failed },
+      summary: { kind: 'company-boards', checked: s.checked, found: s.found, autoEnabled: s.autoEnabled, suggested: s.suggested, blocked: s.blocked },
+    }
+  },
+})
+
 export const appHandlers = [
   reminders,
   followups,
@@ -520,6 +550,7 @@ export const appHandlers = [
   companyEnrich,
   portfolioPull,
   companyGrowth,
+  companyBoards,
 ] as const
 
 export const appRegistry: HandlerRegistry = createRegistry(appHandlers)

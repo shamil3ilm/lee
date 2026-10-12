@@ -54,6 +54,10 @@ export interface DiscoveryJobSummary {
   remoteType?: string | null
   techStack: string[]
   applyUrl?: string | null
+  /** The board marks it a local hire (likely needs existing residency): a soft chip. */
+  localHire?: boolean
+  /** A role named in a job-news post, no job page read: low confidence. */
+  titleOnly?: boolean
 }
 
 export interface DiscoveryCompanySummary {
@@ -287,6 +291,16 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
               {item.post ? <PostSourceChip /> : <Badge variant="neutral">{item.sourceName}</Badge>}
               {workModeLabel(n.remoteType) ? (
                 <Badge variant="slate">{workModeLabel(n.remoteType)}</Badge>
+              ) : null}
+              {n.localHire ? (
+                <Badge variant="warning" title="The employer lists this as a local hire: it likely expects existing residency in the country (no visa sponsorship). Not filtered." data-testid="chip-local-hire">
+                  Local hire
+                </Badge>
+              ) : null}
+              {n.titleOnly ? (
+                <Badge variant="outline" title="Named in a job-news post; lee read no job page for it. Check the post and the employer before applying." data-testid="chip-title-only">
+                  Title only
+                </Badge>
               ) : null}
               {/* "just now" on the server can be "1m ago" by hydration: relative text may differ. */}
               <span className="text-xs text-muted-foreground" suppressHydrationWarning>

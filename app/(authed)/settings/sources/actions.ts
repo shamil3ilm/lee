@@ -9,6 +9,8 @@ import { logger } from '@/lib/logger'
 import { queueFirstPoll } from '@/lib/queue/first-poll'
 import { nextWatchConfig } from '@/lib/defaults/watch-status'
 import { enableRegionBoards } from '@/lib/coverage/enable'
+import { enableSuggestedBoards } from '@/lib/company-discovery/boards'
+import { detectJobCategories } from '@/lib/discovery/adapters/wp-job-news'
 
 export type ActionResult = { success: true } | { error: string }
 
@@ -57,10 +59,23 @@ export async function addSource(formData: FormData): Promise<ActionResult> {
     if (!listAdapterKinds().includes(kind) || getSourceKind(kind)?.catalogOnly) {
       return { error: `Unsupported source kind: ${kind}` }
     }
-    const { config, summary } = buildConfig(kind, company, url)
-    const finalName = name?.trim() || `${kind} — ${summary}`
+    const built = buildConfig(kind, company, url)
+    let config = built.config
+    let finalName = name?.trim() || `${kind} — ${built.summary}`
     // A watch link is never polled: it's saved switched off.
-    const pollable = kind !== 'watch'
+    let pollable = kind !== 'watch'
+    if (kind === 'wp_job_news') {
+      // Detect the WordPress API and the job category now; the source is
+      // saved switched off with what was found in its name, and the user
+      // confirms by switching it on.
+      const found = await detectJobCategories(String(config.url))
+      const cat = found.categories[0]
+      if (!cat) return { error: 'No WordPress job category found at that address (it needs a public /wp-json API with a “Jobs” category).' }
+      const siteName = (found.siteName ?? new URL(String(config.url)).hostname.replace(/^www\./, '')).slice(0, 80)
+      config = { url: new URL(String(config.url)).origin, jobCategories: [cat.id], siteName }
+      finalName = name?.trim() || `${siteName} (job news: “${cat.name}” #${cat.id}, ${cat.count ?? '?'} posts) — switch on to read`
+      pollable = false
+    }
     const created = await sourcesQ.create(userId, {
       name: finalName,
       kind,
@@ -145,6 +160,24 @@ export async function enableRegionSources(regionId: string): Promise<ActionResul
       err: err instanceof Error ? err.message : String(err),
     })
     return { error: 'Could not turn the boards on.' }
+  }
+}
+
+/** "12 employer boards found in Kuwait — turn on": read the boards the weekly auto-detect found there. */
+export async function enableRegionEmployerBoards(regionId: string): Promise<ActionResult & { count?: number }> {
+  try {
+    const userId = await requireUserId()
+    if (!regionIdSchema.safeParse(regionId).success) return { error: 'Unknown region.' }
+    const r = await enableSuggestedBoards(userId, regionId)
+    revalidatePath('/settings/sources')
+    revalidatePath('/discoveries')
+    return { success: true, count: r.enabled }
+  } catch (err) {
+    logger.error('enableRegionEmployerBoards failed', {
+      regionId,
+      err: err instanceof Error ? err.message : String(err),
+    })
+    return { error: 'Could not turn the employer boards on.' }
   }
 }
 

@@ -14,6 +14,8 @@ export interface CoverageRowView {
   kept: number
   filtered: number
   companies: number
+  /** Employer boards found (auto-detect) and not read yet: "12 employer boards found in Kuwait — turn on". */
+  employerBoards: number
   why: string
   suggestions: { kind: string; text: string; href?: string }[]
 }
@@ -32,6 +34,7 @@ export function toRowViews(rows: readonly UserCoverage[]): CoverageRowView[] {
     kept: r.kept,
     filtered: r.activity.byStatus.filtered ?? 0,
     companies: r.activity.companies,
+    employerBoards: r.employerBoards,
     why: r.why,
     suggestions: r.suggestions,
   }))

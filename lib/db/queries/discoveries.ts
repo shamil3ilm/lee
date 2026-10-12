@@ -255,6 +255,10 @@ export interface DiscoveryListItem {
   relevanceNotes: RelevanceNotes
   /** `normalized.post` of a LinkedIn hiring post (LinkedInPostMeta), else null. */
   post: unknown
+  /** The board marks it a local hire (BambooHR "Admin Staff (Local)"): a soft chip, never a filter. */
+  localHire: boolean
+  /** Title-only role from a job-news post (no job page read). */
+  titleOnly: boolean
 }
 
 const n = (key: string) => sql<string | null>`${discoveries.normalized}->>${key}`
@@ -286,6 +290,8 @@ const LIST_COLUMNS = {
   applyUrl: n('applyUrl'),
   // LinkedIn hiring posts: who posted and how to respond (null for other rows).
   post: sql<unknown>`${discoveries.normalized}->'post'`,
+  localHire: sql<boolean>`coalesce((${discoveries.normalized}->>'localHire')::boolean, false)`,
+  titleOnly: sql<boolean>`coalesce(${discoveries.normalized}->'tags' @> '["confidence:title-only"]'::jsonb, false)`,
   filterReason: discoveries.filterReason,
   filterOverride: discoveries.filterOverride,
   relevanceNotes: discoveries.relevanceNotes,

@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { ExternalLink, Star } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { enableRegionSources } from '@/app/(authed)/settings/sources/actions'
+import { enableRegionEmployerBoards, enableRegionSources } from '@/app/(authed)/settings/sources/actions'
 import type { CoverageStatus } from '@/lib/coverage/compute'
 import type { CoverageRowView } from '@/lib/coverage/view'
 
@@ -48,6 +48,34 @@ function EnableButton({ regionId, count, label }: { regionId: string; count: num
   )
 }
 
+function EmployerBoardsButton({ regionId, count, label }: { regionId: string; count: number; label: string }) {
+  const [pending, start] = useTransition()
+  const [done, setDone] = useState(false)
+  if (done) return <span className="text-xs text-muted-foreground">Employer boards turned on</span>
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      disabled={pending}
+      data-testid={`coverage-employer-boards-${regionId}`}
+      onClick={() =>
+        start(async () => {
+          const r = await enableRegionEmployerBoards(regionId)
+          if ('error' in r) {
+            toast.error(r.error)
+            return
+          }
+          setDone(true)
+          toast.success(`${plural(r.count ?? count, 'employer board')} on; first search queued.`)
+        })
+      }
+    >
+      {pending ? 'Turning on…' : `${plural(count, 'employer board')} found in ${label} — turn on`}
+    </Button>
+  )
+}
+
 function Row({ row }: { row: CoverageRowView }) {
   return (
     <li className="space-y-2 rounded-md border p-3" data-testid={`coverage-${row.id}`}>
@@ -69,6 +97,7 @@ function Row({ row }: { row: CoverageRowView }) {
         {plural(row.companies, 'company', 'companies')}.
       </p>
       <p className="text-xs text-muted-foreground">{row.why}</p>
+      {row.employerBoards > 0 ? <EmployerBoardsButton regionId={row.id} count={row.employerBoards} label={row.label} /> : null}
       {row.suggestions.length > 0 ? (
         <ul className="flex flex-wrap items-center gap-2" aria-label={`Next steps for ${row.label}`}>
           {row.suggestions.map((s) => (

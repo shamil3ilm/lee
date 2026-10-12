@@ -157,6 +157,7 @@ export const OUTBOUND_PARTIES: readonly OutboundParty[] = [
       'apply.workable.com',
       '*.pinpointhq.com',
       '*.recruitee.com',
+      '*.bamboohr.com',
       '*.myworkdayjobs.com',
       '*.myworkdaysite.com',
       '*.oraclecloud.com',
@@ -176,6 +177,13 @@ export const OUTBOUND_PARTIES: readonly OutboundParty[] = [
       'startupmission.kerala.gov.in',
     ],
     sends: 'Requests for public job listings: the company board names and search keywords of the sources you follow. No personal data.',
+    group: 'jobs',
+  },
+  {
+    id: 'job-news',
+    name: 'Job-news sites (Pravasi News Daily, Pravasi Varthakal, WordPress sites you add)',
+    hosts: ['www.pravasinewsdaily.com', 'pravasinewsdaily.com', 'pravasivarthakal.in', 'www.pravasivarthakal.in'],
+    sends: 'Daily, when the source is on: a request for the job category’s recent posts through the site’s public WordPress API (or its RSS feed). No personal data.',
     group: 'jobs',
   },
   {

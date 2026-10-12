@@ -9,6 +9,8 @@ import { RssAdapter } from './rss'
 import { JsonLdAdapter } from './jsonld'
 import { YcDirectoryAdapter } from './yc-directory'
 import { RecruiteeAdapter } from './recruitee'
+import { BambooHrAdapter } from './bamboohr'
+import { WpJobNewsAdapter } from './wp-job-news'
 import { PinpointAdapter } from './pinpoint'
 import { HimalayasAdapter } from './himalayas'
 import { JobicyAdapter } from './jobicy'
@@ -38,6 +40,9 @@ const registry: Record<string, DiscoveryAdapter> = {
   jsonld: new JsonLdAdapter(),
   yc_directory: new YcDirectoryAdapter(),
   recruitee: new RecruiteeAdapter(),
+  bamboohr: new BambooHrAdapter(),
+  // Job-news roundups on WordPress (Pravasi News Daily …): direct ATS jobs, title-only roles, employer leads.
+  wp_job_news: new WpJobNewsAdapter(),
   pinpoint: new PinpointAdapter(),
   himalayas: new HimalayasAdapter(),
   jobicy: new JobicyAdapter(),

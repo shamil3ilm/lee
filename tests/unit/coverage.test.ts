@@ -109,9 +109,10 @@ describe('coverage status and next steps', () => {
   it('the one-line summary names starred regions, else the weakest', () => {
     const red = regionCoverage({ playbook: kw, sources: [], activity: NONE, query: 'x', alertSitesSeen: new Set() })
     const views = toRowViews([
-      { ...red, starred: null },
-      { ...regionCoverage({ playbook: ae, sources: [], activity: { ...NONE, yieldingSources: 2, byStatus: { new: 9 } }, query: 'x', alertSitesSeen: new Set() }), starred: 'top' },
+      { ...red, starred: null, employerBoards: 12 },
+      { ...regionCoverage({ playbook: ae, sources: [], activity: { ...NONE, yieldingSources: 2, byStatus: { new: 9 } }, query: 'x', alertSitesSeen: new Set() }), starred: 'top', employerBoards: 0 },
     ])
+    expect(views.find((v) => v.id === 'kw')?.employerBoards).toBe(12)
     expect(lineRegions(views).map((r) => r.id)).toEqual(['ae'])
     expect(lineRegions(views.map((v) => ({ ...v, starred: null }))).map((r) => r.id)).toEqual(['kw', 'ae'])
   })
