@@ -1,6 +1,7 @@
 import { plural } from '@/lib/ui/labels'
 import type { MasterCV, TailoredCV } from '@/lib/documents/types'
 import { checkFactLock } from '@/lib/resume/fact-lock'
+import { lockWorkFacts, type WorkFact } from '@/lib/resume/work-facts'
 
 /**
  * Fact lock on the AI's tailored CV. The prompt only ever sees the starting
@@ -25,6 +26,8 @@ function allText(cv: MasterCV): string {
 export interface LockedTailoring {
   cv: TailoredCV
   dropped: number
+  /** Jobs whose title or dates the model changed, put back as held. */
+  restored: number
 }
 
 export function lockTailoredCv(tailored: TailoredCV, starting: MasterCV): LockedTailoring {
@@ -37,13 +40,16 @@ export function lockTailoredCv(tailored: TailoredCV, starting: MasterCV): Locked
     if (!ok) dropped++
     return ok
   }
-  const experience = tailored.experience
+  const kept = tailored.experience
     .filter((e) => {
       const ok = companies.has(e.company.toLowerCase())
       if (!ok) dropped++
       return ok
     })
     .map((e) => ({ ...e, bullets: e.bullets.filter(keep) }))
+  // Positions, employers and dates stay exactly as held (lib/resume/work-facts.ts).
+  const work = lockWorkFacts(kept, starting.experience, experienceFact, withExperienceFact)
+  const experience = work.items
   const projects = tailored.projects
     ?.filter((p) => {
       const ok = projectNames.has(p.name.toLowerCase())
@@ -52,6 +58,10 @@ export function lockTailoredCv(tailored: TailoredCV, starting: MasterCV): Locked
     })
     .map((p) => ({ ...p, highlights: p.highlights?.filter(keep) }))
   const summaryOk = keep(tailored.summary)
+  const notes = [
+    dropped > 0 ? `lee removed ${plural(dropped, 'line')} that went beyond your résumé's facts.` : '',
+    work.restored > 0 ? `lee kept ${plural(work.restored, 'job title')} and dates as held.` : '',
+  ].filter(Boolean)
   const cv: TailoredCV = {
     ...tailored,
     summary: summaryOk ? tailored.summary : starting.summary,
@@ -59,11 +69,18 @@ export function lockTailoredCv(tailored: TailoredCV, starting: MasterCV): Locked
     ...(projects ? { projects } : {}),
     _tailoring: {
       ...tailored._tailoring,
-      reasoning:
-        dropped > 0
-          ? `${tailored._tailoring.reasoning} (lee removed ${plural(dropped, 'line')} that went beyond your résumé's facts.)`.trim()
-          : tailored._tailoring.reasoning,
+      reasoning: notes.length > 0 ? `${tailored._tailoring.reasoning} (${notes.join(' ')})`.trim() : tailored._tailoring.reasoning,
     },
   }
-  return { cv, dropped }
+  return { cv, dropped, restored: work.restored }
+}
+
+type Experience = MasterCV['experience'][number]
+
+function experienceFact(e: Experience): WorkFact {
+  return { employer: e.company, position: e.role, start: e.start, end: e.end }
+}
+
+function withExperienceFact<T extends Experience>(e: T, f: WorkFact): T {
+  return { ...e, company: f.employer, role: f.position, start: f.start, end: f.end }
 }
