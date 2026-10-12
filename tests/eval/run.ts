@@ -63,6 +63,7 @@ import {
   loadDiscoveryMatchFixtures,
   runDiscoveryMatchFixture,
 } from './discovery-match'
+import { calibrationFailures, formatCalibration, runCalibration } from './discovery-calibration'
 
 // ---------------------------------------------------------------------------
 // Config
@@ -395,6 +396,19 @@ async function runDiscoveryMatchExpectationGate(): Promise<number> {
   return failed
 }
 
+/**
+ * Match calibration (tests/eval/discovery-calibration.ts): ~150 labelled
+ * synthetic postings × two profiles. Fails on a non-tech false-pass rate
+ * above 5 %, band agreement below 80 % or any eligibility trap in New.
+ */
+function runCalibrationGate(): string[] {
+  const report = runCalibration()
+  console.log('## discovery calibration (deterministic)')
+  console.log(formatCalibration(report))
+  console.log('')
+  return calibrationFailures(report)
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -424,6 +438,11 @@ async function main(): Promise<void> {
   const matchFailures = await runDiscoveryMatchExpectationGate()
   if (matchFailures > 0) {
     console.error(`discovery-match expectations failed for ${matchFailures} fixture(s).`)
+    process.exit(1)
+  }
+  const calibrationFailed = runCalibrationGate()
+  if (calibrationFailed.length > 0) {
+    console.error(`discovery calibration failed: ${calibrationFailed.join('; ')}`)
     process.exit(1)
   }
 

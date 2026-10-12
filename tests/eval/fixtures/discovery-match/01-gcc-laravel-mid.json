@@ -1,5 +1,5 @@
 {
-  "name": "Mid-level Laravel role in Dubai: kept, region bonus",
+  "name": "Mid-level Laravel role in Dubai: kept; the AI score gets no region bonus (the Match counts the region once)",
   "inputs": {
     "job": {
       "title": "PHP Laravel Developer",
@@ -12,7 +12,7 @@
     "pass": true,
     "reasons": [],
     "regions": ["ae", "gcc"],
-    "score": 83,
+    "score": 78,
     "promptIncludes": ["\"target_roles\"", "\"target_seniority\"", "\"target_regions\"", "--- MASTER CV DIGEST ---"]
   }
 }
