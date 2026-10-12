@@ -136,7 +136,10 @@ export async function getSetupChecklist(userId: string, options: SetupChecklistO
   ]
   const items = gmail ? all : all.filter((i) => i.key !== 'job_alerts' && i.key !== 'google')
   const completed = items.filter((i) => i.done).length
-  return { items, completed, total: items.length, retired: completed / items.length >= SETUP_RETIRE_AT }
+  // The region question is never skipped by the 80% rule: the starred
+  // regions drive the coverage line and the Discovery ranking.
+  const regionsDone = items.find((i) => i.key === 'regions')?.done ?? true
+  return { items, completed, total: items.length, retired: regionsDone && completed / items.length >= SETUP_RETIRE_AT }
 }
 
 // ---------------------------------------------------------------------------

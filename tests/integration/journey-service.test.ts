@@ -128,6 +128,13 @@ describe('getSetupChecklist', () => {
     const u = await makeUser()
     expect((await getSetupChecklist(u.id)).items.find((i) => i.key === 'regions')?.done).toBe(false)
     await saveProfile(u.id, { discoveryPrefs: { preferredRegions: [{ id: 'kw', level: 'top' }] } })
+    // Not retired without it, however much else is done.
+    await saveProfile(u.id, { skills: ['go'], searchPrefsSavedAt: new Date() })
+    await makeSource(u.id)
+    await makeApp(u.id)
+    const before = await getSetupChecklist(u.id, { gmail: false })
+    expect(before.completed / before.total).toBeGreaterThanOrEqual(0.5)
+    expect(before.retired).toBe(false)
     expect((await getSetupChecklist(u.id)).items.find((i) => i.key === 'regions')).toMatchObject({
       done: true,
       href: '/settings/search#preferred-regions',
