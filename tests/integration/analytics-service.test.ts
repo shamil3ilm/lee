@@ -322,9 +322,10 @@ describe('weeklyActivity', () => {
     const u = await makeUser()
     const c = await makeCompany(u.id)
     const j = await makeJob(u.id, c.id)
-    // 3 apps this week
+    // 3 apps this week. "Now" is always inside the current Monday-based
+    // week; daysAgo(1) is last week whenever the test runs on a Monday.
     for (let i = 0; i < 3; i++) {
-      await makeApplication(u.id, j.id, { createdAt: daysAgo(1) })
+      await makeApplication(u.id, j.id, { createdAt: new Date() })
     }
     // 1 app 30 days ago
     await makeApplication(u.id, j.id, { createdAt: daysAgo(30) })
