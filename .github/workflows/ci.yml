@@ -82,7 +82,7 @@ jobs:
       # v17 §9.1: E2E journeys run against `next dev` with a freshly seeded
       # PGlite file DB and the local-only test sign-in (tests/e2e/env.ts).
       - run: pnpm test:e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report
