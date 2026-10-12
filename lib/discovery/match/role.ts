@@ -1,4 +1,4 @@
-import { classifyRole, familiesFromEvidence, roleFamilyLabel, SKILL_GROUPS } from '../relevance/roles'
+import { classifyRole, familiesFromEvidence, isNonEngineeringTitle, roleFamilyLabel, SKILL_GROUPS } from '../relevance/roles'
 import { findTerms, normalizeForMatch } from '../relevance/text'
 import type { ParsedJd } from './jd'
 import type { MatchComponent, MatchJob, MatchProfile } from './types'
@@ -12,7 +12,8 @@ import type { MatchComponent, MatchJob, MatchProfile } from './types'
  *   no target roles set (a tech role)                 7
  *   title says a target family, the JD reads another  3  "the JD reads …"
  *   another tech family                               3
- *   not a tech role (title and JD)                    0
+ *   not a tech role (title and JD, or a non-engineering
+ *   title whose JD does not read as a target)         0
  */
 
 export const ROLE_MAX = 10
@@ -67,7 +68,9 @@ export function roleComponent(
     const odd = byTitle.families.length === 0 && !byTitle.generic
     return c(8, `Role: ${roleFamilyLabel(jdTarget)} (from the JD${odd ? ', new title' : ''})`)
   }
-  const tech = byTitle.engineering || fromJd.length > 0
+  // A non-engineering title ("Category Executive") is a tech role only through
+  // the JD-target path above, never through a stray JD family.
+  const tech = (byTitle.engineering || fromJd.length > 0) && !isNonEngineeringTitle(job.title)
   if (!tech) return c(0, 'Role: not a tech role')
   if (p.roleFamilies.length === 0) return c(7, 'Role: tech role (no target roles set)')
   if (byTitle.families.length === 0 && p.roleFamilies.some((t) => CORE_FAMILIES.includes(t))) {

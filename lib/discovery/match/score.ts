@@ -1,4 +1,4 @@
-import { classifyRole } from '../relevance/roles'
+import { classifyRole, isNonEngineeringTitle } from '../relevance/roles'
 import { requirementChecks, responsibilitiesComponent } from './coverage'
 import { seniorityComponent, workModeComponent } from './fit'
 import { regionFit } from './region'
@@ -36,29 +36,64 @@ import { MATCH_SCORE_VERSION } from './version'
  * the user does not speak well caps it at 34 (the weak band). A posting the
  * user cannot take (remote only for other countries, on-site elsewhere with
  * no relocation they accept) caps it at 30, whatever the other parts add:
- * "Not eligible: remote only for Indonesia or Vietnam". The ceiling also
+ * "Not eligible: remote only for Indonesia or Vietnam". A non-tech role caps
+ * at 25 ("Not a tech role: Category Executive"), a tech role outside your
+ * target families at 45; for both the context parts (seniority, region,
+ * work mode, visa) count none / half. The lowest ceiling wins, and it also
  * holds the Match / AI blend down (cappedFit, blendedSql).
  */
 
-export const CEILINGS = { ineligible: 30, mandatoryLanguage: 34, titleOnly: 55 } as const
+export const CEILINGS = { notTech: 25, ineligible: 30, mandatoryLanguage: 34, offTarget: 45, titleOnly: 55 } as const
 
-function ceilingOf(jd: ParsedJd, mandatoryUnmet: readonly string[], ineligible: string | null): MatchCeiling | undefined {
-  if (ineligible) return { score: CEILINGS.ineligible, reason: `Not eligible: ${ineligible}` }
-  if (mandatoryUnmet.length > 0) return { score: CEILINGS.mandatoryLanguage, reason: `Language: ${mandatoryUnmet.join(', ')} required` }
-  if (jd.confidence === 'title_only') return { score: CEILINGS.titleOnly, reason: 'Low confidence: title only' }
-  return undefined
+interface CeilingInputs {
+  jd: ParsedJd
+  title: string
+  role: MatchComponent
+  mandatoryUnmet: readonly string[]
+  ineligible: string | null
+}
+
+/** Every ceiling that applies; the lowest wins (its reason is the one shown). */
+function ceilingOf(i: CeilingInputs): MatchCeiling | undefined {
+  const all: MatchCeiling[] = []
+  if (i.role.points === 0) all.push({ score: CEILINGS.notTech, reason: `Not a tech role: ${i.title}` })
+  else if (i.role.points <= OFF_TARGET_ROLE_POINTS) {
+    all.push({ score: CEILINGS.offTarget, reason: `Role outside your targets: ${roleOffTargetLabel(i.role.label)}` })
+  }
+  if (i.ineligible) all.push({ score: CEILINGS.ineligible, reason: `Not eligible: ${i.ineligible}` })
+  if (i.mandatoryUnmet.length > 0) all.push({ score: CEILINGS.mandatoryLanguage, reason: `Language: ${i.mandatoryUnmet.join(', ')} required` })
+  if (i.jd.confidence === 'title_only') all.push({ score: CEILINGS.titleOnly, reason: 'Low confidence: title only' })
+  return all.reduce<MatchCeiling | undefined>((low, c) => (!low || c.score < low.score ? c : low), undefined)
+}
+
+/** Context parts (where, when, how, visa) that only matter for a role you would do. */
+const CONTEXT_KEYS: ReadonlySet<string> = new Set(['seniority', 'region', 'workMode', 'visa'])
+
+/**
+ * Role relevance scales the context points: full for a role you target
+ * (7+), half for another tech family, none for a non-tech role, so a
+ * Category Executive in Dubai cannot collect ~40 points for being in Dubai.
+ * Penalties are never scaled.
+ */
+function scaleContext(c: MatchComponent, role: MatchComponent): MatchComponent {
+  if (!CONTEXT_KEYS.has(c.key) || c.points <= 0 || role.points >= 7) return c
+  if (role.points === 0) return { ...c, points: 0, label: `${c.label} (not counted: not a tech role)` }
+  return { ...c, points: Math.round(c.points / 2), label: `${c.label} (counts half: role outside your targets)` }
 }
 
 export function computeMatch(job: MatchJob, profile: MatchProfile): MatchDetail {
   const jd = parseJd(job)
-  const techRole = classifyRole({ title: job.title, description: job.descriptionMd, techStack: job.techStack }).engineering || jdFamilies(job, jd).length > 0
+  // A non-engineering title is never "a tech role with no stack named" (no neutral skills points).
+  const techRole =
+    !isNonEngineeringTitle(job.title) &&
+    (classifyRole({ title: job.title, description: job.descriptionMd, techStack: job.techStack }).engineering || jdFamilies(job, jd).length > 0)
   const skills = skillsComponent(job, profile, { techRole, jd })
   const role = roleComponent(job, profile, jd, skills.component.points / SKILLS_MAX)
   const language = languageComponent(job, profile)
   const region = regionFit(job, profile)
   // Off-target roles (another family) never earn the domain or strong-area credit in full.
   const offTarget = role.points <= OFF_TARGET_ROLE_POINTS ? roleOffTargetLabel(role.label) : null
-  const components: MatchComponent[] = [
+  const raw: MatchComponent[] = [
     skills.component,
     responsibilitiesComponent(jd, profile),
     role,
@@ -68,10 +103,11 @@ export function computeMatch(job: MatchJob, profile: MatchProfile): MatchDetail 
     payComponent(job, profile),
     language.component,
     visaComponent(job, profile),
-    domainComponent(job, profile, { offTargetRole: offTarget }),
+    domainComponent(job, profile, { offTargetRole: offTarget, notTech: role.points === 0 }),
   ]
+  const components = raw.map((c) => scaleContext(c, role))
   const total = components.reduce((s, c) => s + c.points, 0)
-  const ceiling = ceilingOf(jd, language.mandatoryUnmet, region.ineligible)
+  const ceiling = ceilingOf({ jd, title: job.title, role, mandatoryUnmet: language.mandatoryUnmet, ineligible: region.ineligible })
   return {
     v: MATCH_SCORE_VERSION,
     score: Math.max(0, Math.min(ceiling?.score ?? 100, Math.round(total))),
