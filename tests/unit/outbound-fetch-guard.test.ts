@@ -150,7 +150,8 @@ describe('outbound fetch guard', () => {
       return rawCalls(src).length ? [rel] : []
     })
     expect(unclassified, 'classify these: fixed host → FIXED_HOST, variable host → safeFetch').toEqual([])
-  })
+    // Reads every file under lib/ and app/: slow on a loaded runner (11 s seen in a full run).
+  }, 30_000)
 
   it('the allow-list has no stale entries', () => {
     const stale = Object.keys(FIXED_HOST).filter((rel) => {

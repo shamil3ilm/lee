@@ -18,6 +18,13 @@ import {
 const DIR = path.resolve(process.cwd(), 'tests/eval/fixtures/cv-score')
 const files = readdirSync(DIR).filter((f) => f.endsWith('.json')).sort()
 
+/**
+ * Each fixture scores the CV twice (reproducibility). Alone that takes about
+ * a second; under full-suite load on two workers it took over the 5 s
+ * default (03-keyword-stuffed.json), so the per-test budget is realistic.
+ */
+const FIXTURE_TIMEOUT_MS = 30_000
+
 describe('cv-score eval fixtures', () => {
   it('has at least the spec\'s fixture set', () => {
     expect(files.length).toBeGreaterThanOrEqual(6)
@@ -32,5 +39,5 @@ describe('cv-score eval fixtures', () => {
     expect(checkExpectations(a, fx.expect)).toEqual([])
     const b = await runCvScoreFixture(fx.inputs, new FixtureAIProvider())
     expect(summarize(b)).toEqual(summarize(a))
-  })
+  }, FIXTURE_TIMEOUT_MS)
 })
