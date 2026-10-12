@@ -6,6 +6,7 @@ import { quotaMeters } from '@/lib/ai/quota'
 import type { QuotaStatus } from '@/lib/ai/quota-compute'
 import { listServiceSecretStatuses } from '@/lib/settings/secrets'
 import type { SecretSource } from '@/lib/settings/service-secrets'
+import { isOwner } from '@/lib/auth/owner'
 import { logger } from '@/lib/logger'
 import { databaseSizeBytes, emptyGlobalReadings } from './collect'
 import { LEVEL_TREND_DAYS, utcPeriod, type MeterReading } from './meters'
@@ -41,6 +42,12 @@ export interface UsagePageData {
   ai: QuotaStatus[]
   /** When "Refresh now" is next allowed (null = now). */
   refreshAvailableAt: Date | null
+  /**
+   * The deployment owner. Only the owner sees the deployment's table sizes
+   * and Neon state and can refresh, resume throttles or set the Neon project
+   * (invite-beta §1.4); invitees see the shared meters read-only.
+   */
+  owner: boolean
 }
 
 function trendStartDay(now: Date): string {
@@ -59,7 +66,7 @@ async function safe<T>(what: string, fn: () => Promise<T>, fallback: T): Promise
 }
 
 export async function getUsagePageData(userId: string, now: Date = new Date()): Promise<UsagePageData> {
-  const [history, dbSize, assetBytes, ai, throttleState, settings, secrets] = await Promise.all([
+  const [history, dbSize, assetBytes, ai, throttleState, settings, secrets, owner] = await Promise.all([
     listSnapshotsSince(trendStartDay(now)),
     safe('db_size', () => databaseSizeBytes(), null),
     safe('asset_bytes', () => assetsQ.totalBytes(userId), null),
@@ -67,6 +74,7 @@ export async function getUsagePageData(userId: string, now: Date = new Date()): 
     loadThrottleState(now),
     db.select().from(usageSettings).where(eq(usageSettings.userId, userId)).limit(1),
     listServiceSecretStatuses(userId),
+    isOwner(userId),
   ])
   const latest = history.at(-1) ?? null
   const data = latest?.data ?? EMPTY_SNAPSHOT_DATA
@@ -83,9 +91,9 @@ export async function getUsagePageData(userId: string, now: Date = new Date()): 
   return {
     snapshotAt: latest?.takenAt ?? null,
     meters,
-    largestTables: data.largestTables,
+    largestTables: owner ? data.largestTables : [],
     neon: {
-      ...data.neon,
+      ...(owner ? data.neon : EMPTY_SNAPSHOT_DATA.neon),
       keySource: secrets.find((x) => x.info.id === 'neon')?.source ?? 'none',
       projectId: s?.neonProjectId ?? null,
     },
@@ -98,5 +106,6 @@ export async function getUsagePageData(userId: string, now: Date = new Date()): 
     resumed: throttleState.resumed,
     ai,
     refreshAvailableAt: nextRefresh > now.getTime() ? new Date(nextRefresh) : null,
+    owner,
   }
 }

@@ -270,7 +270,7 @@ describe('warnings', () => {
   }
 
   it('one todo per meter per threshold per month, idempotent across refreshes', async () => {
-    const u = await makeUser()
+    const u = await makeUser(process.env.ALLOWED_EMAIL ?? 'test@example.com') // deployment meters alert the owner only
     measure(0.75)
     const now = new Date('2026-09-10T09:00:00Z')
     expect((await takeUsageSnapshot(now)).todosCreated).toBe(1)
@@ -309,7 +309,7 @@ describe('warnings', () => {
   })
 
   it('banner/digest warnings come from this month’s latest snapshot only', async () => {
-    const u = await makeUser()
+    const u = await makeUser(process.env.ALLOWED_EMAIL ?? 'test@example.com') // deployment meters warn the owner only
     measure(0.8)
     await takeUsageSnapshot(new Date('2026-08-31T09:00:00Z'))
     expect(await usageWarningsForUser(u.id, new Date('2026-09-01T10:00:00Z'))).toEqual([])
@@ -319,7 +319,7 @@ describe('warnings', () => {
   })
 
   it('the weekly digest includes the warnings', async () => {
-    const u = await makeUser()
+    const u = await makeUser(process.env.ALLOWED_EMAIL ?? 'test@example.com') // deployment meters warn the owner only
     measure(0.8)
     await takeUsageSnapshot()
     const snap = await gatherPipelineSnapshot(u.id)
@@ -369,7 +369,7 @@ describe('Settings › Usage', () => {
 
   it('Refresh now is throttled per user', async () => {
     forbidFetch()
-    const u = await makeUser()
+    const u = await makeUser(process.env.ALLOWED_EMAIL ?? 'test@example.com') // usage actions are owner-only
     sessionMock.mockResolvedValue(u.id)
     expect(await refreshUsageAction()).toEqual({ success: true, message: 'Usage refreshed.' })
     const again = await refreshUsageAction()
@@ -378,14 +378,14 @@ describe('Settings › Usage', () => {
   })
 
   it('Refresh failures stay friendly', async () => {
-    const u = await makeUser()
+    const u = await makeUser(process.env.ALLOWED_EMAIL ?? 'test@example.com') // usage actions are owner-only
     sessionMock.mockResolvedValue(u.id)
     vi.spyOn(collect, 'collectMeasurements').mockRejectedValue(new Error('relation "x" does not exist'))
     expect(await refreshUsageAction()).toEqual({ error: 'Could not refresh usage right now.' })
   })
 
   it('validates and saves the Neon project id', async () => {
-    const u = await makeUser()
+    const u = await makeUser(process.env.ALLOWED_EMAIL ?? 'test@example.com') // usage actions are owner-only
     sessionMock.mockResolvedValue(u.id)
     expect(await saveNeonProjectAction('DROP TABLE users')).toHaveProperty('error')
     expect(await saveNeonProjectAction('cool-sun-123456')).toMatchObject({ success: true })

@@ -5,6 +5,7 @@ import { getAIProviderForUser } from '@/lib/ai'
 import { AISkippedError } from '@/lib/ai/signal'
 import { AiUsageScope } from '@/lib/ai/usage'
 import { logger } from '@/lib/logger'
+import { rateLimited } from '@/lib/tenancy/rate-limit'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -20,6 +21,8 @@ export async function POST(
     const session = await auth()
     const userId = session?.user?.id
     if (!userId) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
+    const limited = await rateLimited(userId, 'aiGenerate')
+    if (limited) return NextResponse.json({ error: limited }, { status: 429 })
     aiUsage.bindUser(userId)
     const { id: applicationId } = await params
     const ai = await getAIProviderForUser(userId)

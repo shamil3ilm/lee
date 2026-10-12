@@ -2,6 +2,8 @@ import { desc, eq } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import { todos, usageAlerts, usageSnapshots, users } from '@/lib/db/schema'
 import { logger } from '@/lib/logger'
+import { isAllowedEmail } from '@/lib/auth/allowed-email'
+import { isOwner } from '@/lib/auth/owner'
 import { formatMeterValue } from './format'
 import {
   crossedThreshold,
@@ -28,9 +30,12 @@ export interface UsageWarning {
   detail: string
 }
 
-/** Pure: warnings for one user from a snapshot's global + that user's readings. */
-export function warningsFor(data: UsageSnapshotData, userId: string): UsageWarning[] {
-  const readings: MeterReading[] = [...data.readings, ...(data.userReadings[userId] ?? [])]
+/**
+ * Pure: warnings for one user from a snapshot's global readings (only when
+ * `includeGlobal`: the deployment owner) + that user's own readings.
+ */
+export function warningsFor(data: UsageSnapshotData, userId: string, includeGlobal = true): UsageWarning[] {
+  const readings: MeterReading[] = [...(includeGlobal ? data.readings : []), ...(data.userReadings[userId] ?? [])]
   const out: UsageWarning[] = []
   for (const r of readings) {
     const d = METER_DEFS[r.id]
@@ -66,17 +71,19 @@ function todoNotes(w: UsageWarning): string {
 
 /**
  * Record crossed thresholds for every user and add a todo for the highest
- * newly crossed one. Re-running (Refresh now, a duplicate job) inserts
+ * newly crossed one. Deployment meters (Neon, Vercel, the queue) alert the
+ * OWNER only; everyone else hears about their own budgets (invite-beta §1.4).
+ * Re-running (Refresh now, a duplicate job) inserts
  * nothing: each (user, month, meter, threshold) exists once. Crossing 90
  * first also records 70, so falling back to 75 % later adds no second todo.
  * Returns the number of todos created.
  */
 export async function recordUsageAlerts(data: UsageSnapshotData, now: Date): Promise<number> {
   const period = utcPeriod(now)
-  const allUsers = await db.select({ id: users.id }).from(users)
+  const allUsers = await db.select({ id: users.id, email: users.email }).from(users)
   let created = 0
   for (const u of allUsers) {
-    for (const w of warningsFor(data, u.id)) {
+    for (const w of warningsFor(data, u.id, isAllowedEmail(u.email))) {
       try {
         if (await recordOne(u.id, period, w, now)) created += 1
       } catch (err) {
@@ -129,5 +136,5 @@ export async function usageWarningsForUser(
     .orderBy(desc(usageSnapshots.day))
     .limit(1)
   if (!row || row.day.slice(0, 7) !== utcPeriod(now)) return []
-  return warningsFor(parseSnapshotData(row.data), userId)
+  return warningsFor(parseSnapshotData(row.data), userId, await isOwner(userId, client))
 }

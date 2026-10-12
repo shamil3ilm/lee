@@ -141,26 +141,6 @@ async function linkLatest(userId: string, documentId: string, kind: string): Pro
 }
 
 /**
- * Backfill `userId` on the most recent OK log row that has no user yet.
- * Providers can't see the request session, so services patch it in after
- * the fact.
- */
-export async function stampLatestCallUser(userId: string): Promise<void> {
-  try {
-    const [latest] = await db
-      .select({ id: aiCallLogs.id })
-      .from(aiCallLogs)
-      .where(and(eq(aiCallLogs.status, 'ok'), isNull(aiCallLogs.userId)))
-      .orderBy(desc(aiCallLogs.createdAt))
-      .limit(1)
-    if (!latest) return
-    await db.update(aiCallLogs).set({ userId }).where(eq(aiCallLogs.id, latest.id))
-  } catch {
-    /* best-effort */
-  }
-}
-
-/**
  * Trims noise from tests — expose only the raw SQL surface we need. Not
  * exported from the barrel.
  */

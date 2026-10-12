@@ -20,8 +20,17 @@ async function loadTestLoginForm(): Promise<ComponentType | null> {
   return null
 }
 
-export default async function SignInPage() {
+/** Auth.js sends a refused sign-in back here with ?error=AccessDenied. */
+function errorMessage(error: string | string[] | undefined): string | null {
+  const code = Array.isArray(error) ? error[0] : error
+  if (!code) return null
+  if (code === 'AccessDenied') return `${APP_NAME} is invite-only. Ask the owner for an invite, then sign in with the invited Google account.`
+  return 'Sign-in did not complete. Try again.'
+}
+
+export default async function SignInPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const TestLoginForm = await loadTestLoginForm()
+  const message = errorMessage((await searchParams).error)
   return (
     // Padding, not margin: a top margin here collapses through <body> and
     // measured as a 0.09 layout shift when the card streamed in.
@@ -33,6 +42,11 @@ export default async function SignInPage() {
           <CardDescription>{APP_TAGLINE}</CardDescription>
         </CardHeader>
         <CardContent>
+          {message ? (
+            <p role="alert" className="mb-4 rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground">
+              {message}
+            </p>
+          ) : null}
           <form
             action={async () => {
               'use server'

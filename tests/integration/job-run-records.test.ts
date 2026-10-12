@@ -27,7 +27,7 @@ import { createRegistry, defineHandler } from '@/lib/queue/registry'
 import { MAX_ATTEMPT_ERRORS, readRunRecord, type JobSummary } from '@/lib/queue/run-summary'
 import { getLastRuns, getRunHistory } from '@/lib/queue/runs'
 import { scheduleDailyJobs } from '@/lib/queue/scheduler'
-import { makeUser } from '@/tests/factories'
+import { makeOwner, makeUser } from '@/tests/factories'
 
 const NOW = new Date('2026-09-26T09:00:00Z')
 const originalFetch = globalThis.fetch
@@ -144,8 +144,8 @@ describe('job run records', () => {
 })
 
 describe('last runs and history (owner-scoped)', () => {
-  it('shows one row per job type with the latest run, global jobs included, other users excluded', async () => {
-    const me = await makeUser()
+  it('shows one row per job type with the latest run, global jobs included (owner), other users excluded', async () => {
+    const me = await makeOwner()
     const other = await makeUser()
     const mine = await enqueue(JOB_TYPES.gmailSync, {}, { userId: me.id, runAfter: NOW })
     const theirs = await enqueue(JOB_TYPES.followups, {}, { userId: other.id, runAfter: NOW })
@@ -251,7 +251,7 @@ describe('real handlers store their summaries', () => {
     }
     const [s] = await db.select().from(sources).where(eq(sources.id, src.id))
     expect(readSourceLastResult(s?.lastResult)).toMatchObject({ fetched: 3, new: 2, skipped: 1 })
-    const gmail = jobs.find((j) => j.type === JOB_TYPES.gmailSync)
-    expect(readRunRecord(gmail?.result).summary).toEqual({ kind: 'gmail-sync', skipped: 'no_google_account' })
+    // Gmail is owner-only in the invite beta: no Gmail jobs are planned for anyone else.
+    expect(jobs.some((j) => j.type === JOB_TYPES.gmailSync || j.type === JOB_TYPES.digest || j.type === JOB_TYPES.discoveryEmail)).toBe(false)
   })
 })

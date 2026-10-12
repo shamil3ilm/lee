@@ -11,6 +11,7 @@ import { nextWatchConfig } from '@/lib/defaults/watch-status'
 import { enableRegionBoards } from '@/lib/coverage/enable'
 import { enableSuggestedBoards } from '@/lib/company-discovery/boards'
 import { detectJobCategories } from '@/lib/discovery/adapters/wp-job-news'
+import { rateLimited } from '@/lib/tenancy/rate-limit'
 
 export type ActionResult = { success: true } | { error: string }
 
@@ -45,6 +46,8 @@ function buildConfig(kind: string, company?: string, url?: string):
 export async function addSource(formData: FormData): Promise<ActionResult> {
   try {
     const userId = await requireUserId()
+    const limited = await rateLimited(userId, 'sourceWrite')
+    if (limited) return { error: limited }
     const parsed = addSchema.safeParse({
       kind: formData.get('kind'),
       name: formData.get('name') || undefined,
@@ -224,6 +227,8 @@ function summaryFor(needs: 'company' | 'url' | 'none', value: string): string {
 export async function updateSource(id: string, formData: FormData): Promise<ActionResult> {
   try {
     const userId = await requireUserId()
+    const limited = await rateLimited(userId, 'sourceWrite')
+    if (limited) return { error: limited }
     if (!idSchema.safeParse(id).success) return { error: 'Source not found.' }
     const parsed = updateSchema.safeParse(Object.fromEntries(formData))
     if (!parsed.success) return { error: 'Please check the source details.' }

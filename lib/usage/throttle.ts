@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
+import { env } from '@/lib/env'
 import { logger } from '@/lib/logger'
 import { USAGE_CRITICAL } from './limits'
 import { meterFraction, utcPeriod, METER_DEFS, type MeterReading } from './meters'
@@ -82,14 +83,20 @@ export function resolveThrottles(args: {
   return { active, requested, resumed: args.resumed }
 }
 
-/** One indexed read: the latest snapshot's throttles + this month's resume. */
+/**
+ * One read: the latest snapshot's throttles + this month's resume. Only the
+ * OWNER's resume counts: the throttle is deployment-wide (invite-beta §1.2).
+ */
 export async function loadThrottleState(now: Date = new Date()): Promise<ThrottleState> {
   const period = utcPeriod(now)
   const result = await db.execute(sql`
     select
       (select day from usage_snapshots order by day desc limit 1) as day,
       (select throttles from usage_snapshots order by day desc limit 1) as throttles,
-      exists (select 1 from usage_settings where throttles_resumed_period = ${period}) as resumed
+      exists (
+        select 1 from usage_settings s join users u on u.id = s.user_id
+        where s.throttles_resumed_period = ${period} and lower(u.email) = ${env.ALLOWED_EMAIL.toLowerCase()}
+      ) as resumed
   `)
   const row = toRows<{ day: string | null; throttles: string[] | string | null; resumed: boolean }>(result)[0]
   const throttles = Array.isArray(row?.throttles) ? row.throttles : parsePgArray(row?.throttles ?? null)

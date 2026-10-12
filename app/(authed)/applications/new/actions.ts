@@ -13,6 +13,7 @@ import * as appsQ from '@/lib/db/queries/applications'
 import * as actQ from '@/lib/db/queries/activities'
 import { logger } from '@/lib/logger'
 import { assessJob, netModeForUser, safely } from '@/lib/scam/service'
+import { rateLimited } from '@/lib/tenancy/rate-limit'
 
 export type ActionResult =
   | { success: true; applicationId: string; usage?: AiUsage | null }
@@ -24,6 +25,8 @@ export async function addFromUrl(formData: FormData): Promise<ActionResult> {
   try {
     const userId = await requireUserId()
     const parsed = urlSchema.safeParse({ url: formData.get('url') })
+    const limited = await rateLimited(userId, 'addFromUrl')
+    if (limited) return { error: limited }
     if (!parsed.success) return { error: 'Please enter a valid URL.' }
     const ai = await getAIProviderForUser(userId)
     const { result, usage } = await withAiUsage({ userId }, () =>

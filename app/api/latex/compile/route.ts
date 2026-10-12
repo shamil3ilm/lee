@@ -14,6 +14,7 @@ import {
   readCompileSettings,
 } from '@/lib/latex/compile-settings'
 import { logger } from '@/lib/logger'
+import { rateLimited } from '@/lib/tenancy/rate-limit'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -50,6 +51,8 @@ export async function POST(req: Request): Promise<Response> {
     const session = await auth()
     const userId = session?.user?.id
     if (!userId) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
+    const limited = await rateLimited(userId, 'latexCompile')
+    if (limited) return NextResponse.json({ error: limited }, { status: 429 })
 
     const raw = await req.json().catch(() => null)
     const parsed = bodySchema.safeParse(raw)

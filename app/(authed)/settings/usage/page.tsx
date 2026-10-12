@@ -46,7 +46,7 @@ export default async function UsagePage() {
       <PageHeader
         title="Usage"
         description="lee runs on Neon Free and Vercel Hobby. Meters turn amber at 70% and red at 90%; at 90% lee throttles itself before a hard stop."
-        actions={<RefreshUsageButton />}
+        actions={data.owner ? <RefreshUsageButton /> : undefined}
       />
 
       <p className="text-sm text-muted-foreground" data-testid="usage-snapshot-at">
@@ -77,7 +77,7 @@ export default async function UsagePage() {
                 <p className="mt-1 text-xs">{t.detail}</p>
               </div>
             ))}
-            {requested.some((t) => t.id === 'pause_nonessential') ? (
+            {data.owner && requested.some((t) => t.id === 'pause_nonessential') ? (
               <ResumeThrottleButton resumed={data.resumed} />
             ) : null}
           </CardContent>
@@ -160,6 +160,7 @@ export default async function UsagePage() {
         </Card>
       ) : null}
 
+      {data.owner ? (
       <Card>
         <CardHeader className="pb-2">
           <CardTitle>Neon connection</CardTitle>
@@ -185,6 +186,14 @@ export default async function UsagePage() {
           <NeonProjectForm projectId={data.neon.projectId} />
         </CardContent>
       </Card>
+      ) : null}
+      {data.owner ? (
+        <p className="text-sm">
+          <Link href="/settings/invites" className="underline-offset-2 hover:underline">
+            Manage invites and accounts
+          </Link>
+        </p>
+      ) : null}
     </div>
   )
 }

@@ -29,6 +29,26 @@ export async function ownerUserId(client: DbClient = db): Promise<string | null>
  * OWNER's. Every per-user key resolver falls back to them only through this:
  * the env value for the owner, null for anyone else (invite-beta audit §1.3).
  */
+/** Thrown by requireOwner for a signed-in non-owner. */
+export class NotOwnerError extends Error {
+  constructor() {
+    super('Only the owner can do that.')
+    this.name = 'NotOwnerError'
+  }
+}
+
+/**
+ * The signed-in user's id when they are the deployment owner (admin pages
+ * and actions, spec §2.3). Signed out → /signin (via requireUserId); signed
+ * in as anyone else → NotOwnerError. Checked against the DB row, not the token.
+ */
+export async function requireOwner(): Promise<string> {
+  const { requireUserId } = await import('./require-session')
+  const userId = await requireUserId()
+  if (!(await isOwner(userId))) throw new NotOwnerError()
+  return userId
+}
+
 export async function ownerEnvFallback(
   userId: string,
   value: string | null | undefined,

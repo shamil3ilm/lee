@@ -2,6 +2,7 @@ import Google from 'next-auth/providers/google'
 import type { NextAuthConfig } from 'next-auth'
 import { env } from '@/lib/env'
 import { isAllowedEmail } from './allowed-email'
+import { BASE_SCOPES } from '@/lib/google/scope-names'
 
 // Adapter-free Auth.js config: no DB adapter, no Node-only imports.
 // Used by `proxy.ts`, which runs on the Node.js runtime (Next 16 default)
@@ -18,33 +19,20 @@ export const edgeAuthConfig = {
     Google({
       clientId: env.AUTH_GOOGLE_ID,
       clientSecret: env.AUTH_GOOGLE_SECRET,
-      // Safe here because we have exactly one provider (Google) and one
-      // ALLOWED_EMAIL gate — the security concern the flag protects against
-      // (a hostile IdP linking to an existing password account) can't happen.
-      // Without this, Auth.js throws OAuthAccountNotLinked when an existing
-      // users row has this email but no matching accounts row (e.g. after a
-      // schema reset, adapter mid-migration, or scope-change re-consent that
-      // orphaned the previous account row).
+      // Safe because Google is the only OAuth provider and it asserts
+      // verified emails; the Node sign-in gate (lib/auth/config.ts) also
+      // requires `email_verified` and an invite. The flag protects against a
+      // hostile IdP linking into an existing account, which cannot happen
+      // with one trusted IdP. Turn it OFF if a second provider is ever added.
+      // Without it, Auth.js throws OAuthAccountNotLinked when a users row
+      // has this email but no accounts row (schema reset, orphaned account).
       allowDangerousEmailAccountLinking: true,
       authorization: {
         params: {
-          scope: [
-            'openid',
-            'email',
-            'profile',
-            'https://www.googleapis.com/auth/gmail.readonly',
-            // v4: needed to send the weekly digest from the user's own mailbox
-            // via lib/gmail/send.ts. Existing users must re-consent on next
-            // sign-in — the `prompt=consent` below already forces that.
-            'https://www.googleapis.com/auth/gmail.send',
-            'https://www.googleapis.com/auth/calendar.events',
-            // A2: Google Drive as the file store. drive.file is per-file
-            // (only files lee creates or the user picks) and
-            // non-sensitive. Existing sessions keep working without it;
-            // Drive features show "Connect Google Drive", which re-runs this
-            // consent (lib/drive/actions.ts). Keep in sync with DRIVE_FILE_SCOPE.
-            'https://www.googleapis.com/auth/drive.file',
-          ].join(' '),
+          // Non-sensitive scopes only (lib/google/scopes.ts): invitees never
+          // grant Gmail or Calendar. The owner adds them once via "Connect
+          // Gmail & Calendar"; include_granted_scopes keeps them afterwards.
+          scope: BASE_SCOPES.join(' '),
           // Incremental authorization: the new token also covers scopes the
           // user granted before, so adding drive.file never drops Gmail.
           include_granted_scopes: 'true',
@@ -62,6 +50,9 @@ export const edgeAuthConfig = {
   session: { strategy: 'jwt' },
   pages: { signIn: '/signin' },
   callbacks: {
+    // Never reached in practice: real sign-ins run through the Node config
+    // (lib/auth/config.ts), whose invite gate replaces this. This instance
+    // only decodes the JWT in proxy.ts; fail closed to the owner anyway.
     async signIn({ user }) {
       return isAllowedEmail(user.email)
     },

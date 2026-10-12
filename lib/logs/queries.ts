@@ -2,11 +2,14 @@ import { and, desc, eq, gte, ilike, inArray, isNull, or, type SQL } from 'drizzl
 import { db } from '@/lib/db/client'
 import { systemEvents } from '@/lib/db/schema'
 import { isUuid } from './redact'
+import { isOwner } from '@/lib/auth/owner'
 import { isEventCategory, isEventLevel, type EventCategory, type EventLevel } from './types'
 
 /**
- * Settings › Logs. Owner-scoped: the user's own events plus global events
- * (user_id null — cron and cross-user runs, which carry no personal data).
+ * Settings › Logs. User-scoped: the user's own events. Global events
+ * (user_id null — cron runs, cross-user sweeps and request-side failures
+ * logged without a user) are shown to the deployment OWNER only: their
+ * redacted text can still name another user's URLs (invite-beta §1.4).
  */
 
 export const EVENTS_PAGE_SIZE = 50
@@ -82,8 +85,9 @@ export async function listEvents(
   now: Date = new Date(),
 ): Promise<{ rows: EventView[]; hasNext: boolean }> {
   const since = new Date(now.getTime() - TIME_RANGES[filters.range] * 60 * 60 * 1000)
+  const owner = await isOwner(userId)
   const conds: SQL[] = [
-    or(eq(systemEvents.userId, userId), isNull(systemEvents.userId)) as SQL,
+    owner ? (or(eq(systemEvents.userId, userId), isNull(systemEvents.userId)) as SQL) : eq(systemEvents.userId, userId),
     gte(systemEvents.createdAt, since),
   ]
   if (filters.category) conds.push(eq(systemEvents.category, filters.category))

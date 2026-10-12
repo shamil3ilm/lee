@@ -344,6 +344,13 @@
       "when": 1791788301621,
       "tag": "0048_employer_board_detect",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1791793301710,
+      "tag": "0049_invite_beta_capacity_benefits",
+      "breakpoints": true
     }
   ]
 }

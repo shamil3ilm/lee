@@ -80,7 +80,8 @@ export async function listForApplication(
   const rows = await db
     .select({ contact: contacts, linkRole: applicationContacts.role })
     .from(applicationContacts)
-    .innerJoin(contacts, eq(applicationContacts.contactId, contacts.id))
+    // Both sides must be the caller's: link() checks it, this re-asserts it.
+    .innerJoin(contacts, and(eq(applicationContacts.contactId, contacts.id), eq(contacts.userId, userId)))
     .where(eq(applicationContacts.applicationId, applicationId))
 
   // The join's `role` (recruiter/referrer/etc.) intentionally shadows the

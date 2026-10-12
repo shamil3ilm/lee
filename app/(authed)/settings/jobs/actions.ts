@@ -6,6 +6,7 @@ import { requireUserId } from '@/lib/auth/require-session'
 import { runNowForUser } from '@/lib/queue/overview'
 import { retryDead } from '@/lib/queue/queue'
 import { logger } from '@/lib/logger'
+import { rateLimited } from '@/lib/tenancy/rate-limit'
 
 export type JobsActionResult = { success: true; message: string } | { error: string }
 
@@ -30,6 +31,8 @@ export async function retryJobAction(id: string): Promise<JobsActionResult> {
 export async function runJobsNowAction(): Promise<JobsActionResult> {
   try {
     const userId = await requireUserId()
+    const limited = await rateLimited(userId, 'runNow')
+    if (limited) return { error: limited }
     const r = await runNowForUser(userId)
     revalidatePath('/settings/jobs')
     if (r.status === 'throttled') return { error: 'Just ran — try again in a few seconds.' }

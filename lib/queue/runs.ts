@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray, isNull, or, sql, type SQL } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { queueJobs } from '@/lib/db/schema'
+import { isOwner } from '@/lib/auth/owner'
 import { JOB_LABELS, jobLabel } from './job-types'
 import { describeSummary, readRunRecord, type AttemptError, type JobSummary } from './run-summary'
 import { nextRunAt } from './schedule-times'
@@ -43,8 +44,12 @@ export interface LastRunRow {
 
 export const RUN_HISTORY_LIMIT = 20
 
-function visibleTo(userId: string): SQL {
-  return or(eq(queueJobs.userId, userId), isNull(queueJobs.userId)) as SQL
+/**
+ * The user's own jobs; global jobs (reminders, usage snapshot, What's new:
+ * user_id null, summaries counted across every account) for the owner only.
+ */
+function visibleTo(userId: string, owner: boolean): SQL {
+  return owner ? (or(eq(queueJobs.userId, userId), isNull(queueJobs.userId)) as SQL) : eq(queueJobs.userId, userId)
 }
 
 const RAN_STATUSES = ['running', 'done', 'failed', 'dead'] as const
@@ -103,16 +108,17 @@ function toView(r: RunRow): JobRunView {
 
 /** One row per known job type: its latest run and its next scheduled time. */
 export async function getLastRuns(userId: string, now: Date = new Date()): Promise<LastRunRow[]> {
+  const owner = await isOwner(userId)
   const [latest, pending] = await Promise.all([
     db
       .selectDistinctOn([queueJobs.type], runColumns)
       .from(queueJobs)
-      .where(and(visibleTo(userId), inArray(queueJobs.status, [...RAN_STATUSES])))
+      .where(and(visibleTo(userId, owner), inArray(queueJobs.status, [...RAN_STATUSES])))
       .orderBy(queueJobs.type, desc(queueJobs.updatedAt)),
     db
       .select({ type: queueJobs.type, runAfter: sql<Date | string>`min(${queueJobs.runAfter})` })
       .from(queueJobs)
-      .where(and(visibleTo(userId), inArray(queueJobs.status, ['queued', 'failed'])))
+      .where(and(visibleTo(userId, owner), inArray(queueJobs.status, ['queued', 'failed'])))
       .groupBy(queueJobs.type),
   ])
   const latestByType = new Map(latest.map((r) => [r.type, toView(r)]))
@@ -136,10 +142,11 @@ export async function getRunHistory(
   type: string,
   limit = RUN_HISTORY_LIMIT,
 ): Promise<JobRunView[]> {
+  const owner = await isOwner(userId)
   const rows = await db
     .select(runColumns)
     .from(queueJobs)
-    .where(and(visibleTo(userId), eq(queueJobs.type, type), inArray(queueJobs.status, [...RAN_STATUSES])))
+    .where(and(visibleTo(userId, owner), eq(queueJobs.type, type), inArray(queueJobs.status, [...RAN_STATUSES])))
     .orderBy(desc(queueJobs.updatedAt))
     .limit(Math.max(1, Math.min(limit, 50)))
   return rows.map(toView)

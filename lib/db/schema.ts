@@ -48,6 +48,16 @@ export const users = pgTable('users', {
   email: text('email').notNull().unique(),
   emailVerified: timestamp('emailVerified', { withTimezone: true, mode: 'date' }),
   image: text('image'),
+  // Invite beta (lib/tenancy): 'active' | 'suspended'. A suspended user is
+  // refused at sign-in and signed out on the next request.
+  status: text('status').notNull().default('active'),
+  // Bumped on suspend/revoke: a session JWT carrying an older value is
+  // rejected by requireUserId (lib/auth/require-session.ts).
+  sessionVersion: integer('session_version').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  // Last authed page view (stamped at most hourly, lib/queue/visit.ts). The
+  // scheduler skips users idle for DORMANT_AFTER_DAYS (lib/queue/capacity.ts).
+  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
 })
 
 export const accounts = pgTable(
@@ -493,6 +503,12 @@ export const discoveries = pgTable(
     normalized: jsonb('normalized').notNull(),
     matchScore: smallint('match_score'),
     benefitsScore: smallint('benefits_score'),
+    // Deterministic benefits (lib/benefits): the stated items with quotes,
+    // coverage and a one-line explanation; `benefits_key` = rules version +
+    // weights/floor fingerprint (differs → the daily backfill re-extracts).
+    // benefits_score is NULL when the posting states no benefits or pay.
+    benefitsDetail: jsonb('benefits_detail'),
+    benefitsKey: text('benefits_key'),
     matchReasoning: jsonb('match_reasoning'),
     status: text('status').notNull().default('new'),
     savedApplicationId: uuid('saved_application_id').references(() => applications.id, {
@@ -1739,3 +1755,5 @@ export * from './schema-cv-fit'
 export * from './schema-integrations'
 // Import provenance: one row per confirmed import (Undo last import, Reset).
 export * from './schema-import'
+// Invite-only beta: invites.
+export * from './schema-tenancy'

@@ -13,6 +13,8 @@ import type { TestLogin } from './test-login-provider'
 import { ensureDefaults } from '@/lib/defaults/ensure'
 import { runAfterResponse } from '@/lib/server/after-response'
 import { encryptAccountTokenPatch, withEncryptedAccountTokens } from './account-tokens'
+import { acceptInvite, signInDecision } from '@/lib/tenancy/invites'
+import { isSessionActive, loadUserAccess } from '@/lib/tenancy/access'
 
 // v17 §9.1 — local-only E2E test sign-in. The literal NODE_ENV check is
 // folded to `false` by `next build`, so the dynamic import (and the provider
@@ -41,11 +43,48 @@ export const authConfig = {
     : edgeAuthConfig.providers,
   callbacks: {
     ...edgeAuthConfig.callbacks,
+    /**
+     * The invite gate (lib/tenancy/invites.ts signInDecision): the owner,
+     * active accounts and holders of a live invite get in; a Google email
+     * must be verified. A refusal returns false before Auth.js creates any
+     * user row, and the sign-in page shows "invite-only".
+     */
     async signIn(params) {
-      // The test identity is not ALLOWED_EMAIL; admit it only via its own
-      // provider. Every other sign-in keeps the edge allow-list check.
+      // Local E2E only: the test identity signs in through its own provider.
       if (testLogin?.isTestLoginSignIn(params)) return true
-      return edgeAuthConfig.callbacks.signIn(params)
+      const profile = params.profile as { email?: unknown; email_verified?: unknown } | undefined
+      const verified = params.account?.provider === 'google' && profile?.email_verified === true
+      const email = params.user?.email ?? (typeof profile?.email === 'string' ? profile.email : null)
+      const decision = await signInDecision(email, verified)
+      if (!decision.allow) {
+        logger.info('auth_signin_refused', { reason: decision.reason })
+        return false
+      }
+      return true
+    },
+    async jwt(params) {
+      const token = await edgeAuthConfig.callbacks.jwt(params)
+      // Stamp the account's session version at sign-in; a suspend or
+      // revoke bumps it and the session callback below rejects the token.
+      if (params.user?.id) {
+        const access = await loadUserAccess(params.user.id)
+        token.sv = access?.sessionVersion ?? 0
+      }
+      return token
+    },
+    /**
+     * Runs on every DB-backed auth() (route handlers, server actions, RSC),
+     * so it is the data-access check the proxy cannot be: a suspended,
+     * deleted or revoked account loses `session.user` and every caller
+     * treats the request as signed out.
+     */
+    async session(params) {
+      const session = await edgeAuthConfig.callbacks.session(params)
+      const id = params.token?.id
+      if (typeof id === 'string' && !(await isSessionActive(id, params.token.sv))) {
+        return { ...session, user: undefined } as unknown as typeof session
+      }
+      return session
     },
   },
   // OAuth tokens are encrypted before they reach `accounts` (and decrypted
@@ -72,6 +111,10 @@ export const authConfig = {
     // effect end-to-end.
     async signIn({ user, account }) {
       if (!user?.id || account?.provider !== 'google') return
+      // An invitee's first sign-in uses up their invite.
+      await acceptInvite(user.email, user.id).catch((err: unknown) =>
+        logger.warn('invite_accept_failed', { userId: user.id, err: err instanceof Error ? err.message : String(err) }),
+      )
       // Starter sources/companies (once per defaults version), after the
       // response so sign-in isn't slowed. Never throws.
       const userId = user.id

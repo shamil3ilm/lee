@@ -109,3 +109,35 @@ export async function makeDiscovery(
   if (!row) throw new Error('failed to create discovery')
   return row
 }
+
+/** Google OAuth scopes the owner holds after "Connect Gmail & Calendar". */
+export const OWNER_GOOGLE_SCOPE = [
+  'openid',
+  'email',
+  'profile',
+  'https://www.googleapis.com/auth/drive.file',
+  'https://www.googleapis.com/auth/gmail.readonly',
+  'https://www.googleapis.com/auth/gmail.send',
+  'https://www.googleapis.com/auth/calendar.events',
+].join(' ')
+
+/** A Google `accounts` row for the user with the given scope string (no real tokens). */
+export async function makeGoogleAccount(userId: string, scope = OWNER_GOOGLE_SCOPE) {
+  const [row] = await db
+    .insert(s.accounts)
+    .values({ userId, type: 'oauth', provider: 'google', providerAccountId: `g-${randomUUID()}`, scope })
+    .returning()
+  if (!row) throw new Error('failed to create account')
+  return row
+}
+
+/**
+ * The deployment owner (ALLOWED_EMAIL, `test@example.com` in tests), with
+ * Gmail connected unless `gmail: false`: the only account Gmail jobs run
+ * for in the invite beta.
+ */
+export async function makeOwner(opts: { gmail?: boolean } = {}) {
+  const u = await makeUser(process.env.ALLOWED_EMAIL ?? 'test@example.com')
+  if (opts.gmail !== false) await makeGoogleAccount(u.id)
+  return u
+}

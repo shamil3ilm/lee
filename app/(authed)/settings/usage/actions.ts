@@ -2,6 +2,7 @@
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { requireUserId } from '@/lib/auth/require-session'
+import { isOwner } from '@/lib/auth/owner'
 import { db } from '@/lib/db/client'
 import { usageSettings } from '@/lib/db/schema'
 import { logger } from '@/lib/logger'
@@ -11,6 +12,9 @@ import { claimRefreshSlot, takeUsageSnapshot } from '@/lib/usage/snapshot'
 import { clearThrottleCache } from '@/lib/usage/throttle'
 
 export type UsageActionResult = { success: true; message: string } | { error: string }
+
+/** Deployment-wide actions (snapshot, throttles, Neon project) are the owner's (invite-beta §1.4). */
+const NOT_OWNER = 'Only the owner can change deployment usage settings.'
 
 function errMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
@@ -23,6 +27,7 @@ function errMessage(err: unknown): string {
 export async function refreshUsageAction(): Promise<UsageActionResult> {
   try {
     const userId = await requireUserId()
+    if (!(await isOwner(userId))) return { error: NOT_OWNER }
     if (!(await claimRefreshSlot(userId))) {
       return { error: 'Refreshed a few minutes ago. Try again in a little while.' }
     }
@@ -48,6 +53,7 @@ export async function saveNeonProjectAction(projectId: string): Promise<UsageAct
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Invalid project id.' }
   try {
     const userId = await requireUserId()
+    if (!(await isOwner(userId))) return { error: NOT_OWNER }
     const now = new Date()
     const value = parsed.data === '' ? null : parsed.data
     await db
@@ -73,6 +79,7 @@ export async function setThrottlesResumedAction(resume: boolean): Promise<UsageA
   if (typeof resume !== 'boolean') return { error: 'Invalid request.' }
   try {
     const userId = await requireUserId()
+    if (!(await isOwner(userId))) return { error: NOT_OWNER }
     const now = new Date()
     const period = resume ? utcPeriod(now) : null
     await db

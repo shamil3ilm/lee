@@ -1,3 +1,4 @@
+import { isOwner } from '@/lib/auth/owner'
 import * as retentionQ from '@/lib/db/queries/retentionSettings'
 import { logger } from '@/lib/logger'
 import { ALL_TABLES_LIMIT, databaseSizeBytes, largestTables } from './collect'
@@ -38,9 +39,11 @@ export function withShares(tables: readonly { name: string; bytes: number }[], t
 }
 
 export async function getStoragePageData(userId: string): Promise<StoragePageData> {
+  // Per-table sizes describe the whole deployment: the owner's view only.
+  const owner = await isOwner(userId)
   const [dbSizeBytes, tables, settings] = await Promise.all([
     safe('db_size', () => databaseSizeBytes(), null),
-    safe('tables', () => largestTables(undefined, undefined, ALL_TABLES_LIMIT), []),
+    owner ? safe('tables', () => largestTables(undefined, undefined, ALL_TABLES_LIMIT), []) : Promise.resolve([]),
     retentionQ.get(userId),
   ])
   return { dbSizeBytes, capBytes: NEON_STORAGE_LIMIT.value, tables: withShares(tables, dbSizeBytes), settings }
