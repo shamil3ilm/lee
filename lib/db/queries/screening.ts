@@ -28,6 +28,8 @@ export interface ScreeningRow {
   bestCv: unknown
   /** relevance_notes.needsLook ("Needs a look"). */
   needsLook: boolean
+  /** normalized.localHire (an ATS "local hire" status). */
+  localHire: boolean
   createdAt: Date
 }
 
@@ -46,6 +48,7 @@ const COLUMNS = {
   fitDetail: discoveries.fitDetail,
   bestCv: discoveries.bestCv,
   needsLook: needsLookSql(),
+  localHire: sql<boolean>`coalesce((${discoveries.normalized}->>'localHire')::boolean, false)`,
   createdAt: discoveries.createdAt,
 }
 

@@ -118,12 +118,33 @@ function sponsorshipCheck(ctx: ScreenContext, needs: readonly RegionCode[]): Sta
       action: { kind: 'prepare', label: `Prepare: when you can be in ${country} and that you need a visa` },
     }
   }
+  // A local-hire posting says it already: the local-hire check below covers it.
+  if (ctx.job.localHire) return null
   return {
     key: 'visa',
     status: 'unknown',
     reason: `Visa not mentioned · you need sponsorship in ${country}`,
     short: 'sponsorship',
     action: { kind: 'ask', label: `Ask whether the ${country} work visa is provided` },
+  }
+}
+
+/**
+ * normalized.localHire (an ATS "local hire" status): at risk with the Match
+ * Score's own reason text, unless the user is based in that country.
+ */
+function localHireCheck(ctx: ScreenContext): StageCheck | null {
+  if (!ctx.job.localHire || isRemotePosting(ctx.job)) return null
+  const places = [...postingPlaces(ctx.job).regions]
+  const country = places.find((r) => GCC_CODES.includes(r)) ?? places[0]
+  if (!country || country === ctx.profile.extra.basedIn) return null
+  const where = regionLabel(country)
+  return {
+    key: 'local_hire',
+    status: 'at_risk',
+    reason: `Local hire: likely needs ${where} residency`,
+    short: 'local hire',
+    action: { kind: 'ask', label: `Ask whether they would sponsor a ${where} visa for the right candidate` },
   }
 }
 
@@ -222,6 +243,7 @@ export function eligibilityStage(ctx: ScreenContext): StageResult {
     locationCheck(ctx),
     nationalsCheck(ctx),
     sponsorshipCheck(ctx, needs),
+    localHireCheck(ctx),
     banCheck(ctx),
     permitTitleCheck(ctx),
     languageCheck(ctx),

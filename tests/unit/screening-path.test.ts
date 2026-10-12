@@ -140,6 +140,16 @@ describe('Match ceilings and "Needs a look" (read, never rewritten)', () => {
     expect(c?.reason).toMatch(/^Role outside your targets/)
   })
 
+  it('a local-hire posting is an eligibility at-risk with the Match reason, unless you are based there', () => {
+    const job = gccJob({ title: 'Backend Developer', location: 'Kuwait City, Kuwait', localHire: true, descriptionMd: 'Requirements: PHP and Laravel.' })
+    const input = screenInput(job)
+    const c = check(screeningPath(input), 'eligibility', 'local_hire')
+    expect(c).toMatchObject({ status: 'at_risk', reason: 'Local hire: likely needs Kuwait residency' })
+    expect(input.detail?.components.find((x) => x.key === 'visa')?.label).toBe(c?.reason)
+    const inKuwait = screenUser({ discoveryPrefs: { basedIn: 'KW', sponsorshipFor: [], noticePeriods: ['1_month'] } } as never)
+    expect(check(path(job, { user: inKuwait }), 'eligibility', 'local_hire')).toBeUndefined()
+  })
+
   it('"Needs a look" is a recruiter at-risk, never a fail on its own', () => {
     const p = screeningPath({ ...screenInput(gccJob()), needsLook: true })
     expect(check(p, 'recruiter', 'title')).toMatchObject({ status: 'at_risk', short: 'needs a look' })
