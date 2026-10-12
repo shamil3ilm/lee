@@ -158,7 +158,10 @@ test('the worker CSP stops eval-built imports from other hosts', async ({ page }
   // The pooled worker stays alive, so an allowed import would have gone out by now.
   await page.waitForTimeout(1500)
   expect(outbound).toEqual([])
-  expect(failed).toEqual(['csp'])
+  // At least one attempt, and every one blocked by CSP. Newer Chromium (Playwright
+  // 1.64) no longer caches a failed dynamic import, so each run retries it.
+  expect(failed.length).toBeGreaterThan(0)
+  expect([...new Set(failed)]).toEqual(['csp'])
 })
 
 test('a compile error is reported before any test runs', async ({ page }) => {
