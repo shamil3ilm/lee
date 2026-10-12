@@ -2,7 +2,7 @@ import { after } from 'next/server'
 import { logger } from '@/lib/logger'
 import { drain } from '@/lib/queue/drain'
 import { JOB_TYPES } from '@/lib/queue/job-types'
-import { enqueueSourcePollNow } from '@/lib/queue/scheduler'
+import { enqueueSourcePolls } from '@/lib/queue/scheduler'
 import { applyDefaults, type ApplyDefaultsResult } from './apply'
 
 /** Budget for the first searches of newly added default sources. */
@@ -18,17 +18,17 @@ export async function ensureDefaults(userId: string, now: Date = new Date()): Pr
   const result = await applyDefaults(userId)
   if (result.enabledSourceIds.length === 0) return result
 
-  for (const sourceId of result.enabledSourceIds) {
-    await enqueueSourcePollNow(userId, sourceId, now)
-  }
+  const { jobIds } = await enqueueSourcePolls(userId, result.enabledSourceIds, now)
   try {
     after(async () => {
       try {
         await drain({
           userId,
           types: [JOB_TYPES.discoverySource],
+          // Exactly the new sources' polls, not the user's oldest queued ones.
+          jobIds,
           budgetMs: FIRST_POLLS_BUDGET_MS,
-          maxJobs: result.enabledSourceIds.length,
+          maxJobs: jobIds.length,
           concurrency: FIRST_POLLS_CONCURRENCY,
         })
       } catch (err) {

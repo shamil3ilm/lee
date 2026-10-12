@@ -25,6 +25,8 @@ import { describePollStats, readSourceLastResult } from '@/lib/discovery/poll-st
 import { CoveragePanel } from '@/components/coverage/coverage-panel'
 import { userCoverage } from '@/lib/coverage/service'
 import { toRowViews } from '@/lib/coverage/view'
+import { OverduePolls, toOverdueViews } from '@/components/coverage/overdue-polls'
+import { overdueSources } from '@/lib/queue/overdue-polls'
 
 export const dynamic = 'force-dynamic'
 
@@ -70,12 +72,13 @@ export default async function SourcesSettingsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }): Promise<React.ReactElement> {
   const userId = await requireUserId()
-  const [sources, alertStats, profile, sp, coverage] = await Promise.all([
+  const [sources, alertStats, profile, sp, coverage, overdue] = await Promise.all([
     sourcesQ.list(userId),
     emailAlertsQ.summaryBySite(userId),
     getProfile(userId),
     searchParams,
     userCoverage(userId),
+    overdueSources(userId),
   ])
   const coverageRows = toRowViews(coverage)
   const weak = coverageRows.filter((r) => r.status !== 'green').length
@@ -148,8 +151,14 @@ export default async function SourcesSettingsPage({
         title="Coverage"
         icon={<MapPin />}
         count={coverageRows.length}
-        summary={coverageRows.length === 0 ? 'No regions chosen' : weak === 0 ? 'Every region covered' : `${weak} of ${coverageRows.length} regions need more sources`}
+        summary={[
+          overdue.length > 0 ? `${overdue.length} not checked for over a day` : null,
+          coverageRows.length === 0 ? 'No regions chosen' : weak === 0 ? 'Every region covered' : `${weak} of ${coverageRows.length} regions need more sources`,
+        ]
+          .filter(Boolean)
+          .join(' · ')}
       >
+        <OverduePolls rows={toOverdueViews(overdue)} />
         <CoveragePanel rows={coverageRows} />
       </CollapsibleSection>
 

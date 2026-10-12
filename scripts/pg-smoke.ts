@@ -14,7 +14,7 @@ import * as analytics from '@/lib/analytics/service'
 import { aiUsageBreakdown } from '@/lib/analytics/ai-usage-breakdown'
 import { quotaMeters } from '@/lib/ai/quota'
 import { runRetention } from '@/lib/db/retention'
-import { scheduleDailyJobs } from '@/lib/queue/scheduler'
+import { enqueueSourcePolls, scheduleDailyJobs } from '@/lib/queue/scheduler'
 import { drain } from '@/lib/queue/drain'
 import { recordDueReminders } from '@/lib/reminders/service'
 import { takeUsageSnapshot } from '@/lib/usage/snapshot'
@@ -49,7 +49,8 @@ import { and, eq } from 'drizzle-orm'
 import { createInvite, inviteeSeatsUsed, revokeInvite, signInDecision } from '@/lib/tenancy/invites'
 import { rateLimit } from '@/lib/tenancy/rate-limit'
 import { backfillBenefits } from '@/lib/benefits/service'
-import { claim, enqueue } from '@/lib/queue/queue'
+import { claim, enqueue, fail, recoverStale } from '@/lib/queue/queue'
+import { overdueSources, warnPollBacklog } from '@/lib/queue/overdue-polls'
 import { touchLastSeen } from '@/lib/queue/visit'
 import { loadThrottleState } from '@/lib/usage/throttle'
 import { loadPlanAccounts } from '@/lib/queue/plan-data'
@@ -334,6 +335,30 @@ async function main(): Promise<void> {
       async () => {
         await enqueue('smoke:fair', {}, { userId: id, runAfter: now, idempotencyKey: `smoke-fair-${now.getTime()}` })
         await claim(1, 'smoke', { now, excludeUserIds: [crypto.randomUUID()] })
+      },
+    ],
+    // One pending job per subject (lib/queue/coalesce.ts): merge (VALUES CTE
+    // update), supersede, the stalest-source claim (lateral sources lookup),
+    // the day-scoped wait_for and its RETURNING flag, sibling-aware fail and
+    // stale recovery, and the overdue / backlog reads.
+    [
+      'queue.coalesce',
+      async () => {
+        const src = await makeSource(id, { kind: 'greenhouse', config: { company: 'smoke-coalesce' } })
+        const first = await enqueueSourcePolls(id, [src.id], new Date(now.getTime() - 86_400_000))
+        const again = await enqueueSourcePolls(id, [src.id], now, (s) => `smoke-reset-${s}-${now.getTime()}`)
+        if (again.created !== 0 || again.jobIds[0] !== first.jobIds[0]) throw new Error('the second poll did not merge')
+        await enqueue(JOB_TYPES.shortlist, {}, { userId: id, runAfter: now, idempotencyKey: `smoke-sl-a-${now.getTime()}` })
+        await enqueue(JOB_TYPES.shortlist, {}, { userId: id, runAfter: now, idempotencyKey: `smoke-sl-b-${now.getTime()}` })
+        await enqueue(JOB_TYPES.scamReassess, {}, { userId: id, runAfter: now, waitForType: JOB_TYPES.discoverySource, idempotencyKey: `smoke-sr-${now.getTime()}` })
+        const [poll] = await claim(1, 'smoke', { now, jobIds: first.jobIds })
+        if (!poll) throw new Error('the targeted poll was not claimed')
+        await claim(1, 'smoke', { now: new Date(now.getTime() + 11 * 3_600_000), userId: id, types: [JOB_TYPES.scamReassess] })
+        await enqueueSourcePolls(id, [src.id], new Date(now.getTime() + 86_400_000))
+        await fail(poll, 'smoke', new Error('smoke'), { now })
+        await recoverStale(new Date(now.getTime() + 86_400_000))
+        await overdueSources(id, now)
+        await warnPollBacklog()
       },
     ],
     ['visit.touchLastSeen', () => touchLastSeen(id, now)],

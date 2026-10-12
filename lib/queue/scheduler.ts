@@ -23,6 +23,7 @@ import {
   type PlanUser,
 } from './capacity'
 import { loadPlanAccounts, loadWeeklyFacts, type PlanAccount } from './plan-data'
+import { warnPollBacklog } from './overdue-polls'
 
 export interface ScheduleResult {
   day: string
@@ -39,6 +40,8 @@ export interface ScheduleResult {
   pollableSources: number
   /** Users whose weekly company chain (discovery → boards → growth) is planned today. */
   weeklyCompanyRuns: number
+  /** Users with more queued source polls than enabled sources (logged as queue_poll_backlog). */
+  pollBacklogUsers: number
 }
 
 export interface PlanOptions {
@@ -170,27 +173,50 @@ export async function scheduleUserToday(
   return { day, enqueued: created }
 }
 
+export interface SourcePollsQueued {
+  /** Polls inserted (the rest were merged into a pending poll of the same source). */
+  created: number
+  /** The pending poll job of each source: drain exactly these (DrainOptions.jobIds). */
+  jobIds: string[]
+}
+
+/**
+ * Queue a poll due now for each source (just added, re-enabled, or a
+ * re-fetch). A source keeps at most one pending poll (lib/queue/coalesce.ts):
+ * when one is already queued — even from an earlier day — it is pulled
+ * forward to now instead of queuing another. `key` names the run (default:
+ * today's poll).
+ */
+export async function enqueueSourcePolls(
+  userId: string,
+  sourceIds: readonly string[],
+  now: Date = new Date(),
+  key: (sourceId: string) => string = (sourceId) => jobKeys.discoverySource(userId, sourceId, utcDay(now)),
+): Promise<SourcePollsQueued> {
+  const { created, pending } = await enqueueMany(
+    sourceIds.map((sourceId) => ({
+      userId,
+      runAfter: now,
+      type: JOB_TYPES.discoverySource,
+      payload: { sourceId },
+      idempotencyKey: key(sourceId),
+      priority: JOB_PRIORITY[JOB_TYPES.discoverySource],
+    })),
+  )
+  return { created, jobIds: pending }
+}
+
 /**
  * Queue today's poll for a single source (e.g. right after it's added or
- * re-enabled). Returns false when today's poll for it was already queued.
+ * re-enabled). Returns false when no new job was inserted: today's poll
+ * already exists, or the source's pending poll was pulled forward instead.
  */
 export async function enqueueSourcePollNow(
   userId: string,
   sourceId: string,
   now: Date = new Date(),
 ): Promise<boolean> {
-  const day = utcDay(now)
-  const { created } = await enqueueMany([
-    {
-      userId,
-      runAfter: now,
-      type: JOB_TYPES.discoverySource,
-      payload: { sourceId },
-      idempotencyKey: jobKeys.discoverySource(userId, sourceId, day),
-      priority: JOB_PRIORITY[JOB_TYPES.discoverySource],
-    },
-  ])
-  return created > 0
+  return (await enqueueSourcePolls(userId, [sourceId], now)).created > 0
 }
 
 /**
@@ -259,8 +285,11 @@ export async function scheduleDailyJobs(now: Date = new Date()): Promise<Schedul
     ...[...pulls].map((id) => portfolioPullSpec(id, day, now)),
   ]
   const { created } = await enqueueMany(specs)
+  // Guard: polls coalesce per source, so more queued polls than sources means a pile-up.
+  const backlog = await warnPollBacklog()
   return {
     day,
+    pollBacklogUsers: backlog.length,
     users: accounts.length,
     dormant: accounts.length - live.length,
     planned: specs.length,

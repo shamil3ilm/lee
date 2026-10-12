@@ -2,8 +2,8 @@ import { after } from 'next/server'
 import * as sourcesQ from '@/lib/db/queries/sources'
 import { logger } from '@/lib/logger'
 import { MAX_ERRORS_BEFORE_SKIP } from './service'
-import { JOB_PRIORITY, JOB_TYPES } from '@/lib/queue/job-types'
-import { enqueueMany } from '@/lib/queue/queue'
+import { JOB_TYPES } from '@/lib/queue/job-types'
+import { enqueueSourcePolls } from '@/lib/queue/scheduler'
 
 /** Wall-clock budget for draining the re-fetch right after a reset. */
 const REFETCH_BUDGET_MS = 45_000
@@ -22,22 +22,19 @@ export async function queueRefetch(
   const active = (await sourcesQ.list(userId, { enabled: true })).filter(
     (s) => s.errorCount < MAX_ERRORS_BEFORE_SKIP && (!sourceIds || sourceIds.length === 0 || sourceIds.includes(s.id)),
   )
-  const { created } = await enqueueMany(
-    active.map((s) => ({
-      userId,
-      runAfter: now,
-      type: JOB_TYPES.discoverySource,
-      payload: { sourceId: s.id },
-      idempotencyKey: `discovery-source:${userId}:${s.id}:reset-${now.getTime()}`,
-      priority: JOB_PRIORITY[JOB_TYPES.discoverySource],
-    })),
+  // A source with a poll already pending gets that one pulled forward, not a second job.
+  const { jobIds } = await enqueueSourcePolls(
+    userId,
+    active.map((s) => s.id),
+    now,
+    (sourceId) => `discovery-source:${userId}:${sourceId}:reset-${now.getTime()}`,
   )
-  if (created === 0) return 0
+  if (jobIds.length === 0) return 0
   try {
     after(async () => {
       try {
         const { drain } = await import('@/lib/queue/drain')
-        await drain({ userId, types: [JOB_TYPES.discoverySource], budgetMs: REFETCH_BUDGET_MS, maxJobs: created, concurrency: 1 })
+        await drain({ userId, types: [JOB_TYPES.discoverySource], jobIds, budgetMs: REFETCH_BUDGET_MS, maxJobs: jobIds.length, concurrency: 1 })
       } catch (err) {
         logger.warn('reset_refetch_drain_failed', { userId, err: err instanceof Error ? err.message : String(err) })
       }
@@ -45,5 +42,5 @@ export async function queueRefetch(
   } catch {
     // No request scope: the queued polls run on the next drain.
   }
-  return created
+  return jobIds.length
 }
