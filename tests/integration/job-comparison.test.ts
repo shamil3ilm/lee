@@ -185,7 +185,7 @@ describe('side-by-side page data', () => {
   it('chips summarise the comparison for the shortlist and Prepare', async () => {
     const { u, disc } = await seeded()
     const chips = await comparisonChips(u.id, [opportunityKey('discovery', disc.id)], NOW)
-    expect(chips.get(opportunityKey('discovery', disc.id))).toMatch(/^vs current: pay ↑ \d+% est\. · growth ↑ · benefits/)
+    expect(chips.get(opportunityKey('discovery', disc.id))).toMatch(/^vs current: pay ↑ \d+% est\. · growth ↑/)
   })
 })
 

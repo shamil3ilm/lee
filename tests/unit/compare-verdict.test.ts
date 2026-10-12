@@ -57,9 +57,14 @@ describe('gains, losses, unknowns and questions', () => {
     expect(q.some((t) => t.startsWith('Is visa sponsorship and relocation'))).toBe(false)
   })
 
-  it('builds the compact chip', () => {
-    expect(comparisonChip(input)).toBe('vs current: pay ↑ 20% est. · growth ↓ · benefits ?')
-    expect(comparisonChip({ ...input, pay: pay(null) })).toContain('pay ?')
+  it('builds the compact chip from the known deltas only', () => {
+    expect(comparisonChip(input)).toBe('vs current: pay ↑ 20% est. · growth ↓')
+    expect(comparisonChip({ ...input, pay: pay(null) })).toBe('vs current: growth ↓')
+    expect(comparisonChip({ ...input, pay: pay(2) })).toBe('vs current: pay ≈ same · growth ↓')
+  })
+
+  it('has no chip when pay, growth and benefits are all unknown', () => {
+    expect(comparisonChip({ ...input, pay: pay(null), job: scores({}), current: scores({}) })).toBeNull()
   })
 })
 

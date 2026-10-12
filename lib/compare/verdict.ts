@@ -137,16 +137,20 @@ export function questionsToAsk(input: VerdictInput): Question[] {
   return out.filter((q) => !(q.topic === 'location' && out.some((o) => o.topic === 'visa')))
 }
 
-/** "vs current: pay ↑ 35% est. · growth ↑ · benefits ?" for the shortlist and Prepare. */
-export function comparisonChip(input: VerdictInput): string {
+/**
+ * "vs current: pay ↑ 35% est. · growth ↑" for the shortlist and Prepare.
+ * Only known deltas are named; with none known the chip is null and not
+ * shown ("pay ? · growth ?" said nothing; review 2026-10-10 P1-14).
+ */
+export function comparisonChip(input: VerdictInput): string | null {
   const pay = input.pay.deltaPct
-  const payPart =
-    pay === null ? 'pay ?' : pay >= 5 ? `pay ↑ ${pay}% est.` : pay <= -5 ? `pay ↓ ${Math.abs(pay)}% est.` : 'pay ≈ same'
-  const arrow = (c: Criterion): string => {
+  const parts: string[] = []
+  if (pay !== null) parts.push(pay >= 5 ? `pay ↑ ${pay}% est.` : pay <= -5 ? `pay ↓ ${Math.abs(pay)}% est.` : 'pay ≈ same')
+  for (const c of ['growth', 'benefits'] as const) {
     const d = direction(input.job[c], input.current?.[c] ?? null)
-    return d === 'better' ? '↑' : d === 'worse' ? '↓' : d === 'similar' ? '≈' : '?'
+    if (d === 'better' || d === 'worse' || d === 'similar') parts.push(`${c} ${d === 'better' ? '↑' : d === 'worse' ? '↓' : '≈'}`)
   }
-  return `vs current: ${payPart} · growth ${arrow('growth')} · benefits ${arrow('benefits')}`
+  return parts.length > 0 ? `vs current: ${parts.join(' · ')}` : null
 }
 
 export function benefitQuestion(key: BenefitKey): string {

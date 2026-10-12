@@ -195,12 +195,13 @@ export async function comparisonChips(userId: string, keys: readonly string[], n
   const settings = await loadSettings(userId)
   if (!settings.current) return new Map()
   const [profile, opportunities] = await Promise.all([loadProfileContext(userId), loadOpportunities(userId, keys)])
-  return new Map(
-    opportunities.map((job) => [
-      job.key,
-      compareOpportunity({ job, current: settings.current, assumptions: settings.assumptions, profile, now }).chip,
-    ]),
-  )
+  const out = new Map<string, string>()
+  for (const job of opportunities) {
+    const chip = compareOpportunity({ job, current: settings.current, assumptions: settings.assumptions, profile, now }).chip
+    // Nothing known (pay, growth and benefits all unknown): no chip at all.
+    if (chip) out.set(job.key, chip)
+  }
+  return out
 }
 
 /** The opt-in shortlist factor is on and a current job is saved. */

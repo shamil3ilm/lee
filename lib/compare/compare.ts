@@ -63,7 +63,8 @@ export interface Comparison {
   losses: ListItem[]
   unknowns: ListItem[]
   questions: Question[]
-  chip: string
+  /** "vs current: pay ↑ 35% est." with only the known deltas; null when nothing is known. */
+  chip: string | null
   weights: Record<Criterion, number>
 }
 
