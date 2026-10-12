@@ -88,5 +88,6 @@ test('inline last-run surfaces: sources and discovery header', async ({ page }) 
   await expect(page.getByTestId('source-last-error')).toContainText('HTTP 503 from upstream')
 
   await page.goto('/discoveries')
-  await expect(page.getByText(/Last checked .* · \d+ new/)).toBeVisible()
+  // Outcomes, not inserts: "Last checked 5h ago · 12 fetched · 6 to triage · 3 filtered".
+  await expect(page.getByTestId('discovery-counts')).toContainText(/Last checked .* · \d+ fetched · \d+ to triage · \d+ filtered/)
 })

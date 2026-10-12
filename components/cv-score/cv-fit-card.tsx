@@ -97,7 +97,7 @@ export function CvFitCard({ applicationId, fit, scoringDocument }: CvFitCardProp
   const fullHref = `/cv-score?applicationId=${applicationId}${scoringDocument ? `&documentId=${scoringDocument.id}` : ''}`
 
   return (
-    <Card>
+    <Card data-testid="cv-match-card">
       <CardHeader className="flex-row items-center justify-between space-y-0">
         <CardTitle className="flex items-center gap-2">
           <Gauge className="size-4 text-muted-foreground" aria-hidden />

@@ -65,7 +65,7 @@ test('CV score from an application CV match card', async ({ page }) => {
     page.getByRole('heading', { level: 1, name: 'Senior Backend Developer, Jira Platform' }),
   ).toBeVisible()
 
-  const fitCard = page.locator('[data-slot="card"]').filter({ hasText: 'CV match' }).last()
+  const fitCard = page.getByTestId('cv-match-card')
   await expect(fitCard.getByText('Not scored yet.')).toBeVisible()
   await fitCard.getByRole('button', { name: 'Score now' }).click()
   await expectToast(page, /Scored \d+\/100/)
