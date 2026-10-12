@@ -3,7 +3,6 @@ import type { NormalizedJob } from './adapters/types'
 import type { UserProfile } from '@/lib/db/queries/profile'
 import { evaluateRelevance } from './relevance/gate'
 import { searchPrefsFromProfile } from './relevance/prefs'
-import { findTerms, normalizeForMatch } from './relevance/text'
 
 /**
  * Deterministic post-AI score caps per v1 spec §8.2. The AI produces a raw
@@ -54,13 +53,7 @@ export const PREFERENCE_CAPS = {
   role: 50,
   /** Named place outside the selected regions. */
   location: 30,
-  /** Posting located in a selected GCC/India region. */
-  regionBonus: 5,
-  /** GCC posting about e-invoicing / ZATCA for a profile with that evidence. */
-  einvoicingBonus: 8,
 } as const
-
-const EINVOICING = ['zatca', 'fatoora', 'e-invoicing', 'einvoicing', 'e-invoice', 'electronic invoicing']
 
 /**
  * The gate already filters mismatches, but a row the user restored with
@@ -87,20 +80,13 @@ function applyPreferenceCaps(score: number, job: NormalizedJob, profile: UserPro
   if (has('seniority:')) s = Math.min(s, PREFERENCE_CAPS.seniority)
   if (has('role:')) s = Math.min(s, PREFERENCE_CAPS.role)
   if (has('location:')) s = Math.min(s, PREFERENCE_CAPS.location)
-  // Bonuses only for postings that pass every preference, and never for a
-  // soft seniority stretch (Senior title, 5+ yrs asked), which is capped.
+  // A soft seniority stretch (Senior title, 5+ yrs asked) is capped. No
+  // region or e-invoicing bonus here: the Match Score already counts both
+  // (review 2026-10-10 P1-5: one owner per signal).
   if (!r.pass) return s
   const stretch = r.penalties.find((p) => / title\b| yrs asked\b/.test(p))
   if (stretch) {
     return Math.min(s, /\bstrong .+ match$/.test(stretch) ? PREFERENCE_CAPS.seniorityStretchStrong : PREFERENCE_CAPS.seniorityStretch)
-  }
-  if (r.regions.some((t) => t !== 'remote')) s += PREFERENCE_CAPS.regionBonus
-  if (r.regions.includes('gcc')) {
-    const posting = normalizeForMatch(`${job.title} ${job.descriptionMd ?? ''}`.slice(0, 8_000))
-    const mine = normalizeForMatch((profile.skills ?? []).join(' | '))
-    if (findTerms(posting, EINVOICING).length > 0 && findTerms(mine, [...EINVOICING, 'vat', 'xades', 'ubl']).length > 0) {
-      s += PREFERENCE_CAPS.einvoicingBonus
-    }
   }
   return s
 }

@@ -188,22 +188,22 @@ describe('match scoring with preferences', () => {
     expect(applyCaps({ ...raw, location_match: 'mismatch' }, remoteRole, { ...baseProfile, searchPrefsSavedAt: null })).toBe(30)
   })
 
-  it('caps a seniority mismatch and prefers the selected regions', () => {
+  it('caps a seniority mismatch; no region bonus (the Match counts the region once)', () => {
     // A Senior title is a soft stretch now: capped, not dropped to the filtered cap.
     expect(applyCaps(raw, j('Senior Laravel Developer'), baseProfile)).toBe(PREFERENCE_CAPS.seniorityStretchStrong)
     expect(applyCaps(raw, j('Senior Go Developer', { descriptionMd: 'Go services' }), baseProfile)).toBe(PREFERENCE_CAPS.seniorityStretch)
     expect(applyCaps(raw, j('Director of Engineering'), baseProfile)).toBe(PREFERENCE_CAPS.seniority)
-    expect(applyCaps(raw, j('Laravel Developer'), baseProfile)).toBe(80 + PREFERENCE_CAPS.regionBonus)
+    expect(applyCaps(raw, j('Laravel Developer'), baseProfile)).toBe(80)
     expect(applyCaps(raw, j('Laravel Developer', { location: 'Berlin, Germany' }), baseProfile)).toBe(PREFERENCE_CAPS.location)
     expect(applyCaps(raw, j('Frontend Engineer'), baseProfile)).toBe(PREFERENCE_CAPS.role)
     // Inactive preferences: the AI score stands.
     expect(applyCaps(raw, j('Senior Laravel Developer'), { ...baseProfile, searchPrefsSavedAt: null })).toBe(80)
   })
 
-  it('boosts GCC e-invoicing postings for a profile with that evidence', () => {
+  it('adds no e-invoicing bonus to the AI score (the Match domain component owns it)', () => {
     const p = { ...baseProfile, skills: ['PHP', 'ZATCA', 'VAT'] } as UserProfile
     const posting = j('Laravel Developer', { location: 'Dubai', descriptionMd: 'ZATCA e-invoicing integration' })
-    expect(applyCaps(raw, posting, p)).toBe(80 + PREFERENCE_CAPS.regionBonus + PREFERENCE_CAPS.einvoicingBonus)
+    expect(applyCaps(raw, posting, p)).toBe(80)
   })
 })
 

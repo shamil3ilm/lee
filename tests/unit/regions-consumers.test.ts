@@ -134,15 +134,15 @@ describe('shortlist rank — region fit', () => {
   const ctx = (targetRegions: string[]) => ({ now: new Date('2026-10-01T00:00:00Z'), targetFamilies: [], targetRegions })
   const region = (c: RankCandidate, targets: string[]) => rankCandidate(c, ctx(targets)).reasons.find((r) => r.label.startsWith('Region'))
 
-  it('+8 within a targeted parent, +4 when broader, nothing elsewhere', () => {
-    expect(region(cand({ regionIds: ['kochi', 'kerala', 'in'] }), ['kerala'])).toMatchObject({ label: 'Region: Kerala', points: 8 })
-    expect(region(cand({ regionIds: ['dubai', 'ae', 'gcc'] }), ['gcc'])).toMatchObject({ label: 'Region: UAE', points: 8 })
-    expect(region(cand({ regionIds: ['in'] }), ['kerala'])).toMatchObject({ points: 4 })
+  it('names the region (a chip only: the Fit already counts it), nothing elsewhere', () => {
+    expect(region(cand({ regionIds: ['kochi', 'kerala', 'in'] }), ['kerala'])).toMatchObject({ label: 'Region: Kerala', points: 0 })
+    expect(region(cand({ regionIds: ['dubai', 'ae', 'gcc'] }), ['gcc'])).toMatchObject({ label: 'Region: UAE', points: 0 })
+    expect(region(cand({ regionIds: ['in'] }), ['kerala'])).toMatchObject({ points: 0 })
     expect(region(cand({ regionIds: ['bengaluru', 'karnataka', 'in'] }), ['kerala'])).toBeUndefined()
   })
 
   it('falls back to the coarse tags before the backfill reaches a row', () => {
-    expect(region(cand({ regions: ['ae', 'gcc'] }), ['gcc'])).toMatchObject({ points: 8 })
+    expect(region(cand({ regions: ['ae', 'gcc'] }), ['gcc'])).toMatchObject({ label: 'Region: UAE' })
   })
 
   it('targets the selection plus remote while remote roles are accepted', () => {

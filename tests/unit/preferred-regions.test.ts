@@ -99,11 +99,11 @@ describe('shortlist rank with stars', () => {
   })
   const ctx = { now: NOW, targetFamilies: [], targetRegions: ['gcc'], preferredRegions: STARS }
 
-  it('adds a "Preferred: UAE" reason worth more for top priority than for preferred', () => {
+  it('names a "Preferred: UAE" region as a chip only: the boost is counted once, in the Fit', () => {
     const dubai = rankCandidate(cand(['dubai', 'ae', 'gcc']), ctx)
     const doha = rankCandidate(cand(['doha', 'qa', 'gcc']), ctx)
-    expect(dubai.reasons.find((r) => r.label === 'Preferred: UAE')?.points).toBe(PREFERRED_BOOST.rank.top)
+    expect(dubai.reasons.find((r) => r.label === 'Preferred: UAE')?.points).toBe(0)
     expect(doha.reasons.some((r) => r.label.startsWith('Preferred'))).toBe(false)
-    expect(dubai.score - doha.score).toBe(PREFERRED_BOOST.rank.top)
+    expect(dubai.score - doha.score).toBe(0)
   })
 })

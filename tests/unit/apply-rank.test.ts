@@ -49,9 +49,9 @@ describe('rankCandidate (composite with reasons)', () => {
       'visa / relocation offered',
       'Posted 2 days ago',
     ])
-    // 40 + 12 + 8 + 5 + 3 + 3 + 7
-    expect(r.score).toBe(78)
-    expect(r.reasons.reduce((s, x) => s + x.points, 0)).toBe(78)
+    // 40 + 12 + 0 (region: already in the Fit) + 5 + 3 + 3 + 7
+    expect(r.score).toBe(70)
+    expect(r.reasons.reduce((s, x) => s + x.points, 0)).toBe(70)
   })
 
   it('treats a posting with neither score as neutral and says so', () => {
