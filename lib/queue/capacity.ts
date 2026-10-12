@@ -195,11 +195,18 @@ export function sourceUrgency(s: PlanSource, now: Date): number {
 }
 
 /**
- * Most urgent first (staleness + starred bonus), then the higher starred
- * yield, then id. Every source rotates in; starred ones come round sooner.
+ * Never-polled sources first (a source just added is searched at the next
+ * drain), then most urgent (staleness + starred bonus), then the higher
+ * starred yield, then id. Every source rotates in; starred ones come round
+ * sooner. The drain's claim order (lib/queue/queue.ts claim) agrees: within
+ * the poll priority it takes never-polled sources, then the stalest
+ * last_polled_at — the starred bonus decides which sources get today's
+ * slots here, not the order they run in.
  */
 export function rankSources(sources: readonly PlanSource[], now: Date = new Date()): PlanSource[] {
   return [...sources].sort((a, b) => {
+    const never = Number(b.lastPolledAt === null) - Number(a.lastPolledAt === null)
+    if (never !== 0) return never
     const u = sourceUrgency(b, now) - sourceUrgency(a, now)
     if (Math.abs(u) > 1e-9) return u
     if (a.starredYield !== b.starredYield) return b.starredYield - a.starredYield

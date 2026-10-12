@@ -248,6 +248,18 @@ describe('capacity primitives', () => {
     expect(ranked.map((x) => x.id)).toEqual(['never', 'old', 'star-yesterday', 'star', 'new'])
   })
 
+  it('a never-polled source always ranks first, like the claim order (lib/queue/queue.ts)', () => {
+    const s = (id: string, starredYield: number, daysAgo: number | null): PlanSource => ({
+      id,
+      starredYield,
+      lastPolledAt: daysAgo === null ? null : new Date(NOW.getTime() - daysAgo * DAY),
+      costMs: 10_000,
+    })
+    // A starred source unpolled for 40 days (40 + 3) still comes after a brand-new one.
+    const ranked = rankSources([s('star-ancient', 5, 40), s('never', 0, null), s('never-star', 1, null)], NOW)
+    expect(ranked.map((x) => x.id)).toEqual(['never-star', 'never', 'star-ancient'])
+  })
+
   it('always picks at least one source, then only what fits', () => {
     const big: PlanSource = { id: 'big', starredYield: 0, lastPolledAt: null, costMs: 50_000 }
     const small: PlanSource = { id: 'small', starredYield: 0, lastPolledAt: new Date(NOW), costMs: 5_000 }
