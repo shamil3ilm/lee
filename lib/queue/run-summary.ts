@@ -27,18 +27,19 @@ export type DiscoverySourceSummary = {
 
 export type GmailSyncSummary =
   | { kind: 'gmail-sync'; checked: number; matched: number; logged: number }
-  | { kind: 'gmail-sync'; skipped: 'no_google_account' }
+  | { kind: 'gmail-sync'; skipped: 'no_google_account' | 'no_gmail_access' }
 
-export type DigestSkipReason = 'disabled' | 'not_monday' | 'already_sent' | 'no_google_account'
+export type DigestSkipReason = 'disabled' | 'not_monday' | 'already_sent' | 'no_google_account' | 'no_gmail_access'
 export type DigestSummary = { kind: 'digest'; sent: true } | { kind: 'digest'; sent: false; reason: DigestSkipReason }
 
 export type FollowupsSummary = { kind: 'followups'; nudged: number }
+export type DiscoveryBenefitsSummary = { kind: 'discovery-benefits'; updated: number; more: boolean }
 export type RemindersSummary = { kind: 'reminders'; added: number }
 export type UsageSnapshotSummary = { kind: 'usage-snapshot'; throttles: string[]; todosCreated: number }
 export type ScamReassessSummary = { kind: 'scam-reassess'; reassessed: number; paused?: boolean }
 export type DiscoveryEmailSummary =
   | { kind: 'discovery-email'; sent: true; count: number }
-  | { kind: 'discovery-email'; sent: false; reason?: 'disabled' | 'no_matches' | 'no_google_account' }
+  | { kind: 'discovery-email'; sent: false; reason?: 'disabled' | 'no_matches' | 'no_google_account' | 'no_gmail_access' }
 
 export type ShortlistSummary = { kind: 'shortlist'; candidates: number; shortlisted: number }
 export type CompanyDiscoverySummary = {
@@ -73,6 +74,7 @@ export type JobSummary =
   | UsageSnapshotSummary
   | ScamReassessSummary
   | DiscoveryEmailSummary
+  | DiscoveryBenefitsSummary
 
 /** One failed attempt, kept on the job row so history shows every retry. */
 export interface AttemptError {
@@ -147,6 +149,7 @@ const DIGEST_REASON: Record<DigestSkipReason, string> = {
   not_monday: 'not Monday in your timezone',
   already_sent: 'already sent this week',
   no_google_account: 'no Google account',
+  no_gmail_access: 'Gmail is not connected',
 }
 
 /** One line for the Last runs table, e.g. "12 found · 3 new · 1 quarantined". */
@@ -166,12 +169,16 @@ export function describeSummary(summary: JobSummary | null | undefined): string 
     }
     case 'gmail-sync':
       return 'skipped' in summary
-        ? 'Skipped: no Google account'
+        ? summary.skipped === 'no_gmail_access'
+          ? 'Skipped: Gmail is not connected'
+          : 'Skipped: no Google account'
         : `${summary.checked} checked · ${summary.matched} matched · ${summary.logged} logged`
     case 'digest':
       return summary.sent ? 'Digest sent' : `Not sent: ${DIGEST_REASON[summary.reason]}`
     case 'followups':
       return plural(summary.nudged, 'follow-up') + ' nudged'
+    case 'discovery-benefits':
+      return summary.updated === 0 ? 'Benefits up to date' : `${plural(summary.updated, 'posting')} re-read for benefits${summary.more ? ' · continues next run' : ''}`
     case 'reminders':
       return plural(summary.added, 'reminder') + ' added'
     case 'usage-snapshot':
@@ -185,6 +192,7 @@ export function describeSummary(summary: JobSummary | null | undefined): string 
     case 'discovery-email':
       if (summary.sent) return `Sent · ${plural(summary.count, 'match', 'matches')}`
       if (summary.reason === 'no_google_account') return 'Not sent: no Google account'
+      if (summary.reason === 'no_gmail_access') return 'Not sent: Gmail is not connected'
       if (summary.reason === 'disabled') return 'Not sent: email alerts are off'
       return 'Nothing new to send'
     case 'radar-source':

@@ -7,6 +7,7 @@ import { withLogContext } from '@/lib/logs/context'
 import { JobTimeoutError, PermanentJobError, sanitizeError } from './errors'
 import { jobLabel } from './job-types'
 import { claim, complete, fail, recoverStale, release } from './queue'
+import { drainSliceMs } from './capacity'
 import { describeSummary } from './run-summary'
 import type { HandlerRegistry, RegisteredHandler } from './registry'
 import type { ClaimedJob, JobResult } from './types'
@@ -25,6 +26,12 @@ export interface DrainOptions {
   registry?: HandlerRegistry
   clock?: () => number
   random?: () => number
+  /**
+   * Per-user time slice (ms of handler time) in this drain. Default: the
+   * drain's lane time split across users with due work (capacity.ts
+   * drainSliceMs), for drains over every user; none for a one-user drain.
+   */
+  userSliceMs?: number
 }
 
 export type DrainStop = 'empty' | 'budget' | 'max_jobs'
@@ -81,6 +88,8 @@ function withTimeout(
 }
 
 interface Tally {
+  /** Handler time per user in this drain (time slicing). */
+  userMs: Map<string, number>
   claimed: number
   done: number
   failed: number
@@ -112,6 +121,7 @@ export async function drain(opts: DrainOptions): Promise<DrainResult> {
   const registry = opts.registry ?? (await defaultRegistry())
   const recovered = await recoverStale(new Date(startedAt))
   const tally: Tally = {
+    userMs: new Map(),
     claimed: 0, done: 0, failed: 0, dead: 0, released: 0, metrics: {}, errors: [], users: new Set(),
   }
   let started = 0
@@ -127,6 +137,9 @@ export async function drain(opts: DrainOptions): Promise<DrainResult> {
     }
     if (job.userId) tally.users.add(job.userId)
     const t0 = clock()
+    const charge = () => {
+      if (job.userId) tally.userMs.set(job.userId, (tally.userMs.get(job.userId) ?? 0) + (clock() - t0))
+    }
     try {
       if (!handler) throw new PermanentJobError(`unknown job type ${job.type}`)
       const timeoutMs = Math.max(1, Math.min(handler.timeoutMs, budgetDeadline - now))
@@ -135,6 +148,7 @@ export async function drain(opts: DrainOptions): Promise<DrainResult> {
         withTimeout(handler, job, timeoutMs, now + timeoutMs),
       )
       const durationMs = clock() - t0
+      charge()
       await complete(job.id, workerId, new Date(clock()), { durationMs, summary: result.summary })
       tally.done += 1
       addMetrics(tally.metrics, result.metrics)
@@ -149,6 +163,7 @@ export async function drain(opts: DrainOptions): Promise<DrainResult> {
         summary: describeSummary(result.summary),
       })
     } catch (err) {
+      charge()
       const outcome = await fail(job, workerId, err, {
         now: new Date(clock()),
         random: opts.random,
@@ -182,7 +197,12 @@ export async function drain(opts: DrainOptions): Promise<DrainResult> {
         return
       }
       started += 1
-      const [job] = await claim(1, workerId, { userId: opts.userId, types: opts.types, now: new Date(clock()) })
+      const now = new Date(clock())
+      // Time slicing: users who used their slice of this drain wait, unless
+      // nobody else has due work (the drain never idles with work left).
+      const spent = [...tally.userMs].filter(([, ms]) => ms >= sliceMs).map(([u]) => u)
+      let [job] = await claim(1, workerId, { userId: opts.userId, types: opts.types, excludeUserIds: spent, now })
+      if (!job && spent.length > 0) [job] = await claim(1, workerId, { userId: opts.userId, types: opts.types, now })
       if (!job) {
         started -= 1
         return
@@ -199,6 +219,8 @@ export async function drain(opts: DrainOptions): Promise<DrainResult> {
   }
 
   const lanes = Math.max(1, Math.floor(opts.concurrency ?? 1))
+  const sliceMs =
+    opts.userSliceMs ?? (opts.userId ? Number.POSITIVE_INFINITY : drainSliceMs(opts.budgetMs, lanes, await usersWithDueWork(new Date(startedAt))))
   await Promise.all(Array.from({ length: lanes }, lane))
   await touchUsers([...tally.users], new Date(clock()))
 
@@ -222,6 +244,21 @@ export async function drain(opts: DrainOptions): Promise<DrainResult> {
     failed: result.failed, dead: result.dead, released: result.released, stoppedBy, durationMs: result.durationMs,
   })
   return result
+}
+
+/** Distinct users with a due job right now (sizes the drain's time slices). */
+async function usersWithDueWork(now: Date): Promise<number> {
+  try {
+    const result = await db.execute(sql`
+      select count(distinct user_id)::int as n from queue_jobs
+      where status in ('queued', 'failed') and run_after <= ${now.toISOString()}::timestamptz and user_id is not null
+    `)
+    const rows = Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
+    return Number((rows[0] as { n?: number | string } | undefined)?.n ?? 0)
+  } catch (err) {
+    logger.warn('queue_due_users_failed', { err: sanitizeError(err) })
+    return 0
+  }
 }
 
 /** Record "a drain ran jobs for you" — one upsert per touched user. */

@@ -1,7 +1,6 @@
-import { and, eq, isNotNull, lt } from 'drizzle-orm'
+import { isNotNull } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
-import { sources, userProfile, users } from '@/lib/db/schema'
-import { MAX_ERRORS_BEFORE_SKIP } from '@/lib/discovery/service'
+import { userProfile } from '@/lib/db/schema'
 import { JOB_PRIORITY, JOB_TYPES, jobKeys, utcDay } from './job-types'
 import { enqueueMany, type EnqueueSpec } from './queue'
 import { applyDefaults } from '@/lib/defaults/apply'
@@ -9,21 +8,49 @@ import { radarSourcesByUser } from '@/lib/radar/schedule'
 import type { RadarSource } from '@/lib/radar/types'
 import { weeklyCompanySpec } from '@/lib/company-discovery/schedule'
 import { listPullUsers } from '@/lib/db/queries/portfolioPublish'
+import type { GmailAccess } from '@/lib/google/scopes'
+import {
+  DEFAULT_JOB_COST_MS,
+  TIER_PRIORITY_OFFSET,
+  TIER_WEIGHT,
+  dailyPlanPoolMs,
+  pickSources,
+  planCapacity,
+  type ActivityTier,
+  type PlanUser,
+} from './capacity'
+import { loadPlanAccounts, type PlanAccount } from './plan-data'
 
 export interface ScheduleResult {
   day: string
+  /** Active (not suspended) accounts. */
   users: number
+  /** Accounts skipped as dormant (no visit for DORMANT_AFTER_DAYS). */
+  dormant: number
   /** Jobs the day needs. */
   planned: number
   /** Jobs actually inserted (the rest already existed for today). */
   enqueued: number
+  /** Source polls planned today / pollable sources of the planned accounts. */
+  polls: number
+  pollableSources: number
 }
 
+export interface PlanOptions {
+  /** Gmail jobs (sync, digest email, discovery email) only with access (owner-only in the beta). */
+  gmail?: GmailAccess
+  tier?: ActivityTier
+}
+
+const FULL_GMAIL: GmailAccess = { read: true, send: true }
+
 /**
- * Plan one user's jobs for `day`. Discovery is one job per active source
- * (enabled, under the error limit); the Scam Shield re-check waits for those
- * polls, the daily shortlist for the re-check, and the discovery email for
- * the shortlist (wait_for_type).
+ * Plan one user's jobs for `day`. Discovery is one job per source picked by
+ * the capacity plan, in claim order (best first: lib/queue/capacity.ts); the
+ * Scam Shield re-check waits for those polls, the daily shortlist for the
+ * re-check, and the discovery email for the shortlist (wait_for_type).
+ * Gmail-dependent jobs are planned only with Gmail access, so an invitee
+ * (no Gmail in the beta) never gets no-op or failing Gmail jobs.
  */
 export function planUserJobs(
   userId: string,
@@ -31,26 +58,38 @@ export function planUserJobs(
   day: string,
   now: Date,
   radarSources: readonly RadarSource[] = [],
+  opts: PlanOptions = {},
 ): EnqueueSpec[] {
+  const gmail = opts.gmail ?? FULL_GMAIL
+  const tierOffset = TIER_PRIORITY_OFFSET[opts.tier ?? 'active']
   const base = { userId, runAfter: now }
   const waitForPolls = { waitForType: JOB_TYPES.discoverySource }
   return [
     { ...base, type: JOB_TYPES.followups, idempotencyKey: jobKeys.followups(userId, day), priority: JOB_PRIORITY[JOB_TYPES.followups] },
-    { ...base, type: JOB_TYPES.gmailSync, idempotencyKey: jobKeys.gmailSync(userId, day), priority: JOB_PRIORITY[JOB_TYPES.gmailSync] },
-    { ...base, type: JOB_TYPES.digest, idempotencyKey: jobKeys.digest(userId, day), priority: JOB_PRIORITY[JOB_TYPES.digest] },
-    ...sourceIds.map((sourceId) => ({
+    ...(gmail.read
+      ? [{ ...base, type: JOB_TYPES.gmailSync, idempotencyKey: jobKeys.gmailSync(userId, day), priority: JOB_PRIORITY[JOB_TYPES.gmailSync] }]
+      : []),
+    ...(gmail.send
+      ? [{ ...base, type: JOB_TYPES.digest, idempotencyKey: jobKeys.digest(userId, day), priority: JOB_PRIORITY[JOB_TYPES.digest] }]
+      : []),
+    // run_after steps 1 ms per rank so a user's best sources are claimed first.
+    ...sourceIds.map((sourceId, i) => ({
       ...base,
+      runAfter: new Date(now.getTime() + i),
       type: JOB_TYPES.discoverySource,
       payload: { sourceId },
       idempotencyKey: jobKeys.discoverySource(userId, sourceId, day),
-      priority: JOB_PRIORITY[JOB_TYPES.discoverySource],
+      priority: JOB_PRIORITY[JOB_TYPES.discoverySource] + tierOffset,
     })),
+    { ...base, type: JOB_TYPES.discoveryBenefits, idempotencyKey: jobKeys.discoveryBenefits(userId, day), priority: JOB_PRIORITY[JOB_TYPES.discoveryBenefits] },
     { ...base, ...waitForPolls, type: JOB_TYPES.scamReassess, idempotencyKey: jobKeys.scamReassess(userId, day), priority: JOB_PRIORITY[JOB_TYPES.scamReassess] },
     // polls → Scam Shield re-check → shortlist → discovery email: each waits
     // for the one before (wait_for_type), so the shortlist never includes a
     // posting the re-check would quarantine and the email can carry it.
     { ...base, waitForType: JOB_TYPES.scamReassess, type: JOB_TYPES.shortlist, idempotencyKey: jobKeys.shortlist(userId, day), priority: JOB_PRIORITY[JOB_TYPES.shortlist] },
-    { ...base, waitForType: JOB_TYPES.shortlist, type: JOB_TYPES.discoveryEmail, idempotencyKey: jobKeys.discoveryEmail(userId, day), priority: JOB_PRIORITY[JOB_TYPES.discoveryEmail] },
+    ...(gmail.send
+      ? [{ ...base, waitForType: JOB_TYPES.shortlist, type: JOB_TYPES.discoveryEmail, idempotencyKey: jobKeys.discoveryEmail(userId, day), priority: JOB_PRIORITY[JOB_TYPES.discoveryEmail] }]
+      : []),
     // AI Radar (lib/radar/schedule.ts): one job per source the user keeps
     // on, once they watch at least one term.
     ...radarSources.map((source) => ({
@@ -65,6 +104,21 @@ export function planUserJobs(
   ]
 }
 
+/** Expected lane time of a user's jobs other than source polls. */
+export function fixedCostMs(gmail: GmailAccess, radarCount: number, portfolio: boolean): number {
+  const c = DEFAULT_JOB_COST_MS
+  return (
+    c[JOB_TYPES.followups]! +
+    c[JOB_TYPES.scamReassess]! +
+    c[JOB_TYPES.shortlist]! +
+    c[JOB_TYPES.discoveryBenefits]! +
+    (gmail.read ? c[JOB_TYPES.gmailSync]! : 0) +
+    (gmail.send ? c[JOB_TYPES.digest]! + c[JOB_TYPES.discoveryEmail]! : 0) +
+    radarCount * c[JOB_TYPES.radarSource]! +
+    (portfolio ? c[JOB_TYPES.portfolioPull]! : 0)
+  )
+}
+
 /** The daily portfolio → profile sync for one user (idempotent per UTC day). */
 export function portfolioPullSpec(userId: string, day: string, now: Date): EnqueueSpec {
   return {
@@ -77,10 +131,21 @@ export function portfolioPullSpec(userId: string, day: string, now: Date): Enque
   }
 }
 
+function toPlanUsers(accounts: readonly PlanAccount[], radar: ReadonlyMap<string, readonly RadarSource[]>, pulls: ReadonlySet<string>): PlanUser[] {
+  return accounts.map((a) => ({
+    userId: a.userId,
+    tier: a.tier,
+    sources: a.sources,
+    fixedCostMs: fixedCostMs(a.gmail, radar.get(a.userId)?.length ?? 0, pulls.has(a.userId)),
+  }))
+}
+
 /**
  * Queue today's jobs for ONE user right away (the same plan as the daily
- * scheduler). Used by "Run now" so a new account doesn't wait for the next
- * 09:00 UTC scheduler run. Idempotent per UTC day via the job keys.
+ * scheduler). Used by "Run now" and when a dormant user comes back, so a
+ * new or returning account doesn't wait for the next 09:00 UTC run. The
+ * user gets an active user's fair share of the day's pool. Idempotent per
+ * UTC day via the job keys.
  */
 export async function scheduleUserToday(
   userId: string,
@@ -89,15 +154,14 @@ export async function scheduleUserToday(
   const day = utcDay(now)
   // Starter defaults first, so today's plan includes any new default sources.
   await applyDefaults(userId)
-  const active = await db
-    .select({ id: sources.id })
-    .from(sources)
-    .where(
-      and(eq(sources.userId, userId), eq(sources.enabled, true), lt(sources.errorCount, MAX_ERRORS_BEFORE_SKIP)),
-    )
-    .orderBy(sources.createdAt)
+  const accounts = await loadPlanAccounts(now, userId)
+  const me = accounts.find((a) => a.userId === userId)
+  if (!me) return { day, enqueued: 0 }
   const radar = (await radarSourcesByUser(userId)).get(userId) ?? []
-  const { created } = await enqueueMany(planUserJobs(userId, active.map((s) => s.id), day, now, radar))
+  const weights = accounts.reduce((s, a) => s + TIER_WEIGHT[a.tier], 0)
+  const share = (dailyPlanPoolMs() * TIER_WEIGHT.active) / Math.max(TIER_WEIGHT.active, weights)
+  const { ids } = pickSources(me.sources, share, now)
+  const { created } = await enqueueMany(planUserJobs(userId, ids, day, now, radar, { gmail: me.gmail, tier: 'active' }))
   return { day, enqueued: created }
 }
 
@@ -125,32 +189,34 @@ export async function enqueueSourcePollNow(
 }
 
 /**
- * Daily scheduler: enqueue the day's jobs for every user in one statement.
+ * Daily scheduler: plan the day for every non-dormant account within the
+ * Hobby cron budget (lib/queue/capacity.ts) and enqueue it in one
+ * statement. Dormant accounts get nothing until they visit again.
  * Idempotent — a second call on the same UTC day (duplicate cron delivery,
  * the sync-all alias, a manual run) inserts nothing.
  */
 export async function scheduleDailyJobs(now: Date = new Date()): Promise<ScheduleResult> {
   const day = utcDay(now)
-  // Starter defaults for anyone who hasn't received the current version yet
-  // (a no-op per user once applied). Sequential: one small transaction each.
-  for (const u of await db.select({ id: users.id }).from(users)) {
-    await applyDefaults(u.id)
+  let accounts = await loadPlanAccounts(now)
+  // Starter defaults for non-dormant accounts that haven't received the
+  // current version yet (a no-op per user once applied). Sequential: one
+  // small transaction each. New default sources join today's plan.
+  let added = 0
+  for (const a of accounts) {
+    if (a.tier !== 'dormant') added += (await applyDefaults(a.userId)).addedSources
   }
-  const [allUsers, activeSources, radar, withPrefs, portfolioUsers] = await Promise.all([
-    db.select({ id: users.id }).from(users),
-    db
-      .select({ id: sources.id, userId: sources.userId })
-      .from(sources)
-      .where(and(eq(sources.enabled, true), lt(sources.errorCount, MAX_ERRORS_BEFORE_SKIP)))
-      .orderBy(sources.createdAt),
+  if (added > 0) accounts = await loadPlanAccounts(now)
+  const live = accounts.filter((a) => a.tier !== 'dormant')
+  const [radar, withPrefs, portfolioUsers] = await Promise.all([
     radarSourcesByUser(),
     // Company discovery needs target regions: users who saved Settings › Search.
     db.select({ id: userProfile.userId }).from(userProfile).where(isNotNull(userProfile.searchPrefsSavedAt)),
     // Portfolio → profile sync (lib/portfolio/pull.ts): users with a repository or an earlier pull.
     listPullUsers(),
   ])
-  const byUser = new Map<string, string[]>()
-  for (const s of activeSources) byUser.set(s.userId, [...(byUser.get(s.userId) ?? []), s.id])
+  const liveIds = new Set(live.map((a) => a.userId))
+  const pulls = new Set(portfolioUsers.filter((id) => liveIds.has(id)))
+  const plans = planCapacity(toPlanUsers(live, radar, pulls), undefined, now)
 
   const specs: EnqueueSpec[] = [
     {
@@ -167,12 +233,22 @@ export async function scheduleDailyJobs(now: Date = new Date()): Promise<Schedul
       idempotencyKey: jobKeys.usageSnapshot(day),
       priority: JOB_PRIORITY[JOB_TYPES.usageSnapshot],
     },
-    ...allUsers.flatMap((u) => planUserJobs(u.id, byUser.get(u.id) ?? [], day, now, radar.get(u.id) ?? [])),
+    ...live.flatMap((a) =>
+      planUserJobs(a.userId, plans.get(a.userId)?.sourceIds ?? [], day, now, radar.get(a.userId) ?? [], { gmail: a.gmail, tier: a.tier }),
+    ),
     // Company discovery (lib/company-discovery): planned daily, keyed per ISO
     // week, so it runs once a week per user.
-    ...withPrefs.map((u) => weeklyCompanySpec(u.id, now)),
-    ...portfolioUsers.map((id) => portfolioPullSpec(id, day, now)),
+    ...withPrefs.filter((u) => liveIds.has(u.id)).map((u) => weeklyCompanySpec(u.id, now)),
+    ...[...pulls].map((id) => portfolioPullSpec(id, day, now)),
   ]
   const { created } = await enqueueMany(specs)
-  return { day, users: allUsers.length, planned: specs.length, enqueued: created }
+  return {
+    day,
+    users: accounts.length,
+    dormant: accounts.length - live.length,
+    planned: specs.length,
+    enqueued: created,
+    polls: [...plans.values()].reduce((s, p) => s + p.sourceIds.length, 0),
+    pollableSources: live.reduce((s, a) => s + a.sources.length, 0),
+  }
 }

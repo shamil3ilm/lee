@@ -29,7 +29,7 @@ import { scheduleDailyJobs } from '@/lib/queue/scheduler'
 import { buildShortlistForUser, readShortlist } from '@/lib/apply/shortlist'
 import { later, notForMe } from '@/lib/apply/triage'
 import { flushSystemEvents, installEventSink, uninstallEventSink } from '@/lib/logs/sink'
-import { makeDiscovery, makeSource, makeUser } from '@/tests/factories'
+import { makeDiscovery, makeSource, makeOwner, makeUser } from '@/tests/factories'
 
 const originalFetch = globalThis.fetch
 
@@ -82,7 +82,7 @@ afterEach(() => {
 describe('shortlist job after the polls', () => {
   it('runs after every poll and the Scam Shield re-check, and stores the top N with reasons', async () => {
     installEventSink()
-    const u = await makeUser()
+    const u = await makeOwner()
     await profileQ.upsert(u.id, { headline: 'Backend engineer', skills: ['php', 'laravel'], industries: ['fintech'], shortlistSize: 3, timezone: 'UTC' })
     await sourcesQ.create(u.id, { name: 'Acme', kind: 'greenhouse', config: { company: 'acme' } })
     stubGreenhouse([1, 2, 3, 4, 5].map((i) => jobItem(i)))

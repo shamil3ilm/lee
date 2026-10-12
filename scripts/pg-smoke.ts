@@ -46,6 +46,13 @@ import { saveTailoredCopy } from '@/lib/cv-fit/tailor/save'
 import { loadTailorView } from '@/lib/cv-fit/tailor/service'
 import { coverTailoringFor } from '@/lib/cv-fit/tailor/cover'
 import { and, eq } from 'drizzle-orm'
+import { createInvite, inviteeSeatsUsed, revokeInvite, signInDecision } from '@/lib/tenancy/invites'
+import { rateLimit } from '@/lib/tenancy/rate-limit'
+import { backfillBenefits } from '@/lib/benefits/service'
+import { claim, enqueue } from '@/lib/queue/queue'
+import { touchLastSeen } from '@/lib/queue/visit'
+import { loadThrottleState } from '@/lib/usage/throttle'
+import { loadPlanAccounts } from '@/lib/queue/plan-data'
 import { db } from '@/lib/db/client'
 import { accounts } from '@/lib/db/schema'
 import { encryptPlaintextAccountTokens } from '@/lib/auth/account-tokens'
@@ -89,6 +96,10 @@ async function main(): Promise<void> {
   await makeApplication(user.id, job.id, { status: 'applied' })
   const id = user.id
   const now = new Date()
+  // A starred region, so the capacity plan's starred-yield query runs.
+  await profileQ.upsert(id, { discoveryPrefs: { preferredRegions: [{ id: 'ae', level: 'top' }] } })
+  const src0 = await makeSource(id)
+  await makeDiscovery(id, src0.id, { regionIds: ['ae', 'gcc'], normalized: { title: 'Dev', descriptionMd: 'AED 10,000 per month, housing allowance.' } })
   // The What's new fixtures are dated around this day.
   const fixtureNow = new Date('2026-10-08T09:00:00Z')
 
@@ -301,6 +312,31 @@ async function main(): Promise<void> {
     ['analytics.budgetAdherenceHistory', () => analytics.budgetAdherenceHistory(id, 6)],
     ['aiUsageBreakdown', () => aiUsageBreakdown(id, 30)],
     ['quotaMeters', () => quotaMeters(id, now)],
+    // Invite beta (lib/tenancy): invites under the advisory lock, the seat count, the gate, revocation.
+    [
+      'tenancy.invites',
+      async () => {
+        const r = await createInvite(id, `smoke-${Date.now()}@example.com`, 'smoke', now)
+        if (!r.ok) throw new Error(`invite refused: ${r.reason}`)
+        await inviteeSeatsUsed(undefined, now)
+        await signInDecision(r.email, true, undefined, now)
+        await revokeInvite(r.id, now)
+      },
+    ],
+    ['tenancy.rateLimit', () => rateLimit(id, 'smoke', 2, 60, now)],
+    ['throttle.load', () => loadThrottleState(now)],
+    // Benefits backfill: jsonb_to_recordset batch write.
+    ['benefits.backfill', () => backfillBenefits(id, { maxRows: 50 })],
+    // Capacity plan reads: observed costs (payload->>'sourceId'), starred-region yields (VALUES join on region_ids).
+    ['queue.planAccounts', () => loadPlanAccounts(now)],
+    [
+      'queue.claim.fair',
+      async () => {
+        await enqueue('smoke:fair', {}, { userId: id, runAfter: now, idempotencyKey: `smoke-fair-${now.getTime()}` })
+        await claim(1, 'smoke', { now, excludeUserIds: [crypto.randomUUID()] })
+      },
+    ],
+    ['visit.touchLastSeen', () => touchLastSeen(id, now)],
     ['runRetention', () => runRetention(now, { budgetMs: 20_000 })],
     ['scheduleDailyJobs', () => scheduleDailyJobs(now)],
     ['recordDueReminders', () => recordDueReminders(now)],

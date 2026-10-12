@@ -3,6 +3,7 @@ import { db } from '@/lib/db/client'
 import { runAfterResponse } from '@/lib/server/after-response'
 import { isThrottled } from '@/lib/usage/throttle'
 import { drain, type DrainOptions } from './drain'
+import { DORMANT_AFTER_DAYS } from './capacity'
 
 /** At most this many of the visitor's due jobs per visit… */
 export const VISIT_DRAIN_MAX_JOBS = 2
@@ -15,6 +16,33 @@ function toRows<T>(result: unknown): T[] {
   if (Array.isArray(result)) return result as T[]
   const rows = (result as { rows?: unknown } | null)?.rows
   return Array.isArray(rows) ? (rows as T[]) : []
+}
+
+/** `users.last_seen_at` is written at most this often per user. */
+export const LAST_SEEN_INTERVAL_MS = 60 * 60 * 1000
+
+/**
+ * Stamp the user's last visit (at most hourly; one conditional UPDATE).
+ * Returns the PREVIOUS value when it wrote, `undefined` when it did not, so
+ * the caller can tell a returning dormant user.
+ */
+export async function touchLastSeen(userId: string, now: Date = new Date()): Promise<Date | null | undefined> {
+  const ts = now.toISOString()
+  const since = new Date(now.getTime() - LAST_SEEN_INTERVAL_MS).toISOString()
+  const result = await db.execute(sql`
+    update users u set last_seen_at = ${ts}::timestamptz
+    from (select id, last_seen_at as prev from users where id = ${userId}::uuid) p
+    where u.id = p.id and (p.prev is null or p.prev <= ${since}::timestamptz)
+    returning p.prev
+  `)
+  const row = toRows<{ prev: Date | string | null }>(result)[0]
+  if (!row) return undefined
+  return row.prev === null ? null : new Date(row.prev)
+}
+
+/** The scheduler skipped this user (dormant) — their visit re-plans today. */
+export function wasDormant(prev: Date | null | undefined, now: Date): boolean {
+  return prev instanceof Date && now.getTime() - prev.getTime() > DORMANT_AFTER_DAYS * 86_400_000
 }
 
 /**
@@ -55,6 +83,13 @@ export async function claimVisitDrainSlot(userId: string, now: Date = new Date()
  */
 export function scheduleVisitDrain(userId: string, opts: Pick<DrainOptions, 'registry'> = {}): Promise<void> {
   return runAfterResponse('queue_visit_drain', async () => {
+    const now = new Date()
+    // Activity for the capacity plan (lib/queue/capacity.ts); a dormant
+    // user's return queues today's work at once instead of waiting a day.
+    if (wasDormant(await touchLastSeen(userId, now), now)) {
+      const { scheduleUserToday } = await import('./scheduler')
+      await scheduleUserToday(userId, now)
+    }
     if (!(await claimVisitDrainSlot(userId))) return
     // Opportunistic drains are non-essential: skipped at ≥90% Neon
     // compute/egress (lib/usage/throttle). Cron drains still run the jobs.

@@ -1,5 +1,6 @@
 import { env } from '@/lib/env'
 import { isBearerAuthorized } from '@/lib/auth/secret-compare'
+import { DRAIN_BUDGET_MS, DRAIN_LANES } from './capacity'
 import { drain, type DrainOptions, type DrainResult } from './drain'
 
 /**
@@ -7,9 +8,13 @@ import { drain, type DrainOptions, type DrainResult } from './drain'
  * Hobby with Fluid compute); every job's timeout is capped at the budget
  * left, so the drain is over by ~240 s with a minute of headroom.
  */
-export const CRON_DRAIN_BUDGET_MS = 240_000
-/** Jobs in flight at once — keeps Neon connections and AI rate limits calm. */
-export const CRON_DRAIN_CONCURRENCY = 2
+export const CRON_DRAIN_BUDGET_MS = DRAIN_BUDGET_MS
+/**
+ * Jobs in flight at once. Polls are network-bound and each invitee's AI
+ * calls use their own key, so three lanes fit Neon and the providers; the
+ * daily plan (lib/queue/capacity.ts) is sized for exactly this.
+ */
+export const CRON_DRAIN_CONCURRENCY = DRAIN_LANES
 
 /** Constant-time check of Vercel's `Authorization: Bearer $CRON_SECRET`. */
 export function isCronAuthorized(req: Request): boolean {

@@ -23,6 +23,7 @@ export const JOB_TYPES = {
   portfolioPull: 'portfolio-pull:user',
   companyGrowth: 'company-growth:user',
   companyBoards: 'company-boards:user',
+  discoveryBenefits: 'discovery-benefits:user',
 } as const
 
 export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES]
@@ -68,6 +69,8 @@ export const JOB_PRIORITY: Readonly<Record<JobType, number>> = {
   [JOB_TYPES.companyGrowth]: 76,
   // Weekly employer-board auto-detect: after enrichment, before growth reads the boards it found.
   [JOB_TYPES.companyBoards]: 75,
+  // Benefits re-extraction (lib/benefits) after a rules/weights change: DB-only.
+  [JOB_TYPES.discoveryBenefits]: 47,
 }
 
 /** Short human labels for Settings › Background jobs (no internals). */
@@ -91,6 +94,7 @@ export const JOB_LABELS: Readonly<Record<string, string>> = {
   [JOB_TYPES.portfolioPull]: 'Portfolio sync',
   [JOB_TYPES.companyGrowth]: 'Company growth signals (weekly)',
   [JOB_TYPES.companyBoards]: 'Employer job boards check (weekly)',
+  [JOB_TYPES.discoveryBenefits]: 'Discovery benefits',
 }
 
 export function jobLabel(type: string): string {
@@ -145,6 +149,8 @@ export const jobKeys = {
   companyGrowth: (userId: string, isoWeek: string) => `company-growth:${userId}:${isoWeek}`,
   /** Employer-board auto-detect: once per ISO week per user. */
   companyBoards: (userId: string, isoWeek: string) => `company-boards:${userId}:${isoWeek}`,
+  /** Benefits backfill: once per UTC day per user (a no-op when nothing is stale). */
+  discoveryBenefits: (userId: string, day: string) => `discovery-benefits:${userId}:${day}`,
 } as const
 
 /**

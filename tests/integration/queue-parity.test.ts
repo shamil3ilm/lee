@@ -30,7 +30,7 @@ import { relevanceContext } from '@/lib/discovery/relevance/service'
 import { drain } from '@/lib/queue/drain'
 import { JOB_TYPES } from '@/lib/queue/job-types'
 import { scheduleDailyJobs } from '@/lib/queue/scheduler'
-import { makeApplication, makeCompany, makeJob, makeUser } from '@/tests/factories'
+import { makeApplication, makeCompany, makeJob, makeOwner, makeUser } from '@/tests/factories'
 
 /**
  * Behaviour parity: the queue pipeline (scheduler → drain) has the same
@@ -103,7 +103,7 @@ afterEach(() => {
 
 describe('scheduler', () => {
   it("plans the day's jobs once per UTC day, one discovery job per active source", async () => {
-    const u = await makeUser()
+    const u = await makeOwner()
     await sourcesQ.create(u.id, { name: 'A', kind: 'greenhouse', config: { company: 'a' } })
     await sourcesQ.create(u.id, { name: 'B', kind: 'greenhouse', config: { company: 'b' } })
     const off = await sourcesQ.create(u.id, { name: 'Off', kind: 'greenhouse', config: { company: 'c' } })
@@ -113,12 +113,12 @@ describe('scheduler', () => {
 
     const now = new Date('2026-09-26T09:00:00Z')
     const first = await scheduleDailyJobs(now)
-    // reminders + usage snapshot + followups + gmail + digest + 2 sources + scam + email
-    expect(first).toMatchObject({ day: '2026-09-26', users: 1, planned: 10, enqueued: 10 })
+    // reminders + usage snapshot + followups + gmail + digest + 2 sources + benefits + scam + shortlist + email
+    expect(first).toMatchObject({ day: '2026-09-26', users: 1, dormant: 0, planned: 11, enqueued: 11, polls: 2, pollableSources: 2 })
     const again = await scheduleDailyJobs(new Date('2026-09-26T21:00:00Z'))
     expect(again.enqueued).toBe(0)
     const nextDay = await scheduleDailyJobs(new Date(now.getTime() + DAY))
-    expect(nextDay.enqueued).toBe(10)
+    expect(nextDay.enqueued).toBe(11)
 
     const polls = await db.select().from(queueJobs).where(eq(queueJobs.type, JOB_TYPES.discoverySource))
     expect(new Set(polls.map((p) => (p.payload as { sourceId: string }).sourceId)).size).toBe(2)
@@ -168,7 +168,7 @@ describe('parity with the old sync-all', () => {
   })
 
   it('digest: Monday in the user timezone only, at most once per week', async () => {
-    const u = await makeUser()
+    const u = await makeOwner()
     await profileQ.upsert(u.id, { timezone: 'UTC', weeklyDigestEnabled: true })
     const off = await makeUser()
     await profileQ.upsert(off.id, { timezone: 'UTC', weeklyDigestEnabled: false })
@@ -253,7 +253,7 @@ describe('parity with the old sync-all', () => {
   })
 
   it('the discovery email runs after all of the user’s source polls', async () => {
-    const u = await makeUser()
+    const u = await makeOwner()
     await sourcesQ.create(u.id, { name: 'A', kind: 'greenhouse', config: { company: 'a' } })
     await sourcesQ.create(u.id, { name: 'B', kind: 'greenhouse', config: { company: 'b' } })
     stubGreenhouse([], 20)

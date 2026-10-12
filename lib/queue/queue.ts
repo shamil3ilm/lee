@@ -116,6 +116,8 @@ export interface ClaimOptions {
   /** Only this user's jobs (visit / "Run now" drains). */
   userId?: string
   types?: readonly string[]
+  /** Skip these users' jobs (their drain time slice is spent). */
+  excludeUserIds?: readonly string[]
   now?: Date
   lockMs?: number
 }
@@ -135,6 +137,11 @@ export interface ClaimOptions {
  * that is `done` or `dead` no longer blocks: like the old sync-all, the
  * discovery email still goes out when a source poll gave up. Claiming counts
  * as an attempt, so a job that keeps killing its worker still runs out.
+ *
+ * Fair order (lib/queue/capacity.ts): by priority, then ROUND-ROBIN across
+ * users — every user's first due job of a priority before anyone's second
+ * (`user_rank`, a row_number per user) — then run_after. Early-created
+ * accounts no longer drain first and starve the rest.
  */
 export async function claim(
   n: number,
@@ -151,19 +158,32 @@ export async function claim(
   if (opts.types && opts.types.length > 0) {
     filters.push(sql`and c.type in (${sql.join(opts.types.map((t) => sql`${t}`), sql`, `)})`)
   }
+  if (opts.excludeUserIds && opts.excludeUserIds.length > 0) {
+    filters.push(
+      sql`and (c.user_id is null or c.user_id not in (${sql.join(opts.excludeUserIds.map((u) => sql`${u}::uuid`), sql`, `)}))`,
+    )
+  }
+  const ts = now.toISOString()
   const result = await client.execute(sql`
     update queue_jobs j
     set status = 'running',
         attempts = j.attempts + 1,
         locked_by = ${workerId},
         locked_until = ${lockUntil.toISOString()}::timestamptz,
-        started_at = ${now.toISOString()}::timestamptz,
+        started_at = ${ts}::timestamptz,
         duration_ms = null,
-        updated_at = ${now.toISOString()}::timestamptz
+        updated_at = ${ts}::timestamptz
     where j.id in (
       select c.id from queue_jobs c
+      join (
+        select x.id,
+               row_number() over (partition by x.user_id, x.priority order by x.run_after, x.created_at) as user_rank
+        from queue_jobs x
+        where x.status in ('queued', 'failed')
+          and x.run_after <= ${ts}::timestamptz
+      ) r on r.id = c.id
       where c.status in ('queued', 'failed')
-        and c.run_after <= ${now.toISOString()}::timestamptz
+        and c.run_after <= ${ts}::timestamptz
         ${sql.join(filters, sql` `)}
         and (c.wait_for_type is null or not exists (
           select 1 from queue_jobs d
@@ -171,7 +191,7 @@ export async function claim(
             and d.user_id is not distinct from c.user_id
             and d.status in ('queued', 'failed', 'running')
         ))
-      order by c.priority, c.run_after, c.created_at
+      order by c.priority, r.user_rank, c.run_after, c.created_at
       for update of c skip locked
       limit ${limit}
     )

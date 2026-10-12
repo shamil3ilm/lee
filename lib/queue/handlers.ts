@@ -28,6 +28,9 @@ import { enqueueBoards, enqueueEnrichment, enqueueGrowth } from '@/lib/company-d
 import { detectBoards } from '@/lib/company-discovery/boards'
 import { refreshGrowth } from '@/lib/company-discovery/growth/refresh'
 import { pullPortfolio } from '@/lib/portfolio/pull'
+import { backfillBenefits } from '@/lib/benefits/service'
+import { isOwner } from '@/lib/auth/owner'
+import { gmailAccess, googleScopesByUser, type GmailAccess } from '@/lib/google/scopes'
 import { JOB_TYPES } from './job-types'
 import { createRegistry, defineHandler, type HandlerRegistry } from './registry'
 import type { DigestSkipReason, DiscoverySourceSummary } from './run-summary'
@@ -64,6 +67,16 @@ const USER_PAYLOAD = noPayload
 /** Leave the cooperative deadline this far before the hard timeout. */
 const DISCOVERY_DEADLINE_MARGIN_MS = 10_000
 
+/**
+ * Gmail is owner-only in the beta: the scheduler never plans Gmail jobs for
+ * anyone else, and these handlers re-check so a job queued by another path
+ * (or a stale one) skips cleanly instead of failing against Google.
+ */
+async function gmailFor(id: string): Promise<GmailAccess> {
+  const [owner, scopes] = await Promise.all([isOwner(id), googleScopesByUser([id])])
+  return gmailAccess(scopes.get(id), owner)
+}
+
 function userId(job: { userId: string | null }): string {
   // defineHandler rejects user-scoped jobs without a user before run().
   return job.userId as string
@@ -97,6 +110,9 @@ const gmailSync = defineHandler({
   payload: USER_PAYLOAD,
   timeoutMs: 60_000,
   async run({ job }): Promise<JobResult> {
+    if (!(await gmailFor(userId(job))).read) {
+      return { metrics: { gmail_skipped_no_access: 1 }, summary: { kind: 'gmail-sync', skipped: 'no_gmail_access' } }
+    }
     try {
       const r = await syncGmail({ userId: userId(job) })
       return {
@@ -125,6 +141,7 @@ const digest = defineHandler({
       summary: { kind: 'digest', sent: false, reason },
     })
     if (!profile?.weeklyDigestEnabled) return skip('disabled')
+    if (!(await gmailFor(userId(job))).send) return skip('no_gmail_access')
     if (!isMondayInTz(tz)) return skip('not_monday')
     if (alreadySentThisTzWeek(profile, tz)) return skip('already_sent')
     try {
@@ -186,6 +203,9 @@ const discoveryEmail = defineHandler({
   payload: USER_PAYLOAD,
   timeoutMs: 45_000,
   async run({ job }): Promise<JobResult> {
+    if (!(await gmailFor(userId(job))).send) {
+      return { metrics: { discovery_emails_sent: 0 }, summary: { kind: 'discovery-email', sent: false, reason: 'no_gmail_access' } }
+    }
     try {
       const r = await sendDiscoveryEmailIfEnabled({ userId: userId(job) })
       return {
@@ -275,6 +295,23 @@ const discoveryMatch = defineHandler({
         match_continued: r.remaining || b.remaining ? 1 : 0,
       },
     }
+  },
+})
+
+/**
+ * Benefits re-extraction (lib/benefits): rows stored under an older
+ * BENEFITS_VERSION or other weights/floor get re-read. Planned daily; a
+ * no-op (one indexed read) when nothing is stale. DB-only, no AI.
+ */
+const discoveryBenefits = defineHandler({
+  type: JOB_TYPES.discoveryBenefits,
+  scope: 'user',
+  payload: USER_PAYLOAD,
+  timeoutMs: 60_000,
+  minBudgetMs: 5_000,
+  async run({ job, deadline }): Promise<JobResult> {
+    const r = await backfillBenefits(userId(job), { deadline: Math.min(deadline - 5_000, Date.now() + 45_000) })
+    return { metrics: { benefits_updated: r.updated }, summary: { kind: 'discovery-benefits', updated: r.updated, more: r.more } }
   },
 })
 
@@ -541,6 +578,7 @@ export const appHandlers = [
   scamReassess,
   discoveryRelevance,
   discoveryMatch,
+  discoveryBenefits,
   usageSnapshot,
   companyReputation,
   shortlist,
