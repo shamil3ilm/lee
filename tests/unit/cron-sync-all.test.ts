@@ -229,13 +229,23 @@ describe('GET /api/cron/sync-all', () => {
       sourceId: src.id,
       sourceJobId: 'hn-notify-1',
       raw: {},
-      normalized: { title: 'Senior BE', companyName: 'Stripe' },
+      // A full JD: notifications use the displayed Fit (Match / AI blend under
+      // the Match ceiling), and a title-only row is capped at 55.
+      normalized: {
+        title: 'Backend Engineer',
+        companyName: 'Example Payments',
+        location: 'Dubai, United Arab Emirates',
+        descriptionMd:
+          '## Responsibilities\n- Build REST APIs in PHP and Laravel for payments\n- Integrate payment gateways and webhooks\n- Maintain MySQL schemas\n\n## Requirements\n- 2+ years of PHP and Laravel\n- MySQL and REST APIs',
+      },
       matchScore: 92,
       status: 'new',
     })
     await profileQ.upsert(uSender.id, {
       notifyDiscoveryEmail: true,
-      notifyDiscoveryMinScore: 75,
+      // The cron re-scores the Match first (this empty profile scores it 25),
+      // so the displayed Fit is round((25 + 92) / 2) = 59.
+      notifyDiscoveryMinScore: 55,
     })
     // Give this user a Google account so the send path can attempt a fetch.
     await db.insert(accounts).values({
