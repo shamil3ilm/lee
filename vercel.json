@@ -25,6 +25,13 @@
       "schedule": "30 3 * * *"
     }
   ],
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "ci/**": false,
+      "dependabot/**": false
+    }
+  },
   "buildCommand": "pnpm db:migrate && pnpm build",
   "installCommand": "pnpm install --frozen-lockfile"
 }
