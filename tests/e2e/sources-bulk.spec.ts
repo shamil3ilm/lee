@@ -65,7 +65,7 @@ test('select all works from the keyboard and Escape clears the selection', async
   await expect(all).toBeChecked()
   await expect(page.getByText(/^\d+ of \d+ selected$/).first()).toBeVisible()
   const bar = page.getByTestId('sources-bulk-bar')
-  await expect(bar.getByRole('button', { name: /^Check \d+ sources? now$/ })).toBeVisible()
+  await expect(bar.getByRole('button', { name: /^Check now: \d+ sources?$/ })).toBeVisible()
   await bar.getByRole('button', { name: 'Clear' }).focus()
   await page.keyboard.press('Escape')
   await expect(bar).toBeHidden()

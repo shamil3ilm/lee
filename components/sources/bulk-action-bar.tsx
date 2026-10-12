@@ -71,7 +71,8 @@ export function BulkActionBar({ plan, pending, capacityNote, onTurnOn, onTurnOff
           className="h-10 sm:h-8"
           disabled={pending || plan.check.length === 0}
           onClick={onCheck}
-          aria-label={`Check ${plan.check.length} ${plan.check.length === 1 ? 'source' : 'sources'} now`}
+          // Starts with the visible "Check now" (WCAG 2.5.3 label in name).
+          aria-label={`Check now: ${plan.check.length} ${plan.check.length === 1 ? 'source' : 'sources'}`}
           data-testid="sources-bulk-check"
         >
           <RefreshCw aria-hidden="true" />
