@@ -52,3 +52,6 @@ tests/fixtures/ai/*.json
 /.e2e/
 /test-results/
 /playwright-report/
+
+# Claude Code agent worktrees (full repo copies; never committed)
+.claude/worktrees/
