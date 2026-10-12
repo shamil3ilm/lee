@@ -82,6 +82,16 @@ const DATA_ANALYST_SKILLS = [
   'dashboard', 'reporting', 'reports', 'kpi', 'kpis', 'data analysis', 'data visualization',
   'data visualisation', 'statistics', 'statement exports', 'reconciliation', 'ledger', 'mis reports',
 ]
+/** Backend terms too generic to make a JD read as backend on their own. */
+const GENERIC_BACKEND: ReadonlySet<string> = new Set(['sql'])
+/** Real analytics tools: one of them is needed before a JD reads as data analysis. */
+const ANALYTICS_TOOLS: ReadonlySet<string> = new Set([
+  'power bi', 'powerbi', 'tableau', 'looker', 'looker studio', 'metabase', 'superset', 'pandas', 'numpy',
+  'python', 'data analysis', 'data visualization', 'data visualisation', 'statistics',
+])
+/** Data-analysis evidence: the data skills minus backend-only words, plus Python. */
+const DATA_EVIDENCE = [...DATA_ANALYST_SKILLS.filter((t) => !BACKEND_SKILLS.includes(t)), 'python']
+
 /** Business / systems analysis: requirements and process work, often ERP or finance systems. */
 const BUSINESS_ANALYST_SKILLS = [
   'requirements gathering', 'requirements analysis', 'business requirements', 'brd', 'frd',
@@ -329,6 +339,37 @@ const NON_ENGINEERING_TITLE = termMatcher([
   'bidder', 'clinical', 'medical', 'officer', 'operations specialist', 'scheduler',
 ])
 
+/**
+ * Business titles common in the GCC (Careem / Talabat / noon style) and in
+ * universities. Too broad for the list above ("Associate Software
+ * Engineer"), so they apply only when the title is not a software title.
+ */
+const NON_ENGINEERING_BUSINESS = termMatcher([
+  'executive', 'associate', 'category', 'quality', 'training', 'operations', 'merchandiser',
+  'merchandising', 'strategy', 'transformation', 'partner success', 'fleet', 'supply', 'buyer',
+  'captain', 'professor', 'dean', 'faculty', 'mandoub', 'government relations', 'customer care',
+  'partnerships', 'consultant', 'manager', 'specialist',
+])
+
+/** Software words that keep a business-sounding title technical ("IT Executive", "Systems Specialist"). */
+const TECH_HINT = termMatcher([
+  'it', 'software', 'systems', 'technical', 'technology', 'data', 'web', 'cloud', 'devops', 'network',
+  'erp', 'odoo', 'sap', 'oracle', 'salesforce', 'integration', 'api', 'automation', 'security', 'database',
+])
+
+/**
+ * A title that names a non-engineering job ("Category Executive",
+ * "Operations Associate", "Product Designer"), as opposed to a software
+ * title or an unknown one ("Ninja"). Only a JD that reads as one of your
+ * target families with real skills can make such a posting a tech role.
+ */
+export function isNonEngineeringTitle(rawTitle: string): boolean {
+  const title = normalizeForMatch(rawTitle)
+  if (familiesFromTitle(title).length > 0 && NON_SOFTWARE_ENGINEERING(title) === null) return false
+  if (NON_ENGINEERING_TITLE(title) !== null || NON_SOFTWARE_ENGINEERING(title) !== null) return true
+  return GENERIC_SOFTWARE(title) === null && TECH_HINT(title) === null && NON_ENGINEERING_BUSINESS(title) !== null
+}
+
 export interface RoleClassification {
   /** Families named by the title (or inferred for a generic software title). */
   families: string[]
@@ -347,7 +388,8 @@ function familiesFromTitle(title: string): string[] {
  * of its description: backend and frontend evidence together → full-stack.
  */
 function inferFamilies(evidence: string): string[] {
-  const backend = findTerms(evidence, BACKEND_SKILLS).length
+  // "SQL is a plus" is in every operations and finance JD: never backend evidence on its own.
+  const backend = findTerms(evidence, BACKEND_SKILLS).filter((t) => !GENERIC_BACKEND.has(t)).length
   const frontend = findTerms(evidence, FRONTEND_SKILLS).length
   const out: string[] = []
   if (backend > 0) out.push('backend')
@@ -364,7 +406,10 @@ function inferFamilies(evidence: string): string[] {
  */
 export function familiesFromEvidence(normalizedText: string): string[] {
   const out = inferFamilies(normalizedText)
-  if (findTerms(normalizedText, DATA_ANALYST_SKILLS.filter((t) => !BACKEND_SKILLS.includes(t))).length >= 2) out.push('data_analyst')
+  // Excel, KPIs, reports and dashboards are every business JD's vocabulary:
+  // data analysis needs a real analytics tool too.
+  const data = findTerms(normalizedText, DATA_EVIDENCE)
+  if (data.length >= 2 && data.some((t) => ANALYTICS_TOOLS.has(t))) out.push('data_analyst')
   if (findTerms(normalizedText, BUSINESS_ANALYST_SKILLS).length >= 2) out.push('business_analyst')
   return out
 }
@@ -381,7 +426,7 @@ export function classifyRole(input: {
   const named = familiesFromTitle(title)
   const nonSoftware = NON_SOFTWARE_ENGINEERING(title) !== null
   if (named.length > 0 && !nonSoftware) return { families: named, engineering: true, generic: false }
-  if (NON_ENGINEERING_TITLE(title) !== null || nonSoftware) {
+  if (NON_ENGINEERING_TITLE(title) !== null || nonSoftware || isNonEngineeringTitle(input.title)) {
     return { families: [], engineering: false, generic: false }
   }
   const evidence = normalizeForMatch(
@@ -390,7 +435,7 @@ export function classifyRole(input: {
   if (GENERIC_SOFTWARE(title) === null) {
     // An unusual title ("Ninja", "Product Builder") is judged by its JD: a
     // description naming several software skills makes it a tech role.
-    const hits = new Set([...findTerms(evidence, BACKEND_SKILLS), ...findTerms(evidence, FRONTEND_SKILLS)]).size
+    const hits = new Set([...findTerms(evidence, BACKEND_SKILLS).filter((t) => !GENERIC_BACKEND.has(t)), ...findTerms(evidence, FRONTEND_SKILLS)]).size
     if (hits < STRONG_JD_EVIDENCE) return { families: [], engineering: false, generic: false }
   }
   return { families: inferFamilies(evidence), engineering: true, generic: true }
