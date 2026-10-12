@@ -211,8 +211,9 @@ export function eligibilityStage(ctx: ScreenContext): StageResult {
     attestationCheck(ctx),
   ].filter((c): c is StageCheck => c !== null)
   const status = stageStatus('eligibility', checks)
-  const shown = checks.filter((c) => c.status !== 'pass')
-  const summary =
-    shown.length > 0 ? shown.slice(0, 2).map((c) => c.reason).join(' · ') : checks.slice(0, 3).map((c) => c.reason).join(' · ')
+  // What passed, in a line; the concerns are listed under it.
+  const passed = checks.filter((c) => c.status === 'pass').slice(0, 3).map((c) => c.reason)
+  const concerns = checks.length - checks.filter((c) => c.status === 'pass').length
+  const summary = passed.length > 0 ? passed.join(' · ') : `${concerns} question${concerns === 1 ? '' : 's'} before a human reads the CV`
   return { stage: 'eligibility', status, score: STATUS_SCORE[status], summary, checks }
 }

@@ -135,7 +135,7 @@ function yearsCheck(ctx: ScreenContext): StageCheck {
 
 function seniorityCheck(ctx: ScreenContext): StageCheck {
   const c = ctx.detail?.components.find((x) => x.key === 'seniority') ?? seniorityComponent(ctx.job, ctx.profile, ctx.jd)
-  const label = c.label.replace(/^Seniority: /, '')
+  const label = c.label.replace(/^Seniority: /, 'Level: ')
   const share = c.max > 0 ? c.points / c.max : 1
   if (share >= 0.8) return { key: 'seniority', status: 'pass', reason: label }
   if (share >= 0.25) return { key: 'seniority', status: 'at_risk', reason: label, short: 'seniority' }

@@ -29,7 +29,8 @@ const MAX_CONCERNS = 3
 
 function StageRow({ s }: { s: StageResult }) {
   const Icon = s.stage === 'odds' ? TrendingUp : ICON[s.status]
-  const concerns = byConcern(s.checks.filter((c) => c.status !== 'pass')).slice(0, MAX_CONCERNS)
+  // A concern the summary already says is not repeated below it.
+  const concerns = byConcern(s.checks.filter((c) => c.status !== 'pass' && !s.summary.includes(c.reason))).slice(0, MAX_CONCERNS)
   return (
     <li className="flex gap-2 py-1" data-stage={s.stage} data-status={s.status}>
       <Icon className={cn('mt-0.5 size-3.5 shrink-0', s.stage === 'odds' ? 'text-muted-foreground' : TONE[s.status])} aria-hidden="true" />
