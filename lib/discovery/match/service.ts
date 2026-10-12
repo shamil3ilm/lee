@@ -46,6 +46,7 @@ export function rowToJob(r: matchQ.MatchRow): MatchJob {
     descriptionMd: r.descriptionMd,
     techStack: asStrings(r.techStack),
     salary: asSalary(r.salary),
+    localHire: r.localHire === true,
   }
 }
 

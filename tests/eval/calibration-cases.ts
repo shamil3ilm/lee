@@ -8,7 +8,7 @@
  * Slices (review 2026-10-10 §1.10):
  *   ontarget-gcc 30 · ontarget-india-remote 20 · stretch 15 · adjacent 15 ·
  *   nontech 30 (+ 10 boilerplate traps) · eligibility 20 · thin 10 ·
- *   university (BambooHR-style) 6.
+ *   university (BambooHR-style) 6, AIU Kuwait (BambooHR, Jahrah) 8.
  */
 
 export type Band = 'strong' | 'good' | 'fair' | 'weak' | 'out'
@@ -31,6 +31,8 @@ export interface CalibrationJob {
   remoteType: 'remote' | 'onsite' | 'hybrid' | 'unknown'
   descriptionMd: string
   companyName?: string
+  /** BambooHR "Admin Staff (Local)": the Match Score's local-hire visa deduction (m6). */
+  localHire?: boolean
 }
 
 export interface CalibrationCase {
@@ -355,6 +357,18 @@ function build(): CalibrationCase[] {
   add('university-nontech', job('Professor of Accounting', UNI, `## Responsibilities\n- Teach undergraduate accounting courses\n- Publish research and supervise students\n\n## Requirements\n- PhD in Accounting`), ['out'])
   add('university-nontech', job('Dean, College of Business', UNI, `## Responsibilities\n- Lead the college's academic programmes and faculty\n- Accreditation and strategic planning\n\n## Requirements\n- PhD and academic leadership experience`), ['out'])
   add('university-nontech', job('Mandoub', UNI, `## Responsibilities\n- Process visas, Emirates IDs and labour cards at government departments\n- Collect and deliver documents\n\n## Requirements\n- Valid UAE driving licence`), ['out'])
+
+  // American International University, Kuwait (BambooHR, "Jahrah"; synthetic text modelled on the
+  // 2026-10-12 board): the IT, web, data and AI roles reach New; academic, PRO and HR roles do not.
+  const AIU = 'Jahrah, Kuwait'
+  add('university-tech', { ...job('Application Developer in Informational Technology (IT)', AIU, `Location: Saad Al Abdullah, Kuwait\n\n## Job Summary\nDevelops and supports custom and enterprise applications for academic operations and student services.\n\n## Responsibilities\n- Build web applications and REST APIs with PHP and Laravel\n- Write SQL against MySQL databases\n- Integrate the student information system with internal portals\n\n## Requirements\n- 2 years of experience in web application development`), localHire: true }, ['strong', 'good', 'fair'])
+  add('university-tech', job('Web Developer & Designer / SEO Specialist', AIU, `## Responsibilities\n- Develop and maintain the university website (WordPress or a custom PHP and JavaScript stack)\n- Technical SEO, analytics and performance optimisation\n- UI and accessibility improvements\n\n## Requirements\n- 3 years of experience in web development`), ['strong', 'good', 'fair'])
+  add('university-tech', job('Institutional Research Officer', AIU, `## Responsibilities\n- Analyse and validate institutional data for data-driven decision making\n- Build dashboards in Power BI and write SQL queries\n- Produce statistical reports for accreditation\n\n## Requirements\n- 2 years of experience in data analysis`), ['good', 'fair', 'weak'])
+  add('university-tech', job('AI Technician', AIU, `## Responsibilities\n- Support AI prototype development and data workflows in Python\n- Build automation scripts and dashboards\n- Tool testing, troubleshooting and documentation for research projects\n\n## Requirements\n- Python, SQL and data preparation`), ['good', 'fair', 'weak'])
+  add('university-nontech', job('Full Professor / Associate Professor / Assistant Professor of Physics', AIU, `## Responsibilities\n- Teach undergraduate physics courses and labs\n- Lesson planning and student assessment\n- Publish research\n\n## Requirements\n- PhD in Physics`), ['out'])
+  add('university-nontech', job('Dean – School of Engineering & Computing', AIU, `## Responsibilities\n- Provide academic leadership to the school and its faculty\n- Lead accreditation and curriculum development\n\n## Requirements\n- PhD and senior academic leadership`), ['out'])
+  add('university-nontech', { ...job('Mandoub', AIU, `## Responsibilities\n- Handle government transactions, residency permits and licence renewals with ministries\n\n## Requirements\n- Valid Kuwaiti driving licence`), localHire: true }, ['out'])
+  add('university-nontech', job('Talent Acquisition Specialist', AIU, `## Responsibilities\n- End-to-end recruitment for academic and administrative roles\n- Sourcing candidates and onboarding new hires\n\n## Requirements\n- 3 years of recruitment experience`), ['out'])
   return out
 }
 

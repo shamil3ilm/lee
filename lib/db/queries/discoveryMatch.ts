@@ -20,6 +20,8 @@ export interface MatchRow {
   descriptionMd: string | null
   techStack: unknown
   salary: unknown
+  /** Only the Match Score reads it (absent in CV-fit rows). */
+  localHire?: boolean
 }
 
 /** Rows scored under another key (or never), oldest id first, at most `limit`. Any status. */
@@ -34,6 +36,7 @@ export async function staleRows(userId: string, key: string, limit: number, clie
       descriptionMd: sql<string | null>`left(coalesce(${discoveries.pastedJd}, ${discoveries.normalized}->>'descriptionMd'), 8000)`,
       techStack: sql<unknown>`${discoveries.normalized}->'techStack'`,
       salary: sql<unknown>`${discoveries.normalized}->'salary'`,
+      localHire: sql<boolean>`coalesce((${discoveries.normalized}->>'localHire')::boolean, false)`,
     })
     .from(discoveries)
     .where(and(eq(discoveries.userId, userId), or(isNull(discoveries.fitKey), ne(discoveries.fitKey, key))))
@@ -57,6 +60,7 @@ export async function rowForMatch(
       descriptionMd: sql<string | null>`left(coalesce(${discoveries.pastedJd}, ${discoveries.normalized}->>'descriptionMd'), 8000)`,
       techStack: sql<unknown>`${discoveries.normalized}->'techStack'`,
       salary: sql<unknown>`${discoveries.normalized}->'salary'`,
+      localHire: sql<boolean>`coalesce((${discoveries.normalized}->>'localHire')::boolean, false)`,
       applyUrl: n('applyUrl'),
     })
     .from(discoveries)

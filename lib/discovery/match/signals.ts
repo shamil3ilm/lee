@@ -90,6 +90,9 @@ export function languageComponent(job: MatchJob, p: Pick<MatchProfile, 'language
   return { component: { key: 'language', label: `Language: ${parts.join(', ')}`, points: clamped, max }, missing, mandatoryUnmet }
 }
 
+/** Visa points for a posting the employer marks as a local hire, when you would need sponsorship there. */
+export const LOCAL_HIRE_POINTS = -4
+
 /** GCC countries the posting is located in where the user needs an employer visa. */
 function sponsorshipCountries(job: MatchJob, p: Pick<MatchProfile, 'extra'>): RegionCode[] {
   const { sponsorshipFor, basedIn } = p.extra
@@ -112,6 +115,8 @@ export function visaComponent(job: MatchJob, p: Pick<MatchProfile, 'extra'>): Ma
   if (remote || needs.length === 0) return c(0, p.extra.sponsorshipFor.length > 0 ? 'Visa: no sponsorship needed here' : 'Visa: not relevant')
   const country = regionLabel(needs[0]!)
   if (detectVisaOffered(description)) return c(max, `Visa: offered for ${country}`)
+  // A local-hire status (no residency there, sponsorship needed): a small deduction, never a filter.
+  if (job.localHire) return c(LOCAL_HIRE_POINTS, `Local hire: likely needs ${country} residency`)
   if (detectPresenceRequired(description)) return c(-3, `Visa: wants candidates already in ${country}`)
   return c(0, `Visa: not mentioned (you need sponsorship in ${country})`)
 }

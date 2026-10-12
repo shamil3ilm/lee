@@ -104,6 +104,7 @@ export async function ingestJobItems(args: IngestArgs, items: readonly Discovery
       descriptionMd: job.descriptionMd,
       techStack: job.techStack,
       salary: job.salary,
+      localHire: job.localHire,
     }
     return {
       sourceJobId: i.sourceItemId,

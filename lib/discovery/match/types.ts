@@ -76,6 +76,8 @@ export interface MatchJob {
   techStack?: readonly string[] | null
   employmentType?: string | null
   salary?: { min?: number; max?: number; currency?: string } | null
+  /** The board marks it a local hire (BambooHR "Admin Staff (Local)"): likely needs existing residency. */
+  localHire?: boolean | null
 }
 
 /**

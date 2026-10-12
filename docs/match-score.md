@@ -29,7 +29,7 @@ shifts (`lib/discovery/match/jd.ts`).
 | Work mode | 0…5 | Remote / hybrid / on-site vs your preference. |
 | Pay | −5…+5 | Stated pay vs your floor for that region (GCC pegs). |
 | Language | −25…+3 | A language required at a level you do not have is −10 and a missing must-have; a MANDATORY one ("Arabic fluency required", "must be fluent in Arabic", "native Arabic speaker") is −25 and caps the Fit at 34 (weak). |
-| Visa | −15…+5 | GCC: visa offered +5 (also benefit-list wording: "employment visa, medical and air ticket provided", "visa + accommodation", "company visa", "iqama provided", "transferable iqama not required"; never when the sentence says it is not provided), nationals preferred −5, nationals only −15. |
+| Visa | −15…+5 | GCC: visa offered +5 (also benefit-list wording: "employment visa, medical and air ticket provided", "visa + accommodation", "company visa", "iqama provided", "transferable iqama not required"; never when the sentence says it is not provided), nationals preferred −5, nationals only −15; a local-hire posting (BambooHR "Admin Staff (Local)") where you need sponsorship and are not based −4 ("Local hire: likely needs Kuwait residency", m6). |
 | Domain | 0…+10 | Payments and e-invoicing/ZATCA with ready evidence, +5 each, for a role you target. A tech role outside your targets at a payments company gets +2 ("Domain: payments company, but the role is Frontend"), a non-tech role 0. Employer boilerplate ("About us", "Who we are", benefits, perks, EEO) is stripped first, so a super app's "payments through our wallet" paragraph earns nothing. |
 
 **Role relevance scales the context.** Seniority, region, work mode and

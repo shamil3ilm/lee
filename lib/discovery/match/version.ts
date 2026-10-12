@@ -21,4 +21,7 @@
 // evidence (not SQL / Excel / KPIs alone); context points (seniority, region,
 // work mode, visa) count in full only for a role you target; employer
 // boilerplate never earns domain or strength credit.
-export const MATCH_SCORE_VERSION = 'm5'
+// m6 — 2026-10-12: a local-hire posting (BambooHR "Admin Staff (Local)",
+// normalized.localHire) in a country where you need sponsorship and are not
+// based takes −4 in the visa component: "Local hire: likely needs Kuwait residency".
+export const MATCH_SCORE_VERSION = 'm6'
