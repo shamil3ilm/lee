@@ -71,11 +71,12 @@ describe('applyCaps', () => {
     expect(applyCaps(m, j, p)).toBe(30)
   })
 
-  it('does NOT cap for location when remote', () => {
+  it('caps a remote role the AI marks as a location mismatch (restricted to other countries)', () => {
     const p = makeProfile({ acceptRelocation: false })
     const j = makeJob({ remoteType: 'remote' })
     const m = makeMatch({ match_score: 90, location_match: 'mismatch' })
-    expect(applyCaps(m, j, p)).toBe(90)
+    expect(applyCaps(m, j, p)).toBe(30)
+    expect(applyCaps(m, j, makeProfile({ acceptRelocation: true }))).toBe(30)
   })
 
   it('does NOT cap for location if user is open to relocation', () => {

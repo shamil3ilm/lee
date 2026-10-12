@@ -61,9 +61,10 @@ describe('years asked vs years you have', () => {
     expect(mid).toBeLessThan(15)
   })
 
-  it('the strong-domain offset is capped (+3 at most)', () => {
-    const plain = seniorityComponent(asks(5), matchProfile({ years: 2, skills: withImplied(['mysql']), domains: new Set() }))
-    const strong = seniorityComponent(asks(5), matchProfile({ years: 2 }))
+  it('the strong-domain offset is capped (+3 at most), and gone when the ask is twice your years', () => {
+    const plain = seniorityComponent(asks(5), matchProfile({ years: 3, skills: withImplied(['mysql']), domains: new Set() }))
+    const strong = seniorityComponent(asks(5), matchProfile({ years: 3 }))
+    expect(seniorityComponent(asks(5), matchProfile({ years: 2 })).label).not.toContain('strong')
     expect(strong.label).toContain('strong Laravel match')
     expect(strong.points - plain.points).toBeLessThanOrEqual(3)
   })
@@ -141,6 +142,6 @@ describe('cappedFit', () => {
 
 describe('rules version', () => {
   it('is bumped so stored scores recompute', () => {
-    expect(MATCH_SCORE_VERSION).toBe('m4')
+    expect(MATCH_SCORE_VERSION).toBe('m5')
   })
 })
