@@ -98,6 +98,8 @@ export interface NewDiscoveryItem {
   gate?: GateColumns
   /** Deterministic Match Score (lib/discovery/match); absent → backfilled later. */
   fit?: FitColumns
+  /** Deterministic benefits (lib/benefits); absent → backfilled by the daily job. */
+  benefits?: { benefitsScore: number | null; benefitsDetail: unknown; benefitsKey: string }
 }
 
 /** Columns the deterministic Match Score writes. */
@@ -168,6 +170,9 @@ export async function insertManyForSource(
               }
             : {}),
           ...(it.fit ? { fitScore: it.fit.fitScore, fitDetail: it.fit.fitDetail as never, fitKey: it.fit.fitKey } : {}),
+          ...(it.benefits
+            ? { benefitsScore: it.benefits.benefitsScore, benefitsDetail: it.benefits.benefitsDetail as never, benefitsKey: it.benefits.benefitsKey }
+            : {}),
         })),
       )
       .onConflictDoNothing({ target: [discoveries.sourceId, discoveries.sourceJobId] })
@@ -456,11 +461,16 @@ export async function getById(
   })
 }
 
+/**
+ * Store the AI score. Benefits are written separately (at insert and by the
+ * benefits backfill, lib/benefits), so `benefitsScoreValue` is only applied
+ * when given.
+ */
 export async function updateScore(
   userId: string,
   id: string,
   matchScore: number,
-  benefitsScoreValue: number,
+  benefitsScoreValue: number | null | undefined,
   reasoning: unknown,
   client: DbClient = db,
 ): Promise<void> {
@@ -468,7 +478,7 @@ export async function updateScore(
     .update(discoveries)
     .set({
       matchScore,
-      benefitsScore: benefitsScoreValue,
+      ...(benefitsScoreValue === undefined ? {} : { benefitsScore: benefitsScoreValue }),
       matchReasoning: reasoning as never,
       updatedAt: new Date(),
     })

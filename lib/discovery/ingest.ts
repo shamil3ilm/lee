@@ -7,7 +7,10 @@ import { assessNewDiscoveries, safely } from '@/lib/scam/service'
 import type { AllowListEntry } from '@/lib/db/queries/scamAllowList'
 import type { NetBudget, NetMode } from '@/lib/scam/net-cache'
 import type { DiscoveryItem, NormalizedCompany, NormalizedJob } from './adapters/types'
-import { applyCaps, benefitsScore } from './scoring'
+import { applyCaps } from './scoring'
+import { benefitsColumns, benefitsContextFor } from '@/lib/benefits/service'
+import { extractBenefits } from '@/lib/benefits/extract'
+import { toLegacyBenefits } from '@/lib/benefits/score'
 import { gateColumns, type RelevanceContext } from './relevance/service'
 import { fitColumns, type MatchContext } from './match/service'
 import type { ScoreJobContext } from '@/lib/ai/prompts/score-job'
@@ -94,6 +97,8 @@ export async function ingestJobItems(args: IngestArgs, items: readonly Discovery
     unique.map((i) => i.sourceItemId),
   )
   const fresh = unique.filter((i) => !seen.has(i.sourceItemId))
+  // Deterministic benefits for every new row (no AI), under the user's weights.
+  const benefitsCtx = benefitsContextFor(profile)
   const gated = fresh.map((i) => {
     const job = i.normalized as NormalizedJob
     const fields = {
@@ -112,6 +117,7 @@ export async function ingestJobItems(args: IngestArgs, items: readonly Discovery
       normalized: i.normalized,
       gate: gateColumns(fields, relevance),
       ...(match ? { fit: fitColumns(fields, match) } : {}),
+      benefits: benefitsColumns(fields, benefitsCtx),
     }
   })
   const relevant = new Set(gated.filter((g) => g.gate.status === 'new').map((g) => g.sourceJobId))
@@ -171,11 +177,11 @@ async function scoreJobRow(
       },
       context,
     )
-    const finalScore = applyCaps(scored, row.normalized, profile)
-    const benefitsRaw =
-      (row.normalized as unknown as { benefits?: Record<string, unknown> }).benefits ?? {}
-    const bScore = benefitsScore(benefitsRaw, readBenefitWeights(profile))
-    await discQ.updateScore(userId, row.id, finalScore, bScore, scored)
+    // Must-have benefit caps read the benefits extracted from the posting.
+    const withBenefits = { ...row.normalized, benefits: toLegacyBenefits(extractBenefits(row.normalized)) }
+    const finalScore = applyCaps(scored, withBenefits, profile)
+    // Benefits columns were written at insert (lib/benefits); keep them.
+    await discQ.updateScore(userId, row.id, finalScore, undefined, scored)
     if (capturedCallId) await discQ.updateScoredByCallId(userId, row.id, capturedCallId)
     return true
   } catch {
@@ -243,13 +249,3 @@ async function scoreCompanyRow(
   }
 }
 
-function readBenefitWeights(profile: UserProfile): Record<string, number> {
-  const prefs = profile.benefitPrefs as { weights?: Record<string, number> } | null
-  const w = prefs?.weights
-  if (!w || typeof w !== 'object') return {}
-  const out: Record<string, number> = {}
-  for (const [k, v] of Object.entries(w)) {
-    if (typeof v === 'number' && !Number.isNaN(v)) out[k] = v
-  }
-  return out
-}
