@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { ArrowRight, ListChecks } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MatchBadge } from '@/components/discovery/match-badge'
 import { ShortlistReasons } from '@/components/apply/shortlist-reasons'
@@ -26,14 +25,14 @@ export async function ShortlistStrip({ userId }: { userId: string }) {
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
         <CardTitle className="flex items-center gap-2">
           <ListChecks className="size-4 text-muted-foreground" aria-hidden="true" />
-          Today’s shortlist
+          Today’s top picks
           <Badge variant="secondary">{open.length}</Badge>
         </CardTitle>
         <Link
           href="/shortlist"
           className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
         >
-          Open shortlist
+          All top picks
           <ArrowRight className="size-3" aria-hidden="true" />
         </Link>
       </CardHeader>
@@ -42,11 +41,11 @@ export async function ShortlistStrip({ userId }: { userId: string }) {
           <p className="text-sm text-muted-foreground">You have handled every pick for today.</p>
         ) : (
           <ul className="divide-y">
-            {open.slice(0, SHOWN).map((e) => (
+            {open.slice(0, SHOWN).map((e, i) => (
               <li key={e.discoveryId} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-2 text-sm">
                 <div className="min-w-0">
                   <div className="truncate font-medium">
-                    <span className="mr-1.5 text-muted-foreground tabular-nums">#{e.rank}</span>
+                    <span className="mr-1.5 text-muted-foreground tabular-nums">#{i + 1}</span>
                     {repairMojibake(e.title ?? 'Untitled')}
                   </div>
                   <div className="truncate text-xs text-muted-foreground">
@@ -57,7 +56,7 @@ export async function ShortlistStrip({ userId }: { userId: string }) {
                   match={e.fitScore}
                   ai={e.matchScore}
                   detail={toMatchDetail(e.fitDetail)}
-                  extra={<ShortlistReasons rank={e.rank} score={e.score} reasons={e.reasons} />}
+                  extra={<ShortlistReasons rank={i + 1} score={e.score} reasons={e.reasons} />}
                 />
               </li>
             ))}
@@ -69,22 +68,12 @@ export async function ShortlistStrip({ userId }: { userId: string }) {
 }
 
 /**
- * Discovery's header action: "Shortlist · 5", a button instead of a bar
- * above the list (the postings themselves are listed right below).
+ * Discovery's "⋯" menu entry: today's open top picks, or null when there is
+ * no shortlist to link to.
  */
-export async function ShortlistHeaderLink({ userId }: { userId: string }) {
+export async function shortlistOpenCount(userId: string): Promise<number | null> {
   const view = await readShortlist(userId)
   const open = view.entries.filter((e) => e.state === 'open')
   if (!view.day || (open.length === 0 && !view.today)) return null
-  return (
-    <Button asChild size="sm" variant="outline" data-testid="shortlist-banner">
-      <Link href="/shortlist" aria-label={`Today’s shortlist: ${open.length === 0 ? 'every pick handled' : `${open.length} to review`}`}>
-        <ListChecks className="size-4" aria-hidden="true" />
-        Shortlist
-        <Badge variant="secondary" className="tabular-nums">
-          {open.length}
-        </Badge>
-      </Link>
-    </Button>
-  )
+  return open.length
 }

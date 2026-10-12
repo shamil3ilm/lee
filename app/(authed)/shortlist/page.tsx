@@ -18,8 +18,6 @@ import { loadAiModePrompts } from '@/lib/discovery/ai-mode/load'
 import { getProfile } from '@/lib/profile/service'
 import { defaultsBannerFamilies } from '@/lib/discovery/relevance/view'
 import { DefaultsBanner } from '@/components/discovery/defaults-banner'
-import { WeekFunnel } from '@/components/apply/week-funnel'
-import { weekFunnel } from '@/lib/apply/funnel'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -31,8 +29,10 @@ const STATE_BADGE: Record<Exclude<ShortlistEntryView['state'], 'open'>, { label:
 }
 
 /**
- * Daily shortlist: the top N new or recent discoveries, ranked by one
- * explainable composite (lib/apply/rank.ts). Reads the snapshot the
+ * Daily shortlist ("Top picks"): only the top N new or recent discoveries,
+ * ranked by one explainable composite (lib/apply/rank.ts); the rest of the
+ * inbox stays in Discovery. The week's apply funnel lives on Home with the
+ * pipeline counts, so the two can't disagree side by side. Reads the snapshot the
  * `shortlist:user` job wrote after the morning polls, so it loads at once.
  */
 export default async function ShortlistPage({
@@ -42,12 +42,7 @@ export default async function ShortlistPage({
 }) {
   const userId = await requireUserId()
   const region = parseRegionParam((await searchParams).region)
-  const [loaded, profile, funnel] = await Promise.all([
-    loadShortlistPage(userId),
-    getProfile(userId),
-    // This week's apply funnel lives here, next to the work it measures.
-    weekFunnel(userId, new Date()),
-  ])
+  const [loaded, profile] = await Promise.all([loadShortlistPage(userId), getProfile(userId)])
   // Region filter (URL state): today's picks in the selected regions only.
   const data = { ...loaded, open: inRegions(loaded.open, region) }
   const hiddenByRegion = loaded.open.length - data.open.length
@@ -57,15 +52,15 @@ export default async function ShortlistPage({
   const handled = data.acted.length > 0 ? ` · ${data.acted.length} handled` : ''
   const subtitle = data.day
     ? data.today
-      ? `${data.open.length} to review${handled}, ranked by Fit. Prepare, park for later, or pass.`
-      : `From ${shortDay(data.day)}. Today's list is built after the morning discovery run, or refresh now.`
-    : 'Your top new roles each day, ranked by fit, once discovery has found some.'
+      ? `Today’s top ${data.open.length} ${data.open.length === 1 ? 'pick' : 'picks'} from Discovery${handled}, ranked by Fit. Prepare, park for later, or pass; the rest stay in Discovery.`
+      : `From ${shortDay(data.day)}. Today's top picks are chosen after the morning discovery run, or refresh now.`
+    : 'Your top few new roles each day, picked from Discovery and ranked by Fit, once discovery has found some.'
 
   return (
     <div className="space-y-4">
       <PageHeader
         className="mb-0"
-        title="Shortlist"
+        title="Top picks"
         description={subtitle}
         actions={
           <div className="flex flex-wrap items-center gap-2">
@@ -182,7 +177,6 @@ export default async function ShortlistPage({
           </ul>
         </section>
       ) : null}
-      <WeekFunnel funnel={funnel} />
     </div>
   )
 }

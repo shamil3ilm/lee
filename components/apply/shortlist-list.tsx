@@ -105,11 +105,13 @@ export function ShortlistList({ items }: { items: ShortlistCardItem[] }) {
         </ul>
       ) : null}
 
-      <ol className="space-y-3">
-        {items.map((item) => (
+      <ol className="space-y-3" aria-label="Today’s top picks">
+        {items.map((item, i) => (
           <ShortlistCard
             key={item.discoveryId}
-            item={item}
+            // Number the cards on screen (1, 2, 3…), not the snapshot rank:
+            // handled or region-filtered picks left gaps (#5 → #7).
+            item={{ ...item, rank: i + 1 }}
             selected={selected.has(item.discoveryId)}
             onSelectedChange={(on) => toggle(item.discoveryId, on)}
             busy={running}

@@ -14,7 +14,7 @@ const PLATFORM = 'Platform Engineer (Kubernetes)'
 
 test('shortlist renders with reasons, and Not for me takes a reason', async ({ page }) => {
   await page.goto('/shortlist')
-  await expect(page.getByRole('heading', { level: 1, name: 'Shortlist' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Top picks' })).toBeVisible()
   const cards = page.getByTestId('shortlist-card')
   await expect(cards.first()).toBeVisible()
 
@@ -81,8 +81,8 @@ test('prepare application runs to applied with the AI fixtures', async ({ page }
   await page.getByRole('link', { name: 'Application details' }).click()
   await expect(page.getByRole('combobox', { name: 'Application status' })).toHaveText('Applied')
 
-  // Shortlist: the week's apply funnel counts it.
-  await page.goto('/shortlist')
+  // Home: the week's apply funnel counts it.
+  await page.goto('/')
   const funnel = page.getByTestId('week-funnel')
   await expect(funnel).toBeVisible()
   await expect(funnel.getByRole('listitem').filter({ hasText: 'Applied' })).not.toContainText(/^0/)

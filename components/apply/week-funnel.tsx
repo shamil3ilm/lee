@@ -8,10 +8,15 @@ export function WeekFunnel({ funnel }: { funnel: WeekFunnelData }) {
   return (
     <Card data-testid="week-funnel">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <CardTitle className="flex items-center gap-2">
-          <Filter className="size-4 text-muted-foreground" aria-hidden="true" />
-          Apply funnel
-        </CardTitle>
+        <div className="min-w-0">
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="size-4 text-muted-foreground" aria-hidden="true" />
+            Apply funnel this week
+          </CardTitle>
+          {/* One definition everywhere: steps that happened since Monday. The
+              Pipeline counts below are every application so far. */}
+          <p className="mt-1 text-xs text-muted-foreground">Since Monday. Pipeline counts all applications so far.</p>
+        </div>
         <Link
           href="/analytics"
           className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"

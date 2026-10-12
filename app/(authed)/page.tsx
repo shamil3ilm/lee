@@ -17,6 +17,8 @@ import { UsageBanner } from '@/components/dashboard/usage-banner'
 import { ShortlistStrip } from '@/components/apply/shortlist-strip'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
+import { WeekFunnel } from '@/components/apply/week-funnel'
+import { weekFunnel } from '@/lib/apply/funnel'
 
 export const dynamic = 'force-dynamic'
 
@@ -84,6 +86,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <Suspense fallback={<WidgetSkeleton className="h-32" />}>
             <ThisWeekWidget userId={userId} now={now} />
           </Suspense>
+          <Suspense fallback={<WidgetSkeleton className="h-24" />}>
+            <WeekFunnelWidget userId={userId} now={now} />
+          </Suspense>
         </DashboardSection>
         <DashboardSection title="Pipeline">
           <Suspense fallback={<WidgetSkeleton className="h-16" />}>
@@ -101,6 +106,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       </Suspense>
     </div>
   )
+}
+
+/** This week's apply funnel, next to the pipeline it feeds (moved here from the Shortlist). */
+async function WeekFunnelWidget({ userId, now }: { userId: string; now: number }) {
+  return <WeekFunnel funnel={await weekFunnel(userId, new Date(now))} />
 }
 
 /** Stand-in for the widget stack while the banners and setup panel resolve. */
