@@ -15,4 +15,10 @@
 // India/GCC; not eligible caps the Fit at 30; off-target roles get at most
 // +2 domain and no strong-area seniority offset; no offset when the years
 // asked are twice yours; a generic title with a JD of another family is 3.
+// Also in m5 (review 2026-10-10, the Careem non-tech roles): role-relevance
+// ceilings (not a tech role 25, outside your targets 45); a non-engineering
+// title gets role 0 and no neutral skills points; JD families need real
+// evidence (not SQL / Excel / KPIs alone); context points (seniority, region,
+// work mode, visa) count in full only for a role you target; employer
+// boilerplate never earns domain or strength credit.
 export const MATCH_SCORE_VERSION = 'm5'
