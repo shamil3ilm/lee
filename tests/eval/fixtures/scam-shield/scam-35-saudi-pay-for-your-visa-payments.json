@@ -1,0 +1,17 @@
+{
+  "name": "Saudi payments clerk who must pay for their own visa",
+  "label": "scam",
+  "inputs": {
+    "title": "Payments Clerk - Riyadh",
+    "company": "Najd Recruitment Services",
+    "applyEmail": "najd.recruit@gmail.com",
+    "location": "Riyadh, Saudi Arabia",
+    "description": "Payments clerk for a trading company in Riyadh. Salary SAR 2500. You have to pay for your own work visa and the stamping charges SAR 3000 via bank transfer to our office. WhatsApp your CV and passport."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "money.gulf_agency_fee"
+    ]
+  }
+}

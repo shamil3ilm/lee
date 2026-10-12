@@ -1,0 +1,17 @@
+{
+  "name": "Fake payments job: processing fee paid by the candidate over UPI",
+  "label": "scam",
+  "inputs": {
+    "title": "Payment Gateway Executive (Work From Home)",
+    "company": "PayFast Solutions",
+    "applyEmail": "payfast.hr.jobs@gmail.com",
+    "location": "Remote, India",
+    "description": "Work from home as a payment gateway executive. No experience needed. Selected candidates must pay a one-time processing fee of Rs 1500 via UPI to activate your merchant ID. Earn Rs 3000 per day. Contact HR on WhatsApp."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "money.upfront_fee"
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "Remittance platform engineer integrating Western Union payouts",
+  "label": "legit",
+  "inputs": {
+    "title": "Software Engineer, Remittances",
+    "company": "Lulu Exchange",
+    "applyUrl": "https://luluexchange.com/careers/software-engineer-remittances",
+    "location": "Abu Dhabi, UAE",
+    "description": "Join the remittance platform team. Integrate Western Union and MoneyGram payouts, build corridor routing for India, Pakistan and the Philippines, and reconcile partner settlement files daily. Experience with SWIFT MT103, ISO 20022 and money orders reconciliation is a plus. Laravel, MySQL, REST APIs, 2-4 years."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "money.cheque_cashing"
+    ]
+  }
+}

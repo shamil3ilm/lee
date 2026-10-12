@@ -1,0 +1,17 @@
+{
+  "name": "Remittance 'agent' role: receive funds and send the balance via Western Union",
+  "label": "scam",
+  "inputs": {
+    "title": "Remote Remittance Agent",
+    "company": "Global Transfer Partners",
+    "applyEmail": "gtp.recruit@outlook.com",
+    "location": "Remote",
+    "description": "We will send you a cheque for client payments. Deposit the cheque in your account, keep 10% commission and send the remaining balance via Western Union to our vendor. Part time, 2 hours a day, weekly payouts."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "money.cheque_cashing"
+    ]
+  }
+}

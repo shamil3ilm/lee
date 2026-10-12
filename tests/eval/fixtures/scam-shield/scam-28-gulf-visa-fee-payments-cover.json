@@ -1,0 +1,18 @@
+{
+  "name": "Gulf 'fintech' cashier role: visa fee and medical charges from the candidate",
+  "label": "scam",
+  "inputs": {
+    "title": "Cashier - Money Exchange (Dubai)",
+    "company": "Gulf Star Exchange",
+    "applyEmail": "gulfstar.jobs@gmail.com",
+    "location": "Dubai, UAE",
+    "description": "Urgent requirement for cashiers at a money exchange in Dubai. Salary AED 3000 + accommodation. Visa fee AED 4000 and medical charges AED 800 to be paid by the candidate. Send passport copy on WhatsApp. Offer letter after payment."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "money.gulf_agency_fee",
+      "money.offer_letter_fee"
+    ]
+  }
+}

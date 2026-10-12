@@ -1,8 +1,10 @@
 import { findAll } from '../text'
 import { fired, type Rule } from './types'
+import { withoutPaymentsWork } from './payments-context'
 
-/** Currency tokens common in India, the Gulf and the US. */
-export const CUR = String.raw`(?:₹|\$|(?<![a-z])(?:rs\.?|inr|usd|aed|dhs?\.?|sar|qar|kwd|omr|bhd)(?![a-z]))`
+import { CUR } from './currency'
+
+export { CUR }
 
 const FEE_NOUN = String.raw`(?:fees?|charges?|deposit|amount)`
 
@@ -51,7 +53,8 @@ export const moneyRules: readonly Rule[] = [
     group: 'money',
     weight: 45,
     label: 'Asks you to pay a fee or deposit (registration, training, security, visa…)',
-    detect: (ctx) => fired(anyOf(UPFRONT_FEE, ctx).slice(0, 3)),
+    // "Reconcile merchant processing fees" is payments work, not a fee you pay.
+    detect: (ctx) => fired(withoutPaymentsWork(ctx.fields, anyOf(UPFRONT_FEE, ctx)).slice(0, 3)),
   },
   {
     id: 'money.equipment_reimbursement',
@@ -70,7 +73,8 @@ export const moneyRules: readonly Rule[] = [
     group: 'money',
     weight: 45,
     label: 'Cheque deposit / wire-back or money-order scheme',
-    detect: (ctx) => fired(anyOf(CHEQUE, ctx).slice(0, 3)),
+    // "Integrate Western Union payouts" is remittance work, not a wire-back.
+    detect: (ctx) => fired(withoutPaymentsWork(ctx.fields, anyOf(CHEQUE, ctx)).slice(0, 3)),
   },
   {
     id: 'money.crypto_giftcard',

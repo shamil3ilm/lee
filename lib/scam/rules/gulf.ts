@@ -1,6 +1,7 @@
 import { findAll } from '../text'
 import { CUR } from './money'
 import { fired, type Rule, type RuleContext } from './types'
+import { withoutPaymentsWork } from './payments-context'
 
 /**
  * Gulf recruitment-agency fee scams (the Kerala-to-Gulf pattern): the
@@ -38,7 +39,7 @@ const GULF_FEE: readonly RegExp[] = [
 const WITH_AMOUNT = new RegExp(String.raw`${CUR}\s*\d[\d,]*`)
 
 const OFFER_FOR_FEE: readonly RegExp[] = [
-  /\boffer\s+letter\b[^.\n]{0,60}\b(?:after|on|upon|against|once\s+you\s+(?:pay|make))\s+(?:the\s+|your\s+)?(?:payment|paying|deposit|fees?)\b/,
+  /\boffer\s+letter\b[^.\n]{0,60}\b(?:after|on|upon|against|once)\s+(?:you\s+(?:pay|make|deposit)\s+)?(?:the\s+|your\s+)?(?:payment|paying|deposit|(?:processing\s+|registration\s+)?fees?)\b/,
   /\b(?:pay|payment|fees?|charges?|deposit)\b[^.\n]{0,60}\b(?:before|to\s+(?:get|receive|issue|release|confirm|secure|book))\s+(?:the\s+|your\s+)?offer\s+letter\b/,
   /\boffer\s+letter\s+(?:fee|charges?)\b/,
 ]
@@ -69,7 +70,8 @@ function sentenceOf(text: string, start: number, end: number): string {
 }
 
 function gulfFee(ctx: RuleContext) {
-  const spans = GULF_FEE.flatMap((p) => findAll(ctx.fields, p, undefined, { negatable: true }))
+  // "Validate Visa fees and Mastercard scheme fees" is card-payments work.
+  const spans = withoutPaymentsWork(ctx.fields, GULF_FEE.flatMap((p) => findAll(ctx.fields, p, undefined, { negatable: true })))
     .filter((s) => !EMPLOYER_PAYS.test(sentenceOf(ctx.fields[s.field], s.start, s.start + s.text.length)))
     .slice(0, 3)
   if (spans.length === 0) return null

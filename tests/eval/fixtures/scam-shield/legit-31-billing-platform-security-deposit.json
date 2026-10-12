@@ -1,0 +1,17 @@
+{
+  "name": "Billing platform: security deposits for merchants",
+  "label": "legit",
+  "inputs": {
+    "title": "Full Stack Developer - Billing",
+    "company": "Paymob",
+    "applyUrl": "https://paymob.com/careers/full-stack-developer-billing",
+    "location": "Cairo, Egypt",
+    "description": "Build the billing platform for merchants: onboarding, security deposit and reserve management, subscription invoices and payment gateway fees. Integrate with acquirers, wallets and card networks. React, Node.js or Laravel, PostgreSQL, 3 years."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "money.upfront_fee"
+    ]
+  }
+}

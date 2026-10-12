@@ -1,0 +1,17 @@
+{
+  "name": "Gulf bank teller job: ticket deposit on Telegram",
+  "label": "scam",
+  "inputs": {
+    "title": "Bank Teller - Doha",
+    "company": "Qatar Career Link",
+    "applyEmail": "qatarcareerlink@gmail.com",
+    "location": "Doha, Qatar",
+    "description": "Bank teller jobs in Doha with free accommodation. Pay ticket deposit QAR 1200 and attestation charges before the visa. Contact our recruiter on Telegram. Only 3 positions left!"
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "money.gulf_agency_fee"
+    ]
+  }
+}

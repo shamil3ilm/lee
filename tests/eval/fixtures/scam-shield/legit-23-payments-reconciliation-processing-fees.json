@@ -1,0 +1,17 @@
+{
+  "name": "Payments engineer: reconcile processing fees across PSPs",
+  "label": "legit",
+  "inputs": {
+    "title": "Backend Engineer - Payments",
+    "company": "Tabby",
+    "applyUrl": "https://tabby.ai/careers/backend-engineer-payments",
+    "location": "Dubai, UAE",
+    "description": "You will build and own the services that reconcile merchant processing fees across our PSPs and acquirers. Integrate payment gateway APIs (Checkout.com, Stripe, Network International), model payment gateway fees and interchange, and automate daily settlement reports. Requirements: 3+ years with PHP/Laravel or Go, PostgreSQL, idempotent webhooks."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "money.upfront_fee"
+    ]
+  }
+}

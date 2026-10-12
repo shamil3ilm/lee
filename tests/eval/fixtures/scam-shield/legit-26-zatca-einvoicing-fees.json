@@ -1,0 +1,18 @@
+{
+  "name": "ZATCA e-invoicing integrator mentioning fees and processing",
+  "label": "legit",
+  "inputs": {
+    "title": "E-Invoicing Integration Developer",
+    "company": "Foodics",
+    "applyUrl": "https://www.foodics.com/careers/e-invoicing-integration-developer",
+    "location": "Riyadh, Saudi Arabia",
+    "description": "Integrate ZATCA Phase 2 (Fatoora) e-invoicing for merchants. Handle invoice clearance, cryptographic stamps and QR codes. Work with the payments squad on card processing fees, payment gateway fees and VAT on transaction charges shown on invoices. PHP/Laravel, REST APIs, 2+ years. Visa and medical insurance provided by the company."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "money.upfront_fee",
+      "money.gulf_agency_fee"
+    ]
+  }
+}

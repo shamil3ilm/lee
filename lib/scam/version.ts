@@ -8,7 +8,11 @@
  */
 // 1.1.0 — Gulf agency-fee rules (medical / attestation / stamping / ticket
 // charges, offer letter after payment, passport with a fee, WhatsApp + payment).
-export const RULES_VERSION = 'scam-1.1.0'
+// 1.2.0 — payments context: fee, cheque/remittance and Gulf visa-fee matches in
+// a sentence about payments work (reconcile, integrate, gateway, payouts…)
+// no longer fire unless the sentence asks the candidate to pay; "offer
+// letter after you pay the fee" is caught.
+export const RULES_VERSION = 'scam-1.2.0'
 
 /** Level thresholds on the 0–100 score. */
 export const CAUTION_AT = 25

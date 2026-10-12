@@ -1,0 +1,19 @@
+{
+  "name": "Kuwait payments integration with KNET and processing charges",
+  "label": "legit",
+  "inputs": {
+    "title": "Payments Integration Engineer",
+    "company": "Tap Payments",
+    "applyUrl": "https://www.tap.company/careers/payments-integration-engineer",
+    "location": "Kuwait City, Kuwait",
+    "description": "Integrate KNET, Benefit and Mada for merchants in Kuwait, Bahrain and Saudi Arabia. Build processing charges reports, reconcile settlement and payout files, and support remittance and money transfer partners. Company provides visa, air ticket and medical insurance. Laravel or Node.js, 2+ years."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "money.upfront_fee",
+      "money.cheque_cashing",
+      "money.gulf_agency_fee"
+    ]
+  }
+}

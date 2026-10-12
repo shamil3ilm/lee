@@ -26,6 +26,16 @@ describe('scam-shield eval fixtures', () => {
     expect(m.falseQuarantines).toBe(0)
   })
 
+  it('passes 10 genuine payments/fintech JDs and still flags 10 payment-themed scams', () => {
+    const num = (f: { file: string }) => Number(/-(\d+)-/.exec(f.file)?.[1] ?? 0)
+    const payments = fixtures.filter((f) => f.label === 'legit' && num(f) >= 23 && num(f) <= 32)
+    const scams = fixtures.filter((f) => f.label === 'scam' && num(f) >= 26 && num(f) <= 35)
+    expect(payments).toHaveLength(10)
+    expect(scams).toHaveLength(10)
+    for (const f of payments) expect(runScamShieldFixture(f).level, f.file).toBe('safe')
+    for (const f of scams) expect(runScamShieldFixture(f).level, f.file).toBe('likely_scam')
+  })
+
   it.each(fixtures.map((f) => [f.file, f] as const))('%s meets its exact expectations', (_file, f) => {
     const a = runScamShieldFixture(f)
     expect(checkScamShieldExpectations(f, a)).toEqual([])

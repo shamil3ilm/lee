@@ -1,0 +1,17 @@
+{
+  "name": "UPI switch engineer in Bengaluru",
+  "label": "legit",
+  "inputs": {
+    "title": "Software Engineer - UPI Switch",
+    "company": "Razorpay",
+    "applyUrl": "https://razorpay.com/jobs/software-engineer-upi-switch",
+    "location": "Bengaluru, India",
+    "description": "Build the UPI switch handling collect and pay requests, mandate processing and payment gateway fees reconciliation. Calculate MDR and processing fees per merchant category, and integrate bank APIs for settlement and refunds. Go or Java, 2-5 years."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "money.upfront_fee"
+    ]
+  }
+}

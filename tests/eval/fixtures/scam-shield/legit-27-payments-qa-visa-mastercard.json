@@ -1,0 +1,18 @@
+{
+  "name": "Payments QA testing Visa fees and Mastercard scheme fees",
+  "label": "legit",
+  "inputs": {
+    "title": "QA Automation Engineer - Card Payments",
+    "company": "Network International",
+    "applyUrl": "https://www.network.ae/en/careers/qa-automation-engineer-card-payments",
+    "location": "Dubai, UAE",
+    "description": "Automate tests for card acquiring: authorisation, clearing and settlement. Validate Visa fees, Mastercard scheme fees and interchange calculations against the card networks' rules. Test merchant payouts and refunds. Selenium or Playwright, SQL, API testing, 3 years."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "money.gulf_agency_fee",
+      "money.upfront_fee"
+    ]
+  }
+}

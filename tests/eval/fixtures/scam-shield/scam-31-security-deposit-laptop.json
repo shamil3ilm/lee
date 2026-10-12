@@ -1,0 +1,17 @@
+{
+  "name": "Remote fintech support role asking a refundable security deposit for a laptop",
+  "label": "scam",
+  "inputs": {
+    "title": "Customer Support - Fintech App",
+    "company": "WalletPro Global",
+    "applyEmail": "walletpro.hiring@gmail.com",
+    "location": "Remote",
+    "description": "Remote customer support for our wallet app. You must pay a refundable security deposit of $250 for the company laptop before onboarding. Training fee waived for the first 10 joiners. Reply within 24 hours."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "money.upfront_fee"
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "Finance operations analyst for a remittance company",
+  "label": "legit",
+  "inputs": {
+    "title": "Finance Operations Analyst",
+    "company": "Al Ansari Exchange",
+    "applyUrl": "https://alansariexchange.com/careers/finance-operations-analyst",
+    "location": "Dubai, UAE",
+    "description": "Reconcile transfer amounts, remittance fees and correspondent bank charges daily. Investigate breaks between our ledger and Western Union settlement reports. Prepare monthly MIS on processing fees and FX income. Excel, SQL, 2+ years in remittance or banking operations."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "money.upfront_fee",
+      "money.cheque_cashing"
+    ]
+  }
+}

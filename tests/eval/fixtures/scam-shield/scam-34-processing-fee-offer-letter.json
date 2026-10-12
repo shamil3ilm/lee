@@ -1,0 +1,18 @@
+{
+  "name": "Fintech intern offer letter only after a processing fee",
+  "label": "scam",
+  "inputs": {
+    "title": "Fintech Intern",
+    "company": "NeoPay Labs",
+    "applyEmail": "neopaylabs.intern@gmail.com",
+    "location": "Remote, India",
+    "description": "Internship at a payments startup. Offer letter will be issued after you pay the processing fee of Rs 2,500. Stipend Rs 15,000. Join immediately."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "money.upfront_fee",
+      "money.offer_letter_fee"
+    ]
+  }
+}

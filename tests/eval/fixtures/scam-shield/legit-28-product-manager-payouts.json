@@ -1,0 +1,18 @@
+{
+  "name": "PM for merchant payouts and remittance corridors",
+  "label": "legit",
+  "inputs": {
+    "title": "Product Manager, Payouts",
+    "company": "Tamara",
+    "applyUrl": "https://tamara.co/careers/product-manager-payouts",
+    "location": "Riyadh, Saudi Arabia",
+    "description": "Own merchant payouts and cross-border remittance. Define how processing fees and refundable deposits from merchants are held and released, partner with Western Union and banks on payout corridors, and ship daily payouts to merchants. 4+ years in payments product."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "money.upfront_fee",
+      "money.cheque_cashing"
+    ]
+  }
+}

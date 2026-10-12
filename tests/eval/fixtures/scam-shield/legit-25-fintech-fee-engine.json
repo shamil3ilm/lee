@@ -1,0 +1,17 @@
+{
+  "name": "Fee engine for a wallet: transaction fees and processing charges",
+  "label": "legit",
+  "inputs": {
+    "title": "Senior Backend Developer (Fee Engine)",
+    "company": "Careem Pay",
+    "applyUrl": "https://www.careem.com/careers/senior-backend-developer-fee-engine",
+    "location": "Dubai, UAE",
+    "description": "Design the fee engine that calculates processing charges, FX markups and transaction fees for wallet top-ups and remittances. Implement refund and chargeback flows, ledger entries and audit trails. You will work with finance on reconciliation of verification charges billed by our KYC vendors. Kotlin or Java, 4+ years."
+  },
+  "expect": {
+    "level": "safe",
+    "noSignals": [
+      "money.upfront_fee"
+    ]
+  }
+}

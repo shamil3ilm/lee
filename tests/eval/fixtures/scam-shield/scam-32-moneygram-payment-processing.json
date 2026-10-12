@@ -1,0 +1,17 @@
+{
+  "name": "Payment processing agent using MoneyGram for 'clients'",
+  "label": "scam",
+  "inputs": {
+    "title": "Payment Processing Agent",
+    "company": "Atlantic Holdings Ltd",
+    "applyEmail": "atlantic.holdings.hr@gmail.com",
+    "location": "Remote, USA",
+    "description": "Process client payments from home. You will receive funds into your bank account and forward them via MoneyGram to our partners, keeping 8% per transfer. No experience required. Daily payments."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "money.cheque_cashing"
+    ]
+  }
+}

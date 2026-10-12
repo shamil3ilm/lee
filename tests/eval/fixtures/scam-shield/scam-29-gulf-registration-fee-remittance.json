@@ -1,0 +1,18 @@
+{
+  "name": "Gulf remittance job with a registration fee to the agent",
+  "label": "scam",
+  "inputs": {
+    "title": "Remittance Officer - Kuwait",
+    "company": "Al Safa Manpower",
+    "applyEmail": "alsafa.manpower@yahoo.com",
+    "location": "Kuwait",
+    "description": "Remittance officer vacancy in Kuwait, free visa and ticket. Registration fee Rs 25000 to be deposited to our agent account before interview. 100% job guarantee. Contact on WhatsApp."
+  },
+  "expect": {
+    "level": "likely_scam",
+    "signals": [
+      "money.upfront_fee",
+      "money.gulf_agency_fee"
+    ]
+  }
+}
