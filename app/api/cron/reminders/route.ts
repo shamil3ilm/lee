@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { env } from '@/lib/env'
+import { isCronAuthorized } from '@/lib/queue/cron'
 import { recordDueReminders } from '@/lib/reminders/service'
 import { logger } from '@/lib/logger'
 
@@ -12,10 +12,7 @@ import { logger } from '@/lib/logger'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  const auth = req.headers.get('authorization') ?? ''
-  if (auth !== `Bearer ${env.CRON_SECRET}`) {
-    return new NextResponse('unauthorized', { status: 401 })
-  }
+  if (!isCronAuthorized(req)) return new NextResponse('unauthorized', { status: 401 })
 
   const { due, inserted } = await recordDueReminders()
   logger.info('cron_reminders', { checked: due, reminders_added: inserted })

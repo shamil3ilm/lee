@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { env } from '@/lib/env'
+import { isCronAuthorized } from '@/lib/queue/cron'
 import { db } from '@/lib/db/client'
 import { users } from '@/lib/db/schema'
 import { runDiscoveryCycleForUser } from '@/lib/discovery/service'
@@ -28,10 +28,7 @@ interface CycleTotals {
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  const auth = req.headers.get('authorization') ?? ''
-  if (auth !== `Bearer ${env.CRON_SECRET}`) {
-    return new NextResponse('unauthorized', { status: 401 })
-  }
+  if (!isCronAuthorized(req)) return new NextResponse('unauthorized', { status: 401 })
 
   // Extra discovery polls are non-essential: while the free-tier throttle
   // is on, only the daily queued poll runs (lib/usage/throttle).

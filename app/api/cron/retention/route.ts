@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { env } from '@/lib/env'
+import { isCronAuthorized } from '@/lib/queue/cron'
 import { runRetention } from '@/lib/db/retention'
 import { logger } from '@/lib/logger'
 
@@ -12,10 +12,7 @@ export const runtime = 'nodejs'
 export const maxDuration = 300
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  const auth = req.headers.get('authorization') ?? ''
-  if (auth !== `Bearer ${env.CRON_SECRET}`) {
-    return new NextResponse('unauthorized', { status: 401 })
-  }
+  if (!isCronAuthorized(req)) return new NextResponse('unauthorized', { status: 401 })
   try {
     const result = await runRetention(new Date())
     logger.info('cron_retention', { ...result })

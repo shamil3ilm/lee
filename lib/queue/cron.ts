@@ -1,5 +1,5 @@
-import { timingSafeEqual } from 'node:crypto'
 import { env } from '@/lib/env'
+import { isBearerAuthorized } from '@/lib/auth/secret-compare'
 import { drain, type DrainOptions, type DrainResult } from './drain'
 
 /**
@@ -13,9 +13,7 @@ export const CRON_DRAIN_CONCURRENCY = 2
 
 /** Constant-time check of Vercel's `Authorization: Bearer $CRON_SECRET`. */
 export function isCronAuthorized(req: Request): boolean {
-  const given = Buffer.from(req.headers.get('authorization') ?? '')
-  const expected = Buffer.from(`Bearer ${env.CRON_SECRET}`)
-  return given.length === expected.length && timingSafeEqual(given, expected)
+  return isBearerAuthorized(req.headers.get('authorization'), env.CRON_SECRET)
 }
 
 export function cronDrain(opts: Partial<DrainOptions> = {}): Promise<DrainResult> {
