@@ -55,7 +55,8 @@ const MARKERS: ReadonlyArray<{ level: SeniorityLevel; re: RegExp }> = [
   { level: 'principal', re: /\b(?:principal|distinguished|fellow)\b/ },
   { level: 'manager', re: /\b(?:manager|mgr)\b/ },
   { level: 'head', re: /\bhead\b/ },
-  { level: 'director', re: /\b(?:director|directeur)\b/ },
+  // Academic leadership (deans, provosts, chancellors) sits at director level.
+  { level: 'director', re: /\b(?:director|directeur|dean|provost|chancellor|rector)\b/ },
   { level: 'executive', re: /\b(?:vp|svp|evp|vice president|chief|cto|ceo|cfo|coo|cio|ciso|cpo|founder|co-founder)\b/ },
 ]
 

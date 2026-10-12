@@ -34,7 +34,10 @@ import { familiesFromEvidence } from './roles'
 // and go to "Needs a look", an Operations/Business domain, generic skills
 // count half in the overlap, Dean / Mandoub titles, boilerplate stripped
 // before the strength scan, "open to candidates located in …".
-export const RELEVANCE_RULES_VERSION = 'r9'
+// r10 — 2026-10-12: deans / provosts / chancellors are director level; counsellor
+// is clinical; mandoob / mandob spellings; "AI Technician", network and systems
+// engineers are tech, not trades; "Application Developer" is a backend title.
+export const RELEVANCE_RULES_VERSION = 'r10'
 
 export type RemoteScope = 'worldwide' | 'regions' | 'none'
 export const REMOTE_SCOPES: readonly RemoteScope[] = ['worldwide', 'regions', 'none']

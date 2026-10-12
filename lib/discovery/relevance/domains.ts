@@ -54,7 +54,7 @@ export const DOMAINS: readonly DomainDef[] = [
   {
     id: 'admin',
     label: 'Admin/Operations',
-    titles: ['administrative assistant', 'office manager', 'receptionist', 'secretary', 'executive assistant', 'personal assistant', 'admin assistant', 'office administrator', 'data entry', 'document controller', 'operations coordinator', 'mandoub', 'government relations', 'government liaison', 'pro officer'],
+    titles: ['administrative assistant', 'office manager', 'receptionist', 'secretary', 'executive assistant', 'personal assistant', 'admin assistant', 'office administrator', 'data entry', 'document controller', 'operations coordinator', 'mandoub', 'mandoob', 'mandob', 'pro officer', 'government relations', 'government liaison'],
     duties: ['answering phones', 'diary management', 'travel arrangements', 'filing', 'office supplies', 'front desk', 'data entry', 'labour cards', 'labor cards', 'emirates id', 'government departments', 'visa processing'],
   },
   {
@@ -73,13 +73,13 @@ export const DOMAINS: readonly DomainDef[] = [
   {
     id: 'healthcare',
     label: 'Healthcare/Clinical',
-    titles: ['nurse', 'doctor', 'physician', 'pharmacist', 'dentist', 'physiotherapist', 'medical officer', 'clinical', 'caregiver', 'lab technician', 'radiographer', 'patient', 'medical coder', 'medical billing'],
+    titles: ['nurse', 'doctor', 'physician', 'pharmacist', 'dentist', 'physiotherapist', 'medical officer', 'clinical', 'caregiver', 'lab technician', 'radiographer', 'patient', 'medical coder', 'medical billing', 'counsellor', 'counselor', 'psychologist', 'therapist', 'mental health'],
     duties: ['patient care', 'clinical care', 'medication administration', 'patient assessments', 'ward', 'dha license', 'moh license', 'haad license'],
   },
   {
     id: 'teaching',
     label: 'Teaching',
-    titles: ['teacher', 'tutor', 'lecturer', 'professor', 'teaching assistant', 'instructor', 'school counselor', 'education', 'dean', 'faculty member', 'academic director', 'head of department'],
+    titles: ['teacher', 'tutor', 'lecturer', 'professor', 'teaching assistant', 'instructor', 'school counselor', 'education', 'dean', 'provost', 'faculty member', 'faculty affairs', 'academic director', 'head of department'],
     duties: ['lesson plans', 'lesson planning', 'classroom management', 'curriculum delivery', 'student assessment', 'grading'],
   },
   {
@@ -147,6 +147,9 @@ const TECH_TITLE = termMatcher([
   'erp', 'technical', 'technologist', 'architect', 'qa', 'sdet', 'web', 'full stack', 'full-stack', 'it',
   'backend', 'back-end', 'frontend', 'front-end', 'mobile', 'cloud', 'integration', 'implementation',
   'solutions engineer', 'support engineer', 'automation', 'analytics', 'mis', 'odoo', 'sap', 'oracle',
+  // "AI Technician" builds prototypes and data workflows; not a trade.
+  'ai technician', 'ai engineer', 'ai developer', 'machine learning',
+  'network engineer', 'systems engineer', 'system administrator', 'systems administrator', 'database administrator',
 ])
 
 const TITLE_MATCHERS = DOMAINS.map((d) => ({ d, match: termMatcher(d.titles) }))

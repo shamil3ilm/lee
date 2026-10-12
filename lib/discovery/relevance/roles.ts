@@ -131,6 +131,8 @@ export const ROLE_FAMILIES: readonly RoleFamily[] = [
       'kotlin developer', 'php', 'laravel', 'golang', 'php laravel developer', 'laravel php developer',
       'blockchain developer', 'smart contract developer', 'solidity developer',
       'salesforce developer',
+      // In-house IT at universities, hospitals and banks ("Application Developer in IT").
+      'application developer', 'applications developer', 'enterprise application developer',
     ],
     skills: [...BACKEND_SKILLS, ...PLATFORM_SKILLS],
   },
@@ -347,7 +349,8 @@ const NON_ENGINEERING_TITLE = termMatcher([
 const NON_ENGINEERING_BUSINESS = termMatcher([
   'executive', 'associate', 'category', 'quality', 'training', 'operations', 'merchandiser',
   'merchandising', 'strategy', 'transformation', 'partner success', 'fleet', 'supply', 'buyer',
-  'captain', 'professor', 'dean', 'faculty', 'mandoub', 'government relations', 'customer care',
+  'captain', 'professor', 'dean', 'provost', 'chancellor', 'faculty', 'mandoub', 'mandoob', 'mandob',
+  'government relations', 'counsellor', 'counselor', 'customer care',
   'partnerships', 'consultant', 'manager', 'specialist',
 ])
 
