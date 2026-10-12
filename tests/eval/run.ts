@@ -64,6 +64,7 @@ import {
   runDiscoveryMatchFixture,
 } from './discovery-match'
 import { calibrationFailures, formatCalibration, runCalibration } from './discovery-calibration'
+import { printScreeningStageReport } from './screening-stages'
 
 // ---------------------------------------------------------------------------
 // Config
@@ -445,6 +446,8 @@ async function main(): Promise<void> {
     console.error(`discovery calibration failed: ${calibrationFailed.join('; ')}`)
     process.exit(1)
   }
+  // Screening-path stage labels: report only in Phase 1 (never exits non-zero).
+  printScreeningStageReport()
 
   // Pre-count snapshots so we can print the friendly first-run message.
   let existingSnapshots = 0

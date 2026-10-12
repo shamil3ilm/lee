@@ -113,6 +113,11 @@ export function loadDiscoveryMatchFixtures(dir = DISCOVERY_MATCH_DIR): Discovery
     .map((file) => ({ file, ...(JSON.parse(readFileSync(path.join(dir, file), 'utf8')) as Omit<DiscoveryMatchFixture, 'file'>) }))
 }
 
+/** The fixture's profile and posting merged over the bases (the screening-stage report reads them). */
+export function fixtureProfileAndJob(f: Pick<DiscoveryMatchFixture, 'inputs'>): { profile: UserProfile; job: NormalizedJob } {
+  return { profile: { ...BASE_PROFILE, ...(f.inputs.profile ?? {}) } as UserProfile, job: { ...BASE_JOB, ...f.inputs.job } as NormalizedJob }
+}
+
 export function runDiscoveryMatchFixture(f: Pick<DiscoveryMatchFixture, 'inputs'>): DiscoveryMatchResult {
   const profile = { ...BASE_PROFILE, ...(f.inputs.profile ?? {}) } as UserProfile
   const job = { ...BASE_JOB, ...f.inputs.job } as NormalizedJob
