@@ -64,7 +64,7 @@ describe('non-engineering titles never land in New on generic words', () => {
     const cols = gateColumns(growth(), relevanceContext(BACKEND_ONLY))
     expect(cols.status).toBe('new')
     expect(cols.relevanceNotes).toMatchObject({ needsLook: true })
-    expect(RELEVANCE_RULES_VERSION).toBe('r9')
+    expect(RELEVANCE_RULES_VERSION).toBe('r10')
   })
 })
 
