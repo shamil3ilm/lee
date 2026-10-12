@@ -30,6 +30,11 @@ function preamble(r: RenderedResume, compact: boolean, photo: boolean): string {
   return [
     `\\documentclass[${compact ? '10pt' : '11pt'},${r.paper === 'letter' ? 'letterpaper' : 'a4paper'}]{article}`,
     `\\usepackage[margin=${margin}]{geometry}`,
+    // Map ligatures and glyphs to Unicode so a parser extracts "certified",
+    // not "certiﬁed" (exact-term ATS search). pdfLaTeX only; the Classic
+    // preamble (lib/latex/classic-layout.ts) has the same guard.
+    '\\usepackage{iftex}',
+    '\\ifPDFTeX\\input{glyphtounicode}\\pdfgentounicode=1\\fi',
     '\\usepackage[utf8]{inputenc}',
     '\\usepackage[T1]{fontenc}',
     '\\usepackage{lmodern}',
