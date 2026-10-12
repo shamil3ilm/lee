@@ -15,7 +15,8 @@ import type { RegionNode } from './types'
  */
 
 // t2 — 2026-10-09: Kuwait governorates and districts, GCC business districts, Indian tech areas, Malayalam / Hindi / Kannada / Tamil / Telugu names.
-export const TAXONOMY_VERSION = 't2'
+// t3 — 2026-10-12: more Kuwait districts (Jahrah, Saad Al Abdullah, Sabah Al Ahmad, Dasma, West Mishref …).
+export const TAXONOMY_VERSION = 't3'
 
 export const REGION_NODES: readonly RegionNode[] = [...GCC_NODES, ...INDIA_NODES, ...WORLD_NODES]
 
