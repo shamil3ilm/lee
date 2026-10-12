@@ -40,7 +40,10 @@ test('settings: logs tab lists events and filters by category, level and text', 
   const rows = page.getByTestId('event-row')
   const form = page.getByRole('search', { name: 'Filter logs' })
   await expect(rows.filter({ hasText: 'Gmail synced: 40 checked · 2 matched' })).toHaveCount(1)
-  await expect(rows.filter({ hasText: 'Scheduled 9 jobs' })).toHaveCount(1)
+  // Global events (user_id null: cron runs, cross-user sweeps) are the
+  // owner's only (invite beta). The e2e user is a member, so the seeded
+  // "Scheduled 9 jobs" cron event must not be listed.
+  await expect(rows.filter({ hasText: 'Scheduled 9 jobs' })).toHaveCount(0)
 
   // Category filter: applies on change, no button.
   await form.getByLabel('Category').selectOption('gmail')
