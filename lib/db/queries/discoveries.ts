@@ -602,6 +602,8 @@ export async function countNew(userId: string, client: DbClient = db): Promise<n
         eq(discoveries.userId, userId),
         eq(discoveries.status, 'new'),
         discoveryNotQuarantinedSql(),
+        // "Needs a look" has its own count (lib/discovery/needs-look-count.ts).
+        sql`not ${needsLookSql()}`,
       ),
     )
   return Number(row?.c ?? 0)

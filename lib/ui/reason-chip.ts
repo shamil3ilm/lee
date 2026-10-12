@@ -32,6 +32,17 @@ export interface ReasonInput {
 
 export const NEEDS_LOOK_LABEL = 'Needs a look'
 
+/**
+ * Chip-length ceiling reasons: "Not a tech role: Category Executive" →
+ * "Not a tech role" (the full reason stays in the tooltip and in "Why this
+ * score"). Language ceilings keep the language.
+ */
+const SHORT_CEILINGS = ['Not eligible', 'Not a tech role', 'Role outside your targets'] as const
+
+function shortCeiling(reason: string): string {
+  return SHORT_CEILINGS.find((p) => reason.startsWith(`${p}:`)) ?? reason
+}
+
 /** The single most useful reason, or null when there is nothing to say. */
 export function reasonChip(input: ReasonInput): ReasonChip | null {
   if (input.status === 'filtered' && input.filterReason) {
@@ -46,7 +57,7 @@ export function reasonChip(input: ReasonInput): ReasonChip | null {
   }
   if (input.ceiling) {
     return {
-      label: input.ceiling.reason,
+      label: shortCeiling(input.ceiling.reason),
       tone: 'warning',
       title: `Fit is capped at ${input.ceiling.score}: ${input.ceiling.reason}`,
     }

@@ -186,7 +186,7 @@ export async function loadBoard(
 }> {
   const columns: DiscoveryBoardColumn[] = ['new', 'shortlisted', 'saved', 'dismissed']
   const filters = sharedFilters(p)
-  const [lists, totals] = await Promise.all([
+  const [lists, totals, needsLook] = await Promise.all([
     Promise.all(
       columns.map((status) =>
         discoveriesQ.list(userId, {
@@ -202,6 +202,8 @@ export async function loadBoard(
       ),
     ),
     discoveriesQ.countByStatus(userId, undefined, filters),
+    // The New column never holds "Needs a look" rows: keep its count honest.
+    discoveriesQ.countList(userId, { ...filters, status: 'new', needsLook: 'only', quarantine: 'exclude' }),
   ])
   const items = Object.fromEntries(
     columns.map((status, i) => [
@@ -229,5 +231,5 @@ export async function loadBoard(
     ]),
   ) as Record<DiscoveryBoardColumn, DiscoveryBoardItem[]>
   const { new: n, shortlisted, saved, dismissed } = totals
-  return { items, totals: { new: n, shortlisted, saved, dismissed } }
+  return { items, totals: { new: Math.max(0, n - needsLook), shortlisted, saved, dismissed } }
 }

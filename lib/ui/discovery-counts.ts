@@ -7,6 +7,8 @@
  * §2.1). Pure and client-safe.
  */
 
+import { NEEDS_LOOK_HREF } from './needs-look'
+
 export type CountPartKey = 'fetched' | 'triage' | 'needs-look' | 'filtered'
 
 export interface CountPart {
@@ -18,9 +20,9 @@ export interface CountPart {
 export interface DiscoveryCountsInput {
   /** Rows the last poll run inserted (null: never polled). */
   fetched: number | null
-  /** status = new, quarantine excluded. */
+  /** status = new minus "Needs a look", quarantine excluded: the New column and badge. */
   toTriage: number
-  /** The gate's "Needs a look" group (lib/ui/needs-look.ts seam; 0 hides it). */
+  /** The gate's "Needs a look" group (relevance_notes.needsLook; 0 hides it). */
   needsLook: number
   /** status = filtered. */
   filtered: number
@@ -30,8 +32,8 @@ export const COUNT_HREFS: Readonly<Record<CountPartKey, string>> = {
   // Per-source results of the last poll live with the sources.
   fetched: '/settings/sources',
   triage: '/discoveries?tab=jobs&view=list',
-  // TODO(relevance): point at the "Needs a look" group once the gate exposes it.
-  'needs-look': '/discoveries?tab=jobs&view=list',
+  // The same group "Needs a look (n)" opens under New.
+  'needs-look': NEEDS_LOOK_HREF,
   filtered: '/discoveries?tab=jobs&status=filtered&view=list',
 }
 

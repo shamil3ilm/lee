@@ -1,12 +1,11 @@
+import * as discoveriesQ from '@/lib/db/queries/discoveries'
+
 /**
- * SERVER-ONLY seam: how many postings wait in "Needs a look" for a user
- * (the sidebar badge next to Discovery and the Discovery subtitle). Kept
- * separate from the New count on purpose.
- *
- * TODO(relevance): return the real count once the gate stores the review
- * disposition (see lib/ui/needs-look.ts). Zero hides every "Needs a look"
- * surface.
+ * SERVER-ONLY. How many postings wait in "Needs a look" for a user: New rows
+ * the relevance gate flagged `relevance_notes.needsLook`, quarantine
+ * excluded. The sidebar badge and the Discovery subtitle show it apart from
+ * New (which never includes them).
  */
-export async function countNeedsLook(_userId: string): Promise<number> {
-  return 0
+export async function countNeedsLook(userId: string): Promise<number> {
+  return discoveriesQ.countList(userId, { status: 'new', needsLook: 'only', quarantine: 'exclude' })
 }

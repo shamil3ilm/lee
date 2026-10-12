@@ -110,7 +110,8 @@ export default async function DiscoveriesPage({
         <DiscoveryCounts
           checked={last ? relativeFromNow(last.at) : null}
           fetched={last ? last.newCount : null}
-          toTriage={statusCounts.new}
+          // New never lists "Needs a look" rows (they have their own count).
+          toTriage={Math.max(0, statusCounts.new - needsLook)}
           needsLook={needsLook}
           filtered={statusCounts.filtered}
         />

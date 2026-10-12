@@ -1,14 +1,10 @@
 /**
- * Seam for the relevance gate's "Needs a look" group (postings with no
- * positive tech evidence, kept out of New). The UI reads it through these
- * two helpers so it can light up without touching every surface again.
- *
- * TODO(relevance): the gate work in lib/discovery/relevance decides how a
- * "Needs a look" posting is stored (a status or a relevance_notes flag).
- * Replace the bodies below with that rule, and wire `countNeedsLook` in
- * lib/discovery/needs-look-count.ts to the matching query. Until then
- * nothing is in the group: the badge, the subtitle part and the card chip
- * stay hidden.
+ * "Needs a look" (relevance gate r10): a recognised non-engineering title
+ * with no tech evidence in its JD is kept but held out of New, flagged as
+ * `relevance_notes.needsLook`. The UI reads it through this one helper so
+ * the card chip, the row chip, the subtitle and the badge agree. Pure and
+ * client-safe; the SQL twin is `needsLookSql()` in
+ * lib/db/queries/discoveries.ts.
  */
 
 export interface NeedsLookRow {
@@ -16,7 +12,12 @@ export interface NeedsLookRow {
   relevanceNotes?: unknown
 }
 
-/** True when the posting belongs in "Needs a look" (always false until the gate ships it). */
-export function isNeedsLook(_row: NeedsLookRow): boolean {
-  return false
+/** The view that lists the group (status=review: New rows flagged needsLook). */
+export const NEEDS_LOOK_HREF = '/discoveries?tab=jobs&status=review&view=list'
+
+/** True when the posting sits in "Needs a look" (a New row the gate flagged). */
+export function isNeedsLook(row: NeedsLookRow): boolean {
+  if (row.status !== 'new') return false
+  const notes = row.relevanceNotes
+  return typeof notes === 'object' && notes !== null && (notes as { needsLook?: unknown }).needsLook === true
 }
