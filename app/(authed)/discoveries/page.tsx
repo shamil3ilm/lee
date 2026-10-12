@@ -205,6 +205,7 @@ export default async function DiscoveriesPage({
         sort={p.sort}
         quarantinedCount={jobs.quarantinedCount}
         filteredCount={jobs.filteredCount}
+        needsLookCount={jobs.needsLookCount}
         region={p.region}
         sourceId={p.sourceId}
         sources={sourceOptions}
@@ -226,7 +227,27 @@ export default async function DiscoveriesPage({
       {total > p.size ? (
         <DiscoveryPager searchParams={sp} page={p.page} size={p.size} total={total} position="bottom" />
       ) : null}
+      {p.status === 'new' && jobs.needsLookCount > 0 ? <NeedsALookLink count={jobs.needsLookCount} sp={sp} /> : null}
     </div>
+  )
+}
+
+/**
+ * "Needs a look", collapsed under New: non-engineering titles whose JD shows
+ * no tech evidence. Kept (never filtered on a title alone), one click away.
+ */
+function NeedsALookLink({ count, sp }: { count: number; sp: Record<string, string | undefined> }): React.ReactElement {
+  const params = new URLSearchParams()
+  for (const [k, v] of Object.entries(sp)) if (v && k !== 'page' && k !== 'status') params.set(k, v)
+  params.set('tab', 'jobs')
+  params.set('status', 'review')
+  return (
+    <p className="text-sm text-muted-foreground" data-testid="needs-a-look">
+      <Link href={`/discoveries?${params.toString()}`} className="font-medium text-foreground underline-offset-4 hover:underline">
+        Needs a look ({count})
+      </Link>
+      {' '}· non-tech titles with no tech evidence in the job description, kept out of New.
+    </p>
   )
 }
 

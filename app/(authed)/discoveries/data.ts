@@ -10,10 +10,11 @@ import { parsePageSize } from '@/lib/discovery/pager'
 import { toMatchDetail } from '@/lib/discovery/match/detail'
 import { ensureBestCv } from '@/lib/cv-fit/service'
 import { toBestCv } from '@/lib/cv-fit/types'
-import type {
-  DiscoveryRegionFilter,
-  DiscoverySort,
-  DiscoveryStatusFilter,
+import {
+  parseSort,
+  type DiscoveryRegionFilter,
+  type DiscoverySort,
+  type DiscoveryStatusFilter,
 } from '@/lib/discovery/filter-options'
 import type { DiscoveryBoardColumn, DiscoveryBoardItem } from '@/components/discoveries-board'
 import { parseRegionParam } from '@/lib/regions/selection'
@@ -42,11 +43,11 @@ export interface DiscoveryParams {
 export type RawParams = Record<string, string | undefined>
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const JOB_ONLY_STATUSES: ReadonlySet<string> = new Set(['quarantined', 'shortlisted', 'filtered'])
+const JOB_ONLY_STATUSES: ReadonlySet<string> = new Set(['quarantined', 'shortlisted', 'filtered', 'review'])
 
 function parseStatus(raw: string | undefined, tab: 'jobs' | 'companies'): DiscoveryStatusFilter {
   const s = raw as DiscoveryStatusFilter | undefined
-  const known = ['new', 'shortlisted', 'saved', 'dismissed', 'filtered', 'quarantined']
+  const known = ['new', 'review', 'shortlisted', 'saved', 'dismissed', 'filtered', 'quarantined']
   if (!s || !known.includes(s)) return 'new'
   // Quarantine, the shortlist and the relevance filter are job concepts;
   // companies fall back to the inbox.
@@ -60,7 +61,7 @@ function parseInt10(raw: string | undefined, min: number, max: number, fallback:
 
 export function parseDiscoveryParams(sp: RawParams, sizeCookie?: string): DiscoveryParams {
   const tab = sp.tab === 'companies' ? 'companies' : 'jobs'
-  const sort = sp.sort === 'match' || sp.sort === 'benefits' || sp.sort === 'posted' ? sp.sort : 'combined'
+  const sort = parseSort(sp.sort)
   // Old links (?region=gcc, ?region=ae) are valid node ids and keep working.
   const region = parseRegionParam(sp.region)
   return {
@@ -126,6 +127,8 @@ export interface JobsData {
   risks: Map<string, riskQ.RiskAssessmentRow>
   quarantinedCount: number
   filteredCount: number
+  /** "Needs a look": kept, but held out of New (non-engineering title, no tech evidence). */
+  needsLookCount: number
   /** Postings per region under the other filters, when "Group by region" is on. */
   regionGroups: RegionGroup[] | null
 }
@@ -138,17 +141,22 @@ async function loadRegionGroups(userId: string, opts: discoveriesQ.ListOpts): Pr
 
 export async function loadJobs(userId: string, p: DiscoveryParams, growthInFit = false): Promise<JobsData> {
   const quarantineView = p.status === 'quarantined'
+  const reviewView = p.status === 'review'
   const opts: discoveriesQ.ListOpts = {
     ...sharedFilters(p),
-    status: quarantineView ? 'all' : (p.status as discoveriesQ.DiscoveryStatus),
+    growthInFit,
+    status: quarantineView ? 'all' : reviewView ? 'new' : (p.status as discoveriesQ.DiscoveryStatus),
     statuses: p.status === 'new' && p.showFiltered ? ['new', 'filtered'] : undefined,
+    // New never lists "Needs a look" rows; that view lists only them.
+    needsLook: reviewView ? 'only' : p.status === 'new' ? 'exclude' : 'include',
     quarantine: quarantineView ? 'only' : 'exclude',
   }
-  const [listed, total, quarantinedCount, filteredCount, groups] = await Promise.all([
-    discoveriesQ.list(userId, { ...opts, sort: p.sort, growthInFit, limit: p.size, offset: (p.page - 1) * p.size }),
+  const [listed, total, quarantinedCount, filteredCount, needsLookCount, groups] = await Promise.all([
+    discoveriesQ.list(userId, { ...opts, sort: p.sort, limit: p.size, offset: (p.page - 1) * p.size }),
     discoveriesQ.countList(userId, opts),
     discoveriesQ.countQuarantined(userId),
-    discoveriesQ.countList(userId, { ...sharedFilters(p), status: 'filtered', quarantine: 'exclude' }),
+    discoveriesQ.countList(userId, { ...sharedFilters(p), growthInFit, status: 'filtered', quarantine: 'exclude' }),
+    discoveriesQ.countList(userId, { ...sharedFilters(p), growthInFit, status: 'new', needsLook: 'only', quarantine: 'exclude' }),
     p.byRegion ? loadRegionGroups(userId, opts) : Promise.resolve(null),
   ])
   // Best CV of the rows on this page, filled on read when stale (bounded to
@@ -156,7 +164,7 @@ export async function loadJobs(userId: string, p: DiscoveryParams, growthInFit =
   const fresh = await safely('best_cv_view', () => ensureBestCv(userId, listed.filter((r) => r.status !== 'filtered' && r.status !== 'dismissed').map((r) => r.id)))
   const rows = fresh && fresh.size > 0 ? listed.map((r) => (fresh.has(r.id) ? { ...r, bestCv: fresh.get(r.id) ?? null } : r)) : listed
   const risks = await riskQ.mapForTargets(userId, 'discovery', rows.map((d) => d.id))
-  return { rows, total, risks, quarantinedCount, filteredCount, regionGroups: groups }
+  return { rows, total, risks, quarantinedCount, filteredCount, needsLookCount, regionGroups: groups }
 }
 
 /** Cards per board column; the footer links to the full list. */
@@ -184,8 +192,9 @@ export async function loadBoard(
           ...filters,
           status,
           quarantine: 'exclude',
+          needsLook: status === 'new' ? 'exclude' : 'include',
           // Triage columns by fit; outcome columns by recency.
-          sort: status === 'new' || status === 'shortlisted' ? 'combined' : 'posted',
+          sort: status === 'new' || status === 'shortlisted' ? 'match' : 'posted',
           growthInFit,
           limit: BOARD_COLUMN_LIMIT,
         }),

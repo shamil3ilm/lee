@@ -4,12 +4,14 @@
  */
 
 export type DiscoverySort = 'combined' | 'match' | 'benefits' | 'posted'
-export type DiscoveryStatusFilter = 'new' | 'shortlisted' | 'saved' | 'dismissed' | 'filtered' | 'quarantined'
+/** 'review' = "Needs a look": status new, held out of New (relevance_notes.needsLook). */
+export type DiscoveryStatusFilter = 'new' | 'review' | 'shortlisted' | 'saved' | 'dismissed' | 'filtered' | 'quarantined'
 /** Region selection: lib/regions node ids (empty = all regions). */
 export type DiscoveryRegionFilter = readonly string[]
 
 export const STATUS_LABELS: Readonly<Record<DiscoveryStatusFilter, string>> = {
   new: 'New',
+  review: 'Needs a look',
   shortlisted: 'Shortlisted',
   saved: 'Saved',
   dismissed: 'Dismissed',
@@ -17,11 +19,23 @@ export const STATUS_LABELS: Readonly<Record<DiscoveryStatusFilter, string>> = {
   quarantined: 'Quarantined',
 }
 
-export const SORT_LABELS: Readonly<Record<DiscoverySort, string>> = {
-  combined: 'Combined (Fit + benefits)',
+/** The default sort: the displayed Fit. */
+export const DEFAULT_SORT: DiscoverySort = 'match'
+
+/**
+ * The sorts offered. "Combined (Fit + benefits)" is hidden: no source
+ * extracts benefits yet, so it was Fit × 0.6 + 0; old ?sort=combined links
+ * sort by Fit.
+ */
+export const SORT_LABELS: Readonly<Partial<Record<DiscoverySort, string>>> = {
   match: 'Best fit',
   benefits: 'Benefits score',
   posted: 'Recently posted',
+}
+
+/** A ?sort= value → the sort to use ("combined" and unknown values → Best fit). */
+export function parseSort(raw: string | undefined): DiscoverySort {
+  return raw === 'benefits' || raw === 'posted' ? raw : DEFAULT_SORT
 }
 
 /** The filters behind "More filters". */

@@ -26,6 +26,8 @@ interface DiscoveryFiltersProps {
   quarantinedCount?: number
   /** Relevance gate — how many postings are filtered out. */
   filteredCount?: number
+  /** "Needs a look": non-engineering titles with no tech evidence, held out of New. */
+  needsLookCount?: number
   region?: DiscoveryRegionFilter
   sourceId?: string
   sources?: ReadonlyArray<{ id: string; name: string }>
@@ -43,7 +45,7 @@ interface DiscoveryFiltersProps {
   hiringPosts?: boolean
 }
 
-const JOB_ONLY: ReadonlySet<DiscoveryStatusFilter> = new Set(['quarantined', 'shortlisted', 'filtered'])
+const JOB_ONLY: ReadonlySet<DiscoveryStatusFilter> = new Set(['quarantined', 'shortlisted', 'filtered', 'review'])
 
 /**
  * Discovery's filter toolbar: the primary filters inline (Status, Region,
@@ -59,6 +61,7 @@ export function DiscoveryFilters({
   sort,
   quarantinedCount = 0,
   filteredCount = 0,
+  needsLookCount = 0,
   region = [],
   sourceId = '',
   sources = [],
@@ -87,6 +90,7 @@ export function DiscoveryFilters({
   const statusLabel = (s: DiscoveryStatusFilter): string => {
     if (s === 'quarantined') return `${STATUS_LABELS[s]} (${quarantinedCount})`
     if (s === 'filtered') return `${STATUS_LABELS[s]} (${filteredCount})`
+    if (s === 'review') return `${STATUS_LABELS[s]} (${needsLookCount})`
     return STATUS_LABELS[s]
   }
 
