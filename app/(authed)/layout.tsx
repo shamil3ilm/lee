@@ -15,7 +15,9 @@ import { ModeToggle } from '@/components/mode-toggle'
 import { NotificationScheduler } from '@/components/notification-scheduler'
 import { UserMenu } from '@/components/user-menu'
 import type { NavBadges } from '@/components/nav/nav-config'
-import { NavBadgesProvider } from '@/components/nav/nav-badges'
+import { NavBadgesProvider, NavLabsProvider } from '@/components/nav/nav-badges'
+import { labsEnabled } from '@/lib/settings/labs'
+import { countNeedsLook } from '@/lib/discovery/needs-look-count'
 import { TimeZoneProvider } from '@/components/local-time'
 import { getUserTimeZone } from '@/lib/settings/timezone'
 import { DEFAULT_TIMEZONE } from '@/lib/ui/timezone'
@@ -29,15 +31,17 @@ import { APP_NAME } from '@/lib/brand'
 
 export const dynamic = 'force-dynamic'
 
-/** Three cheap count queries; a failure degrades to "no badges", never a 500. */
+/** Four cheap count queries; a failure degrades to "no badges", never a 500. */
 async function loadNavBadges(userId: string, now: Date): Promise<NavBadges> {
   try {
-    const [discoveries, todos, radar] = await Promise.all([
+    const [discoveries, needsLook, todos, radar] = await Promise.all([
       discoveriesQ.countNew(userId),
+      // "Needs a look" is its own count, never added to New.
+      countNeedsLook(userId),
       todosQ.countOverdue(userId, now),
       countNewWatched(userId),
     ])
-    return { discoveries, todos, radar }
+    return { discoveries, needsLook, todos, radar }
   } catch (err) {
     logger.error('nav.badges_failed', { userId, error: err instanceof Error ? err.message : String(err) })
     return {}
@@ -77,6 +81,8 @@ export default async function AuthedLayout({ children }: { children: React.React
   const badges: Promise<NavBadges> = session.user.id
     ? loadNavBadges(session.user.id, new Date())
     : Promise.resolve({})
+  // Settings › Labs: streams to the sidebar like the badges.
+  const labs: Promise<boolean> = session.user.id ? labsEnabled(session.user.id) : Promise.resolve(false)
   // Started, not awaited: every <LocalTime> resolves it on its own.
   const timeZone: Promise<string> = session.user.id
     ? getUserTimeZone(session.user.id)
@@ -89,6 +95,7 @@ export default async function AuthedLayout({ children }: { children: React.React
     // variant. The boot script sets the attribute pre-paint from storage, so
     // there is no layout shift on hydration.
     <NavBadgesProvider badges={badges}>
+      <NavLabsProvider labs={labs}>
       <TimeZoneProvider timeZone={timeZone}>
       <div id={APP_SHELL_ID} className="group/shell flex min-h-screen" suppressHydrationWarning>
         <InlineScript html={RAIL_BOOT_SCRIPT} />
@@ -114,7 +121,7 @@ export default async function AuthedLayout({ children }: { children: React.React
               <UserMenu email={email} name={name} image={image} />
             </div>
           </header>
-          <main id={MAIN_CONTENT_ID} tabIndex={-1} className="flex-1 px-4 py-6 outline-none md:px-8 md:py-8">
+          <main id={MAIN_CONTENT_ID} tabIndex={-1} className="flex-1 px-4 py-6 outline-none md:px-8 md:pb-8 md:pt-6">
             <div className="@container/main mx-auto w-full max-w-[1600px]">{children}</div>
           </main>
         </div>
@@ -122,6 +129,7 @@ export default async function AuthedLayout({ children }: { children: React.React
         <WebVitalsReporter />
       </div>
       </TimeZoneProvider>
+      </NavLabsProvider>
     </NavBadgesProvider>
   )
 }

@@ -18,7 +18,7 @@ interface SidebarLinkProps {
 const RAIL_HIDDEN = 'group-data-[sidebar=rail]/shell:hidden'
 
 export function SidebarLink({ item, active, rail, onNavigate }: SidebarLinkProps) {
-  const { href, label, icon: Icon, badge: badgeKey } = item
+  const { href, label, icon: Icon, badge: badgeKey, secondaryBadge } = item
   const link = (
     <Link
       href={href}
@@ -26,7 +26,7 @@ export function SidebarLink({ item, active, rail, onNavigate }: SidebarLinkProps
       aria-current={active ? 'page' : undefined}
       aria-label={rail ? label : undefined}
       className={cn(
-        'relative flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+        'relative flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm leading-5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
         'group-data-[sidebar=rail]/shell:justify-center group-data-[sidebar=rail]/shell:px-0',
         active
           ? 'bg-accent font-semibold text-accent-foreground shadow-sm'
@@ -37,6 +37,7 @@ export function SidebarLink({ item, active, rail, onNavigate }: SidebarLinkProps
       <LinkPendingHint className="left-0 top-1/2 h-4 w-0.5 -translate-y-1/2" />
       <Icon className="size-4 shrink-0" />
       <span className={cn('flex-1 truncate', RAIL_HIDDEN)}>{label}</span>
+      {secondaryBadge ? <NavBadge badgeKey={secondaryBadge} tone="quiet" /> : null}
       {badgeKey ? <NavBadge badgeKey={badgeKey} /> : null}
     </Link>
   )

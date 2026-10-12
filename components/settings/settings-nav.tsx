@@ -46,6 +46,7 @@ export const SETTINGS_GROUPS: readonly SettingsNavGroup[] = [
       { href: '/settings/logs', label: 'Logs' },
       { href: '/settings/usage', label: 'Usage' },
       { href: '/settings/storage', label: 'Storage' },
+      { href: '/settings/labs', label: 'Labs' },
     ],
   },
 ]

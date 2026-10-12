@@ -351,6 +351,13 @@
       "when": 1791793301710,
       "tag": "0049_invite_beta_capacity_benefits",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1791795404590,
+      "tag": "0050_labs_switch",
+      "breakpoints": true
     }
   ]
 }

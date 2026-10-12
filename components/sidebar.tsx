@@ -13,6 +13,7 @@ import { SidebarGroup } from '@/components/nav/sidebar-group'
 import { SidebarLink } from '@/components/nav/sidebar-link'
 import { RailToggle } from '@/components/nav/rail-toggle'
 import { SidebarUser } from '@/components/nav/sidebar-user'
+import { LabsGate } from '@/components/nav/nav-badges'
 import { isGroupOpen, parseGroupState, pickActiveHref } from '@/lib/ui/nav-active'
 import {
   applyRailAttribute,
@@ -101,7 +102,9 @@ export function Sidebar({
         </div>
         <nav
           aria-label="Main"
-          className="flex-1 space-y-3 overflow-y-auto px-3 py-4 group-data-[sidebar=rail]/shell:px-2"
+          // min-h-0: the nav scrolls on its own above the footer instead of
+          // sliding under it (items were clipped at 1280×900).
+          className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-3 py-3 group-data-[sidebar=rail]/shell:px-2"
         >
           <SidebarLink
             item={HOME_ITEM}
@@ -111,7 +114,7 @@ export function Sidebar({
           />
           {NAV_GROUPS.map((group) => {
             const containsActive = group.items.some((i) => i.href === activeHref)
-            return (
+            const node = (
               <SidebarGroup
                 key={group.key}
                 group={group}
@@ -122,16 +125,19 @@ export function Sidebar({
                 onNavigate={onNavigate}
               />
             )
+            // Side projects show only with Settings › Labs on.
+            return group.labs ? <LabsGate key={group.key}>{node}</LabsGate> : node
           })}
         </nav>
-        <footer className="mt-auto space-y-1 border-t p-3 group-data-[sidebar=rail]/shell:px-2">
+        <footer className="mt-auto shrink-0 space-y-1 border-t p-3 group-data-[sidebar=rail]/shell:px-2">
           <SidebarLink
             item={SETTINGS_ITEM}
             active={activeHref === SETTINGS_ITEM.href}
             rail={rail}
             onNavigate={onNavigate}
           />
-          {email ? <SidebarUser email={email} name={name} image={image} /> : null}
+          {/* The desktop header already shows the account menu; the drawer keeps who is signed in. */}
+          {email && !railEnabled ? <SidebarUser email={email} name={name} image={image} /> : null}
         </footer>
       </aside>
     </TooltipProvider>

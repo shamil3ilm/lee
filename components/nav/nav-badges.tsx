@@ -32,33 +32,74 @@ function useBadgeCount(badgeKey: NavBadgeKey): number {
 // a portal outside the shell, so these variants never apply there.
 const RAIL_HIDDEN = 'group-data-[sidebar=rail]/shell:hidden'
 
-function BadgePill({ badgeKey }: { badgeKey: NavBadgeKey }) {
+/** Accessible wording per count: "6 pending", "2 need a look". */
+const COUNT_LABEL: Partial<Record<NavBadgeKey, (n: number) => string>> = {
+  needsLook: (n) => `${n} ${n === 1 ? 'needs' : 'need'} a look`,
+}
+
+function BadgePill({ badgeKey, tone }: { badgeKey: NavBadgeKey; tone: 'primary' | 'quiet' }) {
   const count = useBadgeCount(badgeKey)
   if (count <= 0) return null
+  const label = COUNT_LABEL[badgeKey]?.(count) ?? `${count} pending`
   return (
     <>
       <span
         className={cn(
-          'ml-auto rounded-full bg-primary px-1.5 text-[10px] font-semibold leading-4 text-primary-foreground tabular-nums',
+          'rounded-full px-1.5 text-[10px] font-semibold leading-4 tabular-nums',
+          tone === 'primary' ? 'ml-auto bg-primary text-primary-foreground' : 'border border-warning/40 bg-warning-soft text-warning',
           RAIL_HIDDEN,
         )}
-        aria-label={`${count} pending`}
+        aria-label={label}
+        title={label}
       >
         {count > 99 ? '99+' : count}
       </span>
-      <span
-        aria-hidden
-        className="absolute right-2 top-1 hidden size-1.5 rounded-full bg-primary group-data-[sidebar=rail]/shell:block"
-      />
+      {tone === 'primary' ? (
+        <span
+          aria-hidden
+          className="absolute right-2 top-1 hidden size-1.5 rounded-full bg-primary group-data-[sidebar=rail]/shell:block"
+        />
+      ) : null}
     </>
   )
 }
 
-/** The count pill (and rail dot) for a nav link; renders nothing until known. */
-export function NavBadge({ badgeKey }: { badgeKey: NavBadgeKey }) {
+/**
+ * The count pill (and rail dot) for a nav link; renders nothing until known.
+ * `quiet` is a second, amber count beside the first (Discovery's "Needs a
+ * look"), never merged into it.
+ */
+export function NavBadge({ badgeKey, tone = 'primary' }: { badgeKey: NavBadgeKey; tone?: 'primary' | 'quiet' }) {
   return (
     <Suspense fallback={null}>
-      <BadgePill badgeKey={badgeKey} />
+      <BadgePill badgeKey={badgeKey} tone={tone} />
+    </Suspense>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Settings › Labs: whether the side-project nav group shows. Streams like the
+// badge counts, so the shell never waits for it.
+// ---------------------------------------------------------------------------
+
+const NavLabsContext = createContext<Promise<boolean> | null>(null)
+
+export function NavLabsProvider({ labs, children }: { labs: Promise<boolean>; children: ReactNode }) {
+  return <NavLabsContext value={labs}>{children}</NavLabsContext>
+}
+
+function LabsOnly({ children }: { children: ReactNode }) {
+  const promise = use(NavLabsContext)
+  // No provider (a component rendered in isolation): show everything.
+  const on = promise ? use(promise) : true
+  return on ? children : null
+}
+
+/** Renders its children only with Labs on (nothing while that is unknown). */
+export function LabsGate({ children }: { children: ReactNode }) {
+  return (
+    <Suspense fallback={null}>
+      <LabsOnly>{children}</LabsOnly>
     </Suspense>
   )
 }

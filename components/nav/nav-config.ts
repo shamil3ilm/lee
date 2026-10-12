@@ -20,19 +20,23 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
-export type NavBadgeKey = 'discoveries' | 'todos' | 'radar'
+export type NavBadgeKey = 'discoveries' | 'needsLook' | 'todos' | 'radar'
 
 export interface NavItem {
   href: string
   label: string
   icon: LucideIcon
   badge?: NavBadgeKey
+  /** A second, quieter count beside the first (Discovery's "Needs a look", kept apart from New). */
+  secondaryBadge?: NavBadgeKey
 }
 
 export interface NavGroup {
   key: string
   label: string
   items: NavItem[]
+  /** Shown only with Settings › Labs on (side projects, not the job search). */
+  labs?: boolean
 }
 
 export type NavBadges = Partial<Record<NavBadgeKey, number>>
@@ -47,8 +51,9 @@ export const NAV_GROUPS: NavGroup[] = [
     key: 'find',
     label: 'Find',
     items: [
-      { href: '/shortlist', label: 'Shortlist', icon: ListChecks },
-      { href: '/discoveries', label: 'Discovery', icon: Sparkles, badge: 'discoveries' },
+      // The daily shortlist: only today's top picks from Discovery.
+      { href: '/shortlist', label: 'Top picks', icon: ListChecks },
+      { href: '/discoveries', label: 'Discovery', icon: Sparkles, badge: 'discoveries', secondaryBadge: 'needsLook' },
       { href: '/companies', label: 'Companies', icon: Building2 },
       { href: '/compare', label: 'Compare', icon: Scale },
     ],
@@ -77,20 +82,18 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [{ href: '/analytics', label: 'Analytics', icon: BarChart3 }],
   },
   {
-    key: 'playground',
-    label: 'Playground',
+    // Side projects behind Settings › Labs (off by default for invitees).
+    key: 'labs',
+    label: 'Labs',
+    labs: true,
     items: [
       { href: '/playground', label: 'Playground', icon: Shapes },
       // New for your watch terms (unread, matching an unmuted term).
       { href: '/radar', label: 'Radar', icon: Radar, badge: 'radar' },
       { href: '/playground/models', label: 'Models', icon: Swords },
       { href: '/playground/decisions', label: 'Decisions', icon: Beaker },
+      { href: '/expenses', label: 'Expenses', icon: Wallet },
     ],
-  },
-  {
-    key: 'money',
-    label: 'Money',
-    items: [{ href: '/expenses', label: 'Expenses', icon: Wallet }],
   },
 ]
 

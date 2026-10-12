@@ -462,6 +462,10 @@ export const userProfile = pgTable('user_profile', {
   // What's new (lib/radar/new/projects.ts): the release projects the user
   // follows; null = derived from the master profile until edited.
   radarReleaseProjects: text('radar_release_projects').array(),
+  // Settings › Labs (lib/settings/labs.ts): show Playground, Radar, Models,
+  // Decisions and Expenses in the sidebar. Null = the default (on for the
+  // deployment owner, off for invitees).
+  labsEnabled: boolean('labs_enabled'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
