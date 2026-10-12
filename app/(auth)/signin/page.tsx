@@ -43,7 +43,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
         </CardHeader>
         <CardContent>
           {message ? (
-            <p role="alert" className="mb-4 rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground">
+            <p role="alert" data-testid="signin-error" className="mb-4 rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground">
               {message}
             </p>
           ) : null}

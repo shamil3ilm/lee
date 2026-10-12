@@ -218,7 +218,8 @@ describe('GET /api/cron/sync-all', () => {
   it('surfaces discovery-email totals and swallows missing-Google errors', async () => {
     // Two users: one opted-in with a fresh high-score discovery, one opted-in
     // but without a Google account (must NOT count as an error).
-    const uSender = await makeUser('cron-notify-send@x.com')
+    // The owner: Gmail (the discovery email) is owner-only in the invite beta.
+    const uSender = await makeUser(process.env.ALLOWED_EMAIL ?? 'test@example.com')
     const [src] = await db
       .insert(sources)
       .values({ userId: uSender.id, name: 'HN', kind: 'hn', config: {} })
@@ -257,7 +258,7 @@ describe('GET /api/cron/sync-all', () => {
       refresh_token: 'RT',
       expires_at: Math.floor(Date.now() / 1000) + 3600,
       token_type: 'Bearer',
-      scope: 'gmail.send',
+      scope: 'https://www.googleapis.com/auth/gmail.send',
     })
 
     const uNoGoogle = await makeUser('cron-notify-nogoogle@x.com')

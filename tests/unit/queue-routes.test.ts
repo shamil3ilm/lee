@@ -18,7 +18,7 @@ import { queueJobs } from '@/lib/db/schema'
 import { env } from '@/lib/env'
 import { enqueue } from '@/lib/queue/queue'
 import { signQueueRequest, SIGNATURE_HEADER, TIMESTAMP_HEADER } from '@/lib/queue/signature'
-import { makeUser } from '@/tests/factories'
+import { makeOwner } from '@/tests/factories'
 
 const mutableEnv = env as { QUEUE_WORKER_SECRET?: string }
 const SECRET = 'q'.repeat(40)
@@ -55,14 +55,14 @@ describe('cron queue routes', () => {
   })
 
   it('schedule enqueues the day (idempotently) and drains', async () => {
-    await makeUser()
+    await makeOwner()
     const auth = `Bearer ${env.CRON_SECRET}`
     const first = await scheduleGET(cronRequest('/api/cron/schedule', auth))
     expect(first.status).toBe(200)
     const body = (await first.json()) as { schedule: { enqueued: number }; drain: { claimed: number } }
-    // reminders + usage snapshot + followups, gmail, digest, scam, shortlist, email
-    expect(body.schedule.enqueued).toBe(8)
-    expect(body.drain.claimed).toBe(8)
+    // reminders + usage snapshot + followups, gmail, digest, benefits, scam, shortlist, email
+    expect(body.schedule.enqueued).toBe(9)
+    expect(body.drain.claimed).toBe(9)
     const again = (await (await scheduleGET(cronRequest('/api/cron/schedule', auth))).json()) as {
       schedule: { enqueued: number }
     }

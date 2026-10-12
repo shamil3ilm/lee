@@ -3,6 +3,7 @@ import { edgeAuthConfig } from '@/lib/auth/edge-config'
 import { DRIVE_FILE_SCOPE, hasDriveScope } from '@/lib/drive/scope'
 import { documentFolderName } from '@/lib/drive/folders'
 import { qLiteral } from '@/lib/drive/client'
+import { OWNER_SCOPES } from '@/lib/google/scope-names'
 
 describe('drive.file scope', () => {
   it('is requested on the Google provider with incremental authorization', () => {
@@ -11,7 +12,9 @@ describe('drive.file scope', () => {
     }
     const params = google.options?.authorization?.params ?? {}
     expect(params.scope?.split(' ')).toContain(DRIVE_FILE_SCOPE)
-    expect(params.scope?.split(' ')).toContain('https://www.googleapis.com/auth/gmail.readonly')
+    // Invite beta: sign-in never asks for Gmail; the owner connects it separately.
+    expect(params.scope?.split(' ')).not.toContain('https://www.googleapis.com/auth/gmail.readonly')
+    expect(OWNER_SCOPES).toContain('https://www.googleapis.com/auth/gmail.readonly')
     expect(params.include_granted_scopes).toBe('true')
     expect(params.access_type).toBe('offline')
   })

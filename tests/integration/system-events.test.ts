@@ -166,9 +166,9 @@ describe('retention', () => {
 })
 
 describe('owner-scoped queries', () => {
-  it('lists own and global events, never another user’s, with filters and pagination', async () => {
+  it('lists own and global events (owner), never another user’s, with filters and pagination', async () => {
     uninstallEventSink()
-    const me = await makeUser()
+    const me = await makeUser(process.env.ALLOWED_EMAIL ?? 'test@example.com')
     const other = await makeUser()
     const now = new Date()
     const base = { message: 'm', event: 'e' }
