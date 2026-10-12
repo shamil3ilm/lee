@@ -1,6 +1,7 @@
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import { discoveries } from '@/lib/db/schema'
+import { needsLookSql } from './discoveries'
 
 /**
  * Reads for the screening path (lib/screening), computed on read and never
@@ -25,6 +26,8 @@ export interface ScreeningRow {
   postedAt: string | null
   fitDetail: unknown
   bestCv: unknown
+  /** relevance_notes.needsLook ("Needs a look"). */
+  needsLook: boolean
   createdAt: Date
 }
 
@@ -42,6 +45,7 @@ const COLUMNS = {
   postedAt: n('postedAt'),
   fitDetail: discoveries.fitDetail,
   bestCv: discoveries.bestCv,
+  needsLook: needsLookSql(),
   createdAt: discoveries.createdAt,
 }
 

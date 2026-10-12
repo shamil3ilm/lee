@@ -76,6 +76,7 @@ export async function loadScreens(
           variant: variantId ? (variants.get(variantId) ?? null) : null,
           postedAt: parseDate(r.postedAt),
           firstSeenAt: r.createdAt,
+          needsLook: r.needsLook,
           ...(opts.referral ? { referral: await referralFor(userId, r.companyName) } : {}),
           now,
         }

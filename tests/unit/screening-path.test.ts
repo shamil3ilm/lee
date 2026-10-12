@@ -115,6 +115,46 @@ describe('(a) eligibility', () => {
   })
 })
 
+describe('Match ceilings and "Needs a look" (read, never rewritten)', () => {
+  it('the ineligible ceiling is an eligibility fail with the same reason text', () => {
+    const job = gccJob({ title: 'Laravel Developer', location: 'Remote - US only', remoteType: 'remote' })
+    const input = screenInput(job)
+    expect(input.detail?.ceiling?.reason).toMatch(/^Not eligible: /)
+    const c = check(screeningPath(input), 'eligibility', 'location')
+    expect(c).toMatchObject({ status: 'fail', reason: input.detail?.ceiling?.reason })
+  })
+
+  it('a not-tech role ceiling is a recruiter fail with its reason', () => {
+    const job = gccJob({ title: 'Customer Care Executive', descriptionMd: '## Responsibilities\n- Answer customer calls and emails.\n- Handle complaints and refunds.\n\n## Requirements\n- 2+ years in customer service.' })
+    const input = screenInput(job)
+    const c = check(screeningPath(input), 'recruiter', 'title')
+    expect(c?.status).toBe('fail')
+    expect(c?.reason).toMatch(/^Not a tech role/)
+    expect(stage(screeningPath(input), 'recruiter').status).toBe('fail')
+  })
+
+  it('an off-target role ceiling is a recruiter fail ("outside your targets")', () => {
+    const job = gccJob({ title: 'DevOps Engineer', descriptionMd: '## Responsibilities\n- Run Kubernetes clusters and Terraform modules.\n- Own CI/CD pipelines and monitoring.\n\n## Requirements\n- Kubernetes, Terraform, Docker and AWS.' })
+    const c = check(path(job), 'recruiter', 'title')
+    expect(c?.status).toBe('fail')
+    expect(c?.reason).toMatch(/^Role outside your targets/)
+  })
+
+  it('"Needs a look" is a recruiter at-risk, never a fail on its own', () => {
+    const p = screeningPath({ ...screenInput(gccJob()), needsLook: true })
+    expect(check(p, 'recruiter', 'title')).toMatchObject({ status: 'at_risk', short: 'needs a look' })
+  })
+})
+
+describe('language: required is a knockout, preferred is at risk', () => {
+  it('"Fluent Arabic is required" fails; "Arabic is an advantage" is at risk', () => {
+    expect(check(path(withDescription('Fluent Arabic is required for client meetings.')), 'eligibility', 'language')?.status).toBe('fail')
+    expect(check(path(withDescription('Arabic is required.')), 'eligibility', 'language')?.status).toBe('fail')
+    expect(check(path(withDescription('Arabic is an advantage.')), 'eligibility', 'language')?.status).toBe('at_risk')
+    expect(check(path(withDescription('Arabic preferred.')), 'eligibility', 'language')?.status).toBe('at_risk')
+  })
+})
+
 describe('(b) ATS keywords against the CV you would send', () => {
   it('buckets terms: present, addable honestly (you have it), missing (study, never a keyword)', () => {
     const p = path({ ...TAILOR_JD })

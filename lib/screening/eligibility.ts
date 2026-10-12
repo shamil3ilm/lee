@@ -2,7 +2,7 @@ import { isRemotePosting, postingPlaces } from '@/lib/discovery/relevance/gate'
 import { GCC_CODES, regionLabel, type RegionCode } from '@/lib/discovery/relevance/places'
 import { detectNationalsOnly, detectNationalsPreferred, detectVisaOffered } from '@/lib/discovery/relevance/signals'
 import { NOTICE_LABELS, type NoticePeriod } from '@/lib/discovery/relevance/discovery-prefs'
-import { regionComponent } from '@/lib/discovery/match/region'
+import { regionFit } from '@/lib/discovery/match/region'
 import { languageComponent } from '@/lib/discovery/match/signals'
 import { normalizeForMatch } from '@/lib/discovery/relevance/text'
 import {
@@ -52,10 +52,23 @@ function isNational(ctx: ScreenContext, code: RegionCode): boolean {
   return Boolean(n && re?.test(n))
 }
 
+/** The Match Score's eligibility ceiling reason ("Not eligible: …"), stored or recomputed (same text). */
+export function ineligibleReason(ctx: Pick<ScreenContext, 'job' | 'profile' | 'detail'>): string | null {
+  const stored = ctx.detail?.ceiling?.reason
+  if (stored?.startsWith(INELIGIBLE_PREFIX)) return stored
+  const why = regionFit(ctx.job, ctx.profile).ineligible
+  return why ? `${INELIGIBLE_PREFIX}${why}` : null
+}
+
+const INELIGIBLE_PREFIX = 'Not eligible: '
+
 function locationCheck(ctx: ScreenContext): StageCheck {
-  const c = regionComponent(ctx.job, ctx.profile)
+  const ineligible = ineligibleReason(ctx)
+  if (ineligible) return { key: 'location', status: 'fail', reason: ineligible, short: 'not eligible' }
+  const c = regionFit(ctx.job, ctx.profile).component
   const label = c.label.replace(/^Region: /, '')
-  if (c.points === 0) return { key: 'location', status: 'fail', reason: c.label, short: 'location' }
+  // Outside your regions but not a knockout (a preference, not an eligibility rule).
+  if (c.points === 0) return { key: 'location', status: 'at_risk', reason: c.label, short: 'outside your regions' }
   if (/eligibility unclear/.test(c.label)) {
     return { key: 'location', status: 'at_risk', reason: 'Remote, but who may apply is unclear', short: 'remote eligibility', action: { kind: 'ask', label: 'Ask which countries the remote role can hire from' } }
   }
@@ -118,7 +131,13 @@ function languageCheck(ctx: ScreenContext): StageCheck {
   const l = languageComponent(ctx.job, ctx.profile)
   const label = l.component.label.replace(/^Language: /, '')
   if (l.mandatoryUnmet.length > 0) return { key: 'language', status: 'fail', reason: `${l.mandatoryUnmet.join(', ')} mandatory`, short: `${l.mandatoryUnmet[0]} mandatory` }
-  if (l.missing.length > 0) return { key: 'language', status: 'at_risk', reason: label, short: 'language' }
+  // Recruiters treat a required language as a knockout ("Fluent Arabic is required");
+  // only "preferred / an advantage" is at risk.
+  if (l.missing.length > 0) {
+    const name = l.missing[0]!.replace(/ fluency \(required\)$/, '')
+    return { key: 'language', status: 'fail', reason: label, short: `${name} required` }
+  }
+  if (/preferred/.test(label)) return { key: 'language', status: 'at_risk', reason: label, short: 'language preferred' }
   return { key: 'language', status: 'pass', reason: label }
 }
 

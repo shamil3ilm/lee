@@ -40,7 +40,17 @@ export interface CalibrationCase {
   slice: Slice
   job: CalibrationJob
   expect: readonly Band[]
+  /**
+   * Optional: where a screener would stop, per stage (spec §6.3). REPORT
+   * ONLY in Phase 1 (tests/eval/screening-stages.ts prints agreement); it
+   * never changes the band gate.
+   */
+  expectStages?: Partial<Record<GateStage, StageLabel | readonly StageLabel[]>>
 }
+
+/** Screening-path stage outcomes (lib/screening; same strings as its StageStatus). */
+export type StageLabel = 'pass' | 'at_risk' | 'fail' | 'unknown'
+export type GateStage = 'eligibility' | 'ats' | 'recruiter' | 'manager'
 
 const HIGH: readonly Band[] = ['strong', 'good']
 const MID: readonly Band[] = ['fair', 'weak', 'out']
@@ -372,7 +382,35 @@ function build(): CalibrationCase[] {
   return out
 }
 
-export const CALIBRATION_CASES: readonly CalibrationCase[] = build()
+/**
+ * Stage labels per slice (spec §6.3), judged for the "backend-payments"
+ * profile (it needs sponsorship in the GCC and has no dated résumé, so
+ * recruiter years are not labelled):
+ *   eligibility traps            eligibility fail (restricted remote / on-site elsewhere);
+ *   non-tech, boilerplate,       recruiter fail (the role ceiling: not a tech role);
+ *     university non-tech
+ *   adjacent                     recruiter fail (role outside your targets);
+ *   on-target India / remote     eligibility pass, ATS pass;
+ *   on-target GCC                ATS pass; eligibility unknown (visa not mentioned)
+ *                                or at risk (a Kuwait / Saudi "Engineer" title);
+ *   thin (title only)            ATS unknown (no JD to read).
+ * Stretch and university-tech stay unlabelled (judgement varies).
+ */
+const STAGES_BY_SLICE: Readonly<Partial<Record<Slice, NonNullable<CalibrationCase['expectStages']>>>> = {
+  eligibility: { eligibility: 'fail' },
+  nontech: { recruiter: 'fail' },
+  boilerplate: { recruiter: 'fail' },
+  'university-nontech': { recruiter: 'fail' },
+  adjacent: { recruiter: 'fail' },
+  'ontarget-india-remote': { eligibility: 'pass', ats: 'pass' },
+  'ontarget-gcc': { eligibility: ['unknown', 'at_risk'], ats: 'pass' },
+  thin: { ats: 'unknown' },
+}
+
+export const CALIBRATION_CASES: readonly CalibrationCase[] = build().map((c) => {
+  const expectStages = STAGES_BY_SLICE[c.slice]
+  return expectStages ? { ...c, expectStages } : c
+})
 
 /** Slices a non-tech posting belongs to (for the false-pass rate). */
 export const NON_TECH_SLICES: ReadonlySet<Slice> = new Set(['nontech', 'boilerplate', 'university-nontech'])

@@ -41,6 +41,8 @@ export interface ScreenInput {
   firstSeenAt: Date | null
   /** LinkedIn connections at the company; undefined when not looked up (lists). */
   referral?: ScreenReferral | null
+  /** relevance_notes.needsLook: lee is unsure the title is the user's kind of role. */
+  needsLook?: boolean
   now: Date
 }
 

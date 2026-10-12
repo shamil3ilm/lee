@@ -12,15 +12,22 @@ import { searchPrefsFromProfile } from '@/lib/discovery/relevance/prefs'
 import { readResumeProfile } from '@/lib/resume/types'
 import { screeningPath } from '@/lib/screening/path'
 import type { StageKey, StageStatus } from '@/lib/screening/types'
+import type { UserProfile } from '@/lib/db/queries/profile'
+import type { NormalizedJob } from '@/lib/discovery/adapters/types'
+import { computeMatch } from '@/lib/discovery/match/score'
+import type { MatchDetail } from '@/lib/discovery/match/types'
+import { evaluateRelevance } from '@/lib/discovery/relevance/gate'
+import type { ScreeningPath } from '@/lib/screening/types'
+import { CALIBRATION_CASES } from './calibration-cases'
+import { BACKEND_PAYMENTS } from './discovery-calibration'
 import { fixtureProfileAndJob, loadDiscoveryMatchFixtures, runDiscoveryMatchFixture } from './discovery-match'
 
 export type ExpectStages = Partial<Record<Exclude<StageKey, 'odds'>, StageStatus | readonly StageStatus[]>>
 
 export const STAGE_LABELS: ReadonlyArray<{ file: string; expectStages: ExpectStages; why: string }> = [
   { file: '03-us-only-remote.json', expectStages: { eligibility: 'fail' }, why: 'remote, US work authorisation only' },
-  // Spec §3.2: "required, not mandatory" is at risk. The reused language detector reads
-  // "fluent Arabic is required" as mandatory (the 34 ceiling): a known disagreement to settle in P1.
-  { file: '07-arabic-required-soft.json', expectStages: { eligibility: 'at_risk' }, why: 'Arabic required, not worded mandatory' },
+  // Spec §3.2: a required language you lack is a knockout; only "preferred / an advantage" is at risk.
+  { file: '07-arabic-required-soft.json', expectStages: { eligibility: 'fail' }, why: 'fluent Arabic required' },
   { file: '08-visa-offered-and-pay.json', expectStages: { eligibility: 'pass' }, why: 'Jeddah, employment visa provided' },
   { file: '10-presence-note.json', expectStages: { eligibility: 'at_risk' }, why: 'must be based in the UAE, own visa only preferred' },
   { file: '11-gcc-riyadh-laravel-strong.json', expectStages: { eligibility: 'pass', ats: 'pass' }, why: 'visa provided; PHP, Laravel, MySQL, REST all on the CV' },
@@ -59,31 +66,30 @@ export interface StageReport {
 
 const NOW = new Date('2026-10-12T00:00:00Z')
 
-export function screeningStageReport(): StageReport {
-  const fixtures = new Map(loadDiscoveryMatchFixtures().map((f) => [f.file, f] as const))
-  const rows: StageReportRow[] = []
-  for (const label of STAGE_LABELS) {
-    const f = fixtures.get(label.file)
-    if (!f) continue
-    const { profile, job } = fixtureProfileAndJob(f)
-    const detail = runDiscoveryMatchFixture(f).match
-    const path = screeningPath({
-      job,
-      profile: matchProfileFrom(profile, NOW),
-      resume: readResumeProfile(profile.resume),
-      noticePeriods: searchPrefsFromProfile(profile).extra.noticePeriods,
-      detail,
-      variant: null,
-      postedAt: null,
-      firstSeenAt: null,
-      now: NOW,
-    })
-    for (const [stage, want] of Object.entries(label.expectStages) as Array<[StageKey, StageStatus | readonly StageStatus[]]>) {
-      const got = path.stages.find((s) => s.stage === stage)!.status
-      const wants = typeof want === 'string' ? [want] : want
-      rows.push({ file: label.file, stage, want: wants.join('|'), got, agree: wants.includes(got) })
-    }
-  }
+function pathFor(profile: UserProfile, job: NormalizedJob, detail: MatchDetail, needsLook = false): ScreeningPath {
+  return screeningPath({
+    job,
+    profile: matchProfileFrom(profile, NOW),
+    resume: readResumeProfile(profile.resume),
+    noticePeriods: searchPrefsFromProfile(profile).extra.noticePeriods,
+    detail,
+    variant: null,
+    postedAt: null,
+    firstSeenAt: null,
+    needsLook,
+    now: NOW,
+  })
+}
+
+function rowsOf(file: string, path: ScreeningPath, expectStages: ExpectStages): StageReportRow[] {
+  return (Object.entries(expectStages) as Array<[StageKey, StageStatus | readonly StageStatus[]]>).map(([stage, want]) => {
+    const got = path.stages.find((s) => s.stage === stage)!.status
+    const wants: readonly StageStatus[] = typeof want === 'string' ? [want] : want
+    return { file, stage, want: wants.join('|'), got, agree: wants.includes(got) }
+  })
+}
+
+function summarise(rows: StageReportRow[]): StageReport {
   const fails = rows.filter((r) => r.want === 'fail')
   return {
     rows,
@@ -93,10 +99,42 @@ export function screeningStageReport(): StageReport {
   }
 }
 
-export function printScreeningStageReport(log: (line: string) => void = console.log): void {
-  const r = screeningStageReport()
-  log(`## screening-path stage labels (${STAGE_LABELS.length} cases, report only — not a gate)`)
-  for (const row of r.rows) log(`  [${row.agree ? 'OK ' : 'DIFF'}] ${row.file} ${row.stage}: want ${row.want}, got ${row.got}`)
+/** The discovery-match fixture labels above. */
+export function screeningStageReport(): StageReport {
+  const fixtures = new Map(loadDiscoveryMatchFixtures().map((f) => [f.file, f] as const))
+  const rows: StageReportRow[] = []
+  for (const label of STAGE_LABELS) {
+    const f = fixtures.get(label.file)
+    if (!f) continue
+    const { profile, job } = fixtureProfileAndJob(f)
+    rows.push(...rowsOf(label.file, pathFor(profile, job, runDiscoveryMatchFixture(f).match), label.expectStages))
+  }
+  return summarise(rows)
+}
+
+/** The calibration set's optional `expectStages` (tests/eval/calibration-cases.ts), for the user-shaped profile. */
+export function calibrationStageReport(): StageReport {
+  const profile = BACKEND_PAYMENTS
+  const rows: StageReportRow[] = []
+  for (const c of CALIBRATION_CASES) {
+    if (!c.expectStages) continue
+    const job = { kind: 'job' as const, companyName: 'Example Co', employmentType: 'fulltime', applyUrl: 'https://jobs.example.com/x', techStack: [], raw: {}, ...c.job } as NormalizedJob
+    const gate = evaluateRelevance(job, searchPrefsFromProfile(profile))
+    const detail = computeMatch(job, matchProfileFrom(profile, NOW))
+    rows.push(...rowsOf(c.id, pathFor(profile, job, detail, gate.needsLook === true), c.expectStages))
+  }
+  return summarise(rows)
+}
+
+function printReport(title: string, r: StageReport, log: (line: string) => void, verbose: boolean): void {
+  log(`## ${title} (report only — not a gate)`)
+  for (const row of r.rows) if (verbose || !row.agree) log(`  [${row.agree ? 'OK ' : 'DIFF'}] ${row.file} ${row.stage}: want ${row.want}, got ${row.got}`)
   log(`  stage agreement ${r.agree}/${r.total} · knockout recall ${r.knockoutRecall.hit}/${r.knockoutRecall.of}`)
   log('')
+}
+
+export function printScreeningStageReport(log: (line: string) => void = console.log): void {
+  printReport(`screening-path stage labels, discovery-match fixtures (${STAGE_LABELS.length} cases)`, screeningStageReport(), log, true)
+  const labelled = CALIBRATION_CASES.filter((c) => c.expectStages).length
+  printReport(`screening-path stage labels, calibration set (${labelled} cases)`, calibrationStageReport(), log, false)
 }

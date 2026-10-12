@@ -2,7 +2,7 @@ import { employmentGaps } from '@/lib/cv-score/career'
 import type { ScorableRole } from '@/lib/cv-score/types'
 import { seniorityComponent } from '@/lib/discovery/match/fit'
 import { skillsInText, withImplied } from '@/lib/discovery/match/lexicon'
-import { jdFamilies } from '@/lib/discovery/match/role'
+import { jdFamilies, OFF_TARGET_ROLE_POINTS, roleOffTargetLabel } from '@/lib/discovery/match/role'
 import { classifyRole, roleFamilyLabel } from '@/lib/discovery/relevance/roles'
 import { readyHighlights } from '@/lib/resume/readiness'
 import type { ResumeProfile, WorkItem } from '@/lib/resume/types'
@@ -88,10 +88,34 @@ export function relevantYears(resume: ResumeProfile | null, skills: ReadonlySet<
   return Math.round((weighted / 12) * 10) / 10
 }
 
+/**
+ * The Match Score's role ceiling, read as a recruiter fail with the same
+ * reason text: "Not a tech role: …" / "Role outside your targets: …".
+ * The stored ceiling holds only the lowest one, so the role component is
+ * read too (points 0 = not tech; ≤ OFF_TARGET_ROLE_POINTS = off target).
+ */
+export function roleCeilingReason(ctx: Pick<ScreenContext, 'job' | 'detail'>): { reason: string; short: string } | null {
+  const stored = ctx.detail?.ceiling?.reason ?? ''
+  if (stored.startsWith('Not a tech role')) return { reason: stored, short: 'not a tech role' }
+  if (stored.startsWith('Role outside your targets')) return { reason: stored, short: 'outside your targets' }
+  const role = ctx.detail?.components.find((c) => c.key === 'role')
+  if (!role) return null
+  if (role.points === 0) return { reason: `Not a tech role: ${ctx.job.title}`, short: 'not a tech role' }
+  if (role.points <= OFF_TARGET_ROLE_POINTS) return { reason: `Role outside your targets: ${roleOffTargetLabel(role.label)}`, short: 'outside your targets' }
+  return null
+}
+
 function titleCheck(ctx: ScreenContext): StageCheck {
-  const roleLabel = ctx.detail?.components.find((c) => c.key === 'role')?.label ?? ''
-  if (/not a tech role/.test(roleLabel)) {
-    return { key: 'title', status: 'fail', reason: `${roleLabel} (the role ceiling decides the score)`, short: 'not your kind of role' }
+  const ceiling = roleCeilingReason(ctx)
+  if (ceiling) return { key: 'title', status: 'fail', reason: ceiling.reason, short: ceiling.short }
+  if (ctx.needsLook) {
+    return {
+      key: 'title',
+      status: 'at_risk',
+      reason: 'Needs a look: lee is unsure this title is your kind of role',
+      short: 'needs a look',
+      action: { kind: 'prepare', label: 'Read the JD: is this your kind of role?' },
+    }
   }
   const recent = datedRoles(ctx.resume)[0]
   if (!recent) return { key: 'title', status: 'unknown', reason: 'No dated work history on your profile', short: 'title', action: { kind: 'prepare', label: 'Add your work history to Profile › Experience' } }
