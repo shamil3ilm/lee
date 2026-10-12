@@ -6,6 +6,7 @@ import { refreshMatchesAfterSave } from '@/lib/discovery/match/enqueue'
 import { requireUserId } from '@/lib/auth/require-session'
 import { saveProfile } from '@/lib/profile/service'
 import { findModel } from '@/lib/ai'
+import { ollamaConfig } from '@/lib/ai/ollama'
 import { logger } from '@/lib/logger'
 import type { NewUserProfile } from '@/lib/db/queries/profile'
 
@@ -164,6 +165,9 @@ export async function saveAiModelAction(formData: FormData): Promise<ActionResul
     } else {
       const choice = findModel(id)
       if (!choice) return { error: 'Unknown model.' }
+      if (choice.provider === 'ollama' && !ollamaConfig()) {
+        return { error: 'The local model needs an Ollama server: set OLLAMA_BASE_URL first.' }
+      }
       await saveProfile(userId, { aiProvider: choice.provider, aiModel: choice.model })
     }
     revalidatePath('/settings/ai')

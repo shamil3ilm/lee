@@ -5,7 +5,7 @@ import { Cpu, Loader2, Zap } from 'lucide-react'
 import { saveAiModelAction } from '@/app/(authed)/settings/profile/actions'
 // Import from the registry file directly (not from @/lib/ai) so this client
 // component doesn't pull the server DB chain via lib/ai/index.ts.
-import { MODEL_REGISTRY, type ModelChoice } from '@/lib/ai/registry'
+import type { ModelChoice } from '@/lib/ai/registry'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -18,11 +18,13 @@ import {
 
 interface AiModelSelectorProps {
   currentModelId: string | null
+  /** From selectableModels(): the server decides whether the local model is offered. */
+  models: ModelChoice[]
 }
 
 const USE_ENV_VALUE = '__env_default__'
 
-export function AiModelSelector({ currentModelId }: AiModelSelectorProps) {
+export function AiModelSelector({ currentModelId, models }: AiModelSelectorProps) {
   const [pending, start] = useTransition()
   const [selected, setSelected] = useState<string>(currentModelId ?? USE_ENV_VALUE)
 
@@ -38,7 +40,7 @@ export function AiModelSelector({ currentModelId }: AiModelSelectorProps) {
     })
   }
 
-  const active: ModelChoice | undefined = MODEL_REGISTRY.find((m) => m.id === selected)
+  const active: ModelChoice | undefined = models.find((m) => m.id === selected)
 
   return (
     <Card>
@@ -61,7 +63,7 @@ export function AiModelSelector({ currentModelId }: AiModelSelectorProps) {
             <SelectItem value={USE_ENV_VALUE}>
               Use server default
             </SelectItem>
-            {MODEL_REGISTRY.map((m) => (
+            {models.map((m) => (
               <SelectItem key={m.id} value={m.id}>
                 {m.label}
                 {m.freeTier ? ' · free' : ''}

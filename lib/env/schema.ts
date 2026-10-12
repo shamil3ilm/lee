@@ -30,7 +30,13 @@ export const envSchema = z
     // Public contact shown on /privacy (Google consent screen requirement).
     // Optional: unset = the page points to the consent screen's support email.
     SUPPORT_EMAIL: z.string().email().optional(),
-    AI_PROVIDER: z.enum(['gemini', 'groq', 'anthropic', 'openai']).default('gemini'),
+    AI_PROVIDER: z.enum(['gemini', 'groq', 'ollama', 'anthropic', 'openai']).default('gemini'),
+    // Optional self-hosted model via Ollama's OpenAI-compatible API, e.g.
+    // http://localhost:11434/v1. Unset = the local model is not offered.
+    // lib/ai/ollama.ts reads these three.
+    OLLAMA_BASE_URL: optional(z.string().url()),
+    OLLAMA_MODEL: optional(z.string()),
+    OLLAMA_TIMEOUT_MS: optional(z.string().regex(/^\d+$/, 'OLLAMA_TIMEOUT_MS is milliseconds')),
     GEMINI_API_KEY: z.string().optional(),
     GROQ_API_KEY: z.string().optional(),
     ANTHROPIC_API_KEY: z.string().optional(),

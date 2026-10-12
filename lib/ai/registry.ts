@@ -2,7 +2,7 @@
 // dropdown. Adding a new model = one entry here. Provider handles the model
 // id passed at runtime.
 
-export type ProviderKind = 'gemini' | 'groq'
+export type ProviderKind = 'gemini' | 'groq' | 'ollama'
 
 export interface ModelChoice {
   id: string                     // stable key stored in user_profile.aiModel
@@ -60,6 +60,16 @@ export const MODEL_REGISTRY: ModelChoice[] = [
     description: 'Lighter/cheaper variant. Usually less loaded than flash.',
     freeTier: true,
   },
+  // Ollama — a model you host yourself. The actual model comes from
+  // OLLAMA_MODEL; listed only when OLLAMA_BASE_URL is set (selectableModels).
+  {
+    id: 'ollama:local',
+    provider: 'ollama',
+    model: 'local',
+    label: 'Ollama · Local model',
+    description: 'Self-hosted via Ollama (OLLAMA_MODEL). Prompts stay on your own machine or server.',
+    freeTier: true,
+  },
 ]
 
 export const DEFAULT_MODEL_ID: ModelChoice['id'] = 'groq:gpt-oss-20b'
@@ -67,4 +77,15 @@ export const DEFAULT_MODEL_ID: ModelChoice['id'] = 'groq:gpt-oss-20b'
 export function findModel(id: string | null | undefined): ModelChoice | null {
   if (!id) return null
   return MODEL_REGISTRY.find((m) => m.id === id) ?? null
+}
+
+/**
+ * Models the picker offers. The local model needs a reachable Ollama server,
+ * so it is hidden unless one is configured; a saved choice stays visible so
+ * the setting never changes without the user seeing it.
+ */
+export function selectableModels(opts: { ollama: boolean; keepId?: string | null }): ModelChoice[] {
+  return MODEL_REGISTRY.filter(
+    (m) => m.provider !== 'ollama' || opts.ollama || m.id === opts.keepId,
+  )
 }

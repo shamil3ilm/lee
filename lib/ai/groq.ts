@@ -167,10 +167,10 @@ export class GroqProvider implements AIProvider {
     // 250K TPM, 1K RPM, 131K context. Excellent for structured JSON parsing.
     // Bump to openai/gpt-oss-120b via GROQ_MODEL for higher quality (still
     // free tier, ~500 tok/sec). Meta Llama models are gated to Enterprise.
-    private readonly model = process.env.GROQ_MODEL ?? 'openai/gpt-oss-20b',
+    protected readonly model = process.env.GROQ_MODEL ?? 'openai/gpt-oss-20b',
   ) {}
 
-  private async generateOnce(prompt: string): Promise<{
+  protected async generateOnce(prompt: string): Promise<{
     text: string
     promptTokens: number
     completionTokens: number
@@ -263,7 +263,7 @@ export class GroqProvider implements AIProvider {
     throw lastError
   }
 
-  private async snapshot(meta: CallMeta, rateLimit: RateLimitSnapshot | null): Promise<void> {
+  protected async snapshot(meta: CallMeta, rateLimit: RateLimitSnapshot | null): Promise<void> {
     await recordQuotaSnapshot({
       userId: meta.userId,
       provider: 'groq',
@@ -278,7 +278,7 @@ export class GroqProvider implements AIProvider {
    * request; inline when the caller needs the id via `onLogged`. See
    * lib/ai/log-call.ts.
    */
-  private async logCall(x: AiCallRecord): Promise<void> {
+  protected async logCall(x: AiCallRecord): Promise<void> {
     await recordAiCall('groq', x)
   }
 

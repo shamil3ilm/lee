@@ -3,7 +3,8 @@ import { Swords } from 'lucide-react'
 import { requireUserId } from '@/lib/auth/require-session'
 import { getProviderStatuses } from '@/lib/lab/status'
 import { getProfile } from '@/lib/profile/service'
-import { MODEL_REGISTRY } from '@/lib/ai/registry'
+import { MODEL_REGISTRY, selectableModels } from '@/lib/ai/registry'
+import { ollamaConfig } from '@/lib/ai/ollama'
 import { PageHeader } from '@/components/page-header'
 import { AiModelSelector } from '@/components/ai-model-selector'
 import { DecisionProviderSelector } from '@/components/decision-provider-selector'
@@ -33,7 +34,10 @@ export default async function AiSettingsPage() {
         title="AI"
         description="Which model writes your documents, which engine makes pipeline decisions, and the API keys they use."
       />
-      <AiModelSelector currentModelId={currentModelId} />
+      <AiModelSelector
+        currentModelId={currentModelId}
+        models={selectableModels({ ollama: ollamaConfig() !== null, keepId: currentModelId })}
+      />
       <DecisionProviderSelector
         currentProvider={profile?.decisionProvider ?? null}
         currentLayaEndpoint={profile?.layaEndpoint ?? null}

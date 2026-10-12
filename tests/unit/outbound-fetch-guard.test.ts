@@ -43,6 +43,8 @@ const FIXED_HOST: Record<string, string> = {
   'lib/integrations/http.ts': 'github.com, api.github.com, www.linkedin.com, api.linkedin.com',
   'app/api/voice/transcribe/route.ts': 'api.groq.com',
   'lib/ai/groq.ts': 'api.groq.com',
+  // Operator-set OLLAMA_BASE_URL (env, never user input): the owner's own Ollama server.
+  'lib/ai/ollama.ts': 'OLLAMA_BASE_URL (operator env)',
   'lib/decisions/groq.ts': 'api.groq.com',
   'lib/calendar/adapter.ts': 'www.googleapis.com',
   'lib/drive/client.ts': 'www.googleapis.com (upload location prefix-checked)',

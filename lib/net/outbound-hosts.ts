@@ -93,6 +93,13 @@ export const OUTBOUND_PARTIES: readonly OutboundParty[] = [
     group: 'ai',
   },
   {
+    id: 'ollama',
+    name: 'Your Ollama server',
+    hosts: [],
+    sends: 'The text of an AI request when "Ollama · Local model" is your provider. Only offered when the operator sets OLLAMA_BASE_URL; the request goes to that server, not to a third party.',
+    group: 'ai',
+  },
+  {
     id: 'openrouter',
     name: 'OpenRouter',
     hosts: ['openrouter.ai'],

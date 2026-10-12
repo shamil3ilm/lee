@@ -2,6 +2,7 @@ import { env } from '@/lib/env'
 import type { AIProvider } from './types'
 import { GeminiProvider } from './gemini'
 import { GroqProvider } from './groq'
+import { OllamaProvider, ollamaConfig } from './ollama'
 import { findModel, MODEL_REGISTRY, type ModelChoice } from './registry'
 import * as profileQ from '@/lib/db/queries/profile'
 import { resolveAiKey } from '@/lib/settings/secrets'
@@ -12,13 +13,21 @@ export function e2eAiFixturesEnabled(env: Readonly<Record<string, string | undef
   return isTestLoginEnabled(env) && env.E2E_AI_FIXTURES === '1'
 }
 
-const MISSING_KEY: Record<ModelChoice['provider'], string> = {
+const MISSING_KEY: Record<Exclude<ModelChoice['provider'], 'ollama'>, string> = {
   gemini: 'No Gemini key: add a Google AI Studio key in Settings › AI (or set GEMINI_API_KEY).',
   groq: 'No Groq key: add one in Settings › AI (or set GROQ_API_KEY).',
 }
 
+const OLLAMA_NOT_CONFIGURED =
+  'The local model needs an Ollama server: set OLLAMA_BASE_URL (and OLLAMA_MODEL), or pick another model in Settings › AI.'
+
 /** `key` is the resolved key (user's saved key, else env); null → friendly error. */
 function build(choice: ModelChoice, key: string | null | undefined): AIProvider {
+  if (choice.provider === 'ollama') {
+    const config = ollamaConfig()
+    if (!config) throw new Error(OLLAMA_NOT_CONFIGURED)
+    return new OllamaProvider(config)
+  }
   if (!key) throw new Error(MISSING_KEY[choice.provider])
   switch (choice.provider) {
     case 'gemini':
@@ -29,6 +38,7 @@ function build(choice: ModelChoice, key: string | null | undefined): AIProvider 
 }
 
 function envKeyFor(provider: ModelChoice['provider']): string | undefined {
+  if (provider === 'ollama') return undefined
   return provider === 'gemini' ? env.GEMINI_API_KEY : env.GROQ_API_KEY
 }
 
@@ -69,7 +79,8 @@ export async function getAIProviderForUser(userId: string): Promise<AIProvider> 
         : null,
     ) ?? findMatchingRegistryEntry(profile?.aiProvider, profile?.aiModel)
   const choice = picked ?? envChoice()
-  return build(choice, await resolveAiKey(userId, choice.provider))
+  const key = choice.provider === 'ollama' ? null : await resolveAiKey(userId, choice.provider)
+  return build(choice, key)
 }
 
 // Backwards match: earlier saves may have stored raw provider + model rather
