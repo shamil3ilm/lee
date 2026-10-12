@@ -5,9 +5,11 @@ import { getProfile } from '@/lib/profile/service'
 import { searchPrefsFromProfile, type SearchPrefs } from '@/lib/discovery/relevance/prefs'
 import { ROLE_PHRASES } from '@/lib/google-alerts/queries'
 import { normalizePreferred, type PreferredLevel } from '@/lib/regions/preferred'
-import { regionCoverage, type RegionCoverage } from './compute'
+import { regionCoverage, type CoverageSourceRow, type RegionCoverage } from './compute'
 import { playbooksForUser } from './for-user'
 import { suggestedBoardCounts } from '@/lib/company-discovery/boards'
+import { lineRegionIds, linePlaybook } from './line'
+import type { RegionPlaybook } from './playbook-types'
 
 /**
  * The coverage rows for one user: every region their preferences touch,
@@ -28,15 +30,30 @@ export function presetQuery(prefs: Pick<SearchPrefs, 'roleFamilies' | 'provision
   return family ? ROLE_PHRASES[family]! : 'software developer'
 }
 
-export async function userCoverage(userId: string, now: Date = new Date()): Promise<UserCoverage[]> {
+interface CoverageContext {
+  prefs: SearchPrefs
+  rows: CoverageSourceRow[]
+  alertSitesSeen: ReadonlySet<string>
+  query: string
+}
+
+async function loadContext(userId: string): Promise<CoverageContext> {
   const [profile, sources, alertStats] = await Promise.all([getProfile(userId), sourcesQ.list(userId), emailAlertsQ.summaryBySite(userId)])
   const prefs = searchPrefsFromProfile(profile)
-  const regions = playbooksForUser({
-    regionIds: prefs.regionIds,
-    otherCountries: prefs.otherCountries,
-    remoteScope: prefs.remoteScope,
-    preferred: normalizePreferred(prefs.extra.preferredRegions ?? []),
-  })
+  return {
+    prefs,
+    rows: sources.map((s) => ({ id: s.id, kind: s.kind, enabled: s.enabled, config: (s.config ?? {}) as Record<string, unknown> })),
+    alertSitesSeen: new Set(alertStats.filter((a) => a.alerts > 0).map((a) => a.site)),
+    query: presetQuery(prefs),
+  }
+}
+
+async function measure(
+  userId: string,
+  ctx: CoverageContext,
+  regions: readonly { playbook: RegionPlaybook; starred: PreferredLevel | null }[],
+  now: Date,
+): Promise<UserCoverage[]> {
   if (regions.length === 0) return []
   const activity = await regionActivity(
     userId,
@@ -48,18 +65,36 @@ export async function userCoverage(userId: string, now: Date = new Date()): Prom
     userId,
     regions.map((r) => r.playbook.covers[0]!),
   ).catch(() => new Map<string, { count: number }>())
-  const rows = sources.map((s) => ({ id: s.id, kind: s.kind, enabled: s.enabled, config: (s.config ?? {}) as Record<string, unknown> }))
-  const alertSitesSeen = new Set(alertStats.filter((a) => a.alerts > 0).map((a) => a.site))
-  const query = presetQuery(prefs)
   return regions.map(({ playbook, starred }) => ({
     ...regionCoverage({
       playbook,
-      sources: rows,
+      sources: ctx.rows,
       activity: activity.get(playbook.covers[0]!) ?? { byStatus: {}, companies: 0, yieldingSources: 0 },
-      query,
-      alertSitesSeen,
+      query: ctx.query,
+      alertSitesSeen: ctx.alertSitesSeen,
     }),
     starred,
     employerBoards: boards.get(playbook.covers[0]!)?.count ?? 0,
   }))
+}
+
+export async function userCoverage(userId: string, now: Date = new Date()): Promise<UserCoverage[]> {
+  const ctx = await loadContext(userId)
+  const regions = playbooksForUser({
+    regionIds: ctx.prefs.regionIds,
+    otherCountries: ctx.prefs.otherCountries,
+    remoteScope: ctx.prefs.remoteScope,
+    preferred: normalizePreferred(ctx.prefs.extra.preferredRegions ?? []),
+  })
+  return measure(userId, ctx, regions, now)
+}
+
+/**
+ * Discovery's one-line summary: the starred regions only, cities rolled up
+ * to their state or country (lib/coverage/line.ts). Empty without stars.
+ */
+export async function starredCoverage(userId: string, now: Date = new Date()): Promise<UserCoverage[]> {
+  const ctx = await loadContext(userId)
+  const regions = lineRegionIds(ctx.prefs.extra.preferredRegions ?? []).map((r) => ({ playbook: linePlaybook(r.id), starred: r.level }))
+  return measure(userId, ctx, regions, now)
 }

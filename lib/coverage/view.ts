@@ -41,12 +41,11 @@ export function toRowViews(rows: readonly UserCoverage[]): CoverageRowView[] {
 }
 
 /**
- * The regions the one-line summary names: starred regions, else the
- * weakest of the rest (red before amber), at most `max`.
+ * The regions the one-line summary names: starred regions only, at most
+ * `max`. Without stars the line asks for them instead of listing the
+ * weakest regions (a permanent "none" for a city like Calicut alarmed
+ * without helping; review 2026-10-10 §2.3).
  */
 export function lineRegions(rows: readonly CoverageRowView[], max = 3): CoverageRowView[] {
-  const starred = rows.filter((r) => r.starred)
-  if (starred.length > 0) return starred.slice(0, max)
-  const weight = { red: 0, amber: 1, green: 2 } as const
-  return [...rows].sort((a, b) => weight[a.status] - weight[b.status]).filter((r) => r.status !== 'green').slice(0, max)
+  return rows.filter((r) => r.starred).slice(0, max)
 }

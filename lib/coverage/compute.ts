@@ -73,20 +73,47 @@ export function catalogBoardsFor(p: RegionPlaybook): DefaultSource[] {
   return DEFAULT_SOURCES.filter((d) => d.kind !== 'watch' && inCovers(defaultSourceRegions(d), p.covers))
 }
 
-function statusOf(regionSources: number, yielding: number, kept: number): CoverageStatus {
-  if (regionSources === 0 && yielding === 0 && kept === 0) return 'red'
-  if (regionSources < COVERAGE_TARGET.regionSources || kept < COVERAGE_TARGET.keptPerWeek) return 'amber'
+interface StatusInput {
+  regionSources: number
+  broadSources: number
+  setupSources: number
+  yielding: number
+  kept: number
+}
+
+/**
+ * Red only when nothing can bring the region's jobs in: no region board, no
+ * broad source that includes it, no alert, and nothing arrived. Alerts count
+ * as coverage (they are set up per region and role); broad boards only keep
+ * a region off red, since they rarely carry much of it.
+ */
+function statusOf(c: StatusInput): CoverageStatus {
+  if (c.regionSources + c.broadSources + c.setupSources === 0 && c.yielding === 0 && c.kept === 0) return 'red'
+  if (c.regionSources + c.setupSources < COVERAGE_TARGET.regionSources || c.kept < COVERAGE_TARGET.keptPerWeek) return 'amber'
   return 'green'
 }
 
-function whyOf(c: Pick<RegionCoverage, 'status' | 'regionSources' | 'kept' | 'label'>): string {
-  if (c.status === 'red') return `No source lists ${c.label} jobs yet, and none arrived this week.`
+function count(n: number, one: string, many = `${one}s`): string {
+  return `${n} ${n === 1 ? one : many}`
+}
+
+type WhyInput = Pick<RegionCoverage, 'status' | 'regionSources' | 'broadSources' | 'setupSources' | 'kept' | 'label'>
+
+function whyOf(c: WhyInput): string {
+  if (c.status === 'red') return `No source covers ${c.label} yet, and no ${c.label} jobs arrived this week.`
   if (c.status === 'amber') {
-    return c.regionSources < COVERAGE_TARGET.regionSources
-      ? `Only ${c.regionSources} ${c.label} source${c.regionSources === 1 ? '' : 's'} switched on.`
-      : `Only ${c.kept} ${c.label} posting${c.kept === 1 ? '' : 's'} this week.`
+    if (c.regionSources + c.setupSources < COVERAGE_TARGET.regionSources) {
+      const wider = c.broadSources + c.setupSources
+      if (c.regionSources === 0) {
+        return wider > 0
+          ? `No ${c.label} board switched on yet; ${count(wider, 'broad or alert source')} can include it.`
+          : `No ${c.label} board switched on yet.`
+      }
+      return `${count(c.regionSources, `${c.label} board`)} and ${count(c.setupSources, 'alert source')} switched on; 3 or more is good.`
+    }
+    return `${count(c.kept, `${c.label} posting`)} this week; 5 or more is good.`
   }
-  return `${c.regionSources} ${c.label} sources, ${c.kept} postings this week.`
+  return `${count(c.regionSources + c.setupSources, `${c.label} source`)}, ${count(c.kept, 'posting')} this week.`
 }
 
 export interface CoverageInput {
@@ -115,8 +142,8 @@ export function regionCoverage(i: CoverageInput): RegionCoverage {
   const available = catalogBoardsFor(p).filter((d) => !enabledIds.has(sourceIdentity(d.kind, d.config)))
   const watchEmployers = WATCH_EMPLOYERS.filter((e) => p.covers.includes(e.country.toLowerCase()) && e.sourceKey.startsWith('watch:')).length
   const kept = KEPT.reduce((n, s) => n + (i.activity.byStatus[s] ?? 0), 0)
-  const status = statusOf(regionSources, i.activity.yieldingSources, kept)
-  const base = { status, regionSources, kept, label: p.label }
+  const status = statusOf({ regionSources, broadSources, setupSources, yielding: i.activity.yieldingSources, kept })
+  const base = { status, regionSources, broadSources, setupSources, kept, label: p.label }
   return {
     id: p.id,
     label: p.label,

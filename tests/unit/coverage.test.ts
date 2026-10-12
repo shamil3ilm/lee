@@ -5,6 +5,8 @@ import { alertPresets } from '@/lib/coverage/presets'
 import { catalogBoardsFor, regionCoverage, type CoverageSourceRow, type RegionActivity } from '@/lib/coverage/compute'
 import { reachFor, sourceReach } from '@/lib/coverage/source-reach'
 import { lineRegions, toRowViews } from '@/lib/coverage/view'
+import { lineRegionIds, linePlaybook, rollUp, starCandidates } from '@/lib/coverage/line'
+import { COVERAGE_BADGE, coverageSummary } from '@/lib/coverage/summary'
 import { isRegionId } from '@/lib/regions/tree'
 import { suggestAlertQueries } from '@/lib/google-alerts/queries'
 import { buildAiModePrompts } from '@/lib/discovery/ai-mode/prompts'
@@ -77,13 +79,20 @@ describe('source reach', () => {
 })
 
 describe('coverage status and next steps', () => {
-  it('red with no Kuwait source and no Kuwait jobs; suggests boards, an alert, the watch list and a Google Alert', () => {
-    const c = regionCoverage({ playbook: kw, sources: [src('himalayas', {}), src('email_alert', {})], activity: NONE, query: 'Laravel developer', alertSitesSeen: new Set() })
+  it('red only when nothing at all can bring Kuwait jobs in', () => {
+    const c = regionCoverage({ playbook: kw, sources: [], activity: NONE, query: 'Laravel developer', alertSitesSeen: new Set() })
     expect(c.status).toBe('red')
+    expect(c.why).toBe('No source covers Kuwait yet, and no Kuwait jobs arrived this week.')
+  })
+
+  it('broad and alert sources count as coverage (thin, not none); suggests boards, an alert, the watch list and a Google Alert', () => {
+    const c = regionCoverage({ playbook: kw, sources: [src('himalayas', {}), src('email_alert', {})], activity: NONE, query: 'Laravel developer', alertSitesSeen: new Set() })
+    expect(c.status).toBe('amber')
     expect(c.regionSources).toBe(0)
     expect(c.broadSources).toBe(1)
     expect(c.setupSources).toBe(1)
-    expect(c.why).toMatch(/No source lists Kuwait jobs yet/)
+    expect(c.why).toBe('No Kuwait board switched on yet; 2 broad or alert sources can include it.')
+    expect(c.why).not.toMatch(/Only 0/)
     expect(c.suggestions.map((s) => s.kind)).toEqual(['enable', 'alert', 'watch', 'google-alert'])
     expect(c.suggestions[0]!.text).toMatch(/^Turn on \d+ Kuwait employer boards$/)
     expect(c.suggestions[1]!.text).toBe('Set up a LinkedIn alert for Kuwait')
@@ -106,7 +115,7 @@ describe('coverage status and next steps', () => {
     expect(green.suggestions).toEqual([])
   })
 
-  it('the one-line summary names starred regions, else the weakest', () => {
+  it('the one-line summary names starred regions only (never the weakest)', () => {
     const red = regionCoverage({ playbook: kw, sources: [], activity: NONE, query: 'x', alertSitesSeen: new Set() })
     const views = toRowViews([
       { ...red, starred: null, employerBoards: 12 },
@@ -114,7 +123,60 @@ describe('coverage status and next steps', () => {
     ])
     expect(views.find((v) => v.id === 'kw')?.employerBoards).toBe(12)
     expect(lineRegions(views).map((r) => r.id)).toEqual(['ae'])
-    expect(lineRegions(views.map((v) => ({ ...v, starred: null }))).map((r) => r.id)).toEqual(['kw', 'ae'])
+    expect(lineRegions(views.map((v) => ({ ...v, starred: null })))).toEqual([])
+  })
+})
+
+describe('the Discovery coverage line', () => {
+  it('rolls starred cities up to their state or country, keeps the higher star, top first', () => {
+    expect(rollUp('kozhikode')).toBe('kerala')
+    expect(rollUp('kw')).toBe('kw')
+    const rows = lineRegionIds([
+      { id: 'kochi', level: 'preferred' },
+      { id: 'kozhikode', level: 'top' },
+      { id: 'kw', level: 'top' },
+      { id: 'ae', level: 'preferred' },
+    ])
+    expect(rows).toEqual([
+      { id: 'kerala', level: 'top' },
+      { id: 'kw', level: 'top' },
+      { id: 'ae', level: 'preferred' },
+    ])
+    expect(lineRegionIds([])).toEqual([])
+  })
+
+  it('measures a rolled-up state with a minimal playbook and a country with its own', () => {
+    expect(linePlaybook('kw')).toBe(kw)
+    expect(linePlaybook('kerala')).toMatchObject({ id: 'kerala', label: 'Kerala', covers: ['kerala'] })
+    expect(linePlaybook('remote-worldwide').id).toBe('remote')
+  })
+
+  it('a starred state counts its region boards and a Kerala-wide posting', () => {
+    const c = regionCoverage({
+      playbook: linePlaybook('kerala'),
+      sources: [src('infopark', {}), src('technopark', {}), src('email_alert', {})],
+      activity: { ...NONE, byStatus: { new: 6 } },
+      query: 'x',
+      alertSitesSeen: new Set(),
+    })
+    expect(c.regionSources).toBe(2)
+    expect(c.status).toBe('green')
+  })
+
+  it('summarises sources including broad and alert ones, with plain words', () => {
+    expect(coverageSummary({ regionSources: 2, broadSources: 0, setupSources: 2, kept: 12 })).toBe('4 sources incl. 2 alerts · 12 jobs this week')
+    expect(coverageSummary({ regionSources: 0, broadSources: 1, setupSources: 0, kept: 1 })).toBe('1 source · 1 job this week')
+    expect(coverageSummary({ regionSources: 0, broadSources: 0, setupSources: 0, kept: 0 })).toBe('no source yet · 0 jobs this week')
+    expect(Object.values(COVERAGE_BADGE)).not.toContain('None coverage')
+  })
+
+  it('first-run "Where first?" opens the GCC into countries, Kuwait and the UAE first, Remote last', () => {
+    const picks = starCandidates(['gcc', 'kozhikode'], 'worldwide')
+    expect(picks.slice(0, 2).map((p) => p.label)).toEqual(['Kuwait', 'UAE'])
+    expect(picks.map((p) => p.id)).toEqual(expect.arrayContaining(['sa', 'qa', 'kerala']))
+    expect(picks.at(-1)).toEqual({ id: 'remote', label: 'Remote' })
+    expect(picks.map((p) => p.id)).not.toContain('kozhikode')
+    expect(starCandidates([], 'none').map((p) => p.id)).toContain('in')
   })
 })
 

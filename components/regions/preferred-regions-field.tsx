@@ -32,7 +32,7 @@ export function PreferredRegionsField({ defaultValue }: { defaultValue: readonly
   const remove = (id: string): void => setValue(value.filter((v) => v.id !== id))
 
   return (
-    <div className="space-y-3 rounded-lg border p-3" data-testid="preferred-regions">
+    <div id="preferred-regions" className="scroll-mt-20 space-y-3 rounded-lg border p-3" data-testid="preferred-regions">
       <div>
         <p className="text-sm font-medium">Preferred regions</p>
         <p className="text-xs text-muted-foreground">

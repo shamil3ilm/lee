@@ -7,10 +7,10 @@ import { Button } from '@/components/ui/button'
 import { enableRegionEmployerBoards, enableRegionSources } from '@/app/(authed)/settings/sources/actions'
 import type { CoverageStatus } from '@/lib/coverage/compute'
 import type { CoverageRowView } from '@/lib/coverage/view'
+import { COVERAGE_BADGE } from '@/lib/coverage/summary'
 
 export type { CoverageRowView }
 
-const STATUS_LABEL: Readonly<Record<CoverageStatus, string>> = { green: 'Good', amber: 'Low', red: 'None' }
 const STATUS_VARIANT: Readonly<Record<CoverageStatus, 'success' | 'warning' | 'danger'>> = {
   green: 'success',
   amber: 'warning',
@@ -88,7 +88,7 @@ function Row({ row }: { row: CoverageRowView }) {
           </span>
         ) : null}
         <Badge variant={STATUS_VARIANT[row.status]} className="ml-auto">
-          {STATUS_LABEL[row.status]} coverage
+          {COVERAGE_BADGE[row.status]}
         </Badge>
       </div>
       <p className="text-sm text-muted-foreground">
@@ -136,8 +136,8 @@ export function CoveragePanel({ rows }: { rows: CoverageRowView[] }) {
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        Good: 3+ sources for the region and 5+ new jobs a week. Low: fewer. None: no source lists the region yet. lee
-        suggests; nothing changes until you click.
+        Good: 3+ boards or alerts for the region and 5+ new jobs a week. Thin: fewer. No source yet: nothing switched on
+        can bring the region’s jobs in. lee suggests; nothing changes until you click.
       </p>
       <ul className="space-y-2">
         {rows.map((r) => (
