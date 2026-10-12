@@ -5,14 +5,24 @@ import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { accounts } from '@/lib/db/schema'
 import { getSetupChecklist, GMAIL_READ_SCOPE } from '@/lib/journey/service'
+import { gmailAvailable } from '@/lib/auth/gmail-access'
 import { getProfile } from '@/lib/profile/service'
 import { defaultsBannerFamilies } from '@/lib/discovery/relevance/view'
 import { withReturn } from '@/lib/ui/settings-links'
 import { Button } from '@/components/ui/button'
 import { SetupPanel } from './setup-panel'
+import { starCandidates, type StarCandidate } from '@/lib/coverage/line'
+import { searchPrefsFromProfile } from '@/lib/discovery/relevance/prefs'
+import type { UserProfile } from '@/lib/db/queries/profile'
+
+/** "Where first?" chips from the user's own target regions. */
+function regionChoices(profile: UserProfile | null): StarCandidate[] {
+  const prefs = searchPrefsFromProfile(profile)
+  return starCandidates(prefs.regionIds, prefs.remoteScope)
+}
 
 /** One checklist read per request, shared by the panel and the header link. */
-const loadChecklist = cache((userId: string) => getSetupChecklist(userId))
+const loadChecklist = cache(async (userId: string) => getSetupChecklist(userId, { gmail: await gmailAvailable(userId) }))
 
 /**
  * The first-run panel: shown until setup is 80% done, then only when the
@@ -21,9 +31,11 @@ const loadChecklist = cache((userId: string) => getSetupChecklist(userId))
 export async function SetupPanelWidget({ userId, reopened }: { userId: string; reopened: boolean }) {
   const checklist = await loadChecklist(userId)
   if (checklist.retired && !reopened) return null
-  const needsPrefs = checklist.items.some((i) => i.key === 'search_prefs' && !i.done)
-  const families = needsPrefs ? defaultsBannerFamilies(await getProfile(userId)) : null
-  return <SetupPanel checklist={checklist} families={families} reopened={reopened && checklist.retired} />
+  const open = (key: string): boolean => checklist.items.some((i) => i.key === key && !i.done)
+  const profile = open('search_prefs') || open('regions') ? await getProfile(userId) : null
+  const families = open('search_prefs') ? defaultsBannerFamilies(profile) : null
+  const regions = open('regions') ? regionChoices(profile) : null
+  return <SetupPanel checklist={checklist} families={families} regions={regions} reopened={reopened && checklist.retired} />
 }
 
 /** Header link to the retired setup panel: "Setup 7/8". */
@@ -48,10 +60,15 @@ export async function SetupLinkWidget({ userId }: { userId: string }) {
  * email logging, no job alerts and no calendar push, so it leads the page.
  */
 export async function IntegrationAlertWidget({ userId }: { userId: string }) {
-  const google = await db.query.accounts.findFirst({
-    where: and(eq(accounts.userId, userId), eq(accounts.provider, 'google')),
-    columns: { scope: true },
-  })
+  // Invitees can't use Gmail (invite beta): no banner pointing at a dead end.
+  const [available, google] = await Promise.all([
+    gmailAvailable(userId),
+    db.query.accounts.findFirst({
+      where: and(eq(accounts.userId, userId), eq(accounts.provider, 'google')),
+      columns: { scope: true },
+    }),
+  ])
+  if (!available) return null
   const connected = (google?.scope ?? '').split(' ').includes(GMAIL_READ_SCOPE)
   if (connected) return null
   return (

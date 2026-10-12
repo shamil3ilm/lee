@@ -13,6 +13,7 @@ import { ROLE_FAMILY_IDS, resolveRoleFamily } from '@/lib/discovery/relevance/ro
 import { loadMasterCv, reevaluateRelevance, relevanceProgress } from '@/lib/discovery/relevance/service'
 import { suggestRoles, type RoleSuggestion } from '@/lib/discovery/relevance/suggest'
 import { logger } from '@/lib/logger'
+import { MAX_PREFERRED, normalizePreferred } from '@/lib/regions/preferred'
 
 export type SearchPrefsResult =
   | { success: true; evaluated: number; filtered: number; pending: boolean; total: number }
@@ -74,6 +75,32 @@ export async function confirmDefaultPrefsAction(families: string[]): Promise<Sea
   } catch (err) {
     logger.error('confirmDefaultPrefs failed', { err: err instanceof Error ? err.message : String(err) })
     return { error: 'Could not save your search preferences.' }
+  }
+}
+
+/**
+ * First run's "Where first?": star the picked regions at Top priority,
+ * keeping any stars already saved. Stars rank (never filter), so the Match
+ * Scores are refreshed like after any preferences save.
+ */
+export async function starTopRegionsAction(ids: string[]): Promise<{ success: true; count: number } | { error: string }> {
+  try {
+    const picked = Array.isArray(ids) ? ids.filter((id) => typeof id === 'string').slice(0, MAX_PREFERRED) : []
+    const starred = normalizePreferred(picked.map((id) => ({ id, level: 'top' })))
+    if (starred.length === 0) return { error: 'Pick at least one region.' }
+    const userId = await requireUserId()
+    const profile = await profileQ.get(userId)
+    const prefs = (profile?.discoveryPrefs ?? {}) as Record<string, unknown>
+    const kept = normalizePreferred(Array.isArray(prefs.preferredRegions) ? prefs.preferredRegions : [])
+    const merged = normalizePreferred([...starred, ...kept])
+    await saveProfile(userId, { discoveryPrefs: { ...prefs, preferredRegions: merged } })
+    await refreshMatchesAfterSave(userId)
+    revalidate()
+    revalidatePath('/shortlist')
+    return { success: true, count: starred.length }
+  } catch (err) {
+    logger.error('starTopRegions failed', { err: err instanceof Error ? err.message : String(err) })
+    return { error: 'Could not save your regions.' }
   }
 }
 

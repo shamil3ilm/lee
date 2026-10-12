@@ -35,6 +35,7 @@ export const DEBRIEF_LOOKBACK_MS = 14 * 24 * HOUR_MS
 
 export type SetupItemKey =
   | 'search_prefs'
+  | 'regions'
   | 'profile'
   | 'source'
   | 'job_alerts'
@@ -68,11 +69,27 @@ async function exists(query: Promise<unknown[]>): Promise<boolean> {
   return rows.length > 0
 }
 
-export async function getSetupChecklist(userId: string): Promise<SetupChecklist> {
+export interface SetupChecklistOptions {
+  /**
+   * Gmail features can work for this account (lib/auth/gmail-access.ts).
+   * Invitees can't use Gmail, so the alert-email and Connect Google steps
+   * are left out instead of pointing at a dead end.
+   */
+  gmail?: boolean
+}
+
+/** Starred regions saved in the discovery preferences (any valid entry counts). */
+function hasStarredRegions(discoveryPrefs: unknown): boolean {
+  const list = (discoveryPrefs as { preferredRegions?: unknown } | null)?.preferredRegions
+  return Array.isArray(list) && list.length > 0
+}
+
+export async function getSetupChecklist(userId: string, options: SetupChecklistOptions = {}): Promise<SetupChecklist> {
+  const gmail = options.gmail ?? true
   const [profile, hasMasterCv, hasCvScore, sourceRows, google, hasApplication] = await Promise.all([
     db.query.userProfile.findFirst({
       where: eq(userProfile.userId, userId),
-      columns: { skills: true, headline: true, searchPrefsSavedAt: true },
+      columns: { skills: true, headline: true, searchPrefsSavedAt: true, discoveryPrefs: true },
     }),
     exists(
       db
@@ -105,9 +122,10 @@ export async function getSetupChecklist(userId: string): Promise<SetupChecklist>
   const hasSource = sourceRows.some((r) => r.kind !== 'email_alert')
   const alertsOn = sourceRows.some((r) => r.kind === 'email_alert' && r.enabled)
 
-  const items: SetupItem[] = [
-    // The guided first-run path: what to look for, who you are, where to look.
+  const all: SetupItem[] = [
+    // The guided first-run path: what to look for, where first, who you are, where to look.
     { key: 'search_prefs', label: 'Say what you’re looking for', done: !!profile?.searchPrefsSavedAt, href: '/settings/search', guided: true },
+    { key: 'regions', label: 'Star your top regions', done: hasStarredRegions(profile?.discoveryPrefs), href: '/settings/search#preferred-regions', guided: true },
     { key: 'profile', label: 'Import your CV', done: profileImported, href: '/settings/profile#cv-import', guided: true },
     { key: 'source', label: 'Pick your job sources', done: hasSource, href: '/settings/sources', guided: true },
     { key: 'job_alerts', label: 'Read job alerts from email', done: alertsOn, href: '/settings/sources#email-alerts', guided: true },
@@ -116,6 +134,7 @@ export async function getSetupChecklist(userId: string): Promise<SetupChecklist>
     { key: 'google', label: 'Connect Google', done: googleConnected, href: '/settings/integrations', guided: false },
     { key: 'application', label: 'Track your first application', done: hasApplication, href: '/applications/new', guided: false },
   ]
+  const items = gmail ? all : all.filter((i) => i.key !== 'job_alerts' && i.key !== 'google')
   const completed = items.filter((i) => i.done).length
   return { items, completed, total: items.length, retired: completed / items.length >= SETUP_RETIRE_AT }
 }

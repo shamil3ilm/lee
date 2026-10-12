@@ -7,11 +7,17 @@ import type { SetupChecklist, SetupItem, SetupItemKey } from '@/lib/journey/serv
 import { withReturn } from '@/lib/ui/settings-links'
 import { cn } from '@/lib/utils'
 import { SetupSearchStep } from './setup-search-step'
+import { SetupRegionsStep } from './setup-regions-step'
+import type { StarCandidate } from '@/lib/coverage/line'
 
 const HOME = '/'
 
 const STEP_COPY: Partial<Record<SetupItemKey, { hint: string; action: string }>> = {
   search_prefs: { hint: 'Roles, level and places. Discovery filters and ranks every job with them.', action: 'All preferences' },
+  regions: {
+    hint: 'The places you want most. Their jobs rank higher, and Discovery shows how well they are covered.',
+    action: 'All regions',
+  },
   profile: { hint: 'lee reads your skills and experience from it to score every job.', action: 'Import CV' },
   source: { hint: 'Job boards and employer sites lee checks every morning.', action: 'Choose sources' },
   job_alerts: {
@@ -24,11 +30,27 @@ interface SetupPanelProps {
   checklist: SetupChecklist
   /** Role families for the inline search step (unsaved preferences only). */
   families: readonly BannerFamily[] | null
+  /** "Where first?" region chips (no starred regions yet). */
+  regions?: readonly StarCandidate[] | null
   /** Opened from the "Setup" link after the panel retired. */
   reopened?: boolean
 }
 
-function StepRow({ item, n, current, families }: { item: SetupItem; n: number; current: boolean; families: readonly BannerFamily[] | null }) {
+interface StepRowProps {
+  item: SetupItem
+  n: number
+  current: boolean
+  families: readonly BannerFamily[] | null
+  regions: readonly StarCandidate[] | null
+}
+
+function StepRow({ item, n, current, families, regions }: StepRowProps) {
+  const inline =
+    item.key === 'search_prefs' && families?.length ? (
+      <SetupSearchStep families={families} />
+    ) : item.key === 'regions' && regions?.length ? (
+      <SetupRegionsStep candidates={regions} />
+    ) : null
   const copy = STEP_COPY[item.key]
   const href = withReturn(item.href, HOME)
   return (
@@ -60,8 +82,8 @@ function StepRow({ item, n, current, families }: { item: SetupItem; n: number; c
         {current && copy ? <p className="text-xs text-muted-foreground">{copy.hint}</p> : null}
         {current ? (
           <div className="flex flex-wrap items-center gap-2">
-            {item.key === 'search_prefs' && families ? <SetupSearchStep families={families} /> : null}
-            <Button asChild size="sm" variant={item.key === 'search_prefs' && families?.length ? 'ghost' : 'default'}>
+            {inline}
+            <Button asChild size="sm" variant={inline ? 'ghost' : 'default'}>
               <Link href={href}>
                 {copy?.action ?? 'Open'}
                 <ArrowRight className="size-3.5" aria-hidden="true" />
@@ -75,12 +97,12 @@ function StepRow({ item, n, current, families }: { item: SetupItem; n: number; c
 }
 
 /**
- * First run on Home: four guided steps (what you're looking for, your CV,
- * your sources, job alerts), the first open one expanded with an inline
+ * First run on Home: the guided steps (what you're looking for, where
+ * first, your CV, your sources, job alerts when Gmail is available), the first open one expanded with an inline
  * form or a link that comes back here. Progress is the user's own data, so
  * it is saved as they go. At 80% the panel folds into a "Setup" link.
  */
-export function SetupPanel({ checklist, families, reopened = false }: SetupPanelProps) {
+export function SetupPanel({ checklist, families, regions = null, reopened = false }: SetupPanelProps) {
   const { items, completed, total } = checklist
   const guided = items.filter((i) => i.guided)
   const also = items.filter((i) => !i.guided)
@@ -116,7 +138,7 @@ export function SetupPanel({ checklist, families, reopened = false }: SetupPanel
         <CardContent className="space-y-3 pt-0">
           <ol className="space-y-1" aria-label="Setup steps">
             {guided.map((item, i) => (
-              <StepRow key={item.key} item={item} n={i + 1} current={item.key === currentKey} families={families} />
+              <StepRow key={item.key} item={item} n={i + 1} current={item.key === currentKey} families={families} regions={regions} />
             ))}
           </ol>
           {also.some((i) => !i.done) ? (

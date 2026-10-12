@@ -44,12 +44,13 @@ describe('getSetupChecklist', () => {
   it('reports every item as not done for a fresh user', async () => {
     const u = await makeUser()
     const res = await getSetupChecklist(u.id)
-    expect(res.total).toBe(8)
+    expect(res.total).toBe(9)
     expect(res.completed).toBe(0)
     expect(res.retired).toBe(false)
-    // The four guided first-run steps come first, in order.
+    // The guided first-run steps come first, in order.
     expect(res.items.filter((i) => i.guided).map((i) => i.key)).toEqual([
       'search_prefs',
+      'regions',
       'profile',
       'source',
       'job_alerts',
@@ -79,18 +80,18 @@ describe('getSetupChecklist', () => {
     })
     await makeSource(u.id)
     await makeSource(u.id, { kind: 'email_alert', name: 'Job alerts by email', config: {} })
-    await saveProfile(u.id, { searchPrefsSavedAt: new Date() })
+    await saveProfile(u.id, { searchPrefsSavedAt: new Date(), discoveryPrefs: { preferredRegions: [{ id: 'kw', level: 'top' }] } })
     await connectGoogle(u.id, `openid email ${GMAIL_READ_SCOPE}`)
     await makeApp(u.id)
     const res = await getSetupChecklist(u.id)
-    expect(res.completed).toBe(8)
+    expect(res.completed).toBe(9)
     expect(res.items.every((i) => i.done)).toBe(true)
     expect(res.retired).toBe(true)
   })
 
-  it('retires the panel at 80% (7 of 8), and a disabled alert source does not count', async () => {
+  it('retires the panel at 80% (8 of 9), and a disabled alert source does not count', async () => {
     const u = await makeUser()
-    await saveProfile(u.id, { skills: ['go'], searchPrefsSavedAt: new Date() })
+    await saveProfile(u.id, { skills: ['go'], searchPrefsSavedAt: new Date(), discoveryPrefs: { preferredRegions: [{ id: 'ae', level: 'top' }] } })
     const cv = await documentsQ.create(u.id, { kind: 'master_cv', title: 'CV', content: {} })
     await cvScoresQ.create(u.id, {
       documentId: cv.id,
@@ -107,12 +108,30 @@ describe('getSetupChecklist', () => {
     await connectGoogle(u.id, `openid email ${GMAIL_READ_SCOPE}`)
     let res = await getSetupChecklist(u.id)
     expect(res.items.find((i) => i.key === 'job_alerts')?.done).toBe(false)
-    expect(res.completed).toBe(6)
+    expect(res.completed).toBe(7)
     expect(res.retired).toBe(false)
     await makeApp(u.id)
     res = await getSetupChecklist(u.id)
-    expect(res.completed).toBe(7)
+    expect(res.completed).toBe(8)
     expect(res.retired).toBe(true)
+  })
+
+  it('leaves the Gmail steps out for an account that cannot use Gmail (invitees)', async () => {
+    const u = await makeUser()
+    const res = await getSetupChecklist(u.id, { gmail: false })
+    expect(res.total).toBe(7)
+    expect(res.items.map((i) => i.key)).not.toContain('job_alerts')
+    expect(res.items.map((i) => i.key)).not.toContain('google')
+  })
+
+  it('counts starred regions as the "Star your top regions" step', async () => {
+    const u = await makeUser()
+    expect((await getSetupChecklist(u.id)).items.find((i) => i.key === 'regions')?.done).toBe(false)
+    await saveProfile(u.id, { discoveryPrefs: { preferredRegions: [{ id: 'kw', level: 'top' }] } })
+    expect((await getSetupChecklist(u.id)).items.find((i) => i.key === 'regions')).toMatchObject({
+      done: true,
+      href: '/settings/search#preferred-regions',
+    })
   })
 
   it('accepts a headline alone as an imported profile', async () => {
