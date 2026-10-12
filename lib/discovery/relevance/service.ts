@@ -33,7 +33,7 @@ export function gateColumns(job: GateInput, ctx: RelevanceContext): GateColumns 
     relevanceKey: ctx.key,
     regions: r.regions,
     regionIds: r.regionIds,
-    relevanceNotes: { penalties: r.penalties, boosts: r.boosts, infos: r.infos },
+    relevanceNotes: { penalties: r.penalties, boosts: r.boosts, infos: r.infos, ...(r.needsLook ? { needsLook: true } : {}) },
     rankAdjust: r.rankAdjust,
   }
 }

@@ -123,6 +123,11 @@ export interface RelevanceNotes {
   penalties?: string[]
   boosts?: string[]
   infos?: string[]
+  /**
+   * A recognised non-engineering title with no tech evidence in its JD:
+   * kept (status new) but listed under "Needs a look", not in New.
+   */
+  needsLook?: boolean
 }
 
 /** Rows per INSERT — keeps statements (and their jsonb payloads) bounded. */

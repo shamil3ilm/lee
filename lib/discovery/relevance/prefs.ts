@@ -29,7 +29,12 @@ import { familiesFromEvidence } from './roles'
 // r7 — 2026-10-09: "for Kuwaiti candidates", "for Kuwaitis", MGRP (Kuwait).
 // r8 — 2026-10-09: nationals-only read per sentence (boilerplate and "all nationalities"
 // sentences don't count), title segments ("- UAE National").
-export const RELEVANCE_RULES_VERSION = 'r8'
+// r9 — review 2026-10-10: JD families need real evidence (SQL / Excel alone
+// are not backend or data analysis), GCC business titles are non-engineering
+// and go to "Needs a look", an Operations/Business domain, generic skills
+// count half in the overlap, Dean / Mandoub titles, boilerplate stripped
+// before the strength scan, "open to candidates located in …".
+export const RELEVANCE_RULES_VERSION = 'r9'
 
 export type RemoteScope = 'worldwide' | 'regions' | 'none'
 export const REMOTE_SCOPES: readonly RemoteScope[] = ['worldwide', 'regions', 'none']

@@ -54,8 +54,8 @@ export const DOMAINS: readonly DomainDef[] = [
   {
     id: 'admin',
     label: 'Admin/Operations',
-    titles: ['administrative assistant', 'office manager', 'receptionist', 'secretary', 'executive assistant', 'personal assistant', 'admin assistant', 'office administrator', 'data entry', 'document controller', 'operations coordinator'],
-    duties: ['answering phones', 'diary management', 'travel arrangements', 'filing', 'office supplies', 'front desk', 'data entry'],
+    titles: ['administrative assistant', 'office manager', 'receptionist', 'secretary', 'executive assistant', 'personal assistant', 'admin assistant', 'office administrator', 'data entry', 'document controller', 'operations coordinator', 'mandoub', 'government relations', 'government liaison', 'pro officer'],
+    duties: ['answering phones', 'diary management', 'travel arrangements', 'filing', 'office supplies', 'front desk', 'data entry', 'labour cards', 'labor cards', 'emirates id', 'government departments', 'visa processing'],
   },
   {
     // Banks, insurers and retailers hire software / data people too; their
@@ -79,7 +79,7 @@ export const DOMAINS: readonly DomainDef[] = [
   {
     id: 'teaching',
     label: 'Teaching',
-    titles: ['teacher', 'tutor', 'lecturer', 'professor', 'teaching assistant', 'instructor', 'school counselor', 'education'],
+    titles: ['teacher', 'tutor', 'lecturer', 'professor', 'teaching assistant', 'instructor', 'school counselor', 'education', 'dean', 'faculty member', 'academic director', 'head of department'],
     duties: ['lesson plans', 'lesson planning', 'classroom management', 'curriculum delivery', 'student assessment', 'grading'],
   },
   {
@@ -105,6 +105,24 @@ export const DOMAINS: readonly DomainDef[] = [
     label: 'Project/Operations (non-tech)',
     titles: ['project manager', 'project coordinator', 'project scheduler', 'scheduler', 'program manager', 'operations manager', 'operations specialist', 'logistics coordinator', 'supply chain', 'procurement', 'purchasing', 'contracts', 'quantity surveyor', 'estimator', 'planner'],
     duties: ['primavera', 'gantt charts', 'vendor management', 'purchase orders', 'logistics', 'tendering', 'boq'],
+  },
+  {
+    // GCC platform companies (ride-hailing, delivery, e-commerce) hire many
+    // business roles whose JDs share the tech vocabulary (KPIs, Excel,
+    // "SQL is a plus"). Their titles are positive evidence of the field.
+    id: 'ops_business',
+    label: 'Operations/Business (non-tech)',
+    titles: [
+      'operations associate', 'operations executive', 'operations lead', 'business operations', 'category executive',
+      'category manager', 'category lead', 'buyer', 'account manager', 'training and quality', 'training & quality',
+      'quality executive', 'training executive', 'quality analyst', 'strategy and transformation', 'strategy & transformation',
+      'transformation', 'strategy associate', 'strategy manager', 'partner success', 'partnerships manager', 'merchandiser',
+      'merchandising', 'customer care', 'fleet operations', 'supply operations', 'supply executive', 'captain experience',
+    ],
+    duties: [
+      'assortment', 'negotiate with suppliers', 'supplier negotiations', 'quality audits', 'business cases', 'sell-through',
+      'category management', 'partner onboarding', 'fleet supply', 'utilisation kpis', 'utilization kpis',
+    ],
   },
   {
     id: 'gig_creative',

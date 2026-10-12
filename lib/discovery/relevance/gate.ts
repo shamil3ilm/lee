@@ -63,6 +63,8 @@ export interface GateResult {
   rankAdjust: number
   /** Family the JD reads as (domain rule), for learning on "Show anyway". */
   inferredFamily: string | null
+  /** Passed, but held under "Needs a look" (a non-engineering title with no tech evidence). */
+  needsLook: boolean
 }
 
 /** Description window scanned for remote-eligibility phrases and keywords. */
@@ -82,6 +84,8 @@ const RESTRICTION_PATTERNS: readonly RegExp[] = [
   /\b(?:authori[sz]ed|eligible|legally able|permitted)\s+to\s+work\s+in\s+(?:the\s+)?([^.;:\n]{2,40})/g,
   /\bremote\s*(?:\(|-|,|:)?\s*(?:with)?in\s+(?:the\s+)?([^.;:\n]{2,40})/g,
   /\b(?:residents|citizens)\s+of\s+(?:the\s+)?([^.;:\n]{2,40})\s+only\b/g,
+  /\b(?:open|available)\s+(?:only\s+)?to\s+(?:candidates|applicants|people|those|anyone)\s+(?:who are\s+)?(?:located|based|residing|living)\s+in\s+(?:the\s+)?([^.;:\n]{2,60})/g,
+  /\b(?:only\s+)?open\s+(?:only\s+)?to\s+(?:residents|citizens)\s+of\s+(?:the\s+)?([^.;:\n]{2,40})/g,
   /\b(us|u\.s\.|usa|uk|eu|canada|latam|north america|europe|india|uae|gcc)[\s-]+(?:only|based only)\b/g,
   /\b(us|u\.s\.|american|uk|canadian|eu) (?:citizens?|citizenship|residents?|persons?) (?:only|required)\b/g,
   /\b(?:security clearance|clearance required)\b()/g,
@@ -221,6 +225,7 @@ export function evaluateRelevance(job: GateInput, prefs: SearchPrefs): GateResul
     engineering: role.engineering,
     remote,
     inferredFamily: domain.family,
+    needsLook: domain.needsLook === true,
   }
   const domainInfos = domain.info ? [domain.info] : []
   if (!prefs.active) {
