@@ -33,6 +33,8 @@ test('settings: deployment controls and invites are the owner’s', async ({ pag
   await expect(page.getByTestId('usage-neon-status')).toHaveCount(0)
   await expect(page.getByTestId('usage-largest-tables')).toHaveCount(0)
 
-  const res = await page.goto('/settings/invites')
-  expect(res?.status()).toBe(404)
+  // notFound() inside the streamed shell: the branded 404, never the invites.
+  await page.goto('/settings/invites')
+  await expect(page.getByRole('heading', { level: 1, name: "This page doesn't exist" })).toBeVisible()
+  await expect(page.getByTestId('invite-list')).toHaveCount(0)
 })
