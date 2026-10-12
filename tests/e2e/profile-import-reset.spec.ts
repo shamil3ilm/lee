@@ -41,8 +41,8 @@ test('untick two skills and one project, apply: they are absent', async ({ page 
   expect(await skillsSection.evaluate((el) => (el as HTMLInputElement).indeterminate)).toBe(true)
   await review.getByRole('checkbox', { name: /^Synthetic Beta Project/ }).uncheck()
   // Readiness defaults to learning; mark one skill "Mine".
-  await chips.getByRole('button', { name: 'Mine — I can explain it: Zig' }).click()
-  await expect(chips.getByRole('button', { name: 'Mine — I can explain it: Zig' })).toHaveAttribute('aria-pressed', 'true')
+  await chips.getByRole('switch', { name: 'Mine — I can explain it: Zig' }).click()
+  await expect(chips.getByRole('switch', { name: 'Mine — I can explain it: Zig' })).toHaveAttribute('aria-checked', 'true')
 
   await review.getByTestId('import-apply').click()
   await expectToast(page, 'Saved 3 items.')

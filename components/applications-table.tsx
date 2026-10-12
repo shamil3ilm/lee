@@ -213,7 +213,9 @@ export function ApplicationsTable({ rows, initialFilter = 'all' }: ApplicationsT
                     }}
                     tabIndex={0}
                     role="link"
-                    aria-label={`Open ${r.job.title} at ${r.job.company?.name ?? 'Unknown'}`}
+                    // Named by its visible cells (company, title, status...),
+                    // not an aria-label: WCAG 2.5.3 wants the visible text in
+                    // the name.
                     className="cursor-pointer border-t transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:bg-accent/60"
                   >
                     <td className="px-3 py-2 font-medium">

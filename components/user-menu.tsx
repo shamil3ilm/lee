@@ -29,6 +29,7 @@ function initials(email: string, name?: string | null): string {
 
 export function UserMenu({ email, name, image }: UserMenuProps) {
   const [signingOut, startTransition] = useTransition()
+  const shown = initials(email, name)
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -36,7 +37,9 @@ export function UserMenu({ email, name, image }: UserMenuProps) {
           variant="ghost"
           size="icon"
           className="rounded-full transition-transform hover:scale-105"
-          aria-label="User menu"
+          // WCAG 2.5.3 (label in name): with no photo the visible initials
+          // must be part of the accessible name.
+          aria-label={image ? 'User menu' : `User menu, ${shown}`}
         >
           {image ? (
             <Image
@@ -49,7 +52,7 @@ export function UserMenu({ email, name, image }: UserMenuProps) {
             />
           ) : (
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-xs font-medium text-secondary-foreground">
-              {initials(email, name)}
+              {shown}
             </span>
           )}
         </Button>

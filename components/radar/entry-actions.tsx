@@ -38,7 +38,8 @@ export function EntryActions({ entryId, name, read, saved, terms }: EntryActions
         variant="outline"
         disabled={pending}
         onClick={() => run(() => setEntryFlagAction(entryId, 'read', !read))}
-        aria-label={read ? `Mark ${name} as new` : `Mark ${name} as read`}
+        // WCAG 2.5.3 (label in name): each name starts with the visible text.
+        aria-label={read ? `Mark new: ${name}` : `Mark read: ${name}`}
       >
         {read ? <Undo2 /> : <Check />}
         {read ? 'Mark new' : 'Mark read'}
@@ -50,7 +51,7 @@ export function EntryActions({ entryId, name, read, saved, terms }: EntryActions
         disabled={pending}
         onClick={() => run(() => setEntryFlagAction(entryId, 'saved', !saved))}
         aria-pressed={saved}
-        aria-label={saved ? `Unsave ${name}` : `Save ${name}`}
+        aria-label={saved ? `Saved: ${name}` : `Save ${name}`}
       >
         {saved ? <BookmarkCheck /> : <Bookmark />}
         {saved ? 'Saved' : 'Save'}
@@ -63,7 +64,7 @@ export function EntryActions({ entryId, name, read, saved, terms }: EntryActions
           variant="ghost"
           disabled={pending}
           onClick={() => run(() => muteWatchTermAction(t.id, true))}
-          aria-label={`Mute the term ${t.label}`}
+          aria-label={`Mute “${t.label}” watch term`}
         >
           <BellOff />
           Mute “{t.label}”

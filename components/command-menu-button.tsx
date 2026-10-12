@@ -65,7 +65,10 @@ export function CommandMenuButton() {
         onPointerEnter={preloadDialog}
         onFocus={preloadDialog}
         className="hidden h-8 gap-2 text-xs text-muted-foreground sm:inline-flex"
-        aria-label="Open command menu"
+        // WCAG 2.5.3 (label in name): the name starts with the visible text
+        // "Search ⌘K" so voice-control users can say what they see.
+        aria-label="Search ⌘K, open command menu"
+        aria-keyshortcuts="Meta+K Control+K"
       >
         <Search className="size-3.5" />
         <span>Search</span>

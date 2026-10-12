@@ -58,8 +58,8 @@ test('watch a term, see matches, open an entry and build a grounded brief', asyn
   await expect(brief.getByRole('link', { name: 'Review cards' })).toBeVisible()
 
   // Marking the entry read clears it from the "new" count.
-  await page.getByRole('button', { name: /Mark .* as read/ }).click()
-  await expect(page.getByRole('button', { name: /Mark .* as new/ })).toBeVisible()
+  await page.getByRole('button', { name: /^Mark read: / }).click()
+  await expect(page.getByRole('button', { name: /^Mark new: / })).toBeVisible()
 })
 
 test('sources page shows per-source status and the official feeds', async ({ page }) => {

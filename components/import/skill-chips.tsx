@@ -56,9 +56,13 @@ export function SkillChips({ items, selection, disabled, onChange }: SkillChipsP
                 {s.status === 'duplicate' ? <span className="sr-only"> (already in lee)</span> : null}
               </button>
               {picked && s.hasReadiness ? (
+                // A switch, not a pressed button: its visible text is the
+                // state ("Mine" / "Learning"), which axe's label-in-name rule
+                // (WCAG 2.5.3) accepts as value text for a switch.
                 <button
                   type="button"
-                  aria-pressed={mine}
+                  role="switch"
+                  aria-checked={mine}
                   aria-label={`Mine — I can explain it: ${s.label}`}
                   disabled={disabled}
                   onClick={() => onChange(setReadiness(selection, s.key, mine ? 'learning' : 'mine'))}
