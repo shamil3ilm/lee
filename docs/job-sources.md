@@ -947,3 +947,156 @@ too busy"); they succeeded about 30 minutes later.
 | Kuwait (Kuwait City box) | 327 employers, 33 with a website, 43 likely or possible data/IT employers; most likely first: Boubyan Bank, Gulf Bank, NBK, Kuwait Finance House, ABK | 224 active entities in Kuwait; 97 of the first 100 kept |
 | UAE (Dubai box) | 1,194 employers (the 1,500-element cap was reached), 281 with a website, 158 likely or possible; Commercial Bank of Dubai, Dubai Islamic Bank, Emirates Islamic, Emirates NBD | 5,730 entities match "Dubai"; 99 of the first 100 kept (mostly free-zone FZCO / FZ-LLC firms) |
 | Kochi | 1,168 employers (cap reached), 88 with a website, 198 likely or possible; Axis Bank, Bank of Baroda, Bank of India, Canara Bank, Federal Bank | 2,266 entities match "Ernakulam"; 98 of the first 100 kept |
+
+
+## Employer boards: BambooHR, the weekly auto-detect and job-news roundups (2026-10-12)
+
+The owner asked why no American International University (AIU, Kuwait)
+vacancies showed up. AIU (aiu.edu.kw, the Alghanim group, campus in Saad Al
+Abdullah, Jahra) lists all 41 openings on BambooHR, including an Application
+Developer, a Web Developer & Designer, an Institutional Research Officer and
+an AI Technician.
+
+### Root causes
+
+1. **No BambooHR reader.** `ats-detect` recognised `*.bamboohr.com` links but
+   marked them link-only, so even a detected board was never read.
+2. **lee read only boards someone set up.** Company discovery knew hundreds of
+   employers (seed, OpenStreetMap, GLEIF, park lists, employers seen in jobs),
+   but the careers check ran once per company, at enrichment, and only
+   recognised boards linked from the homepage or the first careers page. AIU's
+   board is embedded (`<script src="https://aiu.bamboohr.com/js/jobs2.php">`)
+   one link below "About › Careers". AIU was in no seed and on no watch list.
+3. **"Jahrah" was not a known spelling**, and Saad Al Abdullah was not a known
+   area. The postings still resolved to Kuwait through "Kuwait", but not to
+   the Jahra governorate.
+4. **The gate let academic leadership through.** Deans and the mandoub
+   (government-relations runner) passed as unknown titles. "AI Technician" was
+   filtered as a trade.
+
+### BambooHR (`bamboohr`)
+
+`GET https://{slug}.bamboohr.com/careers/list` with `Accept: application/json`
+returns `{ result: [{ id, jobOpeningName, departmentLabel,
+employmentStatusLabel, location: { city, state }, isRemote, locationType }] }`.
+The list has no description and no date. `GET /careers/{id}/detail` adds
+`description` (HTML), `datePosted`, `minimumExperience` and the full
+location. robots.txt on every `*.bamboohr.com` host contains only
+`Disallow: /jobs/embed.php` and `Disallow: /jobs/embed2.php`.
+
+- The list is read every run. Each new opening gets one detail read: at most
+  60 per run, one at a time, 300 ms apart. Ids the source already stored are
+  never re-read (`AdapterContext.seenItemIds`). Openings beyond the cap wait
+  for the next run, so every stored row has its description.
+- Normalised fields: `location` ("Jahrah, Kuwait"), `remoteType` (locationType
+  0 on-site, 1 remote, 2 hybrid), `employmentType`, `department`,
+  `employmentStatus` (verbatim), `postedAt` and the tag `experience:<level>`.
+- **Local hire.** "Admin Staff (Local)" (any status with "local") sets
+  `normalized.localHire = true` and the tag `hire:local`. The discovery card
+  shows a "Local hire" chip. This is never a filter: it means the employer
+  probably expects existing residency in Kuwait.
+  *For the Match scorer (not changed here):* read `localHire` as a soft
+  work-authorisation signal, like the "be in the country" info chip. When the
+  profile needs visa sponsorship, take a small deduction from the visa or
+  region component and explain it as "Local hire: likely needs Kuwait
+  residency". Make no deduction when the user already has residency there.
+
+### Weekly employer-board auto-detect (`company-boards:user`)
+
+`lib/company-discovery/boards.ts` is queued once per ISO week by the weekly
+company-discovery run. Each run handles at most 20 companies: in play, with a
+website, in the user's target or starred regions, not already read through a
+source, and not checked in the last 7 days. Starred-region companies come
+first, then never-checked ones, then best fit. For each company:
+
+- **Site.** robots.txt first (unreadable means stop), then the homepage,
+  linked careers pages and the common paths (`/careers`, `/jobs`,
+  `/about/careers`, `/join-us`, `/work-with-us`). It follows one more careers
+  link when a careers page has no board. At most 5 pages, through the
+  SSRF-guarded client, with the company limiter's per-host spacing.
+- **Where boards are recognised.** In links, `<iframe src>`, `<script src>`
+  (BambooHR and Greenhouse embeds) and board URLs in inline scripts.
+- **Readable boards** (switched on by "Turn on"): BambooHR, Greenhouse,
+  Lever, Ashby, Workable, Recruitee, Pinpoint, Workday, Teamtailor and Oracle
+  Recruiting Cloud (`{host}/sites/{siteNumber}`).
+- **Recognised, link only:** SmartRecruiters (its API's robots.txt disallows
+  all robots but LinkedIn's; browse only), Personio, Zoho Recruit, Taleo,
+  SuccessFactors, iCIMS, JazzHR, Breezy, Freshteam and Manatal.
+- **Board found.** The board is attached to the company (`ats_kind`,
+  `ats_slug` and `evidence.boardFound`). Reading is switched on automatically
+  only for companies in a **starred** region or that the user already
+  watches, at most 5 per run. Everywhere else it is a suggestion: "Turn on" in
+  the company's details (Companies tab) and "N employer boards found in
+  Kuwait — turn on" in Settings › Sources › Coverage.
+- Migration `0048_employer_board_detect` adds `company_discoveries.board_checked_at`.
+
+### Job-news roundups (`wp_job_news`)
+
+Malayalam Gulf news sites publish a daily roundup post per employer.
+**Pravasi News Daily** (WordPress) has an open REST API and RSS. robots.txt
+contains only `Disallow: /wp-admin/`, and the site's only legal page is a
+privacy policy (no terms forbidding feeds). "Jobs" is category 20 (513 posts,
+about 27 between Oct 9 and Oct 12). The country categories are UAE 3,
+Kuwait 47, Qatar 8 and India 344. **Pravasi Varthakal** has a "JOB" category
+78, but its last job post is from June 2026, so it ships switched off.
+
+`GET {site}/wp-json/wp/v2/posts?categories={id}&after={iso}&per_page=50&_fields=id,date,link,title,content,categories`
+reads the posts of the last 3 days (up to 2 pages, 100 posts). If the REST API
+is closed, it falls back to `/?cat={id}&feed=rss2`. Each post is reduced to
+extracted fields (`lib/discovery/job-news/extract.ts`): the employer, the
+country (categories, else the title), the roles, the walk-in date, time and
+venue, apply emails, fee or WhatsApp-only sentences, every outbound link
+classified with ats-detect, and a snippet of at most 300 characters. The site's
+own links, its WhatsApp channel and its fee disclaimers are dropped. The
+article is never stored. The results are used three ways:
+
+- **(a) Direct ATS jobs.** A link to one opening on a readable ATS (BambooHR
+  `/careers/522`, Greenhouse `/jobs/123`, Lever, Ashby, Workable, Workday) is
+  read through that ATS and ingested as a normal discovery, tagged `via:job_news`
+  and `news:<site>`. It is skipped when the user already reads that board, or
+  the same link is already stored.
+- **(b) Leads.** The employer, its board or website and its country go to
+  Discovery › Companies (source tag `news:<site>`, "Seen on Pravasi News
+  Daily"). A readable board in a starred region is switched on, as the weekly
+  detect does.
+- **(c) Title-only roles.** For posts without a usable job link (walk-ins,
+  email to apply), each listed role whose title reads as software, data or IT
+  work becomes a low-confidence "Title only" discovery. It links to the post
+  and carries the walk-in details. Scam Shield checks it like any other
+  discovery: a registration fee or a WhatsApp-only contact rates it "likely
+  scam". Other roles in the post (drivers, cashiers) only produce the lead.
+
+"Add a WordPress job news site" in Settings › Sources takes a URL. It detects
+the WordPress API and the biggest job category, then saves the source switched
+off, with what it found in the name. Switching it on confirms the source.
+
+### Live check (2026-10-12)
+
+`pnpm tsx scripts/employer-boards-live-check.ts [aiu | news 7 | detect]`
+reads public endpoints only, without a database, and uses the owner's
+preferences: backend, full-stack and data analyst roles; junior to mid; the
+GCC and Kerala.
+
+- **AIU board:** 41 openings (all Jahra). Five land in New: Application
+  Developer (with the Local hire chip), Web Developer & Designer / SEO
+  Specialist, Institutional Research Officer, AI Technician, and Manager –
+  Research & Grants Office (ranked lower: "Uncertain fit", Manager title).
+  36 are filtered: 17 professors and the deans (Teaching / Director), the
+  mandoub and administrative assistants (Admin), HR, marketing, the internal
+  auditor, the VP and directors, and Cyber Security Analyst (security is not
+  a target family). None are dismissed: Dismissed is the user's choice.
+- **Pravasi News Daily, last 7 days:** 87 posts read, 74 employers named. 7
+  direct ATS jobs, all AIU (BambooHR, Kuwait); 1 passes the gate (Web
+  Developer & Designer), and the other 6 are marketing, director, admin, HR
+  and mandoub roles. 6 title-only tech roles, 3 of which pass the gate. 30
+  employer leads (the per-run cap), 4 of them with a board: AIU (BambooHR),
+  plus American Hospital Dubai, First Abu Dhabi Bank and Emarat (Oracle
+  Recruiting).
+- **Board auto-detect over the Kuwait and UAE seed (67 companies):** 16
+  boards found. 9 are readable: Oracle Recruiting ×5 (NMC, Aster, KFH, Gulf
+  Bank, Americana), Ashby ×2 (Ziina, Lean), Lever ×1 (Kitopi) and BambooHR ×1
+  (AIU, one link below "About › Careers"). 7 are link-only: SuccessFactors ×4
+  (ABK, Alghanim, Dar Al Shifa, EQUATE), Taleo ×1 (Boubyan), and Canadian
+  University Dubai's Oracle host without a site number ×1. Also: 26 careers
+  pages without a board, 21 with nothing found, and 5 blocked by robots.txt
+  (noon, KIB and Taiba unreadable; AUM and ASK disallow all robots).
