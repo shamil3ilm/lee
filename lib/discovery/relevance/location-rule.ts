@@ -15,19 +15,26 @@ import { homeOffset, openWorldwide, relocationOffered, relocationTarget, usHours
  * ("India" for a Kerala-only user) is never dropped.
  *
  * Remote ("can I do it from home?"): pass when eligibility names an
- * accepted place, a broad area covering it (EMEA, APAC, worldwide) or a
- * working-hours window within ±4 h of home; fail with the reason when it is
- * restricted elsewhere ("US-only", "US time zones only", "must reside in
- * the EU"); an unstated region is a soft "unclear eligibility" chip.
+ * accepted place or a broad area covering it (EMEA, APAC, worldwide); fail
+ * with the reason when it is restricted elsewhere ("US-only", "US time
+ * zones only", "must reside in the EU"). Places named as the remote
+ * location are WHERE you must live or be allowed to work, so a list of
+ * countries none of which you accept fails ("Indonesia-only") even when
+ * their hours sit near yours. Only with no place named does an explicit
+ * working-hours window ("UTC+4 to +8") within ±4 h of home pass it; an
+ * unstated region is a soft "unclear eligibility" chip.
  */
 
 export interface LocationOutcome {
   reason: string | null
   penalty: string | null
   boost: string | null
+  /** Passed on a working-hours window alone (no place named). */
+  window?: true
 }
 
 const PASS: LocationOutcome = { reason: null, penalty: null, boost: null }
+const WINDOW_PASS: LocationOutcome = { ...PASS, window: true }
 const fail = (reason: string): LocationOutcome => ({ reason, penalty: null, boost: null })
 
 export const UNCLEAR_REMOTE = 'remote: unclear eligibility'
@@ -119,10 +126,11 @@ function remoteOutcome(prefs: SearchPrefs, targets: Accepted, i: LocationInput):
   const hits = named && passes(acceptance(eligible, accepted))
   if (prefs.remoteScope === 'none') return hits ? PASS : fail('location: remote (you chose on-site)')
   if (hits) return PASS
-  const window = windowFits(i.text, home(prefs))
-  if (window === true) return PASS
   if (usHoursOnly(i.description)) return fail('location: US time zones only')
+  // Named countries are an eligibility list, not a time zone: hours never rescue them.
   if (named) return fail(`location: ${firstForeign(eligible, accepted)}-only`)
+  const window = windowFits(i.text, home(prefs))
+  if (window === true) return WINDOW_PASS
   if (window === false) return fail('location: working hours far from your time zone')
   if (prefs.remoteScope === 'regions') return fail('location: remote, region not stated')
   if (i.located.worldwide || i.restricted.worldwide || openWorldwide(i.description)) return PASS

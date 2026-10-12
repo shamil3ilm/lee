@@ -1,5 +1,5 @@
 {
-  "name": "Dubai Senior Backend asking 5+ years, profile has 2: seniority drops hard; the Laravel offset is capped",
+  "name": "Dubai Senior Backend asking 5+ years, profile has 2: seniority drops hard; no strong-area offset when the ask is twice your years",
   "inputs": {
     "profile": {
       "yearsExperience": 2
@@ -15,7 +15,7 @@
     "match": {
       "max": 50,
       "missing": ["Kafka (required)", "Kubernetes (required)"],
-      "labels": ["Seniority: Senior (you target Junior–Mid-level) · strong Laravel match"]
+      "labels": ["Seniority: Senior (you target Junior–Mid-level)"]
     }
   }
 }

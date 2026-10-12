@@ -115,7 +115,20 @@ export function visaComponent(job: MatchJob, p: Pick<MatchProfile, 'extra'>): Ma
   return c(0, `Visa: not mentioned (you need sponsorship in ${country})`)
 }
 
-export function domainComponent(job: MatchJob, p: Pick<MatchProfile, 'domains'>): MatchComponent {
+/** Most the domain adds when the role itself is not one you target (the company's industry, not your work). */
+export const OFF_TARGET_DOMAIN_POINTS = 2
+
+/**
+ * Payments / e-invoicing with ready evidence, +5 each. The bonus is for
+ * doing that work, so a role outside your targets (a frontend dashboard at
+ * a payments company, for a backend profile) adds at most +2:
+ * "Domain: payments company, but the role is Frontend".
+ */
+export function domainComponent(
+  job: MatchJob,
+  p: Pick<MatchProfile, 'domains'>,
+  opts: { offTargetRole?: string | null } = {},
+): MatchComponent {
   const max = SIGNAL_LIMITS.domain.max
   const text = normalizeForMatch(
     [job.title, (job.techStack ?? []).join(' '), (job.descriptionMd ?? '').slice(0, WINDOW)].join(' \n '),
@@ -128,5 +141,9 @@ export function domainComponent(job: MatchJob, p: Pick<MatchProfile, 'domains'>)
   if (mine.length === 0) {
     return { key: 'domain', label: `Domain: ${asks.map((a) => a.label).join(', ')} (no ready evidence)`, points: 0, max }
   }
-  return { key: 'domain', label: `Domain: ${mine.map((a) => a.label).join(' + ')}`, points: Math.min(max, mine.length * 5), max }
+  const names = mine.map((a) => a.label).join(' + ')
+  if (opts.offTargetRole) {
+    return { key: 'domain', label: `Domain: ${names} company, but the role is ${opts.offTargetRole}`, points: OFF_TARGET_DOMAIN_POINTS, max }
+  }
+  return { key: 'domain', label: `Domain: ${names}`, points: Math.min(max, mine.length * 5), max }
 }

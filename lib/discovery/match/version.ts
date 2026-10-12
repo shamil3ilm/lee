@@ -9,4 +9,10 @@
 // per must-have line and scored in proportion; title-only capped at 55.
 // m4 — starred regions (lib/regions/preferred): +5 top priority / +3
 // preferred in the region component.
-export const MATCH_SCORE_VERSION = 'm4'
+// m5 — eligibility (2026-10-12, the "Fit 72" SE-Asia frontend report): a
+// remote role whose location names only countries you do not accept fails
+// even when its hours are near yours, "Southeast Asia" no longer covers
+// India/GCC; not eligible caps the Fit at 30; off-target roles get at most
+// +2 domain and no strong-area seniority offset; no offset when the years
+// asked are twice yours; a generic title with a JD of another family is 3.
+export const MATCH_SCORE_VERSION = 'm5'

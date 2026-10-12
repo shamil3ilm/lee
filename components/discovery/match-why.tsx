@@ -1,4 +1,4 @@
-import { BAND_LABELS, cappedFit, FIT_FORMULA, scoreBand, withNudge } from '@/lib/discovery/match/blend'
+import { BAND_LABELS, ceilingText, FIT_FORMULA, scoreBand, shownFit } from '@/lib/discovery/match/blend'
 import { growthFitNudge } from '@/lib/company-discovery/growth/combine'
 import type { MatchComponent, MatchDetail, RequirementCheck } from '@/lib/discovery/match/types'
 import { cn } from '@/lib/utils'
@@ -127,7 +127,9 @@ function Breakdown({ match, ai, benefits, filtered }: Pick<MatchWhyProps, 'match
 }
 
 export function MatchWhy({ match, ai, detail, filtered, benefits, extra, growth }: MatchWhyProps) {
-  const fit = withNudge(cappedFit(match, ai, detail), growthNudgeOf(growth))
+  const fit = shownFit(match, ai, detail, growthNudgeOf(growth))
+  // The title-only cap is explained by the low-confidence note; any other cap gets its own line.
+  const lowConfidenceCap = detail?.confidence === 'title_only' && (!detail.ceiling || detail.ceiling.reason.startsWith('Low confidence'))
   return (
     <div data-testid="match-why" className="space-y-2.5">
       <div>
@@ -135,13 +137,15 @@ export function MatchWhy({ match, ai, detail, filtered, benefits, extra, growth 
         <p className="text-xs text-muted-foreground">
           {fit !== null ? `Fit ${fit}/100 · ${BAND_LABELS[scoreBand(fit)]}` : 'Not scored yet (computed shortly)'}
         </p>
+        {detail?.ceiling && !lowConfidenceCap ? (
+          <p className="mt-1 rounded-md bg-danger-soft px-2 py-1 text-xs text-danger" data-testid="match-ceiling">
+            <span className="font-medium">Capped at {detail.ceiling.score}:</span> {ceilingText(detail.ceiling.reason)}
+          </p>
+        ) : null}
         {detail?.confidence === 'title_only' ? (
           <p className="mt-1 rounded-md bg-warning-soft px-2 py-1 text-xs text-warning" data-testid="match-low-confidence">
-            Low confidence: title only. Paste or fetch the JD to score it properly. Capped at {detail.ceiling?.score ?? 55} until then.
-          </p>
-        ) : detail?.ceiling ? (
-          <p className="mt-1 rounded-md bg-danger-soft px-2 py-1 text-xs text-danger" data-testid="match-ceiling">
-            {detail.ceiling.reason}: capped at {detail.ceiling.score} (weak fit) while you don’t speak it well.
+            Low confidence: title only. Paste or fetch the JD to score it properly.
+            {lowConfidenceCap ? ` Capped at ${detail.ceiling?.score ?? 55} until then.` : ''}
           </p>
         ) : null}
       </div>

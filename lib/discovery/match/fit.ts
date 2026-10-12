@@ -44,16 +44,21 @@ export const STRENGTH_OFFSET_MAX = 3
 /**
  * A stretch above your level in one of your strong, ready areas costs a
  * little less (at most +3): "Seniority: Senior (you target Junior–Mid-level)
- * · strong payments match". Years asked come from the parsed JD (overall
- * or per must-have line: "2+ years as a data analyst", "1–3 years in X").
+ * · strong payments match". Never when the posting asks at least twice
+ * your years (a real gap, not a stretch) or the role is not one you target
+ * (a payments company hiring a frontend lead is no payments stretch).
+ * Years asked come from the parsed JD (overall or per must-have line:
+ * "2+ years as a data analyst", "1–3 years in X").
  */
 export function seniorityComponent(
   job: MatchJob,
   p: Pick<MatchProfile, 'seniority' | 'years' | 'skills' | 'domains'>,
   jd: Pick<ParsedJd, 'years'> = parseJd(job),
+  opts: { offTarget?: boolean } = {},
 ): MatchComponent {
   const base = seniorityBase(job, p, jd.years)
   if (base.points >= base.max || !/\(you target|asks \d+\+ yrs, you have/.test(base.label)) return base
+  if (opts.offTarget || farAbove(jd.years, p.years)) return base
   const strength = strengthIn(
     `${job.title}
 ${(job.techStack ?? []).join(' ')}
@@ -63,6 +68,11 @@ ${job.descriptionMd ?? ''}`,
   if (!strength) return base
   const offset = Math.min(STRENGTH_OFFSET_MAX, Math.ceil((base.max - base.points) / 2))
   return { ...base, points: base.points + offset, label: `${base.label} · strong ${strength} match` }
+}
+
+/** Asked at least twice the years you have. */
+function farAbove(asked: number | null, have: number | null): boolean {
+  return asked !== null && have !== null && asked >= 2 * Math.max(1, have)
 }
 
 type Read = MatchComponent

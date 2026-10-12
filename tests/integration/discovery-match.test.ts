@@ -127,6 +127,36 @@ describe('Match Score at ingest', () => {
   })
 })
 
+describe('not-eligible postings', () => {
+  beforeEach(() => vi.restoreAllMocks())
+
+  it('caps the Fit at 30 in the card and the SQL filter and sort, whatever the AI score', async () => {
+    const userId = await setup()
+    await profileQ.upsert(userId, { discoveryPrefs: { basedIn: 'IN' } })
+    const seaOnly = job('sea-frontend', 'Senior Frontend Developer', {
+      location: 'Indonesia, Philippines, Thailand or Vietnam',
+      remoteType: 'remote',
+      descriptionMd:
+        '## Requirements\n- 5+ years of React and TypeScript\n- Payments dashboards\n- You must be based in Indonesia, the Philippines, Thailand or Vietnam',
+    })
+    stubAdapter([job('laravel-dubai', 'Laravel Developer'), seaOnly])
+    await runDiscoveryCycleForUser({ userId, ai: new FixtureAIProvider({ scoreJob: () => scoreResult }) })
+    // As if the user restored it and the AI scored it very high.
+    await db.update(discTable).set({ matchScore: 98 }).where(eq(discTable.sourceJobId, 'sea-frontend'))
+    const rows = await discQ.list(userId, { statuses: ['new', 'filtered'] })
+    const sea = rows.find((r) => r.title === 'Senior Frontend Developer')!
+    const detail = toMatchDetail(sea.fitDetail)
+    expect(detail?.ceiling).toEqual({ score: 30, reason: 'Not eligible: remote only for Indonesia, Philippines, Thailand or Vietnam' })
+    expect(cappedFit(sea.fitScore, sea.matchScore, detail)).toBeLessThanOrEqual(30)
+    const titles = async (minScore: number) =>
+      (await discQ.list(userId, { statuses: ['new', 'filtered'], minScore })).map((r) => r.title)
+    expect(await titles(31)).not.toContain('Senior Frontend Developer')
+    expect(await titles(Math.min(30, cappedFit(sea.fitScore, sea.matchScore, detail)!))).toContain('Senior Frontend Developer')
+    const sorted = await discQ.list(userId, { statuses: ['new', 'filtered'], sort: 'match' })
+    expect(sorted.map((r) => r.title)).toEqual(['Laravel Developer', 'Senior Frontend Developer'])
+  })
+})
+
 describe('title-only postings and a pasted JD', () => {
   beforeEach(() => vi.restoreAllMocks())
 

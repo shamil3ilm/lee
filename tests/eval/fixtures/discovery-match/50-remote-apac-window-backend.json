@@ -1,0 +1,33 @@
+{
+  "name": "Remote backend with an APAC hours window and no residence restriction: workable from India, stays high",
+  "inputs": {
+    "profile": {
+      "yearsExperience": 2,
+      "skills": [
+        "PHP",
+        "Laravel",
+        "MySQL",
+        "REST APIs",
+        "Payment gateways"
+      ],
+      "discoveryPrefs": {
+        "basedIn": "IN"
+      }
+    },
+    "job": {
+      "title": "Backend Developer (PHP/Laravel)",
+      "location": "Remote",
+      "remoteType": "remote",
+      "descriptionMd": "## Responsibilities\n- Build REST APIs in Laravel for payments and payouts\n- Integrate payment gateways and webhooks\n- Maintain MySQL schemas\n\n## Requirements\n- 2+ years of PHP and Laravel\n- MySQL and REST APIs\n\nWe work APAC time zones (UTC+4 to +8)."
+    }
+  },
+  "expect": {
+    "pass": true,
+    "match": {
+      "min": 65,
+      "labels": [
+        "Remote, hours fit your time zone"
+      ]
+    }
+  }
+}

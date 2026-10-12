@@ -1,0 +1,33 @@
+{
+  "name": "HN-style Senior Frontend, remote only for four SE Asian countries, at a payments company: not eligible from India, weak band whatever the AI says",
+  "inputs": {
+    "profile": {
+      "yearsExperience": 2,
+      "discoveryPrefs": {
+        "basedIn": "IN"
+      }
+    },
+    "job": {
+      "title": "Senior Frontend Developer",
+      "location": "Indonesia, Philippines, Thailand or Vietnam",
+      "remoteType": "remote",
+      "descriptionMd": "OpenRail | Senior Frontend Developer | Indonesia, Philippines, Thailand or Vietnam | Full-Time | REMOTE\n\nOpenRail builds open banking APIs and payment infrastructure for banks and lenders across Southeast Asia: real-time disbursements, bank-transfer payments and reconciliation.\n\nWhat you'll do:\n- Own our customer dashboard in React and TypeScript\n- Build reusable UI components and a design system\n\nRequirements:\n- 5+ years of frontend development\n- Strong React, TypeScript, HTML and CSS\n- You must be based in Indonesia, the Philippines, Thailand or Vietnam"
+    },
+    "aiScore": 95
+  },
+  "expect": {
+    "pass": false,
+    "score": 30,
+    "promptIncludes": [
+      "\"based_in\": \"India\""
+    ],
+    "match": {
+      "max": 30,
+      "labels": [
+        "Remote: Indonesia-only",
+        "Role: Frontend (not a target)",
+        "Seniority: Senior (you target Junior–Mid-level)"
+      ]
+    }
+  }
+}

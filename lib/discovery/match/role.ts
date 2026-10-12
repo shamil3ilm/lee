@@ -8,6 +8,7 @@ import type { MatchComponent, MatchJob, MatchProfile } from './types'
  *   title and JD agree on a target family            10
  *   the JD reads as a target family (title odd/new)   8  "from the JD"
  *   general software title, core targets              7
+ *     (unless the JD reads only as another family:    3)
  *   no target roles set (a tech role)                 7
  *   title says a target family, the JD reads another  3  "the JD reads …"
  *   another tech family                               3
@@ -16,6 +17,18 @@ import type { MatchComponent, MatchJob, MatchProfile } from './types'
 
 export const ROLE_MAX = 10
 const CORE_FAMILIES = ['backend', 'fullstack', 'frontend']
+
+/** At or below this the role is not one you target (another family, or not tech). */
+export const OFF_TARGET_ROLE_POINTS = 3
+
+/** The family an off-target role chip names: "Frontend", or a generic phrase. */
+export function roleOffTargetLabel(label: string): string {
+  const jd = /the JD reads (.+)$/.exec(label)
+  if (jd) return jd[1]!
+  const other = /^Role: (.+?) \((?:from the JD, )?not a target\)$/.exec(label)
+  if (other) return other[1]!
+  return label === 'Role: not a tech role' ? 'not a tech role' : 'not one you target'
+}
 
 /** Families the JD reads as (stack + description), when there is a usable JD. */
 export function jdFamilies(job: MatchJob, jd: ParsedJd): string[] {
@@ -58,6 +71,8 @@ export function roleComponent(
   if (!tech) return c(0, 'Role: not a tech role')
   if (p.roleFamilies.length === 0) return c(7, 'Role: tech role (no target roles set)')
   if (byTitle.families.length === 0 && p.roleFamilies.some((t) => CORE_FAMILIES.includes(t))) {
+    // A generic title ("Software Engineer") whose JD reads only as another family is that family.
+    if (fromJd.length > 0 && !jdTarget) return c(3, `Role: ${roleFamilyLabel(fromJd[0]!)} (from the JD, not a target)`)
     return c(7, 'Role: general software engineering')
   }
   const other = byTitle.families[0] ?? fromJd[0]

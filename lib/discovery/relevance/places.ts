@@ -134,7 +134,8 @@ const FOREIGN_PLACES: readonly ForeignPlace[] = [
       'korea', 'south korea', 'seoul', 'china', 'shanghai', 'beijing', 'shenzhen', 'hong kong',
       'taiwan', 'taipei', 'pakistan', 'karachi', 'lahore', 'islamabad', 'bangladesh', 'dhaka',
       'sri lanka', 'colombo', 'nepal', 'kathmandu', 'kyrgyzstan', 'bishkek', 'kazakhstan',
-      'almaty', 'uzbekistan', 'tashkent',
+      'almaty', 'uzbekistan', 'tashkent', 'southeast asia', 'south east asia', 'south-east asia',
+      'east asia', 'central asia', 'sea region',
     ],
   },
   {
@@ -161,6 +162,12 @@ const FOREIGN_CODES: ReadonlyArray<{ re: RegExp; foreign: string }> = [
   { re: /(?<![A-Za-z])(?:EST|PST|CST|MST|EDT|PDT|ET|PT)(?![A-Za-z])/, foreign: 'US' },
 ]
 
+/**
+ * Parts of Asia that hold neither India nor the Gulf: read as another Asian
+ * country, never as the broad "Asia" (which covers both).
+ */
+const OTHER_ASIA = /\b(?:south[\s-]?east|east|central)\s+asian?\b/g
+
 /** UTC/GMT offsets from +3 to +5:30 sit on Gulf and Indian working hours. */
 export const GULF_INDIA_TZ = /(?:utc|gmt)\s*\+\s*0?(?:3|4|5)(?::?(?:00|30))?(?![\d])|\b(?:gst|gulf standard time|ist|india standard time)\b/
 
@@ -180,6 +187,37 @@ function titleCase(s: string): string {
 export function foreignLabel(code: string, matched?: string): string {
   if (matched && GROUP_CODES.has(code)) return titleCase(matched)
   return FOREIGN_LABEL.get(code) ?? code
+}
+
+const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/**
+ * The foreign places a text names, in the order written and without
+ * repeats: "Indonesia, Philippines, Thailand or Vietnam" → four names
+ * ("US" for any US state or city). For reasons that list a remote role's
+ * eligible countries.
+ */
+export function foreignPlaceNames(raw: string | null | undefined, max = 5): string[] {
+  const text = normalizeForMatch(raw ?? '')
+  if (!text) return []
+  const hits: Array<{ at: number; end: number; name: string }> = []
+  for (const f of FOREIGN_PLACES) {
+    for (const alias of f.aliases) {
+      const at = text.search(new RegExp(`(?<![\\p{L}\\p{N}])${escapeRe(alias)}(?![\\p{L}\\p{N}])`, 'u'))
+      if (at >= 0) hits.push({ at, end: at + alias.length, name: foreignLabel(f.code, alias) })
+    }
+  }
+  // "south east asia" also contains "east asia": keep the longest span.
+  const kept = hits.filter((h) => !hits.some((o) => o !== h && o.at <= h.at && o.end >= h.end && o.end - o.at > h.end - h.at))
+  const names: string[] = []
+  for (const h of kept.sort((a, b) => a.at - b.at)) if (!names.includes(h.name)) names.push(h.name)
+  return names.slice(0, max)
+}
+
+/** "A", "A or B", "A, B or C". */
+export function placeList(names: readonly string[]): string {
+  if (names.length <= 1) return names[0] ?? ''
+  return `${names.slice(0, -1).join(', ')} or ${names[names.length - 1]}`
 }
 
 export interface PlaceScan {
@@ -223,8 +261,9 @@ export function scanPlaces(raw: string | null | undefined, opts: { trustCodes?: 
   if (!raw) return scan
   const text = normalizeForMatch(raw)
   addResolved(raw, opts.trustCodes === true, scan)
+  const broadText = text.replace(OTHER_ASIA, ' ')
   for (const b of BROAD_MATCHERS) {
-    if (!b.match(text)) continue
+    if (!b.match(broadText)) continue
     if (b.id === 'WORLD') scan.worldwide = true
     for (const c of b.covers) scan.covered.add(c)
   }

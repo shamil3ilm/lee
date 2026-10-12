@@ -23,19 +23,27 @@ shifts (`lib/discovery/match/jd.ts`).
 |---|---|---|
 | Skills | 0…35 | Weighted overlap of the JD's skills with ready skills: must-have 2, mentioned 1, nice-to-have ½. Full credit for the skill or a concept it satisfies (Laravel for "a PHP framework", Looker for "a BI tool"); half for a close sibling (MySQL for PostgreSQL, Tableau for Power BI). Alternatives in one line ("Power BI or Tableau", "AWS/Azure/GCP", "PHP/Laravel or Go") are one requirement, met by any member and missing as one ("Power BI or Tableau (required)"). No recognisable stack: 18 for a tech role, 0 otherwise. |
 | Responsibilities | 0…10 | Share of JD duties that name a ready skill or share two content words with a ready highlight. |
-| Role | 0…10 | The JD's role family vs your targets; the title only nudges. Title and JD agree 10; the JD reads as a target under an unusual title 8 ("new title"); title says a target but the JD reads another family 3. |
-| Seniority | 0…15 | Title level and years asked vs your levels and years (years read overall or per must-have line: "2+ years as a data analyst", "1–3 years in Laravel"); with both, the stricter read wins. Within a year of the ask is full; below that, 15 × (yours ÷ asked)^1.5 (2 years for "5+" earns 4). A stretch in a strong ready area (payments, ZATCA, Laravel, integrations, data) recovers up to 3. |
-| Region | 0…10 | Matched through the region hierarchy (`lib/regions`: GCC includes every Gulf city, Kerala includes Kochi, Trivandrum and Kozhikode). On-site in your regions 10, broader than your selection ("India" for a Kerala-only search) 7, relocation offered elsewhere 6; remote where you live 10, hours within ±4 h 9, worldwide 8, unclear 5, restricted elsewhere 0. |
+| Role | 0…10 | The JD's role family vs your targets; the title only nudges. Title and JD agree 10; the JD reads as a target under an unusual title 8 ("new title"); a generic title ("Software Engineer") 7, but 3 when its JD reads only as another family; title says a target but the JD reads another family 3; another family 3. |
+| Seniority | 0…15 | Title level and years asked vs your levels and years (years read overall or per must-have line: "2+ years as a data analyst", "1–3 years in Laravel"); with both, the stricter read wins. Within a year of the ask is full; below that, 15 × (yours ÷ asked)^1.5 (2 years for "5+" earns 4). A stretch in a strong ready area (payments, ZATCA, Laravel, integrations, data) recovers up to 3, but not when the posting asks at least twice your years or the role is not one you target. |
+| Region | 0…10 | Matched through the region hierarchy (`lib/regions`: GCC includes every Gulf city, Kerala includes Kochi, Trivandrum and Kozhikode). On-site in your regions 10, broader than your selection ("India" for a Kerala-only search) 7, relocation offered elsewhere 6; remote where you live 10, hours within ±4 h 9 (only an explicit window such as "UTC+4 to +8" with no place named), worldwide 8, unclear 5, restricted elsewhere 0. Places named as a remote role's location are where you must live: "Indonesia, Philippines, Thailand or Vietnam \| Remote" is restricted elsewhere even though those hours sit near India's. "Southeast/East/Central Asia" never covers India or the Gulf ("Asia" does). |
 | Work mode | 0…5 | Remote / hybrid / on-site vs your preference. |
 | Pay | −5…+5 | Stated pay vs your floor for that region (GCC pegs). |
 | Language | −25…+3 | A language required at a level you do not have is −10 and a missing must-have; a MANDATORY one ("Arabic fluency required", "must be fluent in Arabic", "native Arabic speaker") is −25 and caps the Fit at 34 (weak). |
 | Visa | −15…+5 | GCC: visa offered +5 (also benefit-list wording: "employment visa, medical and air ticket provided", "visa + accommodation", "company visa", "iqama provided", "transferable iqama not required"; never when the sentence says it is not provided), nationals preferred −5, nationals only −15. |
-| Domain | 0…+10 | Payments and e-invoicing/ZATCA with ready evidence, +5 each. |
+| Domain | 0…+10 | Payments and e-invoicing/ZATCA with ready evidence, +5 each, for a role you target. A role outside your targets at a payments company gets +2 ("Domain: payments company, but the role is Frontend"). |
 
 The sum is clamped to 0–100, then to the detail's **ceiling** when it has
-one (mandatory language unmet: 34; title only: 55). The card, the Fit
+one: **not eligible 30** (remote only for countries you do not accept, US
+hours only, hours far from yours, or on-site elsewhere with no relocation
+you accept: "Not eligible: remote only for Indonesia, Philippines, Thailand
+or Vietnam"), mandatory language unmet 34, title only 55. The card, the Fit
 filter and sort (`blendedSql`) and the shortlist rank all apply it to the
-Match / AI blend too (`cappedFit`). Rules version `m3`.
+Match / AI blend too (`cappedFit`), so a high AI score never lifts a
+posting out of the weak band; the employer-growth nudge stays under it
+(`shownFit`). "Why this score" leads with "Capped at 30: remote only for
+… (not open to you)". The cap applies to filtered rows the user restores
+with "Show anyway" too. Rules version `m5`: bumping it re-scores stored
+rows on the next Discovery view and in the daily shortlist job.
 
 "Why this score" lists each component, every
 must-have and nice-to-have as met / partial / missing with the profile line
@@ -53,7 +61,10 @@ and drives "Tailor to this JD".
 
 ### Ranking with the AI score
 
-The AI score stays optional. One ranked number (`lib/discovery/match/blend.ts`,
+The AI score stays optional (prompt `score-job` 1.2.0: it is told where
+you live and to score a role you cannot take 30 or lower; the industry
+bonus needs the role's own work to be in your domain; an AI "mismatch" is
+capped at 30 for remote roles too). One ranked number (`lib/discovery/match/blend.ts`,
 SQL twin `blendedSql`):
 
 - Match only → Match
@@ -90,9 +101,11 @@ Only clear mismatches are filtered, always with the reason. Defaults
   phrase must be about candidates ("Saudi nationals only", "for Kuwaiti
   nationals", "Emirati candidates only"); employer and proper names
   ("Saudi National Bank", "UAE national carriers") never count.
-- **Remote from home**: worldwide, APAC/EMEA, where you live, or working
-  hours within ±4 h pass; US-only, residency, right-to-work and US-hours-only
-  are filtered; a bare "Remote" gets an "unclear eligibility" chip.
+- **Remote from home**: worldwide, APAC/EMEA, where you live, or (with no
+  place named) an explicit working-hours window within ±4 h pass; a remote
+  location naming only other countries, US-only, residency, right-to-work
+  and US-hours-only are filtered; a bare "Remote" gets an "unclear
+  eligibility" chip.
 - **Relocation if sponsored** (on by default, optional country list): an
   on-site posting outside your regions passes when it offers relocation or
   visa sponsorship ("Relocation offered · Berlin").

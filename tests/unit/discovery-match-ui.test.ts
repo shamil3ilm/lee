@@ -66,6 +66,30 @@ describe('MatchBadge', () => {
     expect(screen.getByTestId('match-why').textContent).toContain('Filtered postings are not AI-scored')
   })
 
+  it('shows a not-eligible cap prominently and holds the badge under it, AI and growth nudge included', () => {
+    const capped: MatchDetail = {
+      ...DETAIL,
+      score: 17,
+      ceiling: { score: 30, reason: 'Not eligible: remote only for Indonesia, Philippines, Thailand or Vietnam' },
+    }
+    render(createElement(MatchBadge, { match: 17, ai: 98, detail: capped, interactive: false }))
+    expect(screen.getByTestId('match-badge').textContent).toBe('Fit 30')
+    cleanup()
+    render(createElement(MatchWhy, { match: 17, ai: 98, detail: capped }))
+    expect(screen.getByTestId('match-ceiling').textContent).toBe(
+      'Capped at 30: remote only for Indonesia, Philippines, Thailand or Vietnam (not open to you)',
+    )
+  })
+
+  it('words a mandatory-language cap as before, and a title-only note without a cap line', () => {
+    render(createElement(MatchWhy, { match: 40, ai: null, detail: { ...DETAIL, ceiling: { score: 34, reason: 'Language: Arabic required' } } }))
+    expect(screen.getByTestId('match-ceiling').textContent).toBe('Capped at 34: Arabic required, which you don’t speak well yet')
+    cleanup()
+    render(createElement(MatchWhy, { match: 40, ai: null, detail: { ...DETAIL, confidence: 'title_only', ceiling: { score: 55, reason: 'Low confidence: title only' } } }))
+    expect(screen.queryByTestId('match-ceiling')).toBeNull()
+    expect(screen.getByTestId('match-low-confidence').textContent).toMatch(/Capped at 55 until then/)
+  })
+
   it('renders extra reasons inside the popover', () => {
     render(createElement(MatchWhy, { match: 72, ai: null, detail: null, extra: createElement('p', null, 'Posted yesterday') }))
     expect(screen.getByTestId('match-why').textContent).toContain('Posted yesterday')

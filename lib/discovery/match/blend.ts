@@ -24,7 +24,8 @@ export function blendScores(match: number | null, ai: number | null): number | n
 
 /**
  * The Fit a card shows: the blend, held under the Match detail's ceiling
- * (a mandatory language you lack → weak; title only → low confidence).
+ * (not eligible → 30; a mandatory language you lack → 34; title only → 55),
+ * so a generous AI score never lifts it out of that band.
  * The SQL twin is `blendedSql` (it reads the ceiling from fit_detail).
  */
 export function cappedFit(match: number | null, ai: number | null, detail: { ceiling?: { score: number } } | null | undefined): number | null {
@@ -33,9 +34,33 @@ export function cappedFit(match: number | null, ai: number | null, detail: { cei
   return Math.min(fit, detail.ceiling.score)
 }
 
+/**
+ * The ceiling as "Why this score" words it after "Capped at N:":
+ * "remote only for Indonesia or Vietnam (not open to you)",
+ * "Arabic required, which you don't speak well yet".
+ */
+export function ceilingText(reason: string): string {
+  const ineligible = /^Not eligible: (.+)$/.exec(reason)
+  if (ineligible) return `${ineligible[1]} (not open to you)`
+  const language = /^Language: (.+)$/.exec(reason)
+  if (language) return `${language[1]}, which you don’t speak well yet`
+  return reason
+}
+
 /** Fit with the optional employer-growth nudge (−5…+5, Settings › Search), kept within 0–100. */
 export function withNudge(fit: number | null, nudge: number): number | null {
   return fit === null ? null : Math.max(0, Math.min(100, fit + nudge))
+}
+
+/** The number on the card: the capped blend plus the nudge, still under the ceiling. */
+export function shownFit(
+  match: number | null,
+  ai: number | null,
+  detail: { ceiling?: { score: number } } | null | undefined,
+  nudge = 0,
+): number | null {
+  const fit = withNudge(cappedFit(match, ai, detail), nudge)
+  return fit === null || !detail?.ceiling ? fit : Math.min(fit, detail.ceiling.score)
 }
 
 export type ScoreBand = 'strong' | 'good' | 'fair' | 'weak'
@@ -63,7 +88,7 @@ export function scoreBand(score: number): ScoreBand {
  * rests on the job title alone (no AI score to refine it), or "Not scored".
  */
 export function fitText(match: number | null, ai: number | null, opts: { titleOnly?: boolean; ceiling?: number; nudge?: number } = {}): string {
-  const fit = withNudge(cappedFit(match, ai, opts.ceiling === undefined ? null : { ceiling: { score: opts.ceiling } }), opts.nudge ?? 0)
+  const fit = shownFit(match, ai, opts.ceiling === undefined ? null : { ceiling: { score: opts.ceiling } }, opts.nudge ?? 0)
   if (fit === null) return 'Not scored'
   return opts.titleOnly && ai === null ? `Fit ~${fit}` : `Fit ${fit}`
 }
