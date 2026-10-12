@@ -80,7 +80,8 @@ describe('compareOpportunity: pay', () => {
     expect(c.job.scores.pay).toBeNull()
     expect(c.pay.postedText).toBeNull()
     expect(c.questions.map((q) => q.topic)).toContain('pay')
-    expect(c.chip).toContain('pay ?')
+    // Unknown parts are left out of the chip (null when nothing is known).
+    expect(c.chip ?? '').not.toContain('pay')
   })
 
   it('a missing FX rate is reported, not guessed', () => {
