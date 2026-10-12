@@ -74,7 +74,9 @@ the prompt so analytics can attribute rating deltas to the change.
      decision engine, and encrypted keys); a value saved there wins over the env
      default. Sign-in, database, cron secret and site URL stay env-only.
 5. Deploy. First build runs `pnpm db:migrate` automatically.
-6. Sign in at `/signin`. Only `ALLOWED_EMAIL` can proceed.
+6. Sign in at `/signin`. `ALLOWED_EMAIL` is the owner; anyone else needs an invite
+   (Settings › Invites, at most 100). Sign-in asks only for basic Google scopes; the
+   owner connects Gmail and Calendar once from Settings › Invites.
 
 ## Google Drive file storage
 
