@@ -81,6 +81,14 @@ describe('MatchBadge', () => {
     )
   })
 
+  it('words the role-relevance caps', () => {
+    render(createElement(MatchWhy, { match: 20, ai: 70, detail: { ...DETAIL, ceiling: { score: 25, reason: 'Not a tech role: Category Executive' } } }))
+    expect(screen.getByTestId('match-ceiling').textContent).toBe('Capped at 25: Category Executive is not a tech role')
+    cleanup()
+    render(createElement(MatchWhy, { match: 40, ai: 70, detail: { ...DETAIL, ceiling: { score: 45, reason: 'Role outside your targets: Frontend' } } }))
+    expect(screen.getByTestId('match-ceiling').textContent).toBe('Capped at 45: Frontend is outside your target roles')
+  })
+
   it('words a mandatory-language cap as before, and a title-only note without a cap line', () => {
     render(createElement(MatchWhy, { match: 40, ai: null, detail: { ...DETAIL, ceiling: { score: 34, reason: 'Language: Arabic required' } } }))
     expect(screen.getByTestId('match-ceiling').textContent).toBe('Capped at 34: Arabic required, which you don’t speak well yet')

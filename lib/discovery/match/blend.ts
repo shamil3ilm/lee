@@ -42,6 +42,10 @@ export function cappedFit(match: number | null, ai: number | null, detail: { cei
 export function ceilingText(reason: string): string {
   const ineligible = /^Not eligible: (.+)$/.exec(reason)
   if (ineligible) return `${ineligible[1]} (not open to you)`
+  const notTech = /^Not a tech role: (.+)$/.exec(reason)
+  if (notTech) return `${notTech[1]} is not a tech role`
+  const offTarget = /^Role outside your targets: (.+)$/.exec(reason)
+  if (offTarget) return `${offTarget[1]} is outside your target roles`
   const language = /^Language: (.+)$/.exec(reason)
   if (language) return `${language[1]}, which you don’t speak well yet`
   return reason
