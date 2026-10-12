@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { reasonChip } from '@/lib/ui/reason-chip'
+import { reasonChip, screeningRepeats } from '@/lib/ui/reason-chip'
 import { discoveryCountParts } from '@/lib/ui/discovery-counts'
 import { isNeedsLook } from '@/lib/ui/needs-look'
 import { labsDefault, labsOn } from '@/lib/settings/labs-rule'
@@ -25,6 +25,16 @@ describe('reason chip (board cards and list rows)', () => {
     expect(reasonChip({ status: 'new', ceiling: { score: 45, reason: 'Role outside your targets: Data Analyst' } })?.label).toBe(
       'Role outside your targets',
     )
+  })
+
+  it('drops a screening chip that only repeats the reason; keeps one that adds a stage', () => {
+    expect(screeningRepeats('Not a tech role', 'Recruiter: not a tech role')).toBe(true)
+    expect(screeningRepeats('Needs a look', 'Recruiter: needs a look')).toBe(true)
+    expect(screeningRepeats('Not eligible', 'Knockout: not eligible')).toBe(true)
+    expect(screeningRepeats('Role outside your targets', 'Recruiter: outside your targets')).toBe(true)
+    expect(screeningRepeats('Uncertain fit — review', 'ATS: 3 must-haves missing')).toBe(false)
+    expect(screeningRepeats(null, 'At risk: notice period')).toBe(false)
+    expect(screeningRepeats('Relocation offered', null)).toBe(false)
   })
 
   it('says nothing without a reason; a filtered row without a reason falls through', () => {
