@@ -119,9 +119,9 @@ function Breakdown({ match, ai, benefits, filtered }: Pick<MatchWhyProps, 'match
       <ul className="divide-y divide-border" aria-label="Fit breakdown">
         <BreakdownRow label="Match" value={match} hint={match !== null ? 'your ready profile evidence' : 'computed shortly'} />
         <BreakdownRow label="AI" value={ai} hint={aiHint} />
-        {/* Benefits are not extracted by any source yet: hide a meaningless "Benefits 0". */}
+        {/* Only when a benefits score exists: unscored rows store 0, never shown as "Benefits 0". */}
         {benefits !== undefined && benefits !== null && benefits > 0 ? (
-          <BreakdownRow label="Benefits" value={benefits} hint="not in Fit; used by the Combined sort" />
+          <BreakdownRow label="Benefits" value={benefits} hint="from the job description; not in Fit" />
         ) : null}
       </ul>
       <p className="mt-1 text-[11px] leading-snug text-muted-foreground" data-testid="fit-formula">

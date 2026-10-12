@@ -21,7 +21,8 @@ export function CoverageLine({ rows, from = '/discoveries' }: { rows: CoverageRo
   const back = encodeURIComponent(from)
   if (rows.length === 0) {
     return (
-      <p data-testid="coverage-line" data-empty="" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+      // Phones skip the prompt (first run on Home asks for the stars) so the first job stays high.
+      <p data-testid="coverage-line" data-empty="" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground max-sm:hidden">
         <Star className="size-3.5 shrink-0" aria-hidden="true" />
         <Link href={`/settings/search?from=${back}#preferred-regions`} className={linkCls}>
           Star your top regions to see coverage
