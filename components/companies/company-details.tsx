@@ -139,7 +139,7 @@ export function CompanyDetails({ c }: { c: CompanyCardData }) {
       </dl>
       {fitParts.length > 0 ? (
         <div className="space-y-1">
-          <p className="text-xs font-medium text-muted-foreground">Why this rank (fit {c.fitScore ?? '—'})</p>
+          <p className="text-xs font-medium text-muted-foreground">Why this rank (company match {c.fitScore ?? '—'})</p>
           <ul className="flex flex-wrap gap-1" aria-label="Why this rank">
             {fitParts.map((ch) => (
               <li key={`${ch.kind}-${ch.label}`}>

@@ -48,7 +48,7 @@ export interface CompanyToolbarProps {
 }
 
 const SORT_LABELS: Readonly<Record<string, string>> = {
-  fit: 'Best fit',
+  fit: 'Best match',
   growth: 'Fastest growth',
   roles: 'Most open roles',
   newest: 'Newest',

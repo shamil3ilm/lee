@@ -74,7 +74,7 @@ function FitSummary({ fit }: { fit: CvFitView }) {
 }
 
 /**
- * Application detail "CV fit" card: the latest Total Match for this job, the
+ * Application detail "CV match" card: the latest Total Match for this job, the
  * headline scores, and a one-click re-score of the best CV for it.
  */
 export function CvFitCard({ applicationId, fit, scoringDocument }: CvFitCardProps) {
@@ -101,7 +101,7 @@ export function CvFitCard({ applicationId, fit, scoringDocument }: CvFitCardProp
       <CardHeader className="flex-row items-center justify-between space-y-0">
         <CardTitle className="flex items-center gap-2">
           <Gauge className="size-4 text-muted-foreground" aria-hidden />
-          CV fit
+          CV match
         </CardTitle>
         <Link href={fullHref} className="text-xs text-muted-foreground hover:text-foreground hover:underline">
           Full breakdown

@@ -58,14 +58,14 @@ test('find → save discovery → apply → interview stage → offer', async ({
   await expect(page.getByText('Technical deep dive').first()).toBeVisible()
 })
 
-test('CV score from an application CV fit card', async ({ page }) => {
+test('CV score from an application CV match card', async ({ page }) => {
   await page.goto('/applications')
   await page.getByRole('link', { name: /Senior Backend Developer, Jira Platform/ }).first().click()
   await expect(
     page.getByRole('heading', { level: 1, name: 'Senior Backend Developer, Jira Platform' }),
   ).toBeVisible()
 
-  const fitCard = page.locator('[data-slot="card"]').filter({ hasText: 'CV fit' }).last()
+  const fitCard = page.locator('[data-slot="card"]').filter({ hasText: 'CV match' }).last()
   await expect(fitCard.getByText('Not scored yet.')).toBeVisible()
   await fitCard.getByRole('button', { name: 'Score now' }).click()
   await expectToast(page, /Scored \d+\/100/)

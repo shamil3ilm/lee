@@ -51,7 +51,7 @@ export function VariantStep({ view, state }: { view: PrepareView; state: StepSta
               {view.variants.map((v) => (
                 <option key={v.id} value={v.id}>
                   {v.name}
-                  {v.id === bestId ? ' (best fit)' : v.id === suggested ? ' (suggested)' : ''}
+                  {v.id === bestId ? ' (best CV match)' : v.id === suggested ? ' (suggested)' : ''}
                 </option>
               ))}
               <option value={MASTER}>Master profile</option>

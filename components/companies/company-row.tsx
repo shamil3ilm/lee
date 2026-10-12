@@ -111,10 +111,10 @@ export function CompanyRow({ c, selected, onSelect }: CompanyRowProps) {
               <Badge
                 variant={FIT_VARIANT[scoreBand(c.fitScore)]}
                 className="shrink-0 tabular-nums"
-                title="Company fit: how well it matches your regions, roles, skills and preferences (0–100)"
+                title="Company match: how well it matches your regions, roles, skills and preferences (0–100). Fit is the job score only."
                 data-testid="company-fit"
               >
-                Fit {c.fitScore}
+                Match {c.fitScore}
               </Badge>
             ) : null}
           </div>

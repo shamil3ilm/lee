@@ -22,7 +22,8 @@ interface BestCvLineProps {
 }
 
 /**
- * "Best CV: Data Analyst · GCC (fit 78) · runner-up Payments · GCC (71)"
+ * "Best CV: Data Analyst · GCC (CV match 78) · runner-up Payments · GCC (71)".
+ * "CV match", never "fit": Fit is the job's score only.
  * with one-click "Use this CV". Deterministic and stored per job
  * (lib/cv-fit); nothing changes until the user clicks.
  */
@@ -61,7 +62,7 @@ export function BestCvLine({ bestCv, target, currentVariantId = null, showReason
       <p className="flex items-start gap-1.5 text-xs leading-snug">
         <FileCheck2 className="mt-px size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
         <span className="min-w-0">
-          <span className="font-medium">Best CV:</span> {best.name} <span className="tabular-nums">(fit {best.fit})</span>
+          <span className="font-medium">Best CV:</span> {best.name} <span className="tabular-nums">(CV match {best.fit})</span>
           {runnerUp ? (
             <span className="text-muted-foreground">
               {' '}
