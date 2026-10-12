@@ -12,9 +12,8 @@ import type { CompanyGrowthView } from '@/components/discovery/match-why'
 import type { MatchDetail } from '@/lib/discovery/match/types'
 import type { BestCv } from '@/lib/cv-fit/types'
 import { BestCvLine } from '@/components/cv-fit/best-cv-line'
-import { ScreeningChip } from '@/components/screening/screening-chip'
 import type { ScreeningPath } from '@/lib/screening/types'
-import { ReasonChip } from '@/components/discovery/reason-chip'
+import { ChipLine } from '@/components/discovery/chip-line'
 
 export type DiscoveryBoardColumn = 'new' | 'shortlisted' | 'saved' | 'dismissed'
 
@@ -104,17 +103,16 @@ function renderCard(d: DiscoveryBoardItem): React.ReactNode {
       </div>
       {mode || d.status !== 'saved' || d.screen ? (
         <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1 empty:hidden">
-          {d.status === 'saved' ? null : (
-            <ReasonChip
-              status={d.status}
-              notes={d.notes ?? null}
-              ceiling={d.fitDetail?.ceiling ?? null}
-              needsLook={d.needsLook ?? false}
-              className="text-[10px]"
-            />
-          )}
-          {/* Screening path chip mount (components/screening): first stage that isn't a pass. */}
-          {d.screen ? <ScreeningChip path={d.screen} className="text-[10px]" /> : null}
+          {/* Reason first, then the screening stage (components/screening), never the same thing twice. */}
+          <ChipLine
+            compact
+            reason={
+              d.status === 'saved'
+                ? null
+                : { status: d.status, notes: d.notes ?? null, ceiling: d.fitDetail?.ceiling ?? null, needsLook: d.needsLook ?? false }
+            }
+            screen={d.screen ?? null}
+          />
           {mode ? (
             <Badge variant="outline" className="text-[10px]">
               {mode}

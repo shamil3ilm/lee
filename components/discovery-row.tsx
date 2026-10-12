@@ -40,10 +40,10 @@ import type { BestCv } from '@/lib/cv-fit/types'
 import { JdPaste } from '@/components/discovery/jd-paste'
 import { Checkbox } from '@/components/ui/checkbox'
 import { PostedBy, PostReplyDialog, PostSourceChip, PostTrackButton } from '@/components/discovery/post-actions'
-import { ReasonChip } from '@/components/discovery/reason-chip'
 import { reasonChip } from '@/lib/ui/reason-chip'
 import type { PostRowView } from '@/lib/linkedin-posts/types'
-import { ScreeningChip } from '@/components/screening/screening-chip'
+import { ChipLine } from '@/components/discovery/chip-line'
+import { chipText } from '@/lib/screening/stage'
 import type { ScreeningPath } from '@/lib/screening/types'
 
 /**
@@ -158,10 +158,12 @@ function RelevanceChips({ item }: { item: DiscoveryRowJob }) {
   }
   const chip = reasonChip(input)
   const infos = (item.notes?.infos ?? []).filter((i) => i !== chip?.label)
-  if (!chip && infos.length === 0) return null
+  const screen = item.screen ? chipText(item.screen) : null
+  if (!chip && !screen && infos.length === 0) return null
   return (
-    <div className="mt-1.5 flex flex-wrap items-center gap-1.5" data-testid="relevance-chips">
-      <ReasonChip {...input} />
+    <div className="mt-1.5 flex flex-wrap items-center gap-1.5 empty:hidden" data-testid="relevance-chips">
+      {/* One chip line: the reason first, then the screening stage, then neutral facts. */}
+      <ChipLine reason={input} screen={item.screen ?? null} />
       {infos.map((i) => (
         <Badge key={`i-${i}`} variant="outline">
           {i}
@@ -298,8 +300,6 @@ export function JobDiscoveryRow({ item, selected, onToggleSelect }: JobDiscovery
                   </>
                 }
               />
-              {/* Screening path chip mount (components/screening): first stage that isn't a pass. */}
-              <ScreeningChip path={item.screen} />
               {/* Scam Shield speaks up only when it has something to say. */}
               {item.risk && item.risk.level !== 'safe' ? <RiskBadge risk={item.risk} /> : null}
               {item.post ? <PostSourceChip /> : <Badge variant="neutral">{item.sourceName}</Badge>}

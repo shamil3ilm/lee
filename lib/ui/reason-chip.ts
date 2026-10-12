@@ -43,6 +43,18 @@ function shortCeiling(reason: string): string {
   return SHORT_CEILINGS.find((p) => reason.startsWith(`${p}:`)) ?? reason
 }
 
+/**
+ * True when the screening chip ("Recruiter: not a tech role", "Knockout:
+ * not eligible", "Recruiter: needs a look") only repeats the reason chip
+ * already on the line; then the line shows the reason alone.
+ */
+export function screeningRepeats(reasonLabel: string | null | undefined, screeningText: string | null | undefined): boolean {
+  if (!reasonLabel || !screeningText) return false
+  const what = screeningText.slice(screeningText.indexOf(':') + 1).trim().toLowerCase()
+  const reason = reasonLabel.toLowerCase()
+  return what.length > 0 && (reason.includes(what) || what.includes(reason))
+}
+
 /** The single most useful reason, or null when there is nothing to say. */
 export function reasonChip(input: ReasonInput): ReasonChip | null {
   if (input.status === 'filtered' && input.filterReason) {
