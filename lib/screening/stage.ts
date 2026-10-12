@@ -79,10 +79,12 @@ export function chipText(path: Pick<ScreeningPath, 'stages'>): { text: string; s
 }
 
 const LIST_CHECKS_PER_STAGE = 4
+/** ATS concerns are short keywords; the chip's hover lists them all. */
+const LIST_ATS_CHECKS = 12
 
 /**
  * What a list row ships to the client: each stage with its concerns only
- * (pass checks dropped, at most four per stage). The full path is computed
+ * (pass checks dropped, at most four per stage; twelve ATS keywords). The full path is computed
  * again when a detail page opens.
  */
 export function compactPath(path: ScreeningPath): ScreeningPath {
@@ -90,7 +92,7 @@ export function compactPath(path: ScreeningPath): ScreeningPath {
     ...path,
     stages: path.stages.map((s) => ({
       ...s,
-      checks: byConcern(s.checks.filter((c) => c.status !== 'pass')).slice(0, LIST_CHECKS_PER_STAGE),
+      checks: byConcern(s.checks.filter((c) => c.status !== 'pass')).slice(0, s.stage === 'ats' ? LIST_ATS_CHECKS : LIST_CHECKS_PER_STAGE),
     })),
     next: path.next.slice(0, 4),
   }

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { test, expect, type Page } from '@playwright/test'
+import { waitForHydration } from './ready'
 
 // Screening path (lib/screening): "Why this score" shows the five hiring
 // stages for a seeded discovery, the discovery page shows the full path
@@ -52,5 +53,21 @@ test('a card chip names the first stage that is not a pass', async ({ page }) =>
   const chips = page.getByTestId('screening-chip')
   // The seeded inbox has stretches (Kubernetes, Spark, Haskell): at least one posting is not a clean pass.
   await expect(chips.first()).toBeVisible()
-  await expect(chips.first()).toHaveText(/^Screening path: (Knockout|At risk|Ask|ATS|Recruiter|Manager): .+/)
+  await expect(chips.first()).toHaveText(/^(Knockout|At risk|Ask|ATS|Recruiter|Manager): .+/)
+  await expect(chips.first()).toHaveAccessibleName(/^Screening path: .+\. Show details$/)
+})
+
+test('hovering a chip shows the stage reasons; a click opens them without leaving the list', async ({ page }) => {
+  await page.goto('/discoveries')
+  await waitForHydration(page)
+  const chip = page.getByTestId('screening-chip').first()
+  await expect(chip).toBeVisible()
+  await chip.hover()
+  const tip = page.getByTestId('screening-chip-details').first()
+  await expect(tip).toBeVisible()
+  await expect(tip).toContainText(/(Eligibility|ATS keywords|Recruiter|Hiring manager): /)
+  await page.keyboard.press('Escape')
+  await chip.click()
+  await expect(page).toHaveURL(/\/discoveries(\?|$)/)
+  await expect(page.getByRole('dialog').getByTestId('screening-chip-details')).toBeVisible()
 })
