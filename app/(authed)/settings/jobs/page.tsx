@@ -42,7 +42,7 @@ export default async function BackgroundJobsPage({ searchParams }: BackgroundJob
           <RunJobsNowButton />
         </CardHeader>
         <CardContent className="space-y-4">
-          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5" data-testid="job-counts">
+          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6" data-testid="job-counts">
             {JOB_STATUSES.map((s) => (
               <div key={s} className="rounded-md border p-3">
                 <dt className="text-xs text-muted-foreground">{STATUS_LABEL[s]}</dt>

@@ -74,6 +74,15 @@ export const EVENT_CATALOG: Readonly<Record<string, EventSpec>> = {
     strings: ['jobLabel'],
     message: (c) => `${s(c, 'jobLabel') || 'Job'} failed (attempt ${n(c, 'attempt')}): ${s(c, 'err')}`,
   },
+  queue_job_wait_timeout: {
+    category: 'job',
+    strings: ['jobLabel'],
+    message: (c) => `${s(c, 'jobLabel') || 'Job'} ran without waiting any longer for unfinished earlier steps`,
+  },
+  queue_poll_backlog: {
+    category: 'job',
+    message: (c) => `${plural(n(c, 'pending'), 'source poll')} queued for ${plural(n(c, 'enabled'), 'enabled source')}`,
+  },
   source_first_poll_queued: { category: 'source', persist: true, strings: ['source'], message: () => 'First poll queued' },
   // Profile imports, undo and reset (lib/import, lib/reset). Counts and the
   // import source only — never names, skills or page text.

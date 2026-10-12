@@ -153,7 +153,7 @@ describe('getQueueOverview', () => {
     for (const j of claimed) await fail(j, 'w', new Error('Gmail said 500 for x@y.com'), { now })
 
     const o = await getQueueOverview(u.id)
-    expect(o.counts).toEqual({ queued: 0, running: 0, done: 0, failed: 1, dead: 1 })
+    expect(o.counts).toEqual({ queued: 0, running: 0, done: 0, failed: 1, dead: 1, superseded: 0 })
     expect(o.failures).toHaveLength(2)
     const labels = o.failures.map((f) => f.label).sort()
     expect(labels).toEqual(['Gmail sync', 'Weekly digest'])

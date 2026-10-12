@@ -1370,6 +1370,7 @@ export const aiQuotaSnapshots = pgTable(
 // `jobs` already holds job postings.
 //
 // status: 'queued' | 'running' | 'done' | 'failed' (retry scheduled) | 'dead'
+//         | 'superseded' (replaced by a newer job for the same subject; never ran)
 // payload holds small ids only, never secrets or content.
 // ---------------------------------------------------------------------------
 
@@ -1395,6 +1396,12 @@ export const queueJobs = pgTable(
     // Sanitized and truncated (lib/queue/errors.ts) — never raw upstream text.
     lastError: text('last_error'),
     idempotencyKey: text('idempotency_key'),
+    // What the job is about (lib/queue/coalesce.ts): `user:source` for a
+    // source poll, `user` for a per-user daily step… At most ONE pending
+    // (queued/failed) job per (type, coalesce_key): a poll for a source that
+    // already has one is merged into it, and a newer daily job supersedes a
+    // stale one, so missed days never pile up. Null = no coalescing.
+    coalesceKey: text('coalesce_key'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     finishedAt: timestamp('finished_at', { withTimezone: true }),
@@ -1410,6 +1417,9 @@ export const queueJobs = pgTable(
     statusRunAfterIx: index('queue_jobs_status_run_after_idx').on(t.status, t.runAfter),
     userStatusIx: index('queue_jobs_user_status_idx').on(t.userId, t.status, t.runAfter),
     typeKeyUq: uniqueIndex('queue_jobs_type_key_uq').on(t.type, t.idempotencyKey),
+    pendingCoalesceUq: uniqueIndex('queue_jobs_pending_coalesce_uq')
+      .on(t.type, t.coalesceKey)
+      .where(sql`${t.status} in ('queued', 'failed') and ${t.coalesceKey} is not null`),
   }),
 )
 

@@ -28,7 +28,7 @@ import { computeMatch } from '@/lib/discovery/match/score'
 import { evaluateRelevance } from '@/lib/discovery/relevance/gate'
 import { relevanceContext } from '@/lib/discovery/relevance/service'
 import { drain } from '@/lib/queue/drain'
-import { JOB_TYPES } from '@/lib/queue/job-types'
+import { JOB_TYPES, jobKeys } from '@/lib/queue/job-types'
 import { scheduleDailyJobs } from '@/lib/queue/scheduler'
 import { makeApplication, makeCompany, makeJob, makeOwner, makeUser } from '@/tests/factories'
 
@@ -118,9 +118,14 @@ describe('scheduler', () => {
     const again = await scheduleDailyJobs(new Date('2026-09-26T21:00:00Z'))
     expect(again.enqueued).toBe(0)
     const nextDay = await scheduleDailyJobs(new Date(now.getTime() + DAY))
-    expect(nextDay.enqueued).toBe(11)
+    // Nothing was drained: the two polls merge into yesterday's pending ones
+    // (one pending poll per source) and the other nine replace yesterday's.
+    expect(nextDay.enqueued).toBe(9)
+    const superseded = await db.select().from(queueJobs).where(eq(queueJobs.status, 'superseded'))
+    expect(superseded).toHaveLength(9)
 
     const polls = await db.select().from(queueJobs).where(eq(queueJobs.type, JOB_TYPES.discoverySource))
+    expect(polls).toHaveLength(2)
     expect(new Set(polls.map((p) => (p.payload as { sourceId: string }).sourceId)).size).toBe(2)
     expect(polls.every((p) => p.idempotencyKey?.startsWith(`discovery-source:${u.id}:`))).toBe(true)
   })
@@ -187,7 +192,10 @@ describe('parity with the old sync-all', () => {
     expect(send.mock.calls[0]?.[0].userId).toBe(u.id)
 
     // A retry of the same Monday job (or a second drain) does not re-send.
-    await db.update(queueJobs).set({ status: 'queued' }).where(eq(queueJobs.type, JOB_TYPES.digest))
+    await db
+      .update(queueJobs)
+      .set({ status: 'queued' })
+      .where(and(eq(queueJobs.type, JOB_TYPES.digest), eq(queueJobs.idempotencyKey, jobKeys.digest(u.id, '2026-09-28'))))
     expect((await drain({ budgetMs: 10_000 })).metrics.digests_sent ?? 0).toBe(0)
 
     vi.setSystemTime(new Date('2026-09-29T09:00:00Z')) // Tuesday

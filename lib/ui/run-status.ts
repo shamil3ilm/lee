@@ -10,6 +10,7 @@ export const JOB_STATUS_LABEL: Readonly<Record<JobStatus, string>> = {
   done: 'Done',
   failed: 'Retrying',
   dead: 'Gave up',
+  superseded: 'Replaced',
 }
 
 export const JOB_STATUS_TONE: Readonly<Record<JobStatus, SemanticTone>> = {
@@ -18,6 +19,7 @@ export const JOB_STATUS_TONE: Readonly<Record<JobStatus, SemanticTone>> = {
   done: 'success',
   failed: 'warning',
   dead: 'danger',
+  superseded: 'neutral',
 }
 
 export const EVENT_LEVEL_LABEL: Readonly<Record<EventLevel, string>> = {

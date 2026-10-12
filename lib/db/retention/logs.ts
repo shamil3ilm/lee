@@ -52,7 +52,7 @@ export async function pruneProcessedGmailThreads(now: Date = new Date(), opts: O
 }
 
 /**
- * Delete finished queue jobs: `done` after DONE_JOB_RETENTION_DAYS and
+ * Delete finished queue jobs: `done` and `superseded` after DONE_JOB_RETENTION_DAYS and
  * `dead` after DEAD_JOB_RETENTION_DAYS (by finished_at). Queued, running
  * and failed-awaiting-retry jobs are never touched. A deleted job's
  * idempotency key is from a past UTC day, so it can never be re-enqueued.
@@ -68,7 +68,7 @@ export async function pruneQueueJobs(
     const res = await client.execute(sql`
       delete from queue_jobs where id in (
         select id from queue_jobs
-        where ((status = 'done' and finished_at < ${doneBefore})
+        where ((status in ('done', 'superseded') and finished_at < ${doneBefore})
            or (status = 'dead' and finished_at < ${deadBefore}))${userScope(sql`user_id`, opts.userId)}
         limit ${limit}
       )

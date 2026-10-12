@@ -6,7 +6,7 @@ import { logger } from '@/lib/logger'
 import { withLogContext } from '@/lib/logs/context'
 import { JobTimeoutError, PermanentJobError, sanitizeError } from './errors'
 import { jobLabel } from './job-types'
-import { claim, complete, fail, recoverStale, release } from './queue'
+import { claim, complete, fail, hasDueJobs, recoverStale, release } from './queue'
 import { drainSliceMs } from './capacity'
 import { describeSummary } from './run-summary'
 import type { HandlerRegistry, RegisteredHandler } from './registry'
@@ -19,6 +19,8 @@ export interface DrainOptions {
   types?: readonly string[]
   /** Only this user's jobs. */
   userId?: string
+  /** Only these jobs (e.g. the poll of a source just added: queueFirstPoll). */
+  jobIds?: readonly string[]
   /** Jobs run at once (I/O-bound work: AI calls, Gmail, source polls). */
   concurrency?: number
   workerId?: string
@@ -136,6 +138,9 @@ export async function drain(opts: DrainOptions): Promise<DrainResult> {
       return 'released'
     }
     if (job.userId) tally.users.add(job.userId)
+    if (job.waitedOut) {
+      logger.warn('queue_job_wait_timeout', { jobId: job.id, userId: job.userId, type: job.type, jobLabel: jobLabel(job.type) })
+    }
     const t0 = clock()
     const charge = () => {
       if (job.userId) tally.userMs.set(job.userId, (tally.userMs.get(job.userId) ?? 0) + (clock() - t0))
@@ -201,15 +206,23 @@ export async function drain(opts: DrainOptions): Promise<DrainResult> {
       // Time slicing: users who used their slice of this drain wait, unless
       // nobody else has due work (the drain never idles with work left).
       const spent = [...tally.userMs].filter(([, ms]) => ms >= sliceMs).map(([u]) => u)
-      let [job] = await claim(1, workerId, { userId: opts.userId, types: opts.types, excludeUserIds: spent, now })
-      if (!job && spent.length > 0) [job] = await claim(1, workerId, { userId: opts.userId, types: opts.types, now })
+      // Never claim a job the budget left cannot start (claim-then-release
+      // would stop the lane): a 20 s visit drain skips 20 s source polls and
+      // runs the cheaper jobs behind them.
+      const excludeTypes = tooBigFor(budgetDeadline - now.getTime())
+      const scope = { userId: opts.userId, types: opts.types, jobIds: opts.jobIds, excludeTypes, now }
+      let [job] = await claim(1, workerId, { ...scope, excludeUserIds: spent })
+      if (!job && spent.length > 0) [job] = await claim(1, workerId, scope)
       if (!job) {
         started -= 1
+        // Jobs left that this drain's remaining budget cannot start: say so.
+        const skipped = opts.types ? excludeTypes.filter((t) => opts.types!.includes(t)) : excludeTypes
+        if (skipped.length > 0 && (await hasDueJobs({ ...scope, types: skipped }))) stoppedBy = 'budget'
         return
       }
       tally.claimed += 1
-      // A released job is due again at once; the lane stops rather than
-      // re-claim it in a loop. Cheaper jobs wait for the next drain.
+      // A released job (rare: the budget ran out between claim and start) is
+      // due again at once; the lane stops rather than re-claim it in a loop.
       if ((await runOne(job)) === 'released') {
         started -= 1
         stoppedBy = 'budget'
@@ -217,6 +230,9 @@ export async function drain(opts: DrainOptions): Promise<DrainResult> {
       }
     }
   }
+
+  const tooBigFor = (leftMs: number): string[] =>
+    [...registry.values()].filter((h) => h.minBudgetMs > leftMs).map((h) => h.type)
 
   const lanes = Math.max(1, Math.floor(opts.concurrency ?? 1))
   const sliceMs =

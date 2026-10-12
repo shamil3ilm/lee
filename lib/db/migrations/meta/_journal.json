@@ -358,6 +358,13 @@
       "when": 1791795404590,
       "tag": "0050_labs_switch",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1791805482319,
+      "tag": "0051_coalesce_source_polls",
+      "breakpoints": true
     }
   ]
 }

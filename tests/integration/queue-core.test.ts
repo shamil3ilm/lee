@@ -283,7 +283,7 @@ describe('drain', () => {
     expect(left.length).toBe(3 - r.done)
   })
 
-  it('releases a claimed job untouched when the budget left is below its minimum', async () => {
+  it('never claims a job whose minimum budget no longer fits; the cheaper jobs behind it still run', async () => {
     const reg = createRegistry([
       defineHandler({
         type: 'big',
@@ -293,9 +293,30 @@ describe('drain', () => {
         minBudgetMs: 30_000,
         async run() {},
       }),
+      defineHandler({ type: 'small', scope: 'global', payload: z.object({}), timeoutMs: 1_000, minBudgetMs: 1, async run() {} }),
+    ])
+    // The big job is first in line (a 20 s source poll ahead of a visit drain's cheap jobs).
+    const id = await enqueue('big', {}, { priority: 10 })
+    const small = await enqueue('small', {}, { priority: 50 })
+    const r = await drain({ budgetMs: 20_000, registry: reg })
+    expect(r.released).toBe(0)
+    expect(r.done).toBe(1)
+    expect((await row(small!)).status).toBe('done')
+    const j = await row(id!)
+    expect(j.status).toBe('queued')
+    expect(j.attempts).toBe(0)
+    expect(j.startedAt).toBeNull() // never claimed
+  })
+
+  it('releases a claimed job untouched when the budget ran out between claim and start', async () => {
+    const reg = createRegistry([
+      defineHandler({ type: 'big', scope: 'global', payload: z.object({}), timeoutMs: 60_000, minBudgetMs: 30_000, async run() {} }),
     ])
     const id = await enqueue('big', {})
-    const r = await drain({ budgetMs: 20_000, registry: reg })
+    const t = Date.now()
+    let reads = 0
+    // The claim sees 40 s left; by the time the job would start, 15 s are left.
+    const r = await drain({ budgetMs: 40_000, registry: reg, clock: () => (++reads > 3 ? t + 25_000 : t) })
     expect(r.released).toBe(1)
     expect(r.stoppedBy).toBe('budget')
     const j = await row(id!)

@@ -11,8 +11,12 @@ import type { JobSummary } from './run-summary'
  *
  * A running job whose lock expired (the function died mid-job) goes back to
  * queued — or to dead once its attempts are spent.
+ *
+ * A queued or failed job can also end as `superseded` (never ran): a newer
+ * job for the same subject replaced it (lib/queue/coalesce.ts). Terminal,
+ * not a failure; pruned like `done`.
  */
-export const JOB_STATUSES = ['queued', 'running', 'done', 'failed', 'dead'] as const
+export const JOB_STATUSES = ['queued', 'running', 'done', 'failed', 'dead', 'superseded'] as const
 export type JobStatus = (typeof JOB_STATUSES)[number]
 
 export type QueueJobRow = typeof queueJobs.$inferSelect
@@ -26,6 +30,8 @@ export interface ClaimedJob {
   attempts: number
   maxAttempts: number
   createdAt: Date
+  /** Claimed past WAIT_FOR_MAX_MS while its `wait_for_type` dependency was still unfinished. */
+  waitedOut?: boolean
 }
 
 /** Numbers a handler reports; the drain loop sums them per key. */
