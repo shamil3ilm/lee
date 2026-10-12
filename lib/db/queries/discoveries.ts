@@ -197,6 +197,13 @@ export interface ListOpts {
    * matches a Kochi posting and "gcc" every Gulf one.
    */
   region?: readonly string[]
+  /**
+   * "Needs a look" rows (relevance_notes.needsLook: a non-engineering title
+   * with no tech evidence). 'include' (default) ignores the flag; the New
+   * views pass 'exclude' and the "Needs a look" view 'only'.
+   */
+  needsLook?: 'exclude' | 'only' | 'include'
+  /** 'combined' is kept for old links and sorts like 'match' (benefits are never extracted). */
   sort?: 'combined' | 'match' | 'benefits' | 'posted'
   /** Settings › Search "Factor company growth into Fit": the growth nudge joins the ranking. */
   growthInFit?: boolean
@@ -304,6 +311,26 @@ export function blendedSql(): SQL<number | null> {
 }
 
 /**
+ * THE displayed Fit (TS twin: `shownFit` in lib/discovery/match/blend.ts):
+ * the capped blend plus the optional growth nudge, kept within 0–100 and
+ * still under the Match ceiling. The card, the "Best fit" sort, the
+ * minimum-Fit filter, notifications, the weekly digest and the shortlist
+ * all read this one number.
+ */
+export function displayedFitSql(opts: { growthInFit?: boolean } = {}): SQL<number | null> {
+  const nudge = opts.growthInFit ? growthNudgeSql() : sql`0`
+  const ceiling = sql`coalesce((${discoveries.fitDetail} -> 'ceiling' ->> 'score')::numeric, 100)`
+  const blended = blendedSql()
+  return sql<number | null>`(case when ${blended} is null then null
+    else least(greatest(0, least(100, ${blended} + ${nudge})), ${ceiling}) end)`
+}
+
+/** relevance_notes.needsLook as a boolean (false when absent). */
+export function needsLookSql(): SQL<boolean> {
+  return sql<boolean>`coalesce((${discoveries.relevanceNotes} ->> 'needsLook')::boolean, false)`
+}
+
+/**
  * The employer-growth Fit nudge (−5…+5; lib/company-discovery/growth/combine.ts
  * `growthFitNudge`, same formula): only when the user turned on "Factor
  * company growth into Fit", only at medium or high confidence.
@@ -315,25 +342,19 @@ export function growthNudgeSql(): SQL<number> {
 
 function listOrder(sort: ListOpts['sort'], growthInFit = false): SQL[] {
   const tiebreak = [desc(discoveries.createdAt), desc(discoveries.id)]
-  const nudge = growthInFit ? growthNudgeSql() : sql`0`
   switch (sort) {
-    case 'match':
-      // Best match first: Match blended with AI; soft-rule nudges
-      // (rank_adjust) sink "lower priority" rows; unscored rows last.
-      return [sql`(${blendedSql()} + ${discoveries.rankAdjust} + ${nudge}) desc nulls last`, ...tiebreak]
     case 'benefits':
       return [desc(discoveries.benefitsScore), ...tiebreak]
     case 'posted':
       return tiebreak
+    case 'match':
     case 'combined':
     default:
-      // Combined: 0.6 * blended match + 0.4 * benefits (nulls as 0) + rank_adjust.
-      return [
-        desc(
-          sql`(coalesce(${blendedSql()}, 0) * 0.6 + coalesce(${discoveries.benefitsScore}, 0) * 0.4 + ${discoveries.rankAdjust} + ${nudge})`,
-        ),
-        ...tiebreak,
-      ]
+      // Best fit first (the default): the displayed Fit; soft-rule nudges
+      // (rank_adjust) sink "lower priority" rows; unscored rows last.
+      // "Combined" (Fit + benefits) sorts the same: no adapter extracts
+      // benefits, so it was Fit × 0.6 + 0 and over-weighted rank_adjust.
+      return [sql`(${displayedFitSql({ growthInFit })} + ${discoveries.rankAdjust}) desc nulls last`, ...tiebreak]
   }
 }
 
@@ -347,10 +368,12 @@ function listWhere(userId: string, opts: ListOpts): SQL {
   }
   if (opts.scoredOnly) conds.push(isNotNull(discoveries.matchScore))
   if (typeof opts.minScore === 'number' && opts.minScore > 0) {
-    // The same number as the Fit badge (Match / AI blend); unscored rows stay.
-    const fit = blendedSql()
+    // The same number as the Fit badge (displayed Fit); unscored rows stay.
+    const fit = displayedFitSql({ growthInFit: opts.growthInFit })
     conds.push(sql`(${fit} >= ${opts.minScore} or ${fit} is null)`)
   }
+  if (opts.needsLook === 'exclude') conds.push(sql`not ${needsLookSql()}`)
+  if (opts.needsLook === 'only') conds.push(needsLookSql())
   if (opts.sourceIds && opts.sourceIds.length > 0) {
     conds.push(inArray(discoveries.sourceId, opts.sourceIds))
   }

@@ -2,7 +2,7 @@ import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import { discoveries, jobRiskAssessments } from '@/lib/db/schema'
 import { discoveryNotQuarantinedSql, discoveryQuarantinedSql } from '@/lib/db/queries/riskAssessments'
-import { blendedSql } from '@/lib/db/queries/discoveries'
+import { displayedFitSql, needsLookSql } from '@/lib/db/queries/discoveries'
 import * as repQ from '@/lib/db/queries/companyReputation'
 import { classifyRole } from '@/lib/discovery/relevance/roles'
 import { companyStructureCriterion, environmentCriterion } from '@/lib/reputation/criteria'
@@ -111,10 +111,12 @@ export async function loadCandidates(
           inArray(discoveries.status, ['new', 'shortlisted']),
           gte(discoveries.createdAt, since),
           discoveryNotQuarantinedSql(),
+          // "Needs a look" rows never reach the shortlist (unless the user saved them).
+          sql`(${discoveries.status} = 'shortlisted' or not ${needsLookSql()})`,
         ),
       )
       .orderBy(
-        desc(sql`(coalesce(${blendedSql()}, 50) + ${discoveries.rankAdjust})`),
+        desc(sql`(coalesce(${displayedFitSql()}, 50) + ${discoveries.rankAdjust})`),
         desc(discoveries.createdAt),
       )
       .limit(MAX_CANDIDATES),

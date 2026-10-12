@@ -1,5 +1,6 @@
 import { and, asc, eq, gte, isNotNull, lt, lte, notInArray, desc, sql } from 'drizzle-orm'
 import { discoveryNotQuarantinedSql } from '@/lib/db/queries/riskAssessments'
+import { displayedFitSql, needsLookSql } from '@/lib/db/queries/discoveries'
 import { db, type DbClient } from '@/lib/db/client'
 import {
   applications,
@@ -162,7 +163,7 @@ export function alreadySentThisTzWeek(
  * Gather the data the weekly digest needs for `userId`:
  *   - applications grouped by status (ordered)
  *   - interviews scheduled within the next 7 days
- *   - top 5 discoveries by matchScore (status=new)
+ *   - top 5 discoveries by the displayed Fit (status=new, not "Needs a look")
  *   - applications whose next_action_at is older than 14 days and are not
  *     terminal (rejected/withdrawn)
  */
@@ -223,17 +224,24 @@ export async function gatherPipelineSnapshot(
       companyName: r.companyName,
     }))
 
+  // Ranked by the displayed Fit (Match / AI blend under the ceiling), not
+  // the AI score alone; "Needs a look" rows are not in New.
   const topDiscoveryRows = await client
     .select({
       id: discoveries.id,
       normalized: discoveries.normalized,
-      matchScore: discoveries.matchScore,
+      matchScore: sql<number | null>`${displayedFitSql()}`,
     })
     .from(discoveries)
     .where(
-      and(eq(discoveries.userId, userId), eq(discoveries.status, 'new'), discoveryNotQuarantinedSql()),
+      and(
+        eq(discoveries.userId, userId),
+        eq(discoveries.status, 'new'),
+        discoveryNotQuarantinedSql(),
+        sql`not ${needsLookSql()}`,
+      ),
     )
-    .orderBy(desc(discoveries.matchScore))
+    .orderBy(sql`${displayedFitSql()} desc nulls last`, desc(discoveries.createdAt))
     .limit(5)
 
   const topDiscoveries = topDiscoveryRows.map((r) => {
@@ -246,7 +254,7 @@ export async function gatherPipelineSnapshot(
       id: r.id,
       title: n.title ?? 'Untitled role',
       companyName: n.companyName ?? n.company?.name ?? null,
-      matchScore: r.matchScore,
+      matchScore: r.matchScore === null ? null : Math.round(Number(r.matchScore)),
     }
   })
 

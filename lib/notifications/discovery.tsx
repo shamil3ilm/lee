@@ -1,9 +1,10 @@
 import type { CSSProperties, ReactElement } from 'react'
-import { and, desc, eq, gt, gte } from 'drizzle-orm'
+import { and, desc, eq, gt, sql } from 'drizzle-orm'
 import { db, type DbClient } from '@/lib/db/client'
 import { discoveries, users } from '@/lib/db/schema'
 import * as profileQ from '@/lib/db/queries/profile'
 import { discoveryNotQuarantinedSql } from '@/lib/db/queries/riskAssessments'
+import { displayedFitSql, needsLookSql } from '@/lib/db/queries/discoveries'
 import { sendEmail as defaultSendEmail } from '@/lib/gmail/send'
 import { logger } from '@/lib/logger'
 import { APP_NAME } from '@/lib/brand'
@@ -79,7 +80,8 @@ export async function findNotifiableDiscoveries(
     .select({
       id: discoveries.id,
       normalized: discoveries.normalized,
-      matchScore: discoveries.matchScore,
+      // The displayed Fit (Match / AI blend under the ceiling), not the AI score alone.
+      matchScore: sql<number | null>`${displayedFitSql()}`,
       matchReasoning: discoveries.matchReasoning,
       createdAt: discoveries.createdAt,
     })
@@ -88,13 +90,15 @@ export async function findNotifiableDiscoveries(
       and(
         eq(discoveries.userId, userId),
         eq(discoveries.status, 'new'),
-        gte(discoveries.matchScore, minScore),
+        sql`${displayedFitSql()} >= ${minScore}`,
         gt(discoveries.createdAt, since),
         // v17 §1 — never notify about quarantined (likely-scam) discoveries.
         discoveryNotQuarantinedSql(),
+        // "Needs a look" rows are not in New.
+        sql`not ${needsLookSql()}`,
       ),
     )
-    .orderBy(desc(discoveries.matchScore), desc(discoveries.createdAt))
+    .orderBy(desc(sql`${displayedFitSql()}`), desc(discoveries.createdAt))
     .limit(25)
 
   return rows
@@ -109,7 +113,7 @@ export async function findNotifiableDiscoveries(
         id: r.id,
         title: n.title ?? 'Untitled role',
         companyName: n.companyName ?? n.company?.name ?? null,
-        matchScore: r.matchScore,
+        matchScore: Math.round(Number(r.matchScore)),
         reasoningExcerpt: extractReasoningExcerpt(r.matchReasoning),
         createdAt: r.createdAt,
       }
