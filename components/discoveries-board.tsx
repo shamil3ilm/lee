@@ -1,7 +1,7 @@
 'use client'
 import * as React from 'react'
 import Link from 'next/link'
-import { Briefcase, ExternalLink, MapPin } from 'lucide-react'
+import { Briefcase, ExternalLink } from 'lucide-react'
 import { moveDiscovery } from '@/app/(authed)/discoveries/actions'
 import { PlaceLabel } from '@/components/regions/place-label'
 import { Board, type BoardColumnDef, type BoardQuickAction } from '@/components/board/board'
@@ -14,6 +14,7 @@ import type { BestCv } from '@/lib/cv-fit/types'
 import { BestCvLine } from '@/components/cv-fit/best-cv-line'
 import { ScreeningChip } from '@/components/screening/screening-chip'
 import type { ScreeningPath } from '@/lib/screening/types'
+import { ReasonChip } from '@/components/discovery/reason-chip'
 
 export type DiscoveryBoardColumn = 'new' | 'shortlisted' | 'saved' | 'dismissed'
 
@@ -38,10 +39,14 @@ export interface DiscoveryBoardItem {
   growth?: CompanyGrowthView | null
   /** Screening path (lib/screening, compact), computed on read. */
   screen?: ScreeningPath | null
+  /** Soft-rule notes from the relevance gate: the card's reason chip. */
+  notes?: { penalties?: string[]; boosts?: string[]; infos?: string[] } | null
+  /** In the relevance gate's "Needs a look" group (lib/ui/needs-look.ts seam). */
+  needsLook?: boolean
 }
 
 export const DISCOVERY_BOARD_COLUMNS: readonly BoardColumnDef<DiscoveryBoardColumn>[] = [
-  { id: 'new', title: 'New', tone: 'info', emptyText: 'Inbox zero', hint: 'Fresh from your sources' },
+  { id: 'new', title: 'New', tone: 'info', emptyText: 'Inbox zero', hint: 'Fresh from your sources', wide: true },
   {
     id: 'shortlisted',
     title: 'Shortlisted',
@@ -50,10 +55,12 @@ export const DISCOVERY_BOARD_COLUMNS: readonly BoardColumnDef<DiscoveryBoardColu
     emptyText: 'Shortlist promising roles here',
   },
   {
+    // The `saved` status: moving a card here creates a Saved application in
+    // the pipeline, not an applied one, so the column says "In pipeline".
     id: 'saved',
-    title: 'Applied',
+    title: 'In pipeline',
     tone: 'applied',
-    hint: 'Moved into your applications pipeline',
+    hint: 'Saved to your applications pipeline (not applied yet)',
     emptyText: 'Drop a role here to add it to your pipeline',
   },
   {
@@ -66,13 +73,22 @@ export const DISCOVERY_BOARD_COLUMNS: readonly BoardColumnDef<DiscoveryBoardColu
 ]
 
 function renderCard(d: DiscoveryBoardItem): React.ReactNode {
+  const mode = workModeLabel(d.remoteType)
   return (
     <>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           {/* Role first, company as meta: the same order as the list rows. */}
-          <div className="line-clamp-2 font-medium leading-tight">{d.title}</div>
-          <div className="mt-0.5 truncate text-xs text-muted-foreground">{d.companyName}</div>
+          <div className="line-clamp-2 text-[13px] font-medium leading-snug">{d.title}</div>
+          <div className="truncate text-xs text-muted-foreground">
+            {d.companyName}
+            {d.location ? (
+              <>
+                {' · '}
+                <PlaceLabel location={d.location} />
+              </>
+            ) : null}
+          </div>
         </div>
         {/* A card with an application link renders inside <a>: no nested button there. */}
         <MatchBadge
@@ -86,19 +102,22 @@ function renderCard(d: DiscoveryBoardItem): React.ReactNode {
           extra={d.bestCv ? <BestCvLine className="border-t pt-2" bestCv={d.bestCv} target={{ kind: 'discovery', id: d.id }} /> : undefined}
         />
       </div>
-      {/* Screening path chip mount (components/screening): first stage that isn't a pass. */}
-      {d.screen ? <ScreeningChip path={d.screen} className="mt-1.5" /> : null}
-      {d.location || workModeLabel(d.remoteType) ? (
-        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-          {d.location ? (
-            <span className="inline-flex items-center gap-1">
-              <MapPin className="size-3" aria-hidden="true" />
-              <PlaceLabel location={d.location} />
-            </span>
-          ) : null}
-          {workModeLabel(d.remoteType) ? (
+      {mode || d.status !== 'saved' || d.screen ? (
+        <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1 empty:hidden">
+          {d.status === 'saved' ? null : (
+            <ReasonChip
+              status={d.status}
+              notes={d.notes ?? null}
+              ceiling={d.fitDetail?.ceiling ?? null}
+              needsLook={d.needsLook ?? false}
+              className="text-[10px]"
+            />
+          )}
+          {/* Screening path chip mount (components/screening): first stage that isn't a pass. */}
+          {d.screen ? <ScreeningChip path={d.screen} className="text-[10px]" /> : null}
+          {mode ? (
             <Badge variant="outline" className="text-[10px]">
-              {workModeLabel(d.remoteType)}
+              {mode}
             </Badge>
           ) : null}
         </div>
@@ -141,6 +160,7 @@ export function DiscoveriesBoard({ items, totals }: DiscoveriesBoardProps) {
       id="discoveries"
       label="Discoveries triage board"
       columns={DISCOVERY_BOARD_COLUMNS}
+      collapseEmpty
       items={items}
       totals={totals}
       columnFooter={(column, shown, total) =>

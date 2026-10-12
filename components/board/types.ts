@@ -18,6 +18,12 @@ export interface BoardColumnDef<C extends string> {
   defaultCollapsed?: boolean
   /** Copy for the empty column. */
   emptyText?: string
+  /**
+   * From `lg` up, take the width the other columns leave (no max width) and
+   * lay the cards out in a grid: the triage column of a board whose other
+   * columns are mostly empty.
+   */
+  wide?: boolean
 }
 
 export type MoveResult = { success: true } | { error: string }
@@ -52,6 +58,12 @@ export interface BoardConfig<C extends string, T extends BoardItem> {
   cardHref?: (item: T) => string | null
   /** Extra quick actions for the card's menu (the menu always offers Move to). */
   cardActions?: (item: T, column: C) => BoardQuickAction[]
+  /**
+   * Empty columns render as slim rails with their count (still drop
+   * targets) instead of full-width "Drop a card here" columns. The viewer
+   * can expand one for this visit.
+   */
+  collapseEmpty?: boolean
 }
 
 export interface BoardProps<C extends string, T extends BoardItem> extends BoardConfig<C, T> {

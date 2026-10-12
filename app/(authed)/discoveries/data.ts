@@ -20,6 +20,7 @@ import type { DiscoveryBoardColumn, DiscoveryBoardItem } from '@/components/disc
 import { parseRegionParam } from '@/lib/regions/selection'
 import { regionGroups, type RegionGroup } from '@/lib/regions/display'
 import { LINKEDIN_POST_KIND } from '@/lib/linkedin-posts/types'
+import { isNeedsLook } from '@/lib/ui/needs-look'
 
 /** Parsed, validated Discovery query string. */
 export interface DiscoveryParams {
@@ -221,6 +222,8 @@ export async function loadBoard(
           applyUrl: d.applyUrl,
           savedApplicationId: d.savedApplicationId,
           growth: d.companyGrowth !== null ? { score: d.companyGrowth, confidence: d.companyGrowthConfidence, inFit: growthInFit } : null,
+          notes: d.relevanceNotes,
+          needsLook: isNeedsLook(d),
         }),
       ),
     ]),

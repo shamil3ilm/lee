@@ -190,8 +190,9 @@ function DroppableColumn<C extends string, T extends BoardItem>({
       isOver={isOver}
       columnRef={setNodeRef}
       footer={props.columnFooter?.(def.id, cards.length, total ?? cards.length)}
+      collapseEmpty={props.collapseEmpty}
     >
-      <BoardColumnBody empty={cards.length === 0} emptyText={def.emptyText}>
+      <BoardColumnBody empty={cards.length === 0} emptyText={def.emptyText} wide={def.wide}>
         {cards.map((item) => (
           <DraggableCard key={item.id} props={props} item={item} column={def.id} />
         ))}

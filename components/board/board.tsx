@@ -164,8 +164,9 @@ function StaticBoard<C extends string, T extends BoardItem>(props: BoardLayerPro
             count={cards.length}
             total={total}
             footer={columnFooter?.(def.id, cards.length, total ?? cards.length)}
+            collapseEmpty={props.collapseEmpty}
           >
-            <BoardColumnBody empty={cards.length === 0} emptyText={def.emptyText}>
+            <BoardColumnBody empty={cards.length === 0} emptyText={def.emptyText} wide={def.wide}>
               {cards.map((item) => (
                 <div key={item.id} data-board-card={item.id}>
                   <BoardCardFrame

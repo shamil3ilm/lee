@@ -88,6 +88,7 @@ export function Kanban({ columns }: KanbanProps) {
       id="applications"
       label="Applications pipeline board"
       columns={COLUMNS}
+      collapseEmpty
       items={items}
       itemLabel={itemLabel}
       renderCard={renderCard}

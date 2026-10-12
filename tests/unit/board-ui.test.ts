@@ -21,7 +21,7 @@ const COLUMNS = [
   { id: 'done' as const, title: 'Done', tone: 'success' as const, emptyText: 'Nothing finished' },
 ]
 
-function renderBoard(onMove: (item: Item, from: Col, to: Col) => Promise<Result>) {
+function renderBoard(onMove: (item: Item, from: Col, to: Col) => Promise<Result>, extra: { collapseEmpty?: boolean } = {}) {
   const items: Record<Col, Item[]> = {
     todo: [
       { id: 't1', title: 'Write cover letter' },
@@ -38,6 +38,7 @@ function renderBoard(onMove: (item: Item, from: Col, to: Col) => Promise<Result>
       itemLabel: (i: Item) => i.title,
       renderCard: (i: Item) => createElement('span', null, i.title),
       onMove,
+      ...extra,
     }),
   )
 }
@@ -131,5 +132,19 @@ describe('Board', () => {
     expect(window.localStorage.getItem('lee.board.test.done.collapsed')).toBe('1')
     fireEvent.click(screen.getByRole('button', { name: 'Expand Done column' }))
     expect(await screen.findByRole('button', { name: 'Collapse Done column' })).toBeInTheDocument()
+  })
+
+  it('rails an empty column with its count when collapseEmpty is on, and opens it for this visit', async () => {
+    window.localStorage.clear()
+    renderBoard(async () => ({ success: true }), { collapseEmpty: true })
+    await dndReady()
+    const done = column('Done')
+    expect(done).toHaveAttribute('data-collapsed', 'empty')
+    expect(within(done).getByText('0')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Expand Done column' }))
+    expect(await screen.findByRole('button', { name: 'Collapse Done column' })).toBeInTheDocument()
+    expect(window.localStorage.getItem('lee.board.test.done.collapsed')).toBeNull()
+    // A column with cards is never railed.
+    expect(column('To do')).not.toHaveAttribute('data-collapsed')
   })
 })

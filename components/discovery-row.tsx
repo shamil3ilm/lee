@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   XCircle,
   Sparkles,
-  Filter,
   Scale,
 } from 'lucide-react'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
@@ -41,6 +40,8 @@ import type { BestCv } from '@/lib/cv-fit/types'
 import { JdPaste } from '@/components/discovery/jd-paste'
 import { Checkbox } from '@/components/ui/checkbox'
 import { PostedBy, PostReplyDialog, PostSourceChip, PostTrackButton } from '@/components/discovery/post-actions'
+import { ReasonChip } from '@/components/discovery/reason-chip'
+import { reasonChip } from '@/lib/ui/reason-chip'
 import type { PostRowView } from '@/lib/linkedin-posts/types'
 import { ScreeningChip } from '@/components/screening/screening-chip'
 import type { ScreeningPath } from '@/lib/screening/types'
@@ -102,6 +103,8 @@ export interface DiscoveryRowJob {
   post?: PostRowView | null
   /** Screening path (lib/screening, compact), computed on read. */
   screen?: ScreeningPath | null
+  /** In the relevance gate's "Needs a look" group (lib/ui/needs-look.ts seam). */
+  needsLook?: boolean
 }
 
 export interface DiscoveryRowCompany {
@@ -139,22 +142,26 @@ function scoreLabel(score: number | null, prefix: string): string {
 
 
 /**
- * Chips that stay on the row: why a posting was filtered out, and neutral
- * facts ("Relocation offered"). Ranking reasons (rank lower / boosts) live
- * in the "Why this score" popover with the rest of the score.
+ * Chips that stay on the row: the one reason chip (filtered out, needs a
+ * look, Fit capped, ranked lower; the same chip the board cards show) and
+ * the other neutral facts ("Relocation offered"). The full ranking notes
+ * live in the "Why this score" popover with the rest of the score.
  */
 function RelevanceChips({ item }: { item: DiscoveryRowJob }) {
-  const infos = item.notes?.infos ?? []
-  const filtered = item.status === 'filtered' && Boolean(item.filterReason)
-  if (!filtered && infos.length === 0) return null
+  const input = {
+    status: item.status,
+    filterReason: item.filterReason,
+    notes: item.notes,
+    // A title-only row already says so with "Paste the JD" below.
+    ceiling: item.fitDetail?.confidence === 'title_only' ? null : (item.fitDetail?.ceiling ?? null),
+    needsLook: item.needsLook ?? false,
+  }
+  const chip = reasonChip(input)
+  const infos = (item.notes?.infos ?? []).filter((i) => i !== chip?.label)
+  if (!chip && infos.length === 0) return null
   return (
     <div className="mt-1.5 flex flex-wrap items-center gap-1.5" data-testid="relevance-chips">
-      {filtered ? (
-        <Badge variant="warning" title="Why this posting was filtered out">
-          <Filter className="mr-1 size-3" aria-hidden="true" />
-          {item.filterReason}
-        </Badge>
-      ) : null}
+      <ReasonChip {...input} />
       {infos.map((i) => (
         <Badge key={`i-${i}`} variant="outline">
           {i}

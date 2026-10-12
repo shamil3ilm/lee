@@ -57,6 +57,8 @@ interface BoardColumnFrameProps<C extends string> {
   isOver?: boolean
   columnRef?: (element: HTMLElement | null) => void
   footer?: React.ReactNode
+  /** Render the column as a slim rail while it is empty (BoardConfig.collapseEmpty). */
+  collapseEmpty?: boolean
   children: React.ReactNode
 }
 
@@ -68,10 +70,16 @@ export function BoardColumnFrame<C extends string>({
   isOver,
   columnRef,
   footer,
+  collapseEmpty = false,
   children,
 }: BoardColumnFrameProps<C>) {
-  const [collapsed, setCollapsed] = useCollapsed(boardId, def.id, def.defaultCollapsed)
+  const [stored, setCollapsed] = useCollapsed(boardId, def.id, def.defaultCollapsed)
+  // An empty column opened by hand stays open for this visit only; it rails
+  // again on the next one, and opens by itself once a card lands in it.
+  const [openedEmpty, setOpenedEmpty] = React.useState(false)
   const shownTotal = total ?? count
+  const autoCollapsed = collapseEmpty && shownTotal === 0 && !openedEmpty
+  const collapsed = stored || autoCollapsed
   const wip = wipState(shownTotal, def.wipLimit)
   const headingId = `board-${boardId}-${def.id}-title`
 
@@ -82,7 +90,8 @@ export function BoardColumnFrame<C extends string>({
         role="group"
         aria-labelledby={headingId}
         data-board-column={def.id}
-        data-collapsed=""
+        data-collapsed={autoCollapsed && !stored ? 'empty' : ''}
+        title={def.hint ? `${def.title}: ${def.hint}` : def.title}
         className={cn(
           'flex w-11 shrink-0 snap-start flex-col items-center gap-2 rounded-lg border bg-muted/40 py-2 transition-colors',
           isOver && 'border-ring bg-accent',
@@ -95,7 +104,10 @@ export function BoardColumnFrame<C extends string>({
           className="size-7"
           aria-label={`Expand ${def.title} column`}
           aria-expanded={false}
-          onClick={() => setCollapsed(false)}
+          onClick={() => {
+            if (stored) setCollapsed(false)
+            if (autoCollapsed) setOpenedEmpty(true)
+          }}
         >
           <ChevronsLeftRight />
         </Button>
@@ -122,12 +134,15 @@ export function BoardColumnFrame<C extends string>({
       aria-labelledby={headingId}
       data-board-column={def.id}
       className={cn(
-        'flex w-[min(18rem,85cqw)] shrink-0 snap-start flex-col rounded-lg border bg-muted/40 transition-colors',
-        'lg:w-auto lg:min-w-56 lg:max-w-80 lg:flex-1 lg:basis-0',
+        // Phones: one column at a time; from a 28rem board (tablets) two side by side.
+        'flex w-[min(18rem,85cqw)] shrink-0 snap-start flex-col rounded-lg border bg-muted/40 transition-colors @md:w-[max(13rem,calc(50cqw-0.375rem))]',
+        def.wide
+          ? 'lg:w-auto lg:min-w-56 lg:flex-[3] lg:basis-0'
+          : 'lg:w-auto lg:min-w-56 lg:max-w-80 lg:flex-1 lg:basis-0',
         isOver && 'border-ring bg-accent/70',
       )}
     >
-      <div className="flex items-center gap-1.5 rounded-t-lg border-b bg-muted/70 py-2 pl-2.5 pr-1.5">
+      <div className="flex items-center gap-1.5 rounded-t-lg border-b bg-muted/70 py-1.5 pl-2.5 pr-1.5">
         <span aria-hidden="true" className={cn('size-2 shrink-0 rounded-full', TONE_BG[def.tone])} />
         <h3
           id={headingId}
@@ -172,14 +187,22 @@ export function BoardColumnFrame<C extends string>({
 export function BoardColumnBody({
   empty,
   emptyText = 'Nothing here yet',
+  wide = false,
   children,
 }: {
   empty: boolean
   emptyText?: string
+  /** Cards in a grid from `lg` up (BoardColumnDef.wide). */
+  wide?: boolean
   children: React.ReactNode
 }) {
   return (
-    <div className="flex min-h-[120px] flex-1 flex-col gap-2 p-2">
+    <div
+      className={cn(
+        'flex min-h-[120px] flex-1 flex-col gap-2 p-2',
+        wide && !empty && 'lg:grid lg:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] lg:content-start lg:items-start',
+      )}
+    >
       {empty ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border/80 px-2 py-4 text-center text-xs text-muted-foreground">
           <span>{emptyText}</span>
@@ -222,7 +245,7 @@ export function BoardCardFrame<C extends string>({
   children,
 }: BoardCardFrameProps<C>) {
   const body = (
-    <div className="min-w-0 flex-1 p-3 pr-1">{children}</div>
+    <div className="min-w-0 flex-1 p-2.5 pr-1">{children}</div>
   )
   return (
     <div
