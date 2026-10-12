@@ -17,11 +17,11 @@ export function applyCaps(
 ): number {
   let score = raw.match_score
 
-  // Location cap: mismatch + non-remote + user won't relocate = max 30
+  // Location cap: the AI says the user cannot take it (remote restricted to
+  // other countries, or on-site elsewhere and the user won't relocate) = max 30
   if (
     raw.location_match === 'mismatch' &&
-    job.remoteType !== 'remote' &&
-    !profile.acceptRelocation
+    (job.remoteType === 'remote' || !profile.acceptRelocation)
   ) {
     score = Math.min(score, 30)
   }

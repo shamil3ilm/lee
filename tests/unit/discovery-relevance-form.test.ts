@@ -165,13 +165,27 @@ const raw = {
 }
 
 describe('match scoring with preferences', () => {
-  it('puts target roles, seniority, regions and the master-CV digest in the v1.1 prompt', () => {
-    expect(SCORE_JOB_PROMPT_VERSION).toBe('1.1.0')
+  it('puts target roles, seniority, regions and the master-CV digest in the prompt', () => {
+    expect(SCORE_JOB_PROMPT_VERSION).toBe('1.2.0')
     const prompt = buildScoreJobPrompt(j('Laravel Developer'), baseProfile, { cvDigest: 'CV role: Software Engineer' })
     expect(prompt).toContain('"target_roles": [\n    "Backend"')
     expect(prompt).toContain('"target_seniority": [\n    "Junior",\n    "Mid-level"')
     expect(prompt).toContain('"target_regions": [\n    "UAE",\n    "India"')
     expect(prompt).toContain('--- MASTER CV DIGEST ---\nCV role: Software Engineer')
+  })
+
+  it('tells the AI where the user lives and to score roles they cannot take low (v1.2)', () => {
+    const prompt = buildScoreJobPrompt(j('Laravel Developer'), { ...baseProfile, discoveryPrefs: { basedIn: 'IN' } } as UserProfile)
+    expect(prompt).toContain('"based_in": "India"')
+    expect(prompt).toMatch(/remote role open only to people in named countries/i)
+    expect(prompt).toMatch(/match_score must be 30 or lower/)
+    // Industry alone is no longer a flat +15: only when the role's own work is in it.
+    expect(prompt).not.toContain('adds +15 to the base score')
+  })
+
+  it('caps an AI "mismatch" at 30 for remote roles too', () => {
+    const remoteRole = j('Laravel Developer', { location: 'Remote', remoteType: 'remote' })
+    expect(applyCaps({ ...raw, location_match: 'mismatch' }, remoteRole, { ...baseProfile, searchPrefsSavedAt: null })).toBe(30)
   })
 
   it('caps a seniority mismatch and prefers the selected regions', () => {
