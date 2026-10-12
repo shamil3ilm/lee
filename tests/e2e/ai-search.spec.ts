@@ -10,6 +10,8 @@ async function expectToast(page: Page, text: string | RegExp): Promise<void> {
 
 test('the AI Mode button opens Google AI Mode with the edited prompt (href only)', async ({ page }) => {
   await page.goto('/discoveries')
+  // Folded into Discovery's "⋯" menu.
+  await page.getByRole('button', { name: 'More Discovery actions' }).click()
   await page.getByTestId('ai-mode-trigger').click()
   const dialog = page.getByRole('dialog', { name: 'Search with Google AI Mode' })
   const first = dialog.getByTestId('ai-mode-prompt').first()

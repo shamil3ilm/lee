@@ -2,8 +2,10 @@ import { cn } from '@/lib/utils'
 
 interface PageHeaderProps {
   title: string
-  description?: string
+  description?: React.ReactNode
   actions?: React.ReactNode
+  /** Keep a short action row (one or two icon-sized buttons) on the title row at every width. */
+  inlineActions?: boolean
   className?: string
 }
 
@@ -16,11 +18,12 @@ interface PageHeaderProps {
  * Filters and secondary controls belong in a `Toolbar` under the header,
  * not in `actions`.
  */
-export function PageHeader({ title, description, actions, className }: PageHeaderProps) {
+export function PageHeader({ title, description, actions, inlineActions = false, className }: PageHeaderProps) {
   return (
     <div
       className={cn(
-        'mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-6',
+        'mb-6 flex gap-4 lg:items-start lg:justify-between lg:gap-6',
+        inlineActions ? 'flex-row items-start justify-between' : 'flex-col lg:flex-row',
         className,
       )}
     >
@@ -33,7 +36,9 @@ export function PageHeader({ title, description, actions, className }: PageHeade
         ) : null}
       </div>
       {actions ? (
-        <div className="flex flex-wrap items-center gap-2 lg:shrink-0 lg:justify-end">{actions}</div>
+        <div className={cn('flex flex-wrap items-center gap-2 lg:shrink-0 lg:justify-end', inlineActions && 'shrink-0 justify-end')}>
+          {actions}
+        </div>
       ) : null}
     </div>
   )

@@ -98,7 +98,8 @@ test('old single-region links keep working', async ({ page }) => {
 
 test('group by region counts GCC → country → city', async ({ page }) => {
   await page.goto('/discoveries?status=dismissed')
-  await page.getByTestId('group-by-region').click()
+  await page.getByTestId('more-filters').click()
+  await page.getByLabel('Group by region').click()
   await expect(page).toHaveURL(/by=region/)
   const groups = page.getByTestId('region-groups')
   await expect(groups).toBeVisible()

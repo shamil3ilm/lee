@@ -17,7 +17,13 @@ import { PasteImportPanel } from './paste-import-panel'
  * "Add from text or link": paste an AI Mode answer, any text or links, or a
  * LinkedIn post → review what lee found → import what the user picks.
  */
-export function PasteImportDialog({ triggerVariant = 'outline' }: { triggerVariant?: 'default' | 'outline' }) {
+interface PasteImportDialogProps {
+  triggerVariant?: 'default' | 'outline'
+  /** Phones: the trigger reads "Add jobs" so it fits beside a page title. */
+  compact?: boolean
+}
+
+export function PasteImportDialog({ triggerVariant = 'outline', compact = false }: PasteImportDialogProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   // A new key per opening resets the panel's state.
@@ -34,7 +40,14 @@ export function PasteImportDialog({ triggerVariant = 'outline' }: { triggerVaria
       <DialogTrigger asChild>
         <Button size="sm" variant={triggerVariant} data-testid="paste-import-trigger">
           <ClipboardPaste className="size-4" aria-hidden="true" />
-          Add from text or link
+          {compact ? (
+            <>
+              <span className="sm:hidden">Add jobs</span>
+              <span className="max-sm:hidden">Add from text or link</span>
+            </>
+          ) : (
+            'Add from text or link'
+          )}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">

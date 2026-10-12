@@ -1,5 +1,5 @@
 'use client'
-import { Layers, Loader2, Megaphone, X } from 'lucide-react'
+import { Loader2, X } from 'lucide-react'
 import { useUrlFilters } from '@/components/filters/use-url-filters'
 import { plural } from '@/lib/ui/labels'
 import { Button } from '@/components/ui/button'
@@ -95,8 +95,9 @@ export function DiscoveryFilters({
   }
 
   const more = { minScore, sourceId, scoredOnly, showFiltered: showFiltered && status === 'new' }
-  const moreCount = activeMoreFilters(more)
-  const anyActive = moreCount > 0 || (jobs && (region.length > 0 || hiringPosts)) || (!hideStatus && status !== 'new')
+  // "Hiring posts only" lives in More filters too, so it counts on the button.
+  const moreCount = activeMoreFilters(more) + (jobs && hiringPosts ? 1 : 0)
+  const anyActive = moreCount > 0 || (jobs && region.length > 0) || (!hideStatus && status !== 'new')
 
   return (
     <div
@@ -134,35 +135,9 @@ export function DiscoveryFilters({
         sources={sources}
         count={moreCount}
         onChange={update}
+        hiringPosts={hiringPosts}
+        byRegion={jobs && canGroupByRegion ? byRegion : null}
       />
-      {jobs ? (
-        <Button
-          type="button"
-          size="sm"
-          variant={hiringPosts ? 'secondary' : 'ghost'}
-          className="h-8 px-2 text-xs"
-          aria-pressed={hiringPosts}
-          onClick={() => update({ posts: hiringPosts ? '' : '1' })}
-          data-testid="hiring-posts-filter"
-        >
-          <Megaphone className="size-3.5" aria-hidden="true" />
-          Hiring posts
-        </Button>
-      ) : null}
-      {jobs && canGroupByRegion ? (
-        <Button
-          type="button"
-          size="sm"
-          variant={byRegion ? 'secondary' : 'ghost'}
-          className="h-8 px-2 text-xs"
-          aria-pressed={byRegion}
-          onClick={() => update({ by: byRegion ? '' : 'region' })}
-          data-testid="group-by-region"
-        >
-          <Layers className="size-3.5" aria-hidden="true" />
-          Group by region
-        </Button>
-      ) : null}
       {anyActive ? (
         <Button
           type="button"

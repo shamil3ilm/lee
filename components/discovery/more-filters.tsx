@@ -15,11 +15,17 @@ interface MoreFiltersProps {
   sources: ReadonlyArray<{ id: string; name: string }>
   /** Active filters in here, shown on the button. */
   count: number
+  /**
+   * Jobs tab: "Hiring posts only" and (list view) "Group by region", folded
+   * in here so the toolbar stays one row. null hides the grouping toggle.
+   */
+  hiringPosts?: boolean
+  byRegion?: boolean | null
   onChange: (patch: Record<string, string>) => void
 }
 
 /** The secondary Discovery filters, applied on change like the inline ones. */
-export function MoreFilters({ jobs, values, canHideFiltered, sources, count, onChange }: MoreFiltersProps) {
+export function MoreFilters({ jobs, values, canHideFiltered, sources, count, onChange, hiringPosts = false, byRegion = null }: MoreFiltersProps) {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -86,6 +92,22 @@ export function MoreFilters({ jobs, values, canHideFiltered, sources, count, onC
                 onChange={(on) => onChange({ filtered: on ? 'show' : '' })}
               />
             ) : null}
+            <Check
+              id="disc-hiring-posts"
+              testId="hiring-posts-filter"
+              label="Hiring posts only (LinkedIn)"
+              checked={hiringPosts}
+              onChange={(on) => onChange({ posts: on ? '1' : '' })}
+            />
+            {byRegion !== null ? (
+              <Check
+                id="disc-by-region"
+                testId="group-by-region"
+                label="Group by region"
+                checked={byRegion}
+                onChange={(on) => onChange({ by: on ? 'region' : '' })}
+              />
+            ) : null}
           </div>
         ) : null}
       </PopoverContent>
@@ -93,6 +115,14 @@ export function MoreFilters({ jobs, values, canHideFiltered, sources, count, onC
   )
 }
 
-function Check({ id, label, checked, onChange }: { id: string; label: string; checked: boolean; onChange: (on: boolean) => void }) {
-  return <Checkbox id={id} label={label} checked={checked} onChange={(e) => onChange(e.target.checked)} />
+interface CheckProps {
+  id: string
+  label: string
+  checked: boolean
+  onChange: (on: boolean) => void
+  testId?: string
+}
+
+function Check({ id, label, checked, onChange, testId }: CheckProps) {
+  return <Checkbox id={id} label={label} checked={checked} data-testid={testId} onChange={(e) => onChange(e.target.checked)} />
 }

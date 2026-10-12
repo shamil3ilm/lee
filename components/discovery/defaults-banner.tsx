@@ -60,7 +60,7 @@ export function DefaultsBanner({ families, sparse = false, from }: DefaultsBanne
     <section
       aria-label="Filtering defaults"
       data-testid="defaults-banner"
-      className="flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-lg border border-warning/40 bg-warning-soft px-3 py-2 text-sm"
+      className="flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-lg border border-warning/40 bg-warning-soft px-3 py-1.5 text-sm"
     >
       <p className="flex items-center gap-1.5 text-warning">
         <SlidersHorizontal className="size-4 shrink-0" aria-hidden="true" />

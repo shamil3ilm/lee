@@ -71,7 +71,16 @@ function PromptEditor({ row, onChange }: { row: PromptRow; onChange: (text: stri
   )
 }
 
-export function AiModeDialog({ promptSet, triggerVariant = 'outline' }: { promptSet: AiModePromptSet; triggerVariant?: 'default' | 'outline' }) {
+interface AiModeDialogProps {
+  promptSet: AiModePromptSet
+  triggerVariant?: 'default' | 'outline'
+  /** Controlled open state, for opening it from a menu (then no trigger button is rendered). */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
+
+export function AiModeDialog({ promptSet, triggerVariant = 'outline', open, onOpenChange }: AiModeDialogProps) {
+  const controlled = open !== undefined
   const toRow = (p: AiModePromptSet['today'][number]): PromptRow => ({ id: p.id, label: p.label, text: p.prompt, employers: p.employers })
   const [rows, setRows] = useState<PromptRow[]>(promptSet.today.map(toRow))
   const [more, setMore] = useState<PromptRow[]>(promptSet.more.map(toRow))
@@ -84,13 +93,15 @@ export function AiModeDialog({ promptSet, triggerVariant = 'outline' }: { prompt
   const { cycleDays, employerBatches } = promptSet
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button size="sm" variant={triggerVariant} data-testid="ai-mode-trigger">
-          <Sparkles className="size-4" aria-hidden="true" />
-          Search with Google AI Mode
-        </Button>
-      </DialogTrigger>
+    <Dialog {...(controlled ? { open, onOpenChange } : {})}>
+      {controlled ? null : (
+        <DialogTrigger asChild>
+          <Button size="sm" variant={triggerVariant} data-testid="ai-mode-trigger">
+            <Sparkles className="size-4" aria-hidden="true" />
+            Search with Google AI Mode
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Search with Google AI Mode</DialogTitle>

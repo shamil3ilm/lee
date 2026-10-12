@@ -13,7 +13,7 @@ interface LookingForCardProps {
 
 /**
  * The lowest-priority Discovery notice once preferences are saved: one
- * line, "What you're looking for: Backend, Full-stack · Junior · GCC,
+ * borderless line (it shares a row with the coverage summary), "What you're looking for: Backend, Full-stack · Junior · GCC,
  * India · Remote worldwide", with Edit. (Unsaved preferences show the
  * defaults notice instead.)
  */
@@ -29,12 +29,12 @@ export function LookingForCard({ view, suggestionCount, from }: LookingForCardPr
     <section
       aria-labelledby="looking-for-title"
       data-testid="looking-for"
-      className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-card px-3 py-2 text-sm"
+      className="flex min-w-0 items-center gap-x-2 text-xs"
     >
-      <h2 id="looking-for-title" className="shrink-0 text-xs font-semibold">
+      <h2 id="looking-for-title" className="shrink-0 font-medium text-foreground">
         What you’re looking for
       </h2>
-      <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={summary}>
+      <p className="min-w-0 truncate text-muted-foreground" title={summary}>
         {summary}
       </p>
       <span className="flex shrink-0 items-center gap-3 text-xs">
