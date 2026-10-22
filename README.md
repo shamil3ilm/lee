@@ -3,7 +3,8 @@
 **lee** (Arabic لي, "mine") is a personal, single-user job-search workspace: applications, CVs and
 cover letters (LaTeX), interviews, contacts, discoveries with Scam Shield, CV scoring, todos, expenses
 and an engineering Playground. Next.js 16 on Vercel Hobby, Neon Postgres, Auth.js (Google), with
-Groq/Gemini (and other open-source model providers) for AI. Zero-cost by design.
+Groq/Gemini (and other open-source model providers) for AI, or a model you host yourself through
+Ollama. Zero-cost by design.
 
 Repository: https://github.com/shamil3ilm/lee
 
@@ -56,6 +57,25 @@ On a fresh checkout with no snapshots yet, `pnpm eval` prints a friendly
 message and exits 0. Bump a prompt's `VERSION` constant whenever you edit
 the prompt so analytics can attribute rating deltas to the change.
 
+## Self-hosted model (Ollama)
+
+lee can run its own AI (CV tailoring, job parsing, ranking and the rest) on a model you host, so the
+prompts never leave your machine or server. It uses Ollama's OpenAI-compatible API and needs no key.
+
+```
+ollama pull qwen2.5:7b
+# .env.local
+OLLAMA_BASE_URL=http://localhost:11434/v1
+OLLAMA_MODEL=qwen2.5:7b        # optional, this is the default
+OLLAMA_TIMEOUT_MS=180000       # optional; a local model is far slower than a hosted one
+```
+
+With `OLLAMA_BASE_URL` set, **Ollama · Local model** appears in Settings › AI, or set `AI_PROVIDER=ollama`
+to make it the server default. Without it the option is hidden and nothing changes. If the server is
+down the error says so ("Ollama is not reachable at …"); a model you haven't pulled returns Ollama's own
+404. The deployed Vercel app can't reach `localhost`, so use this when lee runs on your machine or on a
+server that can reach Ollama.
+
 ## Deployment (Vercel)
 
 1. Create a Neon project (free tier). Copy the pooled + direct connection strings.
@@ -69,7 +89,7 @@ the prompt so analytics can attribute rating deltas to the change.
    - `ALLOWED_EMAIL` = your Google email
    - `CRON_SECRET` = `openssl rand -hex 32`
    - (optional server defaults) `AI_PROVIDER`, `GEMINI_API_KEY`, `GROQ_API_KEY`,
-     `FIRECRAWL_API_KEY`, `DECISION_PROVIDER`, `LAYA_ENDPOINT`, `LAYA_API_KEY`.
+     `FIRECRAWL_API_KEY`, `DECISION_PROVIDER`, `LAYA_ENDPOINT`, `LAYA_API_KEY`, and `OLLAMA_*` (see above).
      These can all be set per user in the app instead (Settings › AI: model,
      decision engine, and encrypted keys); a value saved there wins over the env
      default. Sign-in, database, cron secret and site URL stay env-only.
